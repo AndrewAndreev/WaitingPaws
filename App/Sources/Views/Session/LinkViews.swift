@@ -27,6 +27,7 @@ struct LinkPill: View {
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
+            .anchorPreference(key: LinkPillAnchorKey.self, value: .bounds) { $0 }
         case .connecting, .waitingApproval:
             Pill(text: "Mac…", systemImage: "hourglass", tint: Theme.info)
         case .idle, .failed:
@@ -62,23 +63,9 @@ struct MacLinkCard: View {
                     IconButton(systemImage: "xmark") { client.disconnect() }
                 }
             }
-        case .connected(let name):
-            if model.session == nil {
-                GlassCard(padding: 16) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "laptopcomputer.and.iphone")
-                            .font(.system(size: 22))
-                            .foregroundStyle(Theme.info)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Тренировка синхронизирована с «\(name)»")
-                                .font(.system(.headline, design: .rounded))
-                            Text("Тренировка запустится на Mac, там же запись и лог. Шаги здесь и на Mac — одни и те же.")
-                                .font(.system(.footnote, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
-                    }
-                }
-            }
+        case .connected:
+            // Said once by the tooltip under the «Mac» pill (`LinkNoticeOverlay`), not by a card that stays.
+            EmptyView()
         case .idle, .failed:
             if model.session == nil, let mac = client.bestMac, dismissed != mac.info.name {
                 offer(mac)
@@ -128,6 +115,93 @@ struct MacLinkCard: View {
         if mac.info.sessionRunning, let exit = mac.info.currentExit { parts.append("выход \(exit)") }
         if !mac.info.sessionRunning { parts.append("вход в Xiaomi уже выполнен на Mac") }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// Where the «Mac» pill is, for the tooltip under it.
+struct LinkPillAnchorKey: PreferenceKey {
+    static let defaultValue: Anchor<CGRect>? = nil
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = value ?? nextValue()
+    }
+}
+
+/// A short tooltip under the «Mac» pill: «Синхронизировано с …» after joining, «Видео сохранено на Mac»
+/// after a recording there. Fades after a few seconds, a tap closes it at once.
+struct LinkNoticeOverlay: ViewModifier {
+    @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        content
+            .overlayPreferenceValue(LinkPillAnchorKey.self) { anchor in
+                GeometryReader { proxy in
+                    if let anchor, let notice = model.linkNotice {
+                        let pill = proxy[anchor]
+                        // Right edge under the pill's, but always on screen.
+                        let width = min(290, proxy.size.width - 24)
+                        let left = max(12, min(pill.maxX, proxy.size.width - 12) - width)
+                        LinkNoticeBubble(notice: notice, arrowX: pill.midX - left)
+                            .frame(width: width)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .offset(x: left, y: pill.maxY + 6)
+                            .onTapGesture { model.linkNotice = nil }
+                            .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .top)))
+                            .id(notice.id)
+                    }
+                }
+                .animation(.smooth(duration: 0.3), value: model.linkNotice)
+            }
+            .task(id: model.linkNotice?.id) {
+                guard model.linkNotice != nil else { return }
+                // A newer notice cancels this wait: it must not clear that one.
+                do { try await Task.sleep(for: .seconds(4)) } catch { return }
+                model.linkNotice = nil
+            }
+    }
+}
+
+private struct LinkNoticeBubble: View {
+    let notice: LinkNotice
+    /// Where the arrow points, from the bubble's leading edge.
+    let arrowX: CGFloat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Triangle()
+                .fill(Theme.panel)
+                .frame(width: 16, height: 8)
+                .offset(x: arrowX - 8)
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "laptopcomputer.and.iphone")
+                    .font(.system(size: 17))
+                    .foregroundStyle(Theme.info)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(notice.title)
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    Text(notice.detail)
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.1), lineWidth: 1))
+        }
+        .foregroundStyle(.white)
+        .shadow(color: .black.opacity(0.4), radius: 12, y: 4)
+    }
+}
+
+private struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.closeSubpath()
+        }
     }
 }
 #endif

@@ -1,26 +1,66 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Recording without a training: only the running time and a stop button.
-struct ClipRecordingCard: View {
+/// Recording without a training — here or on the linked Mac: the picture takes the screen and the clock
+/// with a stop button floats over it on a translucent panel (stop on a linked iPhone stops the Mac).
+struct ClipRecordingOverlay: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        GlassCard(padding: 18) {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Запись без тренировки", systemImage: "record.circle.fill")
-                    .font(Theme.display(20, weight: .bold))
-                    .labelStyle(TintedIconLabelStyle(tint: Theme.danger))
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    Text(DurationText.clock(model.recorder.duration(at: context.date)))
-                        .font(Theme.display(48, weight: .bold))
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            HStack(spacing: 14) {
+                HStack(spacing: 9) {
+                    BreathingDot()
+                    Text(DurationText.clock(model.recordingDuration(at: context.date)))
+                        .font(Theme.display(32, weight: .bold))
                         .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .fixedSize()
                 }
-                BigButton(title: "Остановить запись", systemImage: "stop.fill", style: .destructive) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(model.isLinkedToMac ? "Запись на Mac" : "Запись без тренировки")
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    Text(model.isLinkedToMac ? "Видео сохранится на Mac" : "Видео появится в истории")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                Button {
                     model.stopRecording(deleteFile: false)
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
+                        .background(Theme.danger, in: Circle())
                 }
+                .buttonStyle(PressableButtonStyle())
+                .accessibilityLabel("Остановить запись")
             }
+            .padding(.leading, 20)
+            .padding(.trailing, 8)
+            .padding(.vertical, 8)
+            // Translucent but no blur: a backdrop blur over live video costs the iPhone too much (see GlassCard).
+            .background(.black.opacity(0.55), in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
         }
+    }
+}
+
+/// A red dot that breathes while recording.
+private struct BreathingDot: View {
+    @State private var dim = false
+
+    var body: some View {
+        Circle()
+            .fill(Theme.danger)
+            .frame(width: 12, height: 12)
+            .opacity(dim ? 0.35 : 1)
+            .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: dim)
+            .onAppear { dim = true }
     }
 }
 

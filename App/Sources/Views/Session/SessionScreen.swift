@@ -18,33 +18,53 @@ struct SessionScreen: View {
         GeometryReader { geometry in
             let wide = geometry.size.width > geometry.size.height
             let compact = !wide && geometry.size.height < 900
+            // Recording without a training (here or on the linked Mac): the picture takes the screen, the clock
+            // floats over it. The camera keeps its place in each layout, so the player is not recreated.
+            let clipMode = model.isRecordingClip
             Group {
                 if wide {
                     HStack(spacing: 12) {
                         cameraArea
-                        VStack(spacing: 12) {
-                            topBar
-                            if model.performance.isRunning { performanceBar }
-                            Spacer(minLength: 0)
-                            bottomContent(compact: false)
+                            .overlay(alignment: .top) {
+                                if clipMode { topBar.padding(12).transition(.opacity) }
+                            }
+                            .overlay(alignment: .bottom) { clipOverlay(clipMode) }
+                        if !clipMode {
+                            VStack(spacing: 12) {
+                                topBar
+                                if model.performance.isRunning { performanceBar }
+                                Spacer(minLength: 0)
+                                bottomContent(compact: false)
+                            }
+                            .frame(width: min(420, geometry.size.width * 0.45))
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
                         }
-                        .frame(width: min(420, geometry.size.width * 0.45))
                     }
-                    .padding(12)
+                    .padding(clipMode ? 0 : 12)
                 } else {
                     VStack(spacing: 10) {
                         topBar
-                        if model.performance.isRunning { performanceBar }
+                            .padding(.horizontal, 12)
+                        if model.performance.isRunning { performanceBar.padding(.horizontal, 12) }
                         cameraArea
-                        bottomContent(compact: compact)
+                            .overlay(alignment: .bottom) { clipOverlay(clipMode) }
+                            .padding(.horizontal, clipMode ? 0 : 12)
+                        if !clipMode {
+                            bottomContent(compact: compact)
+                                .padding(.horizontal, 12)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
-                    .padding(.horizontal, 12)
                     .padding(.bottom, 4)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(.smooth(duration: 0.35), value: clipMode)
         }
         .background(Color.black.ignoresSafeArea())
+        #if os(iOS)
+        .modifier(LinkNoticeOverlay())
+        #endif
         .task(id: model.settings.streamName) { await model.refreshXiaomiQuality() }
         // Camera modes also through a linked Mac: they live in the camera.
         .task(id: "\(model.activeStreamName)|\(model.isLinkedToMac)") { await model.refreshCameraModes() }
@@ -124,7 +144,31 @@ struct SessionScreen: View {
     }
 
     @ViewBuilder
+    private func clipOverlay(_ clipMode: Bool) -> some View {
+        if clipMode {
+            ClipRecordingOverlay()
+                .frame(maxWidth: 520)
+                .padding(12)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    @ViewBuilder
     private var camera: some View {
+        #if DEBUG && os(iOS)
+        // `--demo-camera=<path>`: a still picture instead of the stream (UI checks in the simulator).
+        if let image = DemoData.cameraImage {
+            Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+        } else {
+            liveCamera
+        }
+        #else
+        liveCamera
+        #endif
+    }
+
+    @ViewBuilder
+    private var liveCamera: some View {
         if !model.isLinkedToMac, model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
             CameraPlaceholder(text: embeddedStatusText)
         } else if let server = model.activeServer, !model.activeStreamName.isEmpty {
@@ -188,9 +232,6 @@ struct SessionScreen: View {
     private func bottomContent(compact: Bool) -> some View {
         if let session = model.session {
             SessionHUD(session: session, compact: compact, onFinish: { confirmFinish = true })
-                .frame(maxWidth: 560)
-        } else if model.isRecordingClip {
-            ClipRecordingCard()
                 .frame(maxWidth: 560)
         } else if let record = model.lastRecord {
             SummaryCard(record: record, onClose: { model.lastRecord = nil }, onHistory: { showHistory = true })
@@ -294,7 +335,16 @@ private struct CameraMenu: View {
                 get: { model.settings.audioEnabled },
                 set: { model.settings.audioEnabled = $0 }))
         } label: {
-            Pill(text: model.activeCameraName, systemImage: "video.fill", fixed: false)
+            // The whole name, or just the icon when the bar is busy (REC, «Mac»): «Xi…» says nothing.
+            ViewThatFits(in: .horizontal) {
+                Pill(text: model.activeCameraName, systemImage: "video.fill")
+                Image(systemName: "video.fill")
+                    .font(.system(.footnote, design: .rounded, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 34)
+                    .background(Theme.control, in: Capsule())
+            }
+            .accessibilityLabel(model.activeCameraName)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)

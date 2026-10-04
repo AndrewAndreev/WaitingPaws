@@ -28,6 +28,11 @@ final class AppModel {
     /// The record of the session that has just finished (drives the summary card).
     var lastRecord: TrainingRecord?
     var errorMessage: String?
+    #if os(iOS)
+    /// A short note under the Mac link pill («Синхронизировано с …», «Видео сохранено на Mac»); fades by itself.
+    var linkNotice: LinkNotice?
+    @ObservationIgnored private var lastSyncState: SyncState?
+    #endif
     /// Recordings that landed in Photos (file names).
     private(set) var photosSavedFileNames: Set<String> = []
     /// Photos save failures per file name, shown inline next to that file only.
@@ -45,6 +50,16 @@ final class AppModel {
         #if DEBUG
         // `--demo-history`: sample trainings in the history list (in memory, nothing is written).
         if CommandLine.arguments.contains("--demo-history") { history = DemoData.history() }
+        #if os(iOS)
+        // `--demo-mac-link`, `--demo-mac-recording`: linked to a Mac (no network), idle or recording without a training.
+        // `--demo-mac-recording-ends`: …and the Mac stops it 3 s later.
+        let args = CommandLine.arguments
+        if args.contains("--demo-mac-link") || args.contains("--demo-mac-recording") || args.contains("--demo-mac-recording-ends") {
+            syncClient.onState = { [unowned self] state in applySyncState(state) }
+            syncClient.demoLink(recording: !args.contains("--demo-mac-link"),
+                                stopAfter: args.contains("--demo-mac-recording-ends") ? 3 : nil)
+        }
+        #endif
         // `--demo-camera-modes`: the C302's night mode & co. without a camera.
         if CommandLine.arguments.contains("--demo-camera-modes") { cameraModes.loadDemo() }
         #endif
@@ -439,12 +454,8 @@ final class AppModel {
     var lastClip: RecordingClip?
 
     /// Recording right now without a training session.
-    var isRecordingClip: Bool {
-        #if DEBUG
-        if Self.demoRecordingSince != nil, session == nil { return true }
-        #endif
-        return recorder.isRecording && session == nil
-    }
+    /// Recording without a training — here, or on the linked Mac (the iPhone then shows the same full-screen view).
+    var isRecordingClip: Bool { isRecordingNow && session == nil }
 
     func reloadHistory() {
         history = store.loadAll()
@@ -642,12 +653,30 @@ extension AppModel {
     #if os(iOS)
     /// Mirrors the Mac's session; keeps the log of a mirrored training when it ends.
     private func applySyncState(_ state: SyncState?) {
+        let previous = lastSyncState
+        lastSyncState = state
         guard let state else {
-            if isMirroringSession {
+            if isMirroringSession || previous?.recordingSince != nil {
                 session = nil
                 keepAwake(false)
             }
             return
+        }
+        let macName = syncClient.hostName ?? "Mac"
+        if previous == nil {
+            linkNotice = LinkNotice(title: "Синхронизировано с «\(macName)»",
+                                    detail: "Тренировка, запись и лог — на Mac, шаги общие.")
+        }
+        // Recording without a training on the Mac: same full-screen view here, the screen stays on.
+        if state.session == nil {
+            if state.recordingSince != nil, previous?.recordingSince == nil {
+                lastRecord = nil
+                lastClip = nil
+                keepAwake(true)
+            } else if state.recordingSince == nil, previous?.recordingSince != nil, previous?.session == nil {
+                keepAwake(false)
+                linkNotice = LinkNotice(title: "Видео сохранено на Mac", detail: "Оно в истории на «\(macName)».")
+            }
         }
         if let snapshot = state.session {
             if let session, isMirroringSession, session.isSameSession(as: snapshot) {
@@ -674,6 +703,15 @@ extension AppModel {
     }
     #endif
 }
+
+#if os(iOS)
+/// What the tooltip under the Mac link pill says.
+struct LinkNotice: Equatable, Identifiable {
+    let id = UUID()
+    var title: String
+    var detail: String
+}
+#endif
 
 struct RecordingClip: Identifiable, Hashable {
     let url: URL
