@@ -6,7 +6,7 @@ import Go2RTC
 #endif
 
 /// Runs go2rtc inside the app process (built from `GoMobile/` with gomobile) and
-/// exposes it on `http://127.0.0.1:11984/` exactly like an external server.
+/// exposes it on `http://127.0.0.1:11984/` (or the next free port) exactly like an external server.
 @MainActor
 @Observable
 final class EmbeddedGo2RTC {
@@ -25,9 +25,12 @@ final class EmbeddedGo2RTC {
     }
 
     /// Non-standard port so a go2rtc running on the same Mac (default 1984) does not clash.
-    static let apiPort = 11984
-    static let webrtcPort = 11985
-    static let baseURL = URL(string: "http://127.0.0.1:\(apiPort)/")!
+    static let preferredAPIPort = 11984
+    /// The ports actually used: 11984/11985, or the next free pair when another process holds them
+    /// (typically Waiting Paws in the iOS simulator on the same Mac — they share 127.0.0.1).
+    nonisolated(unsafe) private(set) static var apiPort = preferredAPIPort
+    nonisolated(unsafe) private(set) static var webrtcPort = preferredAPIPort + 1
+    nonisolated static var baseURL: URL { URL(string: "http://127.0.0.1:\(apiPort)/")! }
 
     static var isAvailable: Bool {
         #if canImport(Go2RTC)
@@ -83,11 +86,17 @@ final class EmbeddedGo2RTC {
         status = .starting
 
         #if canImport(Go2RTC)
-        // go2rtc only logs a failed bind, so make sure nobody else answers on our port first.
-        if !MobileIsRunning(), await Self.isReachable() {
-            status = .failed("Порт \(Self.apiPort) занят: обычно это Waiting Paws в симуляторе iOS или вторая копия приложения на этом Mac. Закройте её — go2rtc запустится сам.")
-            retryWhenPortFrees(lanPassword: lanPassword)
-            return
+        // go2rtc only logs a failed bind, so pick ports nobody holds before starting it.
+        if !MobileIsRunning() {
+            guard let ports = Self.freePorts(lan: lanPassword != nil) else {
+                status = .failed("Порты \(Self.preferredAPIPort)–\(Self.preferredAPIPort + 29) заняты другими программами — go2rtc негде запустить.")
+                return
+            }
+            Self.apiPort = ports.api
+            Self.webrtcPort = ports.webrtc
+            if ports.api != Self.preferredAPIPort {
+                print("[go2rtc] port \(Self.preferredAPIPort) is taken (Waiting Paws in the simulator?), using \(ports.api)")
+            }
         }
         let configURL = Self.configURL
         let overrides = Self.overrides(lanPassword: lanPassword)
@@ -115,21 +124,26 @@ final class EmbeddedGo2RTC {
         #endif
     }
 
-    private var portRetryTask: Task<Void, Never>?
+    /// First pair (API, WebRTC) from 11984 up that can be bound right now. A real bind, not an HTTP probe:
+    /// any process on the port counts, not only another go2rtc.
+    nonisolated private static func freePorts(lan: Bool) -> (api: Int, webrtc: Int)? {
+        for api in stride(from: preferredAPIPort, to: preferredAPIPort + 30, by: 2) {
+            if canBind(api, anyAddress: lan), canBind(api + 1, anyAddress: false) { return (api, api + 1) }
+        }
+        return nil
+    }
 
-    /// The simulator app and the Mac app share 127.0.0.1:11984 on one machine: keep checking and start as soon
-    /// as the other copy is gone, so nobody has to find «Попробовать снова».
-    private func retryWhenPortFrees(lanPassword: String?) {
-        portRetryTask?.cancel()
-        portRetryTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(3))
-                guard let self, case .failed = self.status else { return }
-                if await !Self.isReachable() {
-                    await self.start(lanPassword: lanPassword)
-                    return
-                }
-            }
+    nonisolated private static func canBind(_ port: Int, anyAddress: Bool) -> Bool {
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { return false }
+        defer { close(fd) }
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = in_port_t(UInt16(port).bigEndian)
+        address.sin_addr.s_addr = anyAddress ? INADDR_ANY.bigEndian : UInt32(0x7F00_0001).bigEndian
+        return withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0 }
         }
     }
 
