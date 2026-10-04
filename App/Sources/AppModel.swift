@@ -555,6 +555,8 @@ extension AppModel {
             SyncHost.SyncWelcomeAccess(port: EmbeddedGo2RTC.apiPort, username: EmbeddedGo2RTC.lanUsername,
                                        password: embedded.lanEnabled ? settings.lanPassword : "")
         }
+        syncHost.onPairingRequest = { [unowned self] request in MacPairingPrompt.present(request, host: syncHost) }
+        syncHost.onPairingCancelled = { request in MacPairingPrompt.cancel(request) }
         if settings.shareWithIPhone { syncHost.start() }
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }

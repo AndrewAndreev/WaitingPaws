@@ -17,7 +17,7 @@ struct WaitingPawsApp: App {
                 .environment(ui)
                 .preferredColorScheme(.dark)
                 .tint(MacPalette.pink)
-                .modifier(DebugWindowOpener())
+                .modifier(DebugWindowOpener(model: model))
         }
         .defaultSize(width: 1440, height: 860)
         .commands { MacCommands(model: model, ui: ui) }
@@ -28,12 +28,13 @@ struct WaitingPawsApp: App {
                 .environment(model)
                 .environment(ui)
                 .tint(MacPalette.accent)
-                .modifier(DebugWindowOpener())
+                .modifier(DebugWindowOpener(model: model))
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        // No launch behaviour here: the main window opens at launch and hands over to this one when no
-        // camera is set up (a `.suppressed` here also kept the main window from opening).
+        // Opened by the main window when no camera is set up; never on its own or restored from last time.
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
 
         Window("История", id: "history") {
             MacHistoryWindow()
@@ -42,6 +43,9 @@ struct WaitingPawsApp: App {
                 .tint(MacPalette.accent)
         }
         .defaultSize(width: 1360, height: 840)
+        // Only from the toolbar button / ⌘Y — not at launch, not restored from the previous session.
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
 
         Settings {
             MacSettingsView()
@@ -74,13 +78,24 @@ struct WaitingPawsApp: App {
 #if os(macOS)
 /// DEBUG `--open history|settings|welcome|main`: open that window at launch (UI checks without clicks).
 struct DebugWindowOpener: ViewModifier {
+    /// Passed in: this modifier sits outside the `.environment(model)` of the window content.
+    let model: AppModel
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     private static var done = false
 
+    private static var pairingShown = false
+
     func body(content: Content) -> some View {
         content.onAppear {
             #if DEBUG
+            // `--demo-pairing`: an iPhone asks to join (checks the «Подключить?» prompt without a phone).
+            if CommandLine.arguments.contains("--demo-pairing"), !Self.pairingShown {
+                Self.pairingShown = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    MacPairingPrompt.present(SyncHost.PairingRequest(id: UUID(), deviceName: "iPhone Андрея"), host: model.syncHost)
+                }
+            }
             guard !Self.done, let index = CommandLine.arguments.firstIndex(of: "--open"),
                   index + 1 < CommandLine.arguments.count else { return }
             Self.done = true

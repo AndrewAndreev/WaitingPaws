@@ -15,6 +15,8 @@ final class MacUIState {
     /// «Расписание разобрано» sheet after a paste.
     var reviewingPlan = false
     var showCameraPicker = false
+    /// Xiaomi sign-in from the camera menu (e.g. after starting with a plain go2rtc stream).
+    var showXiaomiSignIn = false
     var confirmFinish = false
     var confirmAbandon = false
 

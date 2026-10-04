@@ -52,6 +52,15 @@ struct MacConsoleView: View {
                                onDone: { ui.reviewingPlan = false })
                 .environment(model)
         }
+        .sheet(isPresented: $ui.showXiaomiSignIn, onDismiss: { focused = true }) {
+            SetupXiaomiSignInSheet(onSignedIn: { _ in
+                ui.showXiaomiSignIn = false
+                // Straight to the account's cameras.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { ui.showCameraPicker = true }
+            })
+            .environment(model)
+            .environment(ui)
+        }
         .sheet(isPresented: $ui.showCameraPicker, onDismiss: { focused = true }) {
             MacCameraPickerSheet()
                 .environment(model)
@@ -75,14 +84,6 @@ struct MacConsoleView: View {
             Button("Продолжить", role: .cancel) {}
         } message: {
             Text("Запись остановится, лог и видео сохранятся в истории.")
-        }
-        .alert(model.syncHost.pairingRequest.map { "Подключить «\($0.deviceName)»?" } ?? "",
-               isPresented: Binding(get: { model.syncHost.pairingRequest != nil },
-                                    set: { if !$0 { model.syncHost.answerPairing(allow: false) } })) {
-            Button("Разрешить") { model.syncHost.answerPairing(allow: true) }
-            Button("Отклонить", role: .cancel) { model.syncHost.answerPairing(allow: false) }
-        } message: {
-            Text("iPhone увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках.")
         }
         .alert("Ошибка", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("Ок", role: .cancel) {}
@@ -225,6 +226,9 @@ private struct CameraToolbarMenu: View {
     var body: some View {
         Menu {
             Button("Выбрать камеру…", systemImage: "video.badge.plus") { ui.showCameraPicker = true }
+            Button(model.settings.xiaomiAccountID.isEmpty ? "Войти в Xiaomi…" : "Войти в другой аккаунт Xiaomi…",
+                   systemImage: "person.crop.circle.badge.plus") { ui.showXiaomiSignIn = true }
+            Divider()
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
             if let quality = model.xiaomiQuality {
                 Divider()

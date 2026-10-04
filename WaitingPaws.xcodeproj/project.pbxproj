@@ -58,9 +58,11 @@
 		580F4712E7221F688A06DB41 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */; };
 		59B9A6D75E43BA6D00482A3C /* MacCameraPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49544DC08EFCB32F58FEBD3C /* MacCameraPickerSheet.swift */; };
 		5A5EC8E45BBB24449A26278C /* MacPlanTimelineEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */; };
+		5BEEA029021BC39EE7CF1B22 /* MacPairingPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */; };
 		5C3FC181E91A2E9122F794FA /* Go2RTC.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5F311EC55BB5C9535C42AF30 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */; };
 		5F41A4B2A6D07C968B890BCB /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
+		60D1400A545153EC1CFBBBFA /* MacPairingPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */; };
 		61C282CC287EA600A07E5C31 /* SyncHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA209D43CA8963E3C71A7B14 /* SyncHost.swift */; };
 		61EC7BF3EF5BE1313C320D91 /* SetupXiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED967B787875E075AB3B309 /* SetupXiaomiSignInSheet.swift */; };
 		640C5DD542567CEA878C5886 /* SessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */; };
@@ -196,6 +198,7 @@
 		653F818994AB2BEE3174F824 /* ClipCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipCards.swift; sourceTree = "<group>"; };
 		67C46490ED793F437A72C93B /* LiveSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionModel.swift; sourceTree = "<group>"; };
 		6EB15E742A63332D0305C49E /* CameraPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPickerView.swift; sourceTree = "<group>"; };
+		6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPairingPrompt.swift; sourceTree = "<group>"; };
 		734F99F279AB3B2058745E72 /* MacHistoryDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryDemo.swift; sourceTree = "<group>"; };
 		785D1BAD352BFFA46C471742 /* MacWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacWelcomeView.swift; sourceTree = "<group>"; };
 		81A6B39818DB94C898964AF2 /* MacRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRootView.swift; sourceTree = "<group>"; };
@@ -297,6 +300,7 @@
 				8393D24E04957FEAE526646B /* Plan */,
 				AEA143A6BF2BC827EAEF2DBE /* Settings */,
 				9F1202181AFACD355CBF4688 /* Shared */,
+				6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */,
 				81A6B39818DB94C898964AF2 /* MacRootView.swift */,
 				A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */,
 			);
@@ -656,6 +660,7 @@
 				A7F7F948585A61BC53AC6F04 /* MacHistoryProgress.swift in Sources */,
 				2721F56420F33D188967378C /* MacHistoryTable.swift in Sources */,
 				91C95E3050FCF89EDCE8A83A /* MacHistoryWindow.swift in Sources */,
+				5BEEA029021BC39EE7CF1B22 /* MacPairingPrompt.swift in Sources */,
 				F0452A6545C600FFAEB6043C /* MacPlanReviewSheet.swift in Sources */,
 				2AC851DC82C729B326FF24C2 /* MacPlanSupport.swift in Sources */,
 				457FA2EEF8C2AA3CFCB15AA7 /* MacPlanTimelineEditor.swift in Sources */,
@@ -724,6 +729,7 @@
 				208F37B20D6D8061D7CEDC6C /* MacHistoryProgress.swift in Sources */,
 				83CC8AB16746B0F7583C4DD6 /* MacHistoryTable.swift in Sources */,
 				BA8CF4F2EA61417D73D1CC77 /* MacHistoryWindow.swift in Sources */,
+				60D1400A545153EC1CFBBBFA /* MacPairingPrompt.swift in Sources */,
 				33BA36B51071FF4F0A42230F /* MacPlanReviewSheet.swift in Sources */,
 				D44E1C57BE0D09AEAB895A98 /* MacPlanSupport.swift in Sources */,
 				5A5EC8E45BBB24449A26278C /* MacPlanTimelineEditor.swift in Sources */,

@@ -8,8 +8,16 @@ struct MacMainWindow: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
+    private var configured: Bool {
+        #if DEBUG
+        // `--preview-unconfigured`: behave as on a first launch (UI checks next to a configured copy).
+        if CommandLine.arguments.contains("--preview-unconfigured") { return false }
+        #endif
+        return model.settings.isConfigured || WaitingPawsApp.previewConfigured
+    }
+
     var body: some View {
-        if model.settings.isConfigured || WaitingPawsApp.previewConfigured {
+        if configured {
             MacConsoleView()
         } else {
             ContentUnavailableView {

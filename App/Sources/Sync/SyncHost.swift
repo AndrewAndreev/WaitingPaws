@@ -36,6 +36,10 @@ final class SyncHost {
     @ObservationIgnored var commandHandler: ((SyncCommand) -> Void)?
     /// Access to this Mac's go2rtc for the iPhone's camera view.
     @ObservationIgnored var accessProvider: (() -> SyncWelcomeAccess)?
+    /// An iPhone asks to join (show «Разрешить / Отклонить» wherever the user is — not tied to one window).
+    @ObservationIgnored var onPairingRequest: ((PairingRequest) -> Void)?
+    /// That iPhone went away before an answer (close the prompt).
+    @ObservationIgnored var onPairingCancelled: ((PairingRequest) -> Void)?
 
     let hostName = Host.current().localizedName ?? "Mac"
 
@@ -215,7 +219,9 @@ final class SyncHost {
                 approve(id)
             } else {
                 client.channel.send(.pending)
-                pairingRequest = PairingRequest(id: id, deviceName: hello.deviceName)
+                let request = PairingRequest(id: id, deviceName: hello.deviceName)
+                pairingRequest = request
+                onPairingRequest?(request)
             }
         case .command(let command):
             guard client.approved else { return }
@@ -251,7 +257,10 @@ final class SyncHost {
     private func drop(_ id: UUID) {
         guard let client = clients.removeValue(forKey: id) else { return }
         client.channel.cancel()
-        if pairingRequest?.id == id { pairingRequest = nil }
+        if let request = pairingRequest, request.id == id {
+            pairingRequest = nil
+            onPairingCancelled?(request)
+        }
         updateConnected()
     }
 
