@@ -63,7 +63,8 @@ func Start(configPath string, overrides string) error {
 		hls.Init()     // HLS output
 		mjpeg.Init()   // MJPEG fallback
 		xiaomi.Init()     // Mi Home cameras + /api/xiaomi login
-		xiaomi.InitMiot() // /api/xiaomi/miot: camera settings via Mi Cloud (Waiting Paws addition)
+		xiaomi.InitMiot()   // /api/xiaomi/miot: camera settings via Mi Cloud (Waiting Paws addition)
+		xiaomi.InitLogout() // /api/xiaomi/logout: forget a Mi Home account (Waiting Paws addition)
 
 		started = true
 	})
@@ -73,6 +74,17 @@ func Start(configPath string, overrides string) error {
 // IsRunning reports whether Start completed successfully.
 func IsRunning() bool {
 	return started && startErr == nil
+}
+
+// Relisten opens the HTTP API on address again (e.g. "127.0.0.1:11984"). iOS closes the listening
+// sockets of a suspended app; the app calls this when it is back and the API no longer answers.
+func Relisten(address string) error {
+	return api.Relisten(address)
+}
+
+// SetLANPassword changes the Basic-auth credentials LAN clients must send, without a restart.
+func SetLANPassword(username, password string) {
+	api.SetCredentials(username, password)
 }
 
 // Version returns the embedded go2rtc version.
