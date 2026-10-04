@@ -54,7 +54,7 @@ struct MacConsoleView: View {
         .focusEffectDisabled()
         .focused($focused)
         .onKeyPress(.space) {
-            guard model.session != nil || ui.pendingPlan != nil else { return .ignored }
+            guard model.session != nil || model.pendingPlan != nil else { return .ignored }
             ui.primaryStep(model)
             return .handled
         }
@@ -64,6 +64,8 @@ struct MacConsoleView: View {
             return .handled
         }
         .onAppear { focused = true }
+        // A training started from a linked iPhone: the review of its schedule is over here too.
+        .onChange(of: model.session != nil) { _, running in if running { ui.reviewingPlan = false } }
         .task(id: model.settings.streamName) {
             await model.refreshXiaomiQuality()
             await model.refreshCameraModes()
@@ -134,8 +136,8 @@ struct MacConsoleView: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 SessionTimelineView(model: live(session, at: context.date))
             }
-        } else if ui.pendingPlan != nil {
-            MacPlanTimelineEditor(plan: pendingPlanBinding, original: ui.pendingOriginal)
+        } else if model.pendingPlan != nil {
+            MacPlanTimelineEditor(plan: pendingPlanBinding, original: model.pendingOriginal)
         } else {
             EmptyTimeline()
         }
@@ -147,7 +149,7 @@ struct MacConsoleView: View {
     }
 
     private var pendingPlanBinding: Binding<TrainingPlan> {
-        Binding(get: { ui.pendingPlan ?? TrainingPlan() }, set: { ui.pendingPlan = $0 })
+        Binding(get: { model.pendingPlan ?? TrainingPlan() }, set: { model.pendingPlan = $0 })
     }
 
     private var lastRecordBinding: Binding<TrainingRecord?> {
@@ -160,7 +162,7 @@ struct MacConsoleView: View {
 
     private var title: String {
         if let session = model.session { return session.plan.title }
-        if let plan = ui.pendingPlan { return plan.title }
+        if let plan = model.pendingPlan { return plan.title }
         return model.settings.cameraDisplayName.isEmpty ? "Waiting Paws" : model.settings.cameraDisplayName
     }
 
@@ -169,7 +171,7 @@ struct MacConsoleView: View {
             let trainers = session.plan.trainers.isEmpty ? "" : "\(session.plan.trainers) · "
             return trainers + "с \(MacFormat.time.string(from: session.startedAt))"
         }
-        if let plan = ui.pendingPlan {
+        if let plan = model.pendingPlan {
             return (plan.trainers.isEmpty ? "" : "\(plan.trainers) · ") + "перед стартом"
         }
         return model.isRecordingClip ? "запись без тренировки" : "новая тренировка"

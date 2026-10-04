@@ -8,11 +8,7 @@ import WaitingPawsCore
 @MainActor
 @Observable
 final class MacUIState {
-    /// Parsed schedule waiting for «Начать тренировку» (the «Сегодня» card and the plan timeline).
-    var pendingPlan: TrainingPlan?
-    /// The plan as the trainer sent it, for «Как у тренера» after edits on the timeline.
-    var pendingOriginal: TrainingPlan?
-    /// «Расписание разобрано» sheet after a paste.
+    /// «Расписание разобрано» sheet after a paste (the waiting schedule itself is `AppModel.pendingPlan`).
     var reviewingPlan = false
     var showCameraPicker = false
     /// Xiaomi sign-in from the camera menu (e.g. after starting with a plain go2rtc stream).
@@ -24,17 +20,9 @@ final class MacUIState {
 
     init() {
         #if DEBUG
-        // `--demo-plan`: a parsed schedule waiting on the «Пульт» (no paste needed); `--demo-review` also opens the sheet.
-        if CommandLine.arguments.contains("--demo-plan") || CommandLine.arguments.contains("--demo-review") {
-            setPending(PlanParser.parse(DemoData.planText))
-            reviewingPlan = CommandLine.arguments.contains("--demo-review")
-        }
+        // `--demo-review` opens the sheet over the `--demo-plan` schedule (see AppModel).
+        reviewingPlan = CommandLine.arguments.contains("--demo-review")
         #endif
-    }
-
-    func setPending(_ plan: TrainingPlan) {
-        pendingPlan = plan
-        pendingOriginal = plan
     }
 
     /// ⌘⇧V: parse the trainer's message from the clipboard and show how it was read.
@@ -48,24 +36,23 @@ final class MacUIState {
             model.errorMessage = "В скопированном тексте не нашлось ни одного выхода («1 выход - 30 секунд»)."
             return
         }
-        setPending(plan)
+        model.setPending(plan)
         reviewingPlan = true
     }
 
     /// ⌘⇧R: the previous schedule again.
     func repeatLast(_ model: AppModel) {
         guard let plan = model.lastPlan else { return }
-        setPending(plan)
+        model.setPending(plan)
         reviewingPlan = true
     }
 
     /// ⌘↩
     func startPending(_ model: AppModel) {
-        guard var plan = pendingPlan, model.session == nil else { return }
+        guard var plan = model.pendingPlan, model.session == nil else { return }
         plan.renumber()
         model.startSession(with: plan)
-        pendingPlan = nil
-        pendingOriginal = nil
+        model.setPending(nil)
         reviewingPlan = false
     }
 
@@ -138,7 +125,7 @@ struct MacCommands: Commands {
                 .disabled(model.session != nil || model.lastPlan == nil)
             Button("Начать тренировку") { ui.startPending(model) }
                 .keyboardShortcut(.return, modifiers: .command)
-                .disabled(ui.pendingPlan == nil || model.session != nil)
+                .disabled(model.pendingPlan == nil || model.session != nil)
             Divider()
             // Space and ⌫ work in the training window itself (a menu key equivalent would steal them from text fields).
             Button(ui.primaryStepTitle(model) + " (Пробел)") { ui.primaryStep(model) }

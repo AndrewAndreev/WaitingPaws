@@ -104,7 +104,7 @@ final class SyncHost {
     /// restarted, and after a few failures it keeps accepting direct connections without advertising.
     private func startListener() {
         guard listener == nil, wanted else { return }
-        let advertise = bonjourFailures < 3
+        let advertise = bonjourFailures < 3 && !AppModel.isSyncTest
         do {
             let parameters = SyncChannel.parameters()
             let listener: NWListener
@@ -311,7 +311,8 @@ final class SyncHost {
 
     private func savePairings() {
         if let data = try? JSONEncoder().encode(pairedDevices) {
-            UserDefaults.standard.set(data, forKey: Self.pairingsKey)
+            // A sync check in a preview copy must not add the simulator to the user's iPhones.
+            if !AppModel.isSyncTest { UserDefaults.standard.set(data, forKey: Self.pairingsKey) }
         }
     }
 

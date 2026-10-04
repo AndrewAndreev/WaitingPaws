@@ -78,6 +78,32 @@ final class SyncTests: XCTestCase {
         XCTAssertEqual(a.snapshot, before)
     }
 
+    /// A schedule pasted on either side travels both ways before the start.
+    func testPendingPlanTravelsBothWays() throws {
+        let plan = plan()
+        let state = SyncMessage.state(SyncState(session: nil, recordingSince: nil, cameraReady: true, cameraTitle: "Прихожая",
+                                                streamName: "hall", lastRecord: nil, pendingPlan: plan))
+        guard case .state(let decoded) = try SyncMessage.decode(state.encoded()) else { return XCTFail("no state") }
+        XCTAssertEqual(decoded.pendingPlan, plan)
+
+        for command in [SyncCommand.setPendingPlan(plan), .setPendingPlan(nil)] {
+            XCTAssertEqual(try SyncMessage.decode(SyncMessage.command(command).encoded()), .command(command))
+        }
+    }
+
+    /// A state from a Mac built before schedules were synced still decodes (no pending schedule).
+    func testStateWithoutPendingPlanStillDecodes() throws {
+        let old = SyncState(session: nil, recordingSince: nil, cameraReady: false, cameraTitle: "", streamName: "", lastRecord: nil)
+        var json = try JSONSerialization.jsonObject(with: SyncMessage.state(old).encoded()) as! [String: Any]
+        var payload = (json["state"] as! [String: Any])["_0"] as! [String: Any]
+        payload.removeValue(forKey: "pendingPlan")
+        json["state"] = ["_0": payload]
+        guard case .state(let decoded) = try SyncMessage.decode(JSONSerialization.data(withJSONObject: json)) else {
+            return XCTFail("no state")
+        }
+        XCTAssertNil(decoded.pendingPlan)
+    }
+
     func testHostInfoTXTRoundTrip() {
         let info = SyncHostInfo(name: "MacBook Андрея", cameraTitle: "Прихожая", cameraReady: true, sessionRunning: true, currentExit: 6)
         XCTAssertEqual(SyncHostInfo(name: info.name, txt: info.txt), info)

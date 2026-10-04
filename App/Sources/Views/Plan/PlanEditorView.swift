@@ -114,14 +114,27 @@ struct PlanEditorView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        // Linked to a Mac: the parsed schedule and every edit show up there too (start from either side).
+        .task(id: plan) {
+            do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+            model.sharePlanWithMac(plan)
+        }
         .safeAreaInset(edge: .bottom) {
             @Bindable var settings = model.settings
             VStack(spacing: 10) {
-                Toggle(isOn: $settings.autoRecord) {
-                    Label("Записывать видео", systemImage: "record.circle")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                if model.isLinkedToMac {
+                    // Recording follows the Mac's setting there.
+                    Label("Это расписание уже и на Mac — начать можно там или здесь.", systemImage: "laptopcomputer.and.iphone")
+                        .font(.system(.footnote, design: .rounded))
+                        .foregroundStyle(Theme.info)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Toggle(isOn: $settings.autoRecord) {
+                        Label("Записывать видео", systemImage: "record.circle")
+                            .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    }
+                    .tint(Theme.accent)
                 }
-                .tint(Theme.accent)
                 BigButton(title: "Начать тренировку", systemImage: "play.fill", height: 50) {
                     var final = plan
                     final.renumber()

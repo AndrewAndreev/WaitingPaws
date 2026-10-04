@@ -16,6 +16,13 @@ final class AppModel {
     /// Night mode and the other settings of the Mi Home camera on screen.
     let cameraModes = CameraModesModel()
     #if os(macOS)
+    /// Parsed schedule waiting for «Начать тренировку» (the «Сегодня» card and the plan timeline). A linked
+    /// iPhone sees it and sets it too: a schedule pasted on either device shows up on both.
+    var pendingPlan: TrainingPlan?
+    /// The plan as the trainer sent it, for «Как у тренера» after edits on the timeline.
+    var pendingOriginal: TrainingPlan?
+    #endif
+    #if os(macOS)
     /// Lets an iPhone on the same network watch the camera and drive the training running on this Mac.
     let syncHost = SyncHost()
     #else
@@ -54,10 +61,26 @@ final class AppModel {
         // `--demo-mac-link`, `--demo-mac-recording`: linked to a Mac (no network), idle or recording without a training.
         // `--demo-mac-recording-ends`: …and the Mac stops it 3 s later.
         let args = CommandLine.arguments
-        if args.contains("--demo-mac-link") || args.contains("--demo-mac-recording") || args.contains("--demo-mac-recording-ends") {
+        // `--demo-mac-pending`: linked, with a schedule waiting on the Mac.
+        if args.contains("--demo-mac-link") || args.contains("--demo-mac-recording") || args.contains("--demo-mac-recording-ends")
+            || args.contains("--demo-mac-pending") {
             syncClient.onState = { [unowned self] state in applySyncState(state) }
-            syncClient.demoLink(recording: !args.contains("--demo-mac-link"),
-                                stopAfter: args.contains("--demo-mac-recording-ends") ? 3 : nil)
+            syncClient.demoLink(recording: args.contains("--demo-mac-recording") || args.contains("--demo-mac-recording-ends"),
+                                stopAfter: args.contains("--demo-mac-recording-ends") ? 3 : nil,
+                                pendingPlan: args.contains("--demo-mac-pending") ? PlanParser.parse(DemoData.planText) : nil)
+        }
+        #endif
+        #if os(macOS)
+        // `--demo-plan`: a parsed schedule waiting on the «Пульт» (no paste needed); `--demo-review` also opens its sheet.
+        if CommandLine.arguments.contains("--demo-plan") || CommandLine.arguments.contains("--demo-review") {
+            setPending(PlanParser.parse(DemoData.planText))
+        }
+        // `--demo-remote-pending`: 2 s after launch a linked iPhone «pastes» another schedule (the remote command path).
+        if CommandLine.arguments.contains("--demo-remote-pending") {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(2))
+                self?.applyRemote(.setPendingPlan(PlanParser.parse(Self.demoPlanText)))
+            }
         }
         #endif
         // `--demo-camera-modes`: the C302's night mode & co. without a camera.
@@ -117,6 +140,16 @@ final class AppModel {
     static let isUIPreview: Bool = {
         #if DEBUG
         return CommandLine.arguments.contains("--ui-preview")
+        #else
+        return false
+        #endif
+    }()
+
+    /// DEBUG `--sync-in-preview`: the iPhone ↔ Mac link in `--ui-preview` copies (direct `--sync-port` /
+    /// `--sync-host`, no Bonjour, pairings not saved) — checks next to the user's own copies.
+    static let isSyncTest: Bool = {
+        #if DEBUG
+        return isUIPreview && CommandLine.arguments.contains("--sync-in-preview")
         #else
         return false
         #endif
@@ -572,6 +605,23 @@ extension AppModel {
         isLinkedToMac ? .mse : settings.playerMode
     }
 
+    /// The schedule waiting on the linked Mac (pasted there or here); nil when not linked.
+    var macPendingPlan: TrainingPlan? {
+        #if os(iOS)
+        return syncClient.isConnected && session == nil ? syncClient.state?.pendingPlan : nil
+        #else
+        return nil
+        #endif
+    }
+
+    /// Puts a schedule parsed or edited on this iPhone on the linked Mac as well (nil removes it there).
+    func sharePlanWithMac(_ plan: TrainingPlan?) {
+        #if os(iOS)
+        guard syncClient.isConnected, session == nil else { return }
+        syncClient.send(.setPendingPlan(plan))
+        #endif
+    }
+
     var isRecordingNow: Bool {
         #if os(iOS)
         if syncClient.isConnected { return syncClient.state?.recordingSince != nil }
@@ -599,7 +649,7 @@ extension AppModel {
     }
 
     func setUpSync() {
-        guard !Self.isUIPreview else { return }
+        guard !Self.isUIPreview || Self.isSyncTest else { return }
         #if os(macOS)
         syncHost.stateProvider = { [unowned self] in
             SyncState(session: session?.snapshot,
@@ -607,7 +657,8 @@ extension AppModel {
                       cameraReady: settings.isConfigured && (settings.connectionMode == .external || embedded.status.isRunning),
                       cameraTitle: settings.cameraDisplayName,
                       streamName: settings.streamName,
-                      lastRecord: lastRecord)
+                      lastRecord: lastRecord,
+                      pendingPlan: session == nil ? pendingPlan : nil)
         }
         syncHost.commandHandler = { [unowned self] command in applyRemote(command) }
         syncHost.accessProvider = { [unowned self] in
@@ -621,6 +672,14 @@ extension AppModel {
         syncClient.onState = { [unowned self] state in applySyncState(state) }
         syncClient.startBrowsing()
         #if DEBUG
+        // `--demo-share-plan`: once linked, «paste» the sample schedule here (it should appear on the Mac).
+        if CommandLine.arguments.contains("--demo-share-plan") {
+            Task { [weak self] in
+                while self?.isLinkedToMac != true { try? await Task.sleep(for: .milliseconds(300)) }
+                try? await Task.sleep(for: .seconds(4))
+                self?.sharePlanWithMac(PlanParser.parse(Self.demoPlanText))
+            }
+        }
         // `--demo-remote-steps`: once linked, press "Начать выход" and then "За дверью" from the iPhone.
         if CommandLine.arguments.contains("--demo-remote-steps") {
             Task { [weak self] in
@@ -644,6 +703,12 @@ extension AppModel {
     }
 
     #if os(macOS)
+    /// A new waiting schedule (paste, «Повторить», a linked iPhone); nil clears it.
+    func setPending(_ plan: TrainingPlan?) {
+        pendingPlan = plan
+        pendingOriginal = plan
+    }
+
     /// A button press from a linked iPhone.
     private func applyRemote(_ command: SyncCommand) {
         switch command {
@@ -654,7 +719,18 @@ extension AppModel {
                 command.apply(to: session)
             }
         case .startSession(let plan):
-            if session == nil { startSession(with: plan) }
+            if session == nil {
+                startSession(with: plan)
+                setPending(nil)
+            }
+        case .setPendingPlan(let plan):
+            guard session == nil else { return }
+            // An edit of the same pasted text keeps «Как у тренера»; another text replaces both.
+            if let plan, let current = pendingPlan, current.rawText == plan.rawText, !plan.rawText.isEmpty {
+                pendingPlan = plan
+            } else {
+                setPending(plan)
+            }
         case .abandonSession:
             abandonSession()
         case .startRecording:

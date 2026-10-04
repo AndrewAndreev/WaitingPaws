@@ -192,11 +192,12 @@ final class SyncClient {
     #if DEBUG
     /// `--demo-mac-link` / `--demo-mac-recording`: look linked to a Mac without any network (UI checks).
     /// `stopAfter`: the Mac then stops the recording.
-    func demoLink(recording: Bool, stopAfter: Double? = nil) {
+    func demoLink(recording: Bool, stopAfter: Double? = nil, pendingPlan: TrainingPlan? = nil) {
         hostName = "MacBook Pro"
         status = .connected("MacBook Pro")
         var state = SyncState(session: nil, recordingSince: recording ? Date().addingTimeInterval(-83) : nil,
-                              cameraReady: true, cameraTitle: "Xiaomi Smart Camera C200", streamName: "", lastRecord: nil)
+                              cameraReady: true, cameraTitle: "Xiaomi Smart Camera C200", streamName: "", lastRecord: nil,
+                              pendingPlan: pendingPlan)
         self.state = state
         onState?(state)
         guard let stopAfter else { return }

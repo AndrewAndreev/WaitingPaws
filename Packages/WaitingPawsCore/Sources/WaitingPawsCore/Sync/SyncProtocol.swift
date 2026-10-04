@@ -121,15 +121,18 @@ public struct SyncState: Codable, Equatable {
     public var streamName: String
     /// The session that has just finished on the Mac (for the summary and the log on the iPhone).
     public var lastRecord: TrainingRecord?
+    /// A schedule pasted on either device and waiting for «Начать» (nil while a session runs).
+    public var pendingPlan: TrainingPlan?
 
     public init(session: TrainingSession.Snapshot?, recordingSince: Date?, cameraReady: Bool, cameraTitle: String,
-                streamName: String, lastRecord: TrainingRecord?) {
+                streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil) {
         self.session = session
         self.recordingSince = recordingSince
         self.cameraReady = cameraReady
         self.cameraTitle = cameraTitle
         self.streamName = streamName
         self.lastRecord = lastRecord
+        self.pendingPlan = pendingPlan
     }
 }
 
@@ -137,6 +140,8 @@ public struct SyncState: Codable, Equatable {
 public enum SyncCommand: Codable, Equatable {
     case session(SessionCommand)
     case startSession(TrainingPlan)
+    /// A schedule pasted (or edited) on the iPhone becomes the Mac's waiting one; nil clears it.
+    case setPendingPlan(TrainingPlan?)
     case abandonSession
     case startRecording
     case stopRecording

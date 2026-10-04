@@ -12,6 +12,8 @@ struct SessionScreen: View {
     @State private var confirmFinish = false
     @State private var confirmAbandon = false
     @State private var reloadToken = 0
+    /// The schedule waiting on the linked Mac, opened for edits.
+    @State private var editingPending: TrainingPlan?
 
     var body: some View {
         @Bindable var model = model
@@ -88,6 +90,19 @@ struct SessionScreen: View {
         .sheet(isPresented: $showPlanInput) {
             PlanInputView(initialText: model.settings.lastPlanText) { plan in
                 model.startSession(with: plan)
+            }
+            .environment(model)
+            .sheetFrame()
+        }
+        .sheet(item: $editingPending) { plan in
+            NavigationStack {
+                PlanEditorView(plan: plan) { final in
+                    model.startSession(with: final)
+                    editingPending = nil
+                }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { editingPending = nil } }
+                }
             }
             .environment(model)
             .sheetFrame()
@@ -244,14 +259,21 @@ struct SessionScreen: View {
             MacLinkCard()
                 .frame(maxWidth: 560)
             #endif
-            PlanEntryCard(
-                hasLastPlan: model.lastPlan != nil,
-                onPaste: { showPlanInput = true },
-                onRepeat: {
-                    if let plan = model.lastPlan { model.startSession(with: plan) } else { showPlanInput = true }
-                },
-                onRecordOnly: { model.startRecording() })
-            .frame(maxWidth: 560)
+            if let pending = model.macPendingPlan {
+                #if os(iOS)
+                MacPendingPlanCard(plan: pending, onEdit: { editingPending = pending }, onPaste: { showPlanInput = true })
+                    .frame(maxWidth: 560)
+                #endif
+            } else {
+                PlanEntryCard(
+                    hasLastPlan: model.lastPlan != nil,
+                    onPaste: { showPlanInput = true },
+                    onRepeat: {
+                        if let plan = model.lastPlan { model.startSession(with: plan) } else { showPlanInput = true }
+                    },
+                    onRecordOnly: { model.startRecording() })
+                .frame(maxWidth: 560)
+            }
         }
     }
 }

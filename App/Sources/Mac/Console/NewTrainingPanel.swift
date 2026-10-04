@@ -11,7 +11,7 @@ struct NewTrainingPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Новая тренировка").font(.title2.weight(.semibold))
-                if let plan = ui.pendingPlan {
+                if let plan = model.pendingPlan {
                     todayCard(plan)
                     PasteZone(compact: true)
                 } else {
@@ -65,7 +65,7 @@ struct NewTrainingPanel: View {
                 Toggle("Записывать видео", isOn: $settings.autoRecord)
                     .toggleStyle(.checkbox)
                 Spacer()
-                Button("Убрать") { ui.pendingPlan = nil; ui.pendingOriginal = nil }
+                Button("Убрать") { model.setPending(nil) }
                     .buttonStyle(.link)
                     .foregroundStyle(.secondary)
             }
@@ -158,7 +158,7 @@ private struct PasteZone: View {
             guard let text = items.first else { return false }
             let plan = PlanParser.parse(text)
             guard plan.isValid else { return false }
-            ui.setPending(plan)
+            model.setPending(plan)
             ui.reviewingPlan = true
             return true
         } isTargeted: { targeted = $0 }

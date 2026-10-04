@@ -118,6 +118,58 @@ struct MacLinkCard: View {
     }
 }
 
+/// The schedule waiting on the linked Mac — pasted there or on this iPhone; start it from either side.
+struct MacPendingPlanCard: View {
+    @Environment(AppModel.self) private var model
+    let plan: TrainingPlan
+    var onEdit: () -> Void
+    var onPaste: () -> Void
+
+    var body: some View {
+        GlassCard(padding: 18) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Text("СЕГОДНЯ")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .tracking(1.2)
+                        .foregroundStyle(.white.opacity(0.5))
+                    Label("и на Mac", systemImage: "laptopcomputer.and.iphone")
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.info)
+                    Spacer()
+                    IconButton(systemImage: "xmark") { model.sharePlanWithMac(nil) }
+                        .accessibilityLabel("Убрать расписание")
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(plan.title)
+                        .font(Theme.display(22, weight: .bold))
+                        .lineLimit(2)
+                    Text(summary)
+                        .font(.system(.subheadline, design: .rounded).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+                BigButton(title: "Начать тренировку", systemImage: "play.fill") {
+                    var final = plan
+                    final.renumber()
+                    model.startSession(with: final)
+                }
+                HStack(spacing: 8) {
+                    BigButton(title: "Изменить", systemImage: "slider.horizontal.3", style: .secondary, height: 44, action: onEdit)
+                    BigButton(title: "Другое", systemImage: "doc.on.clipboard", style: .secondary, height: 44, action: onPaste)
+                }
+            }
+        }
+    }
+
+    private var summary: String {
+        var parts: [String] = []
+        if !plan.trainers.isEmpty { parts.append(plan.trainers) }
+        parts.append("\(plan.exits.count) вых.")
+        parts.append("≈ \(DurationText.short((plan.estimatedDuration / 60).rounded() * 60))")
+        return parts.joined(separator: " · ")
+    }
+}
+
 /// Where the «Mac» pill is, for the tooltip under it.
 struct LinkPillAnchorKey: PreferenceKey {
     static let defaultValue: Anchor<CGRect>? = nil
