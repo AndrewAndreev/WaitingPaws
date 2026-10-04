@@ -9,7 +9,7 @@ import WaitingPawsCore
 @Observable
 final class AppModel {
     let settings = AppSettings()
-    let store = SessionStore(rootDirectory: SessionStore.defaultRoot)
+    let store = SessionStore(rootDirectory: AppModel.storeRoot)
     let recorder = StreamRecorder()
     let embedded = EmbeddedGo2RTC()
     let performance = PerformanceMonitor()
@@ -36,10 +36,14 @@ final class AppModel {
     private var awakeActivity: NSObjectProtocol?
 
     init() {
-        LogMirror.start(directory: SessionStore.defaultRoot.appendingPathComponent("Logs", isDirectory: true))
+        LogMirror.start(directory: Self.storeRoot.appendingPathComponent("Logs", isDirectory: true))
         reloadHistory()
         startEmbeddedIfNeeded()
         setUpSync()
+        #if DEBUG
+        // `--demo-history`: sample trainings in the history list (in memory, nothing is written).
+        if CommandLine.arguments.contains("--demo-history") { history = DemoData.history() }
+        #endif
         performance.startHangLogging()
         if settings.showPerformance || CommandLine.arguments.contains("--perf") { performance.start() }
         #if os(iOS)
@@ -89,13 +93,29 @@ final class AppModel {
     """
     #endif
 
+    /// DEBUG `--ui-preview`: UI checks next to a running copy of the app — no embedded go2rtc, no iPhone link,
+    /// no recording, history and logs in a temporary folder (never the real ones).
+    static let isUIPreview: Bool = {
+        #if DEBUG
+        return CommandLine.arguments.contains("--ui-preview")
+        #else
+        return false
+        #endif
+    }()
+
+    static var storeRoot: URL {
+        isUIPreview
+            ? FileManager.default.temporaryDirectory.appendingPathComponent("WaitingPawsPreview", isDirectory: true)
+            : SessionStore.defaultRoot
+    }
+
     var client: Go2RTCClient? {
         settings.server.map { Go2RTCClient(server: $0) }
     }
 
     /// Boots the in-process go2rtc when the embedded mode is selected.
     func startEmbeddedIfNeeded() {
-        guard settings.connectionMode == .embedded else { return }
+        guard settings.connectionMode == .embedded, !Self.isUIPreview else { return }
         #if os(macOS)
         let lanPassword = settings.shareWithIPhone ? settings.lanPassword : nil
         #else
@@ -135,8 +155,8 @@ final class AppModel {
         session.autoFinishAfterLastBreak = settings.autoFinishAfterLastBreak
         self.session = session
         lastRecord = nil
-        if !plan.rawText.isEmpty { settings.lastPlanText = plan.rawText }
-        if settings.autoRecord { startRecording() }
+        if !plan.rawText.isEmpty, !Self.isUIPreview { settings.lastPlanText = plan.rawText }
+        if settings.autoRecord, !Self.isUIPreview { startRecording() }
         keepAwake(true)
         startTicking()
     }
@@ -520,6 +540,7 @@ extension AppModel {
     }
 
     func setUpSync() {
+        guard !Self.isUIPreview else { return }
         #if os(macOS)
         syncHost.stateProvider = { [unowned self] in
             SyncState(session: session?.snapshot,
