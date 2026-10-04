@@ -85,7 +85,8 @@ final class EmbeddedGo2RTC {
         #if canImport(Go2RTC)
         // go2rtc only logs a failed bind, so make sure nobody else answers on our port first.
         if !MobileIsRunning(), await Self.isReachable() {
-            status = .failed("Порт \(Self.apiPort) уже занят другим процессом (другой экземпляр приложения?)")
+            status = .failed("Порт \(Self.apiPort) занят: обычно это Waiting Paws в симуляторе iOS или вторая копия приложения на этом Mac. Закройте её — go2rtc запустится сам.")
+            retryWhenPortFrees(lanPassword: lanPassword)
             return
         }
         let configURL = Self.configURL
@@ -112,6 +113,24 @@ final class EmbeddedGo2RTC {
         #else
         status = .unavailable
         #endif
+    }
+
+    private var portRetryTask: Task<Void, Never>?
+
+    /// The simulator app and the Mac app share 127.0.0.1:11984 on one machine: keep checking and start as soon
+    /// as the other copy is gone, so nobody has to find «Попробовать снова».
+    private func retryWhenPortFrees(lanPassword: String?) {
+        portRetryTask?.cancel()
+        portRetryTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3))
+                guard let self, case .failed = self.status else { return }
+                if await !Self.isReachable() {
+                    await self.start(lanPassword: lanPassword)
+                    return
+                }
+            }
+        }
     }
 
     nonisolated private static func ensureConfig(at url: URL) throws {
