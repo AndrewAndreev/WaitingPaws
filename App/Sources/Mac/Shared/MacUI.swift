@@ -185,21 +185,18 @@ extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }
 
-/// 24-hour formats in Russian regardless of the system 12/24-hour setting.
+/// Formats in the app's language (day and month in its order), 24-hour regardless of the system 12/24-hour setting.
 enum MacFormat {
-    static let time: DateFormatter = make("HH:mm")
-    static let timeSeconds: DateFormatter = make("HH:mm:ss")
-    static let shortDate: DateFormatter = make("dd.MM.yyyy")
-    static let dayMonth: DateFormatter = make("d MMMM")
-    static let weekdayDay: DateFormatter = make("EE, d MMM")
-    static let fullDay: DateFormatter = make("EEEE, d MMMM")
-    static let month: DateFormatter = make("LLLL yyyy")
+    static let time: DateFormatter = make("HHmm")
+    static let timeSeconds: DateFormatter = make("HHmmss")
+    static let shortDate: DateFormatter = make("ddMMyyyy")
+    static let dayMonth: DateFormatter = make("dMMMM")
+    static let weekdayDay: DateFormatter = make("EEdMMM")
+    static let fullDay: DateFormatter = make("EEEEdMMMM")
+    static let month: DateFormatter = make("LLLLyyyy")
 
-    private static func make(_ format: String) -> DateFormatter {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = format
-        return formatter
+    private static func make(_ template: String) -> DateFormatter {
+        CoreLanguage.current.dateFormatter(template)
     }
 }
 #endif

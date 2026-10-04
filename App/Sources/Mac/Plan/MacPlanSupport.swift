@@ -15,7 +15,7 @@ enum MacPlanFormat {
     /// "≈ 28 мин" for summaries (seconds dropped from ten minutes up).
     static func approx(_ seconds: TimeInterval) -> String {
         let total = Int(seconds.rounded())
-        if total >= 600 { return "≈ \(Int((Double(total) / 60).rounded())) мин" }
+        if total >= 600 { return String(localized: "≈ \(Int((Double(total) / 60).rounded())) мин") }
         return "≈ " + DurationText.short(seconds)
     }
 
@@ -24,15 +24,12 @@ enum MacPlanFormat {
         (delta < 0 ? "−" : "+") + DurationText.clock(abs(delta))
     }
 
-    /// Russian plural: 1 выход, 2 выхода, 5 выходов.
-    static func plural(_ n: Int, _ one: String, _ few: String, _ many: String) -> String {
-        let mod10 = n % 10, mod100 = n % 100
-        let word = mod10 == 1 && mod100 != 11 ? one
-            : (2...4).contains(mod10) && !(12...14).contains(mod100) ? few : many
-        return "\(n) \(word)"
-    }
-
-    static func exits(_ n: Int) -> String { plural(n, "выход", "выхода", "выходов") }
+    /// "1 выход", "5 выходов" / "1 exit", "5 exits".
+    static func exits(_ n: Int) -> String { pluralText(n, ru: ("выход", "выхода", "выходов"), en: ("exit", "exits")) }
+    /// "2 перерыва" / "2 breaks".
+    static func breaks(_ n: Int) -> String { pluralText(n, ru: ("перерыв", "перерыва", "перерывов"), en: ("break", "breaks")) }
+    /// "3 заметки" / "3 notes".
+    static func notes(_ n: Int) -> String { pluralText(n, ru: ("заметка", "заметки", "заметок"), en: ("note", "notes")) }
 
     static func exitsTotal(_ plan: TrainingPlan) -> TimeInterval { plan.exits.reduce(0) { $0 + $1.duration } }
     static func breaksTotal(_ plan: TrainingPlan) -> TimeInterval { plan.estimatedDuration - exitsTotal(plan) }
@@ -146,10 +143,9 @@ struct MacPlanTextLine: Identifiable, Equatable {
                 kind = .exit(number: number, ordinal: exitOrdinal)
                 exitOrdinal += 1
                 lastExitLine = id
-            } else if lower.hasPrefix("перерыв"), !lower.hasPrefix("перерывы"), let lastExitLine,
-                      DurationText.sumOfUnits(in: stripped) != nil {
+            } else if PlanParser.isExitBreak(lower), let lastExitLine, DurationText.sumOfUnits(in: stripped) != nil {
                 kind = .ownBreak(afterLine: lastExitLine)
-            } else if lower.contains("перерыв"), DurationText.sumOfUnits(in: stripped) != nil {
+            } else if PlanParser.mentionsBreak(lower), DurationText.sumOfUnits(in: stripped) != nil {
                 kind = .defaultBreak
             } else if contentIndex == 0 {
                 kind = .header
@@ -163,34 +159,21 @@ struct MacPlanTextLine: Identifiable, Equatable {
         return result
     }
 
-    /// «🔖 Фальстарт: …», «Фальстарт — …».
+    /// «🔖 Фальстарт: …», «Фальстарт — …», "False start: …".
     static func isRule(_ line: String) -> Bool {
-        line.hasPrefix("🔖") || stripDecorations(line).lowercased().hasPrefix("фальстарт")
+        let lower = stripDecorations(line).lowercased()
+        return line.hasPrefix("🔖") || lower.hasPrefix("фальстарт") || lower.hasPrefix("false start")
     }
 
     /// `PlanParser.stripDecorations`: leading emoji, bullets and arrows.
     static func stripDecorations(_ line: String) -> String {
-        let range = NSRange(line.startIndex..., in: line)
-        return decorationRegex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
-            .trimmingCharacters(in: .whitespaces)
+        PlanParser.stripDecorations(line)
     }
 
-    /// `PlanParser.parseExit`: «3 выход - 5 секунд», «Выход №3 — 5 секунд».
+    /// `PlanParser.parseExit`: «3 выход - 5 секунд», «Выход №3 — 5 секунд», "Exit 3 - 5 seconds".
     static func exitNumber(_ line: String) -> Int? {
-        let range = NSRange(line.startIndex..., in: line)
-        guard let match = exitRegex.firstMatch(in: line, range: range) else { return nil }
-        for group in [1, 2] {
-            if let numberRange = Range(match.range(at: group), in: line), let value = Int(line[numberRange]) {
-                return value
-            }
-        }
-        return nil
+        PlanParser.parseExit(line)?.number
     }
-
-    private static let decorationRegex = try! NSRegularExpression(pattern: #"^[^\p{L}\p{N}(]+"#)
-    private static let exitRegex = try! NSRegularExpression(
-        pattern: #"^(?:(\d+)\s*[-–—.)]?\s*выход\p{L}*|выход\p{L}*\s*(?:№\s*)?(\d+))\s*[-–—:]*\s*(.*)$"#,
-        options: [.caseInsensitive])
     private static let durationRegex = try! NSRegularExpression(
         pattern: #"\d+(?:[.,]\d+)?\s*(?:час\p{L}*|мин\p{L}*|сек\p{L}*)"#, options: [.caseInsensitive])
     private static let exitLabelRegex = try! NSRegularExpression(

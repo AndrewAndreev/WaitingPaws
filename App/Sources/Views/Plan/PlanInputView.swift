@@ -29,10 +29,10 @@ struct PlanInputView: View {
                 }
 
                 HStack(spacing: 10) {
-                    BigButton(title: "Из буфера", systemImage: "doc.on.clipboard", style: .secondary, height: 44) {
+                    BigButton(title: String(localized: "Из буфера"), systemImage: "doc.on.clipboard", style: .secondary, height: 44) {
                         if let pasted = Pasteboard.string, !pasted.isEmpty { text = pasted }
                     }
-                    BigButton(title: "Разобрать", systemImage: "wand.and.stars", height: 44) {
+                    BigButton(title: String(localized: "Разобрать"), systemImage: "wand.and.stars", height: 44) {
                         plan = PlanParser.parse(text)
                     }
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

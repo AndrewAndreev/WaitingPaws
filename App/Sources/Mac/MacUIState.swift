@@ -28,12 +28,12 @@ final class MacUIState {
     /// ⌘⇧V: parse the trainer's message from the clipboard and show how it was read.
     func pasteSchedule(_ model: AppModel) {
         guard let text = Pasteboard.string, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            model.errorMessage = "В буфере обмена нет текста. Скопируйте сообщение тренера и попробуйте снова."
+            model.errorMessage = String(localized: "В буфере обмена нет текста. Скопируйте сообщение тренера и попробуйте снова.")
             return
         }
         let plan = PlanParser.parse(text)
         guard plan.isValid else {
-            model.errorMessage = "В скопированном тексте не нашлось ни одного выхода («1 выход - 30 секунд»)."
+            model.errorMessage = String(localized: "В скопированном тексте не нашлось ни одного выхода («1 выход - 30 секунд»).")
             return
         }
         model.setPending(plan)
@@ -79,14 +79,14 @@ final class MacUIState {
     }
 
     func primaryStepTitle(_ model: AppModel) -> String {
-        guard let session = model.session else { return "Начать тренировку" }
+        guard let session = model.session else { return String(localized: "Начать тренировку") }
         switch session.phase {
-        case .ready: return "Начать выход \(session.currentExit?.number ?? 1)"
-        case .leaving: return "За дверью"
-        case .away: return "Вернулись"
+        case .ready: return String(localized: "Начать выход \(session.currentExit?.number ?? 1)")
+        case .leaving: return String(localized: "За дверью")
+        case .away: return String(localized: "Вернулись")
         case .breakTime(_, _, _, let next):
-            return next.map { "Начать выход \(session.plan.exits[$0].number)" } ?? "Завершить"
-        case .finished: return "Готово"
+            return next.map { String(localized: "Начать выход \(session.plan.exits[$0].number)") } ?? String(localized: "Завершить")
+        case .finished: return String(localized: "Готово")
         }
     }
 }
@@ -128,13 +128,14 @@ struct MacCommands: Commands {
                 .disabled(model.pendingPlan == nil || model.session != nil)
             Divider()
             // Space and ⌫ work in the training window itself (a menu key equivalent would steal them from text fields).
-            Button(ui.primaryStepTitle(model) + " (Пробел)") { ui.primaryStep(model) }
+            Button(String(localized: "\(ui.primaryStepTitle(model)) (Пробел)")) { ui.primaryStep(model) }
                 .disabled(model.session == nil)
             Button("Фальстарт (⌫)") { ui.falseStart(model) }
                 .disabled(!(model.session?.phase.isOutside ?? false))
             Divider()
             Button(model.isRecordingNow ? "Остановить запись" : "Начать запись") { model.toggleRecording() }
                 .keyboardShortcut("r", modifiers: .command)
+                .disabled(!model.isRecordingNow && !model.settings.isConfigured)
             Button("Завершить тренировку…") { ui.confirmFinish = true }
                 .keyboardShortcut(".", modifiers: .command)
                 .disabled(model.session == nil)

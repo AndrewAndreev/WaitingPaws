@@ -20,7 +20,7 @@ struct NewTrainingPanel: View {
                 lastPlan
                 Divider()
                 Button { model.startRecording() } label: {
-                    ShortcutLabel(title: "Только запись", symbol: "record.circle", key: "⌘R", expand: true)
+                    ShortcutLabel(title: String(localized: "Только запись"), symbol: "record.circle", key: "⌘R", expand: true)
                 }
                 .controlSize(.large)
                 .disabled(!model.settings.isConfigured)
@@ -55,15 +55,17 @@ struct NewTrainingPanel: View {
                     .foregroundStyle(.secondary)
             }
             Button { ui.startPending(model) } label: {
-                ShortcutLabel(title: "Начать тренировку", symbol: "play.fill", key: "⌘↩", prominent: true, expand: true)
+                ShortcutLabel(title: String(localized: "Начать тренировку"), symbol: "play.fill", key: "⌘↩", prominent: true, expand: true)
             }
             .buttonStyle(.borderedProminent)
             .tint(MacPalette.pinkDeep)
             .controlSize(.large)
             .padding(.top, 2)
             HStack {
-                Toggle("Записывать видео", isOn: $settings.autoRecord)
-                    .toggleStyle(.checkbox)
+                if model.settings.isConfigured {
+                    Toggle("Записывать видео", isOn: $settings.autoRecord)
+                        .toggleStyle(.checkbox)
+                }
                 Spacer()
                 Button("Убрать") { model.setPending(nil) }
                     .buttonStyle(.link)
@@ -81,9 +83,9 @@ struct NewTrainingPanel: View {
     private func summary(_ plan: TrainingPlan) -> String {
         var parts: [String] = []
         if !plan.trainers.isEmpty { parts.append(plan.trainers) }
-        parts.append("\(plan.exits.count) \(plan.exits.count == 1 ? "выход" : (2...4).contains(plan.exits.count % 10) && !(12...14).contains(plan.exits.count % 100) ? "выхода" : "выходов")")
+        parts.append(pluralText(plan.exits.count, ru: ("выход", "выхода", "выходов"), en: ("exit", "exits")))
         parts.append("≈ \(DurationText.short((plan.estimatedDuration / 60).rounded() * 60))")
-        parts.append("конец ≈ \(MacFormat.time.string(from: Date().addingTimeInterval(plan.estimatedDuration)))")
+        parts.append(String(localized: "конец ≈ \(MacFormat.time.string(from: Date().addingTimeInterval(plan.estimatedDuration)))"))
         return parts.joined(separator: " · ")
     }
 
@@ -91,14 +93,14 @@ struct NewTrainingPanel: View {
     private var lastPlan: some View {
         if let last = model.lastPlan {
             VStack(alignment: .leading, spacing: 8) {
-                SectionHeader(title: "Прошлое расписание") {
+                SectionHeader(title: String(localized: "Прошлое расписание")) {
                     if let date = last.date { Text(MacFormat.shortDate.string(from: date)) }
                 }
                 HStack {
                     Text(last.title).font(.headline).lineLimit(1)
                     Spacer()
                     Button { ui.repeatLast(model) } label: {
-                        ShortcutLabel(title: "Повторить", symbol: "arrow.counterclockwise", key: "⌘⇧R")
+                        ShortcutLabel(title: String(localized: "Повторить"), symbol: "arrow.counterclockwise", key: "⌘⇧R")
                     }
                 }
                 ExitChips(plan: last)
@@ -124,7 +126,7 @@ private struct PasteZone: View {
                     Image(systemName: "doc.on.clipboard").foregroundStyle(MacPalette.pink)
                     Text("Другое расписание").font(.callout)
                     Spacer()
-                    Button { ui.pasteSchedule(model) } label: { ShortcutLabel(title: "Вставить", symbol: "doc.on.clipboard", key: "⌘⇧V") }
+                    Button { ui.pasteSchedule(model) } label: { ShortcutLabel(title: String(localized: "Вставить"), symbol: "doc.on.clipboard", key: "⌘⇧V") }
                 }
                 .padding(12)
             } else {
@@ -138,7 +140,7 @@ private struct PasteZone: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                     Button { ui.pasteSchedule(model) } label: {
-                        ShortcutLabel(title: "Вставить", symbol: "doc.on.clipboard", key: "⌘⇧V", prominent: true)
+                        ShortcutLabel(title: String(localized: "Вставить"), symbol: "doc.on.clipboard", key: "⌘⇧V", prominent: true)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(MacPalette.pinkDeep)

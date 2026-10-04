@@ -83,7 +83,10 @@ struct CameraStreamView {
         webView.scrollView.isScrollEnabled = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         #else
-        webView.setValue(false, forKey: "drawsBackground")
+        // Public API only: black behind the page, and the view stays hidden until the page (black itself) has
+        // loaded, so the white default background never flashes over the dark window.
+        webView.underPageBackgroundColor = .black
+        webView.isHidden = true
         #endif
         return webView
     }
@@ -129,6 +132,14 @@ struct CameraStreamView {
         var loadedKey: String?
         var server: Go2RTCServer?
         var audioEnabled = false
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            webView.isHidden = false
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            webView.isHidden = false
+        }
 
         func webView(_ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge,
                      completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {

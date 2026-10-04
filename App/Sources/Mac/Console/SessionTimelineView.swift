@@ -29,9 +29,9 @@ struct SessionTimelineView: View {
                 ZStack(alignment: .topLeading) {
                     ruler(width: width, axis: axis)
                     VStack(alignment: .leading, spacing: 10) {
-                        lane("План", segments: planSegments, width: width, axis: axis)
-                        lane("Факт", segments: factSegments, width: width, axis: axis)
-                        lane("Запись", segments: recordSegments, width: width, axis: axis, height: 14)
+                        lane(String(localized: "План"), segments: planSegments, width: width, axis: axis)
+                        lane(String(localized: "Факт"), segments: factSegments, width: width, axis: axis)
+                        lane(String(localized: "Запись"), segments: recordSegments, width: width, axis: axis, height: 14)
                     }
                     .padding(.top, 30)
                     playhead(width: width, axis: axis, height: geo.size.height)
@@ -45,11 +45,11 @@ struct SessionTimelineView: View {
     private var header: some View {
         HStack(spacing: 14) {
             Text("Таймлайн").font(.headline)
-            legend(MacPalette.pink, "выход по плану")
-            legend(MacPalette.green, "за дверью")
-            legend(MacPalette.orange, "фальстарт / сверх плана")
-            legend(MacPalette.blue.opacity(0.55), "перерыв")
-            legend(.gray, "к двери")
+            legend(MacPalette.pink, String(localized: "выход по плану"))
+            legend(MacPalette.green, String(localized: "за дверью"))
+            legend(MacPalette.orange, String(localized: "фальстарт / сверх плана"))
+            legend(MacPalette.blue.opacity(0.55), String(localized: "перерыв"))
+            legend(.gray, String(localized: "к двери"))
             Spacer()
             Text(driftText)
                 .font(.callout.monospacedDigit())
@@ -66,7 +66,8 @@ struct SessionTimelineView: View {
         for i in 0..<index { planned += model.plan.exits[i].duration + model.plan.breakAfter(exitAt: i) }
         let actual = (currentStart ?? model.now).timeIntervalSince(model.session.startedAt)
         let drift = actual - planned
-        return drift >= 0 ? "отстаём от плана на \(DurationText.clock(drift))" : "опережаем план на \(DurationText.clock(-drift))"
+        return drift >= 0 ? String(localized: "отстаём от плана на \(DurationText.clock(drift))")
+                          : String(localized: "опережаем план на \(DurationText.clock(-drift))")
     }
 
     private func legend(_ color: Color, _ text: String) -> some View {

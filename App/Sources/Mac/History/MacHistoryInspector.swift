@@ -31,10 +31,10 @@ struct MacHistoryInspector: View {
                 .padding(14)
 
                 if let record = row.record {
-                    InspectorSection("Итоги") { totals(record) }
-                    InspectorSection("Лог") { log(record) }
+                    InspectorSection(String(localized: "Итоги")) { totals(record) }
+                    InspectorSection(String(localized: "Лог")) { log(record) }
                 }
-                InspectorSection("Видео") { videoInfo }
+                InspectorSection(String(localized: "Видео")) { videoInfo }
 
                 Divider()
                 deleteButton
@@ -116,19 +116,19 @@ struct MacHistoryInspector: View {
 
     private func totals(_ record: TrainingRecord) -> some View {
         Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 5) {
-            if !record.plan.trainers.isEmpty { info("Тренеры", record.plan.trainers) }
-            info("Выходы", "\(record.completedExits) из \(record.plan.exits.count) по плану")
+            if !record.plan.trainers.isEmpty { info(String(localized: "Тренеры"), record.plan.trainers) }
+            info(String(localized: "Выходы"), String(localized: "\(record.completedExits) из \(record.plan.exits.count) по плану"))
             GridRow {
-                label("Фальстарты")
+                label(String(localized: "Фальстарты"))
                 Text(record.falseStarts == 0 ? "нет" : "\(record.falseStarts)")
                     .foregroundStyle(record.falseStarts == 0 ? AnyShapeStyle(.primary) : AnyShapeStyle(MacHistoryInk.orange))
             }
             GridRow {
-                label("Дольше всего")
+                label(String(localized: "Дольше всего"))
                 Text("\(Text(DurationText.clock(record.longestStayBehindDoor)).fontWeight(.semibold))  \(Text("план \(DurationText.clock(record.longestPlannedExit))").foregroundStyle(.secondary))")
                     .monospacedDigit()
             }
-            info("Длительность", DurationText.clock(record.duration))
+            info(String(localized: "Длительность"), DurationText.clock(record.duration))
         }
     }
 
@@ -141,7 +141,9 @@ struct MacHistoryInspector: View {
             if !notes.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(notes) { note in
-                        Text("\(Text(MacFormat.time.string(from: note.time) + (note.exitNumber.map { ", выход \($0)" } ?? "")).foregroundStyle(.secondary))  \(note.detail ?? "")")
+                        let time = MacFormat.time.string(from: note.time)
+                        let when = note.exitNumber.map { String(localized: "\(time), выход \($0)") } ?? time
+                        Text("\(Text(when).foregroundStyle(.secondary))  \(note.detail ?? "")")
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -163,7 +165,7 @@ struct MacHistoryInspector: View {
                 if controller.copiedLog == row.id {
                     Label("Скопировано", systemImage: "checkmark")
                 } else {
-                    ShortcutLabel(title: "Скопировать", symbol: "doc.on.doc", key: showsShortcut ? "⇧⌘C" : nil)
+                    ShortcutLabel(title: String(localized: "Скопировать"), symbol: "doc.on.doc", key: showsShortcut ? "⇧⌘C" : nil)
                 }
             }
             .help("Скопировать лог для тренера (⇧⌘C)")
@@ -182,15 +184,15 @@ struct MacHistoryInspector: View {
         if let video = row.video {
             Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 5) {
                 GridRow {
-                    label("Файл")
+                    label(String(localized: "Файл"))
                     Text(video.fileName)
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .help(video.fileName)
                         .textSelection(.enabled)
                 }
-                info("Длина", video.duration.map(DurationText.clock) ?? "—")
-                info("Размер", MacHistoryFormat.bytes(video.bytes))
+                info(String(localized: "Длина"), video.duration.map(DurationText.clock) ?? "—")
+                info(String(localized: "Размер"), MacHistoryFormat.bytes(video.bytes))
             }
             HStack(spacing: 8) {
                 Button("В Finder", systemImage: "folder") { controller.revealInFinder(row, model: model) }
@@ -414,13 +416,13 @@ struct MacHistoryExitLog: View {
     }
 
     private func help(for result: ExitResult, canJump: Bool) -> String {
-        var parts = ["Выход \(result.number)"]
-        if result.attempt > 1 { parts.append("попытка \(result.attempt)") }
+        var parts = [result.attempt > 1
+            ? String(localized: "Выход \(result.number), попытка \(result.attempt)")
+            : String(localized: "Выход \(result.number)")]
         parts.append(SessionLogFormatter.outcome(of: result))
-        if result.untilStanding { parts.append("* план: или до вставания") }
-        var text = parts.joined(separator: ", ")
-        if canJump { text += ". Нажмите, чтобы перейти к этому выходу в видео." }
-        return text
+        if result.untilStanding { parts.append(String(localized: "* план: или до вставания")) }
+        let text = parts.joined(separator: ", ")
+        return canJump ? String(localized: "\(text). Нажмите, чтобы перейти к этому выходу в видео.") : text
     }
 }
 #endif

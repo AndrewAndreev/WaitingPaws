@@ -12,11 +12,11 @@ enum MacPairingPrompt {
     static func present(_ request: SyncHost.PairingRequest, host: SyncHost) {
         dismissCurrent()
         let alert = NSAlert()
-        alert.messageText = "Подключить «\(request.deviceName)»?"
-        alert.informativeText = "iPhone увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках."
+        alert.messageText = String(localized: "Подключить «\(request.deviceName)»?")
+        alert.informativeText = String(localized: "iPhone увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках.")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Разрешить")
-        alert.addButton(withTitle: "Отклонить")
+        alert.addButton(withTitle: String(localized: "Разрешить"))
+        alert.addButton(withTitle: String(localized: "Отклонить"))
         alert.icon = NSApp.applicationIconImage
 
         NSApp.requestUserAttention(.criticalRequest)

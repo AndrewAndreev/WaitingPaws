@@ -58,7 +58,7 @@ struct MacHistoryRow: Identifiable {
     }
 
     var title: String {
-        record.map { $0.plan.title.trimmingCharacters(in: .whitespaces) } ?? "Запись без тренировки"
+        record.map { $0.plan.title.trimmingCharacters(in: .whitespaces) } ?? String(localized: "Запись без тренировки")
     }
 
     var trainers: String { record?.plan.trainers ?? "" }
@@ -136,36 +136,32 @@ enum MacHistoryFormat {
         "\(MacFormat.fullDay.string(from: row.date).capitalizedFirst), \(row.timeRange)"
     }
 
-    /// "813 МБ", "5,8 ГБ" (decimal units, as in Finder).
+    /// "813 МБ", "5,8 ГБ" / "813 MB", "5.8 GB" (decimal units, as in Finder).
     static func bytes(_ count: Int64) -> String {
         let megabytes = Double(count) / 1_000_000
-        if megabytes >= 1000 { return decimal(megabytes / 1000) + " ГБ" }
-        if megabytes >= 10 { return "\(Int(megabytes.rounded())) МБ" }
-        if megabytes >= 0.1 { return decimal(megabytes) + " МБ" }
-        return "\(max(1, Int((Double(count) / 1000).rounded()))) КБ"
+        if megabytes >= 1000 { return String(localized: "\(decimal(megabytes / 1000)) ГБ") }
+        if megabytes >= 10 { return String(localized: "\(Int(megabytes.rounded())) МБ") }
+        if megabytes >= 0.1 { return String(localized: "\(decimal(megabytes)) МБ") }
+        return String(localized: "\(max(1, Int((Double(count) / 1000).rounded()))) КБ")
     }
 
-    /// "1 тренировка", "3 тренировки", "11 тренировок".
-    static func count(_ n: Int, _ one: String, _ few: String, _ many: String) -> String {
-        let tens = n % 100, ones = n % 10
-        let word = ones == 1 && tens != 11 ? one
-            : (2...4).contains(ones) && !(12...14).contains(tens) ? few : many
-        return "\(n) \(word)"
+    /// "1 тренировка", "11 тренировок" / "1 training", "11 trainings".
+    static func trainings(_ n: Int) -> String {
+        pluralText(n, ru: ("тренировка", "тренировки", "тренировок"), en: ("training", "trainings"))
     }
 
+    /// "1 запись", "3 записи" / "1 recording", "3 recordings".
+    static func recordings(_ n: Int) -> String {
+        pluralText(n, ru: ("запись", "записи", "записей"), en: ("recording", "recordings"))
+    }
+
+    /// "5,8" / "5.8": one decimal in the app's language.
     private static func decimal(_ value: Double) -> String {
-        String(format: "%.1f", value).replacingOccurrences(of: ".", with: ",")
+        value.formatted(.number.precision(.fractionLength(1)).locale(CoreLanguage.current.locale))
     }
 
-    private static let dayMonthShort = make("d MMM")
-    private static let weekdayDayYear = make("EE, d MMM yyyy")
-
-    private static func make(_ format: String) -> DateFormatter {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = format
-        return formatter
-    }
+    private static let dayMonthShort = CoreLanguage.current.dateFormatter("dMMM")
+    private static let weekdayDayYear = CoreLanguage.current.dateFormatter("EEdMMMyyyy")
 }
 
 /// Text colours that keep contrast in both appearances (the bright brand colours stay for fills and symbols).
@@ -193,9 +189,9 @@ final class MacHistoryController {
         var id: Self { self }
         var title: String {
             switch self {
-            case .all: "Все"
-            case .trainings: "Тренировки"
-            case .clips: "Только видео"
+            case .all: String(localized: "Все")
+            case .trainings: String(localized: "Тренировки")
+            case .clips: String(localized: "Только видео")
             }
         }
     }

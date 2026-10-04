@@ -136,7 +136,7 @@ final class CameraModesModel {
         if let error = error as? XiaomiCameraError { return error.localizedDescription }
         if case .http(502, let text)? = error as? Go2RTCError {
             // go2rtc could not reach Mi Cloud or the account token expired.
-            return text.contains("401") ? "вход в Xiaomi истёк — войдите заново" : "облако Xiaomi недоступно"
+            return text.contains("401") ? String(localized: "вход в Xiaomi истёк — войдите заново") : String(localized: "облако Xiaomi недоступно")
         }
         return error.localizedDescription
     }

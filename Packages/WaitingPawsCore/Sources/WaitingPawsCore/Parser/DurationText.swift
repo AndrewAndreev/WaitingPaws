@@ -1,6 +1,7 @@
 import Foundation
 
-/// Formatting and parsing of durations in Russian ("2 мин", "15 с", "1:30").
+/// Formatting of durations in the app's language ("2 мин", "15 с" / "2 min", "15 s", "1:30") and parsing in
+/// Russian and English.
 public enum DurationText {
     /// "15 с", "2 мин", "1 мин 30 с", "1 ч 5 мин".
     public static func short(_ seconds: TimeInterval) -> String {
@@ -10,19 +11,20 @@ public enum DurationText {
         let minutes = (total % 3600) / 60
         let secs = total % 60
         var parts: [String] = []
-        if hours > 0 { parts.append("\(hours) ч") }
-        if minutes > 0 { parts.append("\(minutes) мин") }
-        if secs > 0 || parts.isEmpty { parts.append("\(secs) с") }
+        if hours > 0 { parts.append(tr("\(hours) ч", "\(hours) h")) }
+        if minutes > 0 { parts.append(tr("\(minutes) мин", "\(minutes) min")) }
+        if secs > 0 || parts.isEmpty { parts.append(tr("\(secs) с", "\(secs) s")) }
         return parts.joined(separator: " ")
     }
 
-    /// Very short form for chips: "5с", "30с", "1м", "1м30", "5м".
+    /// Very short form for chips: "5с", "30с", "1м", "1м30", "5м" / "5s", "1m", "1m30".
     public static func compact(_ seconds: TimeInterval) -> String {
         let total = Int(seconds.rounded())
-        if total < 60 { return "\(total)с" }
+        let s = tr("с", "s"), m = tr("м", "m")
+        if total < 60 { return "\(total)\(s)" }
         let minutes = total / 60
         let secs = total % 60
-        return secs == 0 ? "\(minutes)м" : "\(minutes)м\(secs)"
+        return secs == 0 ? "\(minutes)\(m)" : "\(minutes)\(m)\(secs)"
     }
 
     /// "0:15", "12:03", "1:02:03". Negative values are prefixed with a minus sign.
@@ -39,7 +41,8 @@ public enum DurationText {
         return negative ? "−" + body : body
     }
 
-    /// Parses "15 с", "2 минуты", "1 мин 30 сек", "1:30", "90". Returns `nil` when nothing recognisable is found.
+    /// Parses "15 с", "2 минуты", "1 мин 30 сек", "2 minutes", "1:30", "90". Returns `nil` when nothing
+    /// recognisable is found.
     public static func parse(_ text: String) -> TimeInterval? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }

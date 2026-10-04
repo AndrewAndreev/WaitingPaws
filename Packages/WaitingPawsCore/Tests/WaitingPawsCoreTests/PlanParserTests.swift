@@ -2,6 +2,12 @@ import XCTest
 @testable import WaitingPawsCore
 
 final class PlanParserTests: XCTestCase {
+    /// These tests check the Russian texts (the default language of the app's first users).
+    override func setUp() {
+        super.setUp()
+        CoreLanguage.current = .ru
+    }
+
     let sampleWithDefaultBreaks = """
     🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
 

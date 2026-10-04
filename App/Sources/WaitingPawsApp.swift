@@ -15,6 +15,7 @@ struct WaitingPawsApp: App {
             MacMainWindow()
                 .environment(model)
                 .environment(ui)
+                .environment(\.locale, Self.locale)
                 .preferredColorScheme(.dark)
                 .tint(MacPalette.pink)
                 .modifier(DebugWindowOpener(model: model))
@@ -30,6 +31,7 @@ struct WaitingPawsApp: App {
             MacWelcomeView()
                 .environment(model)
                 .environment(ui)
+                .environment(\.locale, Self.locale)
                 .tint(MacPalette.accent)
                 .modifier(DebugWindowOpener(model: model, window: "welcome"))
         }
@@ -43,6 +45,7 @@ struct WaitingPawsApp: App {
             MacHistoryWindow()
                 .environment(model)
                 .environment(ui)
+                .environment(\.locale, Self.locale)
                 .tint(MacPalette.accent)
         }
         .defaultSize(width: 1360, height: 840)
@@ -55,6 +58,7 @@ struct WaitingPawsApp: App {
             MacSettingsView()
                 .environment(model)
                 .environment(ui)
+                .environment(\.locale, Self.locale)
                 .tint(MacPalette.accent)
         }
         .windowToolbarLabelStyle(fixed: .iconOnly)
@@ -62,11 +66,16 @@ struct WaitingPawsApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
+                .environment(\.locale, Self.locale)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
         }
         #endif
     }
+
+    /// The app's language (Russian on Russian devices, English elsewhere) with the device's region, so dates and
+    /// numbers SwiftUI formats match the texts around them.
+    static let locale = CoreLanguage.current.locale
 
     #if os(macOS)
     /// DEBUG `--demo-camera=<path>` shows the «Пульт» with a still picture even without a configured camera.

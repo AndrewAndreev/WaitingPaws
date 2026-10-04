@@ -10,6 +10,8 @@ struct XiaomiLoginView: View {
     var onDone: (String) -> Void
     var onSkip: (() -> Void)? = nil
     var onUseExternalServer: (() -> Void)? = nil
+    /// First launch: use the timer, schedule and log without a camera (it can be added later).
+    var onContinueWithoutCamera: (() -> Void)? = nil
 
     enum Stage: Equatable {
         case credentials
@@ -22,7 +24,7 @@ struct XiaomiLoginView: View {
     @State private var password = ""
     @State private var code = ""
     @State private var stage: Stage = .credentials
-    @State private var region: XiaomiRegion = .ru
+    @State private var region: XiaomiRegion = .suggested
     @State private var busy = false
     @State private var error: String?
     @State private var accountsBeforeLogin: Set<String> = []
@@ -37,7 +39,7 @@ struct XiaomiLoginView: View {
                             Text("Waiting Paws")
                         }
                         .font(Theme.display(34, weight: .bold))
-                        Text("Тренировки коротких выходов с наблюдением за собакой через камеру Mi Home. Войдите в аккаунт Xiaomi, чтобы выбрать камеру.")
+                        Text("Тренировки коротких выходов из дома: расписание тренера, таймеры выходов и перерывов, лог для тренера. Камера Mi Home или любой поток go2rtc показывает собаку, пока вы за дверью.")
                             .font(.system(.body, design: .rounded))
                             .foregroundStyle(.secondary)
                     }
@@ -45,7 +47,7 @@ struct XiaomiLoginView: View {
                 } else {
                     Text("Аккаунт Xiaomi")
                         .font(Theme.display(30, weight: .bold))
-                    Text("Вход выполняется на сервере go2rtc, приложение пароль не сохраняет. После входа сервер получит список камер Mi Home.")
+                    Text("Вход выполняет go2rtc, приложение пароль не сохраняет. После входа go2rtc получит список камер Mi Home.")
                         .foregroundStyle(.secondary)
                         .font(.system(.body, design: .rounded))
                 }
@@ -105,7 +107,7 @@ struct XiaomiLoginView: View {
                                 .onSubmit { Task { await submit() } }
                         case .verify(let phone, let email):
                             Text("Код подтверждения").font(.headline)
-                            Text("Xiaomi отправил код на \(phone ?? email ?? "ваш контакт"). Введите его ниже.")
+                            Text("Xiaomi отправил код на \(phone ?? email ?? String(localized: "ваш контакт")). Введите его ниже.")
                                 .font(.footnote).foregroundStyle(.secondary)
                             TextField("Код", text: $code)
                                 .plainInput()
@@ -122,7 +124,7 @@ struct XiaomiLoginView: View {
                                 .foregroundStyle(Theme.danger)
                         }
 
-                        BigButton(title: busy ? "Подождите…" : submitTitle, systemImage: "arrow.right.circle", height: 52) {
+                        BigButton(title: busy ? String(localized: "Подождите…") : submitTitle, systemImage: "arrow.right.circle", height: 52) {
                             Task { await submit() }
                         }
                         .disabled(busy || !canSubmit || !isServerReady)
@@ -131,6 +133,21 @@ struct XiaomiLoginView: View {
                             Button("Начать заново") { stage = .credentials; code = ""; error = nil }
                                 .font(.footnote)
                         }
+                    }
+                }
+
+                Text("Пароль уходит напрямую в Xiaomi и нигде не сохраняется. Видео идёт с камеры прямо на это устройство: разработчик приложения не получает ни пароль, ни видео.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if let onContinueWithoutCamera {
+                    VStack(spacing: 8) {
+                        BigButton(title: String(localized: "Продолжить без камеры"), systemImage: "timer",
+                                  style: .secondary, height: 48, action: onContinueWithoutCamera)
+                        Text("Таймер, расписание и лог работают и без камеры. Камеру можно подключить позже в настройках.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
                 }
 
@@ -187,9 +204,9 @@ struct XiaomiLoginView: View {
 
     private var submitTitle: String {
         switch stage {
-        case .credentials: return "Войти"
-        case .captcha: return "Отправить капчу"
-        case .verify: return "Подтвердить"
+        case .credentials: return String(localized: "Войти")
+        case .captcha: return String(localized: "Отправить капчу")
+        case .verify: return String(localized: "Подтвердить")
         }
     }
 
@@ -249,7 +266,7 @@ struct XiaomiLoginView: View {
                     finish(accountID: id)
                 } else {
                     stage = .credentials
-                    error = accounts.isEmpty ? "Вход прошёл, но сервер не вернул аккаунт" : "Выберите аккаунт из списка выше"
+                    error = accounts.isEmpty ? String(localized: "Вход прошёл, но сервер не вернул аккаунт") : String(localized: "Выберите аккаунт из списка выше")
                 }
             case .captcha(let image):
                 stage = .captcha(image)

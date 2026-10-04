@@ -94,11 +94,11 @@ struct SetupXiaomiSignInSheet: View {
     private var subtitle: String {
         switch step {
         case .account:
-            return "После входа go2rtc получит список камер Mi Home."
+            return String(localized: "После входа go2rtc получит список камер Mi Home.")
         case .code(let phone, let email):
-            if let phone { return "Xiaomi отправил код на \(phone)." }
-            if let email { return "Xiaomi отправил код на \(email)." }
-            return "Xiaomi отправил код по SMS или на почту."
+            if let phone { return String(localized: "Xiaomi отправил код на \(phone).") }
+            if let email { return String(localized: "Xiaomi отправил код на \(email).") }
+            return String(localized: "Xiaomi отправил код по SMS или на почту.")
         }
     }
 
@@ -141,7 +141,7 @@ struct SetupXiaomiSignInSheet: View {
                 Button("Изменить…", action: backToAccount)
             } label: {
                 Label {
-                    Text(login.isEmpty ? "Аккаунт Xiaomi" : login)
+                    Text(login.isEmpty ? String(localized: "Аккаунт Xiaomi") : login)
                     Text("Регион: \(SetupText.regionTitle(region))")
                 } icon: {
                     Image(systemName: "person.crop.circle.fill")
@@ -260,13 +260,13 @@ struct SetupXiaomiSignInSheet: View {
     }
 
     private var busyText: String {
-        if captchaImage != nil { return "Проверяем…" }
-        return step == .account ? "Входим…" : "Проверяем код…"
+        if captchaImage != nil { return String(localized: "Проверяем…") }
+        return step == .account ? String(localized: "Входим…") : String(localized: "Проверяем код…")
     }
 
     private var primaryTitle: String {
-        if captchaImage != nil { return "Продолжить" }
-        return step == .account ? "Войти" : "Подтвердить"
+        if captchaImage != nil { return String(localized: "Продолжить") }
+        return step == .account ? String(localized: "Войти") : String(localized: "Подтвердить")
     }
 
     private var canSubmit: Bool {
@@ -357,7 +357,7 @@ struct SetupXiaomiSignInSheet: View {
             accountID = nil
         } else {
             backToAccount()
-            error = "Вход прошёл, но go2rtc не вернул аккаунт. Попробуйте ещё раз."
+            error = String(localized: "Вход прошёл, но go2rtc не вернул аккаунт. Попробуйте ещё раз.")
             return
         }
         if let accountID { model.settings.xiaomiAccountID = accountID }

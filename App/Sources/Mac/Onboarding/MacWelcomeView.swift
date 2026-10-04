@@ -101,12 +101,17 @@ struct MacWelcomeView: View {
                 .padding(.top, 10)
 
             VStack(spacing: 6) {
-                WelcomeActionRow(symbol: "person.badge.key", title: "Войти в Xiaomi…",
-                                 subtitle: "Камеры из приложения Mi Home") { sheet = .signIn }
-                WelcomeActionRow(symbol: "antenna.radiowaves.left.and.right", title: "Выбрать поток go2rtc…",
-                                 subtitle: "RTSP, ONVIF и другие источники") { sheet = .streams }
-                WelcomeActionRow(symbol: "server.rack", title: "Свой сервер go2rtc…",
+                WelcomeActionRow(symbol: "person.badge.key", title: String(localized: "Войти в Xiaomi…"),
+                                 subtitle: String(localized: "Камеры из приложения Mi Home")) { sheet = .signIn }
+                WelcomeActionRow(symbol: "antenna.radiowaves.left.and.right", title: String(localized: "Выбрать поток go2rtc…"),
+                                 subtitle: String(localized: "RTSP, ONVIF и другие источники")) { sheet = .streams }
+                WelcomeActionRow(symbol: "server.rack", title: String(localized: "Свой сервер go2rtc…"),
                                  subtitle: serverSubtitle) { sheet = .server }
+                WelcomeActionRow(symbol: "timer", title: String(localized: "Продолжить без камеры"),
+                                 subtitle: String(localized: "Таймер, расписание и лог")) {
+                    model.settings.withoutCamera = true
+                    finish()
+                }
             }
             .frame(width: 320)
             .padding(.top, 26)
@@ -127,9 +132,9 @@ struct MacWelcomeView: View {
 
     private var serverSubtitle: String {
         if model.settings.connectionMode == .external, let server = model.settings.server {
-            return "Сейчас: \(SetupServerState.hostText(server.baseURL))"
+            return String(localized: "Сейчас: \(SetupServerState.hostText(server.baseURL))")
         }
-        return "Например, http://192.168.1.10:1984"
+        return String(localized: "Например, http://192.168.1.10:1984")
     }
 
     // MARK: Right: what go2rtc already has
@@ -150,16 +155,16 @@ struct MacWelcomeView: View {
                 case .waiting:
                     switch SetupServerState.of(model) {
                     case .failed, .unavailable:
-                        empty(title: "Камер пока нет", symbol: "video.slash", text: waitingText)
+                        empty(title: String(localized: "Камер пока нет"), symbol: "video.slash", text: waitingText)
                     case .external:
-                        empty(title: "Сервер не указан", symbol: "server.rack",
-                              text: "Укажите адрес своего go2rtc: «Свой сервер go2rtc…» слева.")
+                        empty(title: String(localized: "Сервер не указан"), symbol: "server.rack",
+                              text: String(localized: "Укажите адрес своего go2rtc: «Свой сервер go2rtc…» слева."))
                     default:
                         // go2rtc is on its way: the sign-in sheet waits for it.
                         signInEmpty
                     }
                 case .failed(let message):
-                    empty(title: "Нет связи с go2rtc", symbol: "exclamationmark.triangle", text: message)
+                    empty(title: String(localized: "Нет связи с go2rtc"), symbol: "exclamationmark.triangle", text: message)
                 case .ready:
                     if catalog.isEmpty {
                         signInEmpty
@@ -175,9 +180,9 @@ struct MacWelcomeView: View {
 
     private var waitingText: String {
         switch SetupServerState.of(model) {
-        case .failed: return "go2rtc не запустился. Нажмите «Попробовать снова» слева."
-        case .unavailable: return "В этой сборке нет встроенного go2rtc. Укажите свой сервер."
-        default: return "Список появится, когда go2rtc запустится."
+        case .failed: return String(localized: "go2rtc не запустился. Нажмите «Попробовать снова» слева.")
+        case .unavailable: return String(localized: "В этой сборке нет встроенного go2rtc. Укажите свой сервер.")
+        default: return String(localized: "Список появится, когда go2rtc запустится.")
         }
     }
 
@@ -254,19 +259,20 @@ struct MacWelcomeView: View {
                     }
                 } header: {
                     WelcomeSectionHeader(title: "Mi Home · ID \(account.id)",
-                                         detail: SetupText.plural(account.cameras.count, "камера", "камеры", "камер"))
+                                         detail: pluralText(account.cameras.count, ru: ("камера", "камеры", "камер"),
+                                                            en: ("camera", "cameras")))
                 }
             }
             if !catalog.otherStreams.isEmpty {
                 Section {
                     ForEach(catalog.otherStreams) { stream in
-                        let detail = stream.sources.first.map(SettingsText.redacted) ?? "Источник не указан"
+                        let detail = stream.sources.first.map(SettingsText.redacted) ?? String(localized: "Источник не указан")
                         WelcomeSourceRow(title: stream.name, detail: detail, tooltip: detail,
                                          source: .stream(stream.name), isCamera: false)
                             .tag(SetupCameraCatalog.streamID(stream.name))
                     }
                 } header: {
-                    WelcomeSectionHeader(title: "Потоки go2rtc", detail: nil)
+                    WelcomeSectionHeader(title: String(localized: "Потоки go2rtc"), detail: nil)
                 }
             }
         }
@@ -344,7 +350,7 @@ struct MacWelcomeView: View {
                 try await catalog.choose(choice, model: model)
                 finish()
             } catch {
-                openError = "Не удалось добавить камеру: \(error.localizedDescription)"
+                openError = String(localized: "Не удалось добавить камеру: \(error.localizedDescription)")
             }
         }
     }
@@ -477,7 +483,7 @@ private struct WelcomeSourceRow: View {
     }
 
     private func detailText(_ still: SetupStillStore.State?) -> String {
-        if case .failed = still, isCamera { return "Не в сети" }
+        if case .failed = still, isCamera { return String(localized: "Не в сети") }
         if case .loaded(_, let size) = still, isCamera { return "\(SetupText.pixels(size)) · \(detail)" }
         return detail
     }

@@ -85,7 +85,7 @@ struct ClipSavedCard: View {
                     Spacer()
                     IconButton(systemImage: "xmark", action: onClose)
                 }
-                Text([duration.map { DurationText.clock($0) }, photos.saved ? "в Фото" : nil].compactMap { $0 }.joined(separator: " · "))
+                Text([duration.map { DurationText.clock($0) }, photos.saved ? String(localized: "в Фото") : nil].compactMap { $0 }.joined(separator: " · "))
                     .font(.system(.subheadline, design: .rounded).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.6))
                 if let error = photos.error {
@@ -103,7 +103,7 @@ struct ClipSavedCard: View {
                     }
                     .buttonStyle(PressableButtonStyle())
                     .disabled(preparing)
-                    BigButton(title: "История", systemImage: "clock.arrow.circlepath", style: .secondary, height: 44, action: onHistory)
+                    BigButton(title: String(localized: "История"), systemImage: "clock.arrow.circlepath", style: .secondary, height: 44, action: onHistory)
                 }
             }
         }

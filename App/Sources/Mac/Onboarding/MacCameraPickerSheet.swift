@@ -151,7 +151,8 @@ struct MacCameraPickerSheet: View {
                         }
                     }
                 }
-                section(title: visibleAccounts.isEmpty ? "Потоки go2rtc" : "Другие потоки go2rtc", detail: nil, accessory: .addStream) {
+                section(title: visibleAccounts.isEmpty ? String(localized: "Потоки go2rtc") : String(localized: "Другие потоки go2rtc"),
+                        detail: nil, accessory: .addStream) {
                     if catalog.otherStreams.isEmpty {
                         Text("Здесь появятся RTSP, ONVIF и другие источники go2rtc.")
                             .font(.callout)
@@ -286,7 +287,7 @@ struct MacCameraPickerSheet: View {
                 onChosen()
                 dismiss()
             } catch {
-                self.error = "Не удалось добавить камеру: \(error.localizedDescription)"
+                self.error = String(localized: "Не удалось добавить камеру: \(error.localizedDescription)")
             }
         }
     }
@@ -368,7 +369,7 @@ private struct SetupPickerTile: View {
             if case .loaded(_, let size) = still { return "\(SetupText.pixels(size)) · \(camera.kind)" }
             return camera.kind
         case .stream(let stream):
-            return stream.sources.first.map(SettingsText.redacted) ?? "Источник не указан"
+            return stream.sources.first.map(SettingsText.redacted) ?? String(localized: "Источник не указан")
         }
     }
 
@@ -402,13 +403,13 @@ private struct SetupPickerTile: View {
                 switch still {
                 case .loaded:
                     StatusDot(color: MacPalette.green, size: 6)
-                    Text(badge ?? "В сети")
+                    Text(badge ?? String(localized: "В сети"))
                 case .failed:
                     StatusDot(color: .white.opacity(0.5), size: 6)
-                    Text(badge.map { "\($0) · нет связи" } ?? "Нет связи")
+                    Text(badge.map { String(localized: "\($0) · нет связи") } ?? String(localized: "Нет связи"))
                 case .loading, nil:
                     ProgressView().controlSize(.mini).tint(.white)
-                    Text(badge ?? "Подключение…")
+                    Text(badge ?? String(localized: "Подключение…"))
                 }
             }
         }

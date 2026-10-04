@@ -17,6 +17,7 @@ struct MacSettingsDetail: View {
             case .files: SettingsFilesPane()
             case .iPhone: SettingsIPhonePane()
             case .diagnostics: SettingsDiagnosticsPane()
+            case .about: SettingsAboutPane()
             }
         }
         .formStyle(.grouped)
@@ -105,6 +106,9 @@ private struct SettingsCameraPane: View {
     /// Xiaomi accounts signed in on go2rtc; `nil` while unknown (go2rtc not running, no xiaomi module).
     @State private var accounts: [String]?
     @State private var demoQuality: AppModel.XiaomiQuality = .auto
+    /// «Выйти…» asked for this account (confirmation shown).
+    @State private var signOutAccount: String?
+    @State private var signingOut: String?
 
     var body: some View {
         @Bindable var settings = model.settings
@@ -116,14 +120,14 @@ private struct SettingsCameraPane: View {
                     .frame(width: 400)
                     .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
                 VStack(spacing: 2) {
-                    Text(camera.isConfigured ? camera.name : "Камера не выбрана")
+                    Text(camera.isConfigured ? camera.name : String(localized: "Камера не выбрана"))
                         .font(.system(size: 20, weight: .semibold))
                     Text(detailLine(camera))
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                        .help(cameraModel(camera).map { "Модель Mi Home: \($0)" } ?? "")
+                        .help(cameraModel(camera).map { String(localized: "Модель Mi Home: \($0)") } ?? "")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -213,6 +217,44 @@ private struct SettingsCameraPane: View {
                 Button("Выбрать камеру…") { sheet = .picker(accountID: nil) }
             }
         }
+
+        if let accounts, !accounts.isEmpty {
+            Section {
+                ForEach(accounts, id: \.self) { account in
+                    LabeledContent {
+                        if signingOut == account {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Button("Выйти…") { signOutAccount = account }
+                                .disabled(signingOut != nil)
+                        }
+                    } label: {
+                        Label("ID \(account)", systemImage: "person.crop.circle")
+                    }
+                }
+            } header: {
+                Text("Аккаунты Xiaomi")
+            } footer: {
+                Text("После выхода ключ доступа Xiaomi удаляется с этого Mac, а камеры аккаунта — из приложения.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .alert("Выйти из аккаунта Xiaomi?", isPresented: Binding(get: { signOutAccount != nil },
+                                                                   set: { if !$0 { signOutAccount = nil } })) {
+                Button("Выйти", role: .destructive) {
+                    guard let account = signOutAccount else { return }
+                    signingOut = account
+                    Task {
+                        await model.signOutOfXiaomi(accountID: account)
+                        signingOut = nil
+                        await loadAccounts()
+                    }
+                }
+                Button("Отмена", role: .cancel) {}
+            } message: {
+                Text("Камеры этого аккаунта перестанут показываться. Войти снова можно в любой момент.")
+            }
+        }
     }
 
     private func qualityAvailable(_ camera: SettingsCamera) -> Bool {
@@ -221,16 +263,16 @@ private struct SettingsCameraPane: View {
 
     /// "Камера Xiaomi · аккаунт 6218440137" (the Mi Home model id stays in the tooltip) or "RTSP · 192.168.1.20".
     private func detailLine(_ camera: SettingsCamera) -> String {
-        guard camera.isConfigured else { return "Выберите камеру Mi Home или поток go2rtc." }
+        guard camera.isConfigured else { return String(localized: "Выберите камеру Mi Home или поток go2rtc.") }
         if camera.isXiaomi {
             return [SetupText.cameraKind(model: cameraModel(camera)),
-                    camera.accountID.isEmpty ? nil : "аккаунт \(camera.accountID)"].compactMap { $0 }.joined(separator: " · ")
+                    camera.accountID.isEmpty ? nil : String(localized: "аккаунт \(camera.accountID)")].compactMap { $0 }.joined(separator: " · ")
         }
         if let source, let badge = SetupText.sourceBadge(source) {
             let host = URLComponents(string: source)?.host
             return [badge, host].compactMap { $0 }.joined(separator: " · ")
         }
-        return "Поток go2rtc"
+        return String(localized: "Поток go2rtc")
     }
 
     private func cameraModel(_ camera: SettingsCamera) -> String? {
@@ -243,7 +285,7 @@ private struct SettingsCameraPane: View {
             return SetupText.pixels(size)
         }
         #endif
-        guard let size = model.videoSize else { return camera.isConfigured ? "—" : "нет камеры" }
+        guard let size = model.videoSize else { return camera.isConfigured ? "—" : String(localized: "нет камеры") }
         return SetupText.pixels(size)
     }
 
@@ -404,10 +446,10 @@ private struct SettingsCameraCard: View {
     private var chipText: String? {
         if camera.isDemo {
             guard case .loaded(_, let size) = demoStill else { return nil }
-            return "В эфире · \(SetupText.pixels(size))"
+            return String(localized: "В эфире · \(SetupText.pixels(size))")
         }
         guard isPlaying else { return nil }
-        return liveSize.map { "В эфире · \(SetupText.pixels($0))" } ?? "Подключение…"
+        return liveSize.map { String(localized: "В эфире · \(SetupText.pixels($0))") } ?? String(localized: "Подключение…")
     }
 
     @ViewBuilder
@@ -440,11 +482,11 @@ private struct SettingsCameraCard: View {
     }
 
     private var placeholderText: String {
-        guard camera.isConfigured else { return "Здесь будет картинка с камеры" }
+        guard camera.isConfigured else { return String(localized: "Здесь будет картинка с камеры") }
         switch SetupServerState.of(model) {
-        case .starting: return "Запускаем go2rtc…"
-        case .failed, .stopped, .unavailable: return "go2rtc не запущен"
-        default: return "Нет картинки"
+        case .starting: return String(localized: "Запускаем go2rtc…")
+        case .failed, .stopped, .unavailable: return String(localized: "go2rtc не запущен")
+        default: return String(localized: "Нет картинки")
         }
     }
 
@@ -471,7 +513,7 @@ private struct SettingsConnectionPane: View {
 
     var body: some View {
         @Bindable var settings = model.settings
-        SettingsPaneHeader(pane: .connection, text: "Где работает go2rtc — сервер, который забирает видео с камеры Xiaomi.")
+        SettingsPaneHeader(pane: .connection, text: String(localized: "Где работает go2rtc — сервер, который забирает видео с камеры Xiaomi."))
         Section {
             Picker("Режим", selection: $settings.connectionMode) {
                 ForEach(ConnectionMode.allCases) { Text($0.title).tag($0) }
@@ -541,7 +583,7 @@ private struct SettingsConnectionPane: View {
 
     private func runCheck() async {
         guard let server = model.settings.server, model.settings.connectionMode == .external else {
-            check = .failed("Некорректный адрес")
+            check = .failed(String(localized: "Некорректный адрес"))
             return
         }
         check = .checking
@@ -560,7 +602,7 @@ private struct SettingsTrainingPane: View {
 
     var body: some View {
         @Bindable var settings = model.settings
-        SettingsPaneHeader(pane: .training, text: "Что происходит в начале и в конце тренировки.")
+        SettingsPaneHeader(pane: .training, text: String(localized: "Что происходит в начале и в конце тренировки."))
         Section {
             Toggle(isOn: $settings.autoRecord) {
                 Text("Включать запись вместе с тренировкой")
@@ -583,7 +625,7 @@ private struct SettingsFilesPane: View {
     var body: some View {
         @Bindable var settings = model.settings
         let folder = model.store.rootDirectory
-        SettingsPaneHeader(pane: .files, text: "Видео и логи тренировок хранятся на этом Mac.")
+        SettingsPaneHeader(pane: .files, text: String(localized: "Видео и логи тренировок хранятся на этом Mac."))
         Section {
             LabeledContent {
                 Button("Показать в Finder") { Finder.reveal(folder) }
@@ -599,7 +641,7 @@ private struct SettingsFilesPane: View {
                         .foregroundStyle(Color(red: 0.32, green: 0.64, blue: 0.98))
                 }
             }
-            LabeledContent("Занято", value: usage ?? "Считаем…")
+            LabeledContent("Занято", value: usage ?? String(localized: "Считаем…"))
         }
         .task(id: model.history.count) { usage = await SettingsText.usage(of: model.store) }
         Section {
@@ -619,7 +661,7 @@ private struct SettingsIPhonePane: View {
     var body: some View {
         @Bindable var settings = model.settings
         let host = model.syncHost
-        SettingsPaneHeader(pane: .iPhone, text: "iPhone в той же сети показывает камеру этого Mac и ведёт тренировку.")
+        SettingsPaneHeader(pane: .iPhone, text: String(localized: "iPhone в той же сети показывает камеру этого Mac и ведёт тренировку."))
         Section {
             Toggle(isOn: $settings.shareWithIPhone) {
                 Text("Разрешить подключение с iPhone")
@@ -672,7 +714,7 @@ private struct SettingsDiagnosticsPane: View {
 
     var body: some View {
         @Bindable var settings = model.settings
-        SettingsPaneHeader(pane: .diagnostics, text: "Нагрузка на процессор и память — если видео подтормаживает.")
+        SettingsPaneHeader(pane: .diagnostics, text: String(localized: "Нагрузка на процессор и память — если видео подтормаживает."))
         Section {
             Toggle(isOn: $settings.showPerformance) {
                 Text("Показывать нагрузку")
@@ -689,13 +731,59 @@ private struct SettingsDiagnosticsPane: View {
         Section {
             LabeledContent {
                 Button("Показать в Finder") {
-                    Finder.reveal(AppModel.storeRoot.appendingPathComponent("Logs", isDirectory: true))
+                    Finder.reveal(AppModel.logsDirectory)
                 }
             } label: {
                 Text("Журнал приложения")
                 Text("Пригодится, если камера не подключается или запись оборвалась.")
             }
         }
+    }
+}
+
+// MARK: - О приложении
+
+private struct SettingsAboutPane: View {
+    @State private var showPrivacy = false
+    @State private var showLicenses = false
+
+    var body: some View {
+        SettingsPaneHeader(pane: .about, text: String(localized: "Версия, политика конфиденциальности и лицензии."))
+        Section {
+            LabeledContent("Версия", value: AppInfo.version)
+            LabeledContent("Политика конфиденциальности") {
+                Button("Открыть…") { showPrivacy = true }
+            }
+            LabeledContent("Лицензии открытого ПО") {
+                Button("Открыть…") { showLicenses = true }
+            }
+        } footer: {
+            Text("Waiting Paws ничего не собирает и не отправляет разработчику: настройки, логи и видео остаются на ваших устройствах.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .sheet(isPresented: $showPrivacy) { AboutSheet { PrivacyPolicyView() } }
+        .sheet(isPresented: $showLicenses) { AboutSheet { LicensesView() } }
+    }
+}
+
+/// The privacy policy or the licenses over Settings, with «Готово».
+private struct AboutSheet<Content: View>: View {
+    @Environment(\.dismiss) private var dismiss
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content
+            Divider()
+            HStack {
+                Spacer()
+                Button("Готово") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(12)
+        }
+        .frame(width: 640, height: 600)
     }
 }
 
@@ -716,7 +804,7 @@ enum SettingsText {
         return components.string ?? source
     }
 
-    /// "3,9 ГБ · 13 видео · 11 логов".
+    /// "3,9 ГБ · 13 видео · 11 логов" / "3.9 GB · 13 videos · 11 logs".
     static func usage(of store: SessionStore) async -> String {
         let root = store.rootDirectory
         let recordings = store.recordingsDirectory
@@ -727,10 +815,10 @@ enum SettingsText {
             let videos = ((try? manager.contentsOfDirectory(atPath: recordings.path)) ?? []).filter { $0.hasSuffix(".mp4") }.count
             let logs = ((try? manager.contentsOfDirectory(atPath: sessions.path)) ?? []).filter { $0.hasSuffix(".json") }.count
             let size = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-            guard videos > 0 || logs > 0 else { return bytes > 0 ? "\(size) · тренировок пока нет" : "Пока пусто" }
+            guard videos > 0 || logs > 0 else { return bytes > 0 ? String(localized: "\(size) · тренировок пока нет") : String(localized: "Пока пусто") }
             var parts = [size]
-            if videos > 0 { parts.append(SetupText.plural(videos, "видео", "видео", "видео")) }
-            if logs > 0 { parts.append(SetupText.plural(logs, "лог", "лога", "логов")) }
+            if videos > 0 { parts.append(pluralText(videos, ru: ("видео", "видео", "видео"), en: ("video", "videos"))) }
+            if logs > 0 { parts.append(pluralText(logs, ru: ("лог", "лога", "логов"), en: ("log", "logs"))) }
             return parts.joined(separator: " · ")
         }.value
     }
@@ -748,11 +836,11 @@ enum SettingsText {
     /// "CPU 14 % · главный поток 3 % · 212 МБ · UI +18 мс · 41 поток".
     static func performance(_ sample: PerformanceMonitor.Sample) -> String {
         [
-            "CPU \(Int(sample.cpuTotal.rounded())) %",
-            "главный поток \(Int(sample.cpuMain.rounded())) %",
-            "\(Int(sample.memoryMB.rounded())) МБ",
-            "UI +\(Int(sample.maxHangMs.rounded())) мс",
-            SetupText.plural(sample.threads, "поток", "потока", "потоков"),
+            String(localized: "CPU \(Int(sample.cpuTotal.rounded())) %"),
+            String(localized: "главный поток \(Int(sample.cpuMain.rounded())) %"),
+            String(localized: "\(Int(sample.memoryMB.rounded())) МБ"),
+            String(localized: "UI +\(Int(sample.maxHangMs.rounded())) мс"),
+            pluralText(sample.threads, ru: ("поток", "потока", "потоков"), en: ("thread", "threads")),
         ].joined(separator: " · ")
     }
 }

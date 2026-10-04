@@ -136,22 +136,15 @@ struct HistoryView: View {
     }
 }
 
-/// "4 окт., 13:25"; the year is added for older entries.
+/// "4 окт., 13:25" / "Oct 4, 1:25 PM"; the year is added for older entries.
 enum HistoryDate {
     static func string(from date: Date) -> String {
         let sameYear = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
         return (sameYear ? thisYear : otherYear).string(from: date)
     }
 
-    private static let thisYear = formatter("d MMM, HH:mm")
-    private static let otherYear = formatter("d MMM yyyy, HH:mm")
-
-    private static func formatter(_ format: String) -> DateFormatter {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = format
-        return formatter
-    }
+    private static let thisYear = CoreLanguage.current.dateFormatter("dMMMjmm")
+    private static let otherYear = CoreLanguage.current.dateFormatter("dMMMyyyyjmm")
 }
 
 private struct HistoryRow: View {
@@ -178,8 +171,9 @@ private struct HistoryRow: View {
     }
 
     private var subtitle: String {
-        var parts = [HistoryDate.string(from: record.startedAt), "\(record.completedExits)/\(record.plan.exits.count) выходов"]
-        if record.falseStarts > 0 { parts.append("фальстартов \(record.falseStarts)") }
+        var parts = [HistoryDate.string(from: record.startedAt),
+                     String(localized: "\(record.completedExits)/\(record.plan.exits.count) выходов")]
+        if record.falseStarts > 0 { parts.append(String(localized: "фальстартов \(record.falseStarts)")) }
         return parts.joined(separator: " · ")
     }
 }
@@ -289,9 +283,9 @@ struct HistoryDetailView: View {
 
     /// "план 5 с или до вставания · попытка 2 · перерыв 5:05"; the break after the last exit only ends the session.
     private func details(for result: ExitResult, showsBreak: Bool) -> Text {
-        var plan = "план \(DurationText.short(result.plannedDuration))"
-        if result.untilStanding { plan += " или до вставания" }
-        let attempt = result.attempt > 1 ? " · попытка \(result.attempt)" : ""
+        let duration = DurationText.short(result.plannedDuration)
+        let plan = result.untilStanding ? String(localized: "план \(duration) или до вставания") : String(localized: "план \(duration)")
+        let attempt = result.attempt > 1 ? " · " + String(localized: "попытка \(result.attempt)") : ""
         let pause = showsBreak ? SessionLogFormatter.breakText(for: result).map { " · \($0)" } ?? "" : ""
         return Text("\(plan)\(Text(attempt).foregroundStyle(Theme.warning))\(pause)")
     }

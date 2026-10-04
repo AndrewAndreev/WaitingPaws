@@ -19,6 +19,12 @@ struct PlanEditorView: View {
     /// Exits whose break is set on its own instead of following "Перерыв между выходами".
     private var ownBreaks: [PlannedExit] { plan.exits.filter { $0.breakAfter != nil } }
 
+    /// "после 2 — 3 мин, после 5 — 1 мин".
+    private var ownBreaksList: String {
+        ownBreaks.map { String(localized: "после \($0.number) — \(DurationText.short($0.breakAfter ?? 0))") }
+            .joined(separator: ", ")
+    }
+
     var body: some View {
         List {
             Section {
@@ -39,7 +45,7 @@ struct PlanEditorView: View {
                 HStack {
                     Label("Перерыв между выходами", systemImage: "pause.circle")
                     Spacer()
-                    DurationButton(value: $plan.defaultBreak, title: "Перерыв между выходами",
+                    DurationButton(value: $plan.defaultBreak, title: String(localized: "Перерыв между выходами"),
                                    presets: DurationPresets.breaks, secondsStep: 5)
                 }
                 if !ownBreaks.isEmpty {
@@ -51,8 +57,7 @@ struct PlanEditorView: View {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Сделать везде \(DurationText.short(plan.defaultBreak))")
-                                Text("Свой перерыв: " + ownBreaks.map { "после \($0.number) — \(DurationText.short($0.breakAfter ?? 0))" }
-                                    .joined(separator: ", "))
+                                Text("Свой перерыв: \(ownBreaksList)")
                                     .font(.caption)
                                     .foregroundStyle(Color.secondary)
                             }
@@ -135,7 +140,7 @@ struct PlanEditorView: View {
                     }
                     .tint(Theme.accent)
                 }
-                BigButton(title: "Начать тренировку", systemImage: "play.fill", height: 50) {
+                BigButton(title: String(localized: "Начать тренировку"), systemImage: "play.fill", height: 50) {
                     var final = plan
                     final.renumber()
                     onStart(final)
@@ -183,7 +188,7 @@ private struct ExitRow: View {
                 if !isEditing {
                     stepButton("minus") { exit.duration = max(0, exit.duration - stepFor(exit.duration - 1)) }
                 }
-                DurationButton(value: $exit.duration, title: "Выход \(exit.number)", presets: DurationPresets.exits, width: 52)
+                DurationButton(value: $exit.duration, title: String(localized: "Выход \(exit.number)"), presets: DurationPresets.exits, width: 52)
                 if !isEditing {
                     stepButton("plus") { exit.duration += stepFor(exit.duration) }
                 }
@@ -192,7 +197,7 @@ private struct ExitRow: View {
                     Image(systemName: "pause.circle")
                         .foregroundStyle(.secondary)
                         .help("Перерыв после выхода")
-                    DurationButton(value: $exit.breakAfter, title: "Перерыв после выхода \(exit.number)",
+                    DurationButton(value: $exit.breakAfter, title: String(localized: "Перерыв после выхода \(exit.number)"),
                                    presets: DurationPresets.breaks, defaultValue: defaultBreak, secondsStep: 5,
                                    font: .system(.subheadline, design: .rounded), width: 46)
                 }

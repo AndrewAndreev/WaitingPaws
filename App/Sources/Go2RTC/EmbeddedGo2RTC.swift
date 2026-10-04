@@ -25,7 +25,7 @@ final class EmbeddedGo2RTC {
     }
 
     /// Non-standard port so a go2rtc running on the same Mac (default 1984) does not clash.
-    static let preferredAPIPort = 11984
+    nonisolated static let preferredAPIPort = 11984
     /// The ports actually used: 11984/11985, or the next free pair when another process holds them
     /// (typically Waiting Paws in the iOS simulator on the same Mac — they share 127.0.0.1).
     nonisolated(unsafe) private(set) static var apiPort = preferredAPIPort
@@ -52,7 +52,7 @@ final class EmbeddedGo2RTC {
     }
 
     /// Written on first start; go2rtc patches this file later (tokens, streams), so it is never overwritten.
-    static let defaultConfig = """
+    nonisolated static let defaultConfig = """
     # Waiting Paws embedded go2rtc. Listen addresses are enforced by the app on every launch.
     log:
       level: info
@@ -60,7 +60,7 @@ final class EmbeddedGo2RTC {
     """
 
     /// Basic-auth user for LAN clients (the iPhone linked to this Mac).
-    static let lanUsername = "waitingpaws"
+    nonisolated static let lanUsername = "waitingpaws"
 
     /// Inline config merged on top of the file at every launch: loopback only, RTSP server off.
     /// With `lanPassword` the API also listens on the LAN; go2rtc skips auth for loopback requests
@@ -89,7 +89,7 @@ final class EmbeddedGo2RTC {
         // go2rtc only logs a failed bind, so pick ports nobody holds before starting it.
         if !MobileIsRunning() {
             guard let ports = Self.freePorts(lan: lanPassword != nil) else {
-                status = .failed("Порты \(Self.preferredAPIPort)–\(Self.preferredAPIPort + 29) заняты другими программами — go2rtc негде запустить.")
+                status = .failed(String(localized: "Порты \(Self.preferredAPIPort)–\(Self.preferredAPIPort + 29) заняты другими программами — go2rtc негде запустить."))
                 return
             }
             Self.apiPort = ports.api
@@ -105,7 +105,7 @@ final class EmbeddedGo2RTC {
             try Self.ensureConfig(at: configURL)
             var error: NSError?
             if !MobileStart(configURL.path, overrides, &error) {
-                throw error ?? NSError(domain: "go2rtc", code: 1, userInfo: [NSLocalizedDescriptionKey: "go2rtc не запустился"])
+                throw error ?? NSError(domain: "go2rtc", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "go2rtc не запустился")])
             }
             return MobileVersion().components(separatedBy: "+").first ?? MobileVersion()
         }
@@ -114,13 +114,42 @@ final class EmbeddedGo2RTC {
             if await Self.waitUntilReachable() {
                 status = .running(version: version)
             } else {
-                status = .failed("go2rtc запустился, но API на 127.0.0.1:\(Self.apiPort) не отвечает")
+                status = .failed(String(localized: "go2rtc запустился, но API на 127.0.0.1:\(Self.apiPort) не отвечает"))
             }
         case .failure(let error):
             status = .failed(error.localizedDescription)
         }
         #else
         status = .unavailable
+        #endif
+    }
+
+    /// Called when the app is active again. iOS closes the listening sockets of a suspended app; go2rtc keeps
+    /// running, so only the API listener is opened again. Returns true when it had to (players reconnect).
+    @discardableResult
+    func recoverIfNeeded() async -> Bool {
+        #if canImport(Go2RTC)
+        guard status.isRunning, !(await Self.isReachable()) else { return false }
+        let address = lanEnabled ? ":\(Self.apiPort)" : "127.0.0.1:\(Self.apiPort)"
+        var error: NSError?
+        if MobileRelisten(address, &error) {
+            print("[go2rtc] API listener reopened on \(address)")
+        } else {
+            print("[go2rtc] reopening \(address) failed: \(error?.localizedDescription ?? "?")")
+        }
+        if await Self.waitUntilReachable() { return true }
+        status = .failed(String(localized: "go2rtc перестал отвечать. Перезапустите приложение."))
+        return false
+        #else
+        return false
+        #endif
+    }
+
+    /// A new Basic-auth password for LAN clients, effective at once (an iPhone was forgotten).
+    func setLANPassword(_ password: String) {
+        #if canImport(Go2RTC)
+        guard lanEnabled else { return }
+        MobileSetLANPassword(Self.lanUsername, password)
         #endif
     }
 

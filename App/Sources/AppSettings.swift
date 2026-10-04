@@ -7,9 +7,9 @@ enum PlayerMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .webrtc: return "WebRTC (минимальная задержка)"
+        case .webrtc: return String(localized: "WebRTC (минимальная задержка)")
         case .mse: return "MSE"
-        case .hls: return "HLS (запасной)"
+        case .hls: return String(localized: "HLS (запасной)")
         }
     }
     /// Mode string understood by go2rtc's `video-rtc.js`.
@@ -30,8 +30,8 @@ enum ConnectionMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .embedded: return "Встроенный go2rtc"
-        case .external: return "Свой сервер go2rtc"
+        case .embedded: return String(localized: "Встроенный go2rtc")
+        case .external: return String(localized: "Свой сервер go2rtc")
         }
     }
 }
@@ -58,6 +58,7 @@ final class AppSettings {
         static let lastPlanText = "lastPlanText"
         static let shareWithIPhone = "shareWithIPhone"
         static let lanPassword = "go2rtc.lanPassword"
+        static let withoutCamera = "withoutCamera"
     }
 
     var connectionMode: ConnectionMode { didSet { Self.defaults.set(connectionMode.rawValue, forKey: Key.connectionMode) } }
@@ -81,13 +82,22 @@ final class AppSettings {
     /// Mac: let iPhones on the same network find this Mac, watch its camera and drive its training.
     /// Opens the embedded go2rtc API on the LAN (Basic auth) from the next launch.
     var shareWithIPhone: Bool { didSet { Self.defaults.set(shareWithIPhone, forKey: Key.shareWithIPhone) } }
+    /// The user chose «Продолжить без камеры»: timer, schedule and log only, the camera can be added later.
+    var withoutCamera: Bool { didSet { Self.defaults.set(withoutCamera, forKey: Key.withoutCamera) } }
 
     /// Password of the embedded go2rtc for LAN clients (linked iPhones); generated once.
     /// Kept in the app's own (sandboxed) defaults, not the keychain: it only guards the video on the home
     /// network, and keychain items of an ad-hoc signed Mac build trigger an access prompt after every rebuild.
     var lanPassword: String {
         if let existing = Self.defaults.string(forKey: Key.lanPassword), !existing.isEmpty { return existing }
+        return rotateLanPassword()
+    }
+
+    /// A new LAN password (an iPhone was forgotten: it must lose access to the video too).
+    @discardableResult
+    func rotateLanPassword() -> String {
         let generated = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+            + UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         Self.defaults.set(generated, forKey: Key.lanPassword)
         return generated
     }
@@ -101,7 +111,7 @@ final class AppSettings {
         streamName = d.string(forKey: Key.streamName) ?? ""
         cameraTitle = d.string(forKey: Key.cameraTitle) ?? ""
         xiaomiAccountID = d.string(forKey: Key.xiaomiAccountID) ?? ""
-        xiaomiRegion = XiaomiRegion(rawValue: d.string(forKey: Key.xiaomiRegion) ?? "") ?? .ru
+        xiaomiRegion = XiaomiRegion(rawValue: d.string(forKey: Key.xiaomiRegion) ?? "") ?? .suggested
         playerModeOverride = PlayerMode(rawValue: d.string(forKey: Key.playerMode) ?? "")
         audioEnabled = d.object(forKey: Key.audioEnabled) as? Bool ?? false
         autoRecord = d.object(forKey: Key.autoRecord) as? Bool ?? true
@@ -114,6 +124,7 @@ final class AppSettings {
         #endif
         lastPlanText = d.string(forKey: Key.lastPlanText) ?? ""
         shareWithIPhone = d.object(forKey: Key.shareWithIPhone) as? Bool ?? true
+        withoutCamera = d.bool(forKey: Key.withoutCamera)
     }
 
     var server: Go2RTCServer? {
@@ -142,7 +153,11 @@ final class AppSettings {
         connectionMode == .embedded ? [.mse, .hls] : PlayerMode.allCases
     }
 
+    /// A camera is selected (the stream of a reachable go2rtc).
     var isConfigured: Bool { server != nil && !streamName.isEmpty }
+
+    /// Past the first-launch setup: with a camera, or explicitly without one.
+    var isSetUp: Bool { isConfigured || withoutCamera }
 
     var cameraDisplayName: String { cameraTitle.isEmpty ? streamName : cameraTitle }
 }

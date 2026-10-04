@@ -124,8 +124,8 @@ struct MacHistoryWindow: View {
         let clips = controller.clips(model).count
         if trainings == 0 && clips == 0 { return "" }
         var parts: [String] = []
-        if trainings > 0 || clips == 0 { parts.append(MacHistoryFormat.count(trainings, "тренировка", "тренировки", "тренировок")) }
-        if clips > 0 { parts.append(MacHistoryFormat.count(clips, "запись", "записи", "записей")) }
+        if trainings > 0 || clips == 0 { parts.append(MacHistoryFormat.trainings(trainings)) }
+        if clips > 0 { parts.append(MacHistoryFormat.recordings(clips)) }
         let bytes = controller.videos.values.reduce(Int64(0)) { $0 + $1.bytes }
         return parts.joined(separator: ", ") + (bytes > 0 ? " · " + MacHistoryFormat.bytes(bytes) : "")
     }
@@ -204,17 +204,19 @@ struct MacHistoryWindow: View {
 
     private var deleteTitle: String {
         guard let pending = controller.pendingDelete else { return "" }
-        if pending.row.isClip { return "Удалить запись?" }
-        return pending.onlyLog == true ? "Удалить лог тренировки?" : "Удалить тренировку?"
+        if pending.row.isClip { return String(localized: "Удалить запись?") }
+        return pending.onlyLog == true ? String(localized: "Удалить лог тренировки?") : String(localized: "Удалить тренировку?")
     }
 
     private func deleteMessage(_ pending: MacHistoryController.PendingDelete) -> String {
         let row = pending.row
+        let day = MacHistoryFormat.dayMonth(row.date)
+        let time = MacFormat.time.string(from: row.date)
         let what = row.isClip
-            ? "Запись \(MacHistoryFormat.dayMonth(row.date)), \(MacFormat.time.string(from: row.date))."
-            : "«\(row.title)», \(MacHistoryFormat.dayMonth(row.date)), \(MacFormat.time.string(from: row.date))."
-        if pending.onlyLog == true { return what + " Видео останется в истории как запись без тренировки." }
-        return row.video == nil ? what : what + " Копии в Фото не удаляются."
+            ? String(localized: "Запись \(day), \(time).")
+            : String(localized: "«\(row.title)», \(day), \(time).")
+        if pending.onlyLog == true { return String(localized: "\(what) Видео останется в истории как запись без тренировки.") }
+        return row.video == nil ? what : String(localized: "\(what) Копии в Фото не удаляются.")
     }
 
     @ViewBuilder
@@ -240,11 +242,13 @@ struct MacHistoryWindow: View {
     private var deleteAllTitle: String {
         let trainings = controller.records(model).count
         let clips = controller.clips(model).count
+        // Accusative: «Удалить 1 тренировку».
+        let trainingsText = pluralText(trainings, ru: ("тренировку", "тренировки", "тренировок"), en: ("training", "trainings"))
+        let clipsText = MacHistoryFormat.recordings(clips)
         switch (trainings, clips) {
-        case (_, 0): return "Удалить \(MacHistoryFormat.count(trainings, "тренировку", "тренировки", "тренировок"))"
-        case (0, _): return "Удалить \(MacHistoryFormat.count(clips, "запись", "записи", "записей"))"
-        default:
-            return "Удалить \(MacHistoryFormat.count(trainings, "тренировку", "тренировки", "тренировок")) и \(MacHistoryFormat.count(clips, "запись", "записи", "записей"))"
+        case (_, 0): return String(localized: "Удалить \(trainingsText)")
+        case (0, _): return String(localized: "Удалить \(clipsText)")
+        default: return String(localized: "Удалить \(trainingsText) и \(clipsText)")
         }
     }
 }

@@ -169,12 +169,12 @@ struct MacConsoleView: View {
     private var subtitle: String {
         if let session = model.session {
             let trainers = session.plan.trainers.isEmpty ? "" : "\(session.plan.trainers) · "
-            return trainers + "с \(MacFormat.time.string(from: session.startedAt))"
+            return trainers + String(localized: "с \(MacFormat.time.string(from: session.startedAt))")
         }
         if let plan = model.pendingPlan {
-            return (plan.trainers.isEmpty ? "" : "\(plan.trainers) · ") + "перед стартом"
+            return (plan.trainers.isEmpty ? "" : "\(plan.trainers) · ") + String(localized: "перед стартом")
         }
-        return model.isRecordingClip ? "запись без тренировки" : "новая тренировка"
+        return model.isRecordingClip ? String(localized: "запись без тренировки") : String(localized: "новая тренировка")
     }
 
     // MARK: - Toolbar
@@ -294,7 +294,7 @@ private struct CameraToolbarMenu: View {
 
     /// «Прихожая · HD»; a long Mi Home name is cut in the middle by the toolbar.
     private var title: String {
-        let name = model.settings.cameraDisplayName.isEmpty ? "Камера" : model.settings.cameraDisplayName
+        let name = model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера") : model.settings.cameraDisplayName
         guard let quality = model.xiaomiQuality else { return name }
         return "\(name) · \(quality.title)"
     }
@@ -321,6 +321,7 @@ private struct RecordingToolbarButton: View {
                 }
             }
             .help(model.isRecordingNow ? "Остановить запись · ⌘R" : "Записать видео · ⌘R")
+            .disabled(!model.isRecordingNow && !model.settings.isConfigured)
         }
     }
 }

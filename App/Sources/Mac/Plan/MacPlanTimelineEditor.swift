@@ -140,8 +140,8 @@ struct MacPlanTimelineEditor: View {
             }
             Spacer(minLength: 12)
             ViewThatFits(in: .horizontal) {
-                hint("Тяните край блока, чтобы изменить длительность")
-                hint("Тяните край блока")
+                hint(String(localized: "Тяните край блока, чтобы изменить длительность"))
+                hint(String(localized: "Тяните край блока"))
                 Color.clear.frame(width: 0, height: 0)
             }
             Divider().frame(height: 16)
@@ -237,9 +237,9 @@ struct MacPlanTimelineEditor: View {
             overview
         } else {
             HStack(spacing: 14) {
-                legend(MacPalette.pink.opacity(0.85), "выход")
-                legend(MacPalette.blue.opacity(0.35), "перерыв")
-                legend(MacPalette.blue.opacity(0.5), "свой перерыв", stroke: true)
+                legend(MacPalette.pink.opacity(0.85), String(localized: "выход"))
+                legend(MacPalette.blue.opacity(0.35), String(localized: "перерыв"))
+                legend(MacPalette.blue.opacity(0.5), String(localized: "свой перерыв"), stroke: true)
                 if original != nil {
                     HStack(spacing: 5) {
                         Circle().fill(.white).frame(width: 5, height: 5)
@@ -308,9 +308,9 @@ struct MacPlanTimelineEditor: View {
 
     private var laneTitles: some View {
         ZStack(alignment: .topLeading) {
-            laneTitle("План", top: planTop, height: planHeight)
-            laneTitle("Факт", top: factTop, height: factHeight)
-            laneTitle("Запись", top: recordTop, height: recordHeight)
+            laneTitle(String(localized: "План"), top: planTop, height: planHeight)
+            laneTitle(String(localized: "Факт"), top: factTop, height: factHeight)
+            laneTitle(String(localized: "Запись"), top: recordTop, height: recordHeight)
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .padding(.leading, 14)
@@ -339,10 +339,11 @@ struct MacPlanTimelineEditor: View {
                 blockView(block, pps: pps, active: active == block.edge, hovered: hovered == block.edge)
                     .offset(x: inset + block.start * pps, y: planTop)
             }
-            emptyLane(text: "появится после старта", tint: .secondary, width: total * pps,
+            emptyLane(text: String(localized: "появится после старта"), tint: .secondary, width: total * pps,
                       height: factHeight, sticky: sticky)
                 .offset(x: inset, y: factTop)
-            emptyLane(text: record ? "REC · начнётся со стартом" : "без записи — включите «Записывать видео»",
+            emptyLane(text: record ? String(localized: "REC · начнётся со стартом")
+                                     : String(localized: "без записи — включите «Записывать видео»"),
                       tint: record ? MacPalette.red : .secondary,
                       width: total * pps, height: recordHeight, sticky: sticky, filled: record)
                 .offset(x: inset, y: recordTop)
@@ -380,7 +381,7 @@ struct MacPlanTimelineEditor: View {
                     // «+12:40» as in the review table — a bare «17:00» would read as a clock time.
                     // The finish time wins where the two would overlap.
                     if x < end - 46 || x > end + 64 {
-                        let text = t == 0 ? "старт" : "+" + DurationText.clock(t)
+                        let text = t == 0 ? String(localized: "старт") : "+" + DurationText.clock(t)
                         context.draw(Text(text).font(.system(size: 10).monospacedDigit()).foregroundStyle(.secondary),
                                      at: CGPoint(x: x + 3, y: 7), anchor: .leading)
                     }
@@ -570,7 +571,9 @@ struct MacPlanTimelineEditor: View {
     }
 
     private func tooltip(_ block: Block) -> some View {
-        let name = block.edge.kind == .exit ? "Выход \(block.number)" : "Перерыв после \(block.number)"
+        let name = block.edge.kind == .exit
+            ? String(localized: "Выход \(block.number)")
+            : String(localized: "Перерыв после \(block.number)")
         let reference = block.original ?? (drag?.edge == block.edge ? drag?.startValue : nil)
         let delta = reference.map { block.duration - $0 } ?? 0
         let value = Text(DurationText.clock(block.duration)).fontWeight(.bold)
@@ -706,15 +709,19 @@ struct MacPlanTimelineEditor: View {
         var changed: Bool { original.map { $0 != duration } ?? false }
 
         var help: String {
+            let length = DurationText.short(duration)
             var text: String
             switch edge.kind {
             case .exit:
-                text = "Выход \(number) · \(DurationText.short(duration))"
-                if untilStanding { text += " или до вставания" }
+                text = untilStanding
+                    ? String(localized: "Выход \(number) · \(length) или до вставания")
+                    : String(localized: "Выход \(number) · \(length)")
             case .pause:
-                text = "Перерыв после выхода \(number) · \(DurationText.short(duration))" + (own ? ", свой" : "")
+                text = own
+                    ? String(localized: "Перерыв после выхода \(number) · \(length), свой")
+                    : String(localized: "Перерыв после выхода \(number) · \(length)")
             }
-            if changed, let original { text += " · у тренера \(DurationText.short(original))" }
+            if changed, let original { text = String(localized: "\(text) · у тренера \(DurationText.short(original))") }
             return text
         }
     }

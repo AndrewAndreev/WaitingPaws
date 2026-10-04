@@ -178,10 +178,10 @@ struct DurationEditor: View {
             }
             #if os(iOS)
             HStack(spacing: 0) {
-                wheel("Минуты", selection: Binding(get: { total / 60 }, set: { value = TimeInterval($0 * 60 + total % 60) }),
-                      options: Array(0...max(30, total / 60)), unit: "мин")
-                wheel("Секунды", selection: Binding(get: { total % 60 }, set: { value = TimeInterval(total / 60 * 60 + $0) }),
-                      options: secondOptions, unit: "с")
+                wheel(String(localized: "Минуты"), selection: Binding(get: { total / 60 }, set: { value = TimeInterval($0 * 60 + total % 60) }),
+                      options: Array(0...max(30, total / 60)), unit: String(localized: "мин"))
+                wheel(String(localized: "Секунды"), selection: Binding(get: { total % 60 }, set: { value = TimeInterval(total / 60 * 60 + $0) }),
+                      options: secondOptions, unit: String(localized: "с"))
             }
             .frame(height: 140)
             #else
@@ -196,7 +196,7 @@ struct DurationEditor: View {
                 }
             }
             if let defaultValue {
-                chip("По умолчанию · \(DurationText.short(defaultValue))", selected: value == nil) {
+                chip(String(localized: "По умолчанию · \(DurationText.short(defaultValue))"), selected: value == nil) {
                     value = nil
                     dismiss()
                 }
@@ -216,7 +216,7 @@ struct DurationEditor: View {
     #if os(iOS)
     private func wheel(_ label: String, selection: Binding<Int>, options: [Int], unit: String) -> some View {
         Picker(label, selection: selection) {
-            ForEach(options, id: \.self) { Text("\($0) \(unit)").tag($0) }
+            ForEach(options, id: \.self) { Text(verbatim: "\($0) \(unit)").tag($0) }
         }
         .pickerStyle(.wheel)
         .frame(maxWidth: .infinity)

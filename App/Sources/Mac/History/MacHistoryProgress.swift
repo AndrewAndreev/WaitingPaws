@@ -11,18 +11,18 @@ enum MacHistoryPeriod: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .fourWeeks: "4 недели"
-        case .threeMonths: "3 месяца"
-        case .all: "Всё время"
+        case .fourWeeks: String(localized: "4 недели")
+        case .threeMonths: String(localized: "3 месяца")
+        case .all: String(localized: "Всё время")
         }
     }
 
     /// Title of the gain figure when the period starts after the first training.
     var gainTitle: String {
         switch self {
-        case .fourWeeks: "За четыре недели"
-        case .threeMonths: "За три месяца"
-        case .all: "С первой тренировки"
+        case .fourWeeks: String(localized: "За четыре недели")
+        case .threeMonths: String(localized: "За три месяца")
+        case .all: String(localized: "С первой тренировки")
         }
     }
 
@@ -130,23 +130,26 @@ struct MacHistoryProgressPanel: View {
     private func figures(_ progress: MacHistoryProgress) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             if let record = progress.record {
-                figure("Рекорд за дверью", DurationText.clock(record.longestStayBehindDoor),
-                       note: "\(MacHistoryFormat.dayMonth(record.startedAt)) · план \(DurationText.clock(record.longestPlannedExit))")
+                figure(String(localized: "Рекорд за дверью"), DurationText.clock(record.longestStayBehindDoor),
+                       note: String(localized: "\(MacHistoryFormat.dayMonth(record.startedAt)) · план \(DurationText.clock(record.longestPlannedExit))"))
             } else {
-                figure("Рекорд за дверью", "—", note: "пока ни одного выхода")
+                figure(String(localized: "Рекорд за дверью"), "—", note: String(localized: "пока ни одного выхода"))
             }
 
-            let gainTitle = progress.includesFirstTraining ? "С первой тренировки" : controller.period.gainTitle
+            let gainTitle = progress.includesFirstTraining ? String(localized: "С первой тренировки") : controller.period.gainTitle
             if let gain = progress.gain, let first = progress.first {
                 figure(gainTitle, (gain < 0 ? "−" : "+") + DurationText.clock(abs(gain)),
-                       note: "было \(DurationText.clock(first.longestStayBehindDoor)) \(MacHistoryFormat.dayMonth(first.startedAt))",
+                       note: String(localized: "было \(DurationText.clock(first.longestStayBehindDoor)) \(MacHistoryFormat.dayMonth(first.startedAt))"),
                        tint: gain > 0 ? MacHistoryInk.green : gain < 0 ? MacHistoryInk.orange : .primary)
             } else {
-                figure(gainTitle, "—", note: "нужно хотя бы две тренировки")
+                figure(gainTitle, "—", note: String(localized: "нужно хотя бы две тренировки"))
             }
 
-            figure("Без фальстартов", "\(progress.cleanCount) из \(progress.sessions.count)", digits: false,
-                   note: progress.falseStartTotal == 0 ? "ни одного фальстарта" : "фальстартов всего: \(progress.falseStartTotal)")
+            figure(String(localized: "Без фальстартов"),
+                   String(localized: "\(progress.cleanCount) из \(progress.sessions.count)"), digits: false,
+                   note: progress.falseStartTotal == 0
+                       ? String(localized: "ни одного фальстарта")
+                       : String(localized: "фальстартов всего: \(progress.falseStartTotal)"))
         }
     }
 
@@ -195,12 +198,12 @@ struct MacHistoryProgressPanel: View {
                     .foregroundStyle(LinearGradient(colors: [accent.opacity(0.24), accent.opacity(0)],
                                                     startPoint: .top, endPoint: .bottom))
                 LineMark(x: .value("Дата", record.startedAt), y: .value("За дверью", record.longestStayBehindDoor),
-                         series: .value("Ряд", "Факт"))
+                         series: .value("Ряд", String(localized: "Факт")))
                     .interpolationMethod(.monotone)
                     .foregroundStyle(accent)
                     .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round))
                 LineMark(x: .value("Дата", record.startedAt), y: .value("План", record.longestPlannedExit),
-                         series: .value("Ряд", "План"))
+                         series: .value("Ряд", String(localized: "План")))
                     .interpolationMethod(.stepEnd)
                     .foregroundStyle(Color.primary.opacity(0.4))
                     .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [3, 3]))

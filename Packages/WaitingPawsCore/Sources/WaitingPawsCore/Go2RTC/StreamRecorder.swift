@@ -17,7 +17,9 @@ public final class StreamRecorder: NSObject, URLSessionDataDelegate {
 
     private var session: URLSession?
     private var task: URLSessionDataTask?
-    private var handle: FileHandle?
+    /// Written from URLSession's delegate queue, opened and closed on the main thread: always under `handleLock`.
+    @ObservationIgnored private var handle: FileHandle?
+    @ObservationIgnored private let handleLock = NSLock()
     private var stoppedByUser = false
 
     public override init() {
@@ -39,7 +41,7 @@ public final class StreamRecorder: NSObject, URLSessionDataDelegate {
         var request = URLRequest(url: url)
         if let authorization { request.setValue(authorization, forHTTPHeaderField: "Authorization") }
 
-        self.handle = handle
+        handleLock.withLock { self.handle = handle }
         self.session = session
         self.fileURL = fileURL
         bytesLock.withLock { bytesCount = 0 }
@@ -59,8 +61,7 @@ public final class StreamRecorder: NSObject, URLSessionDataDelegate {
         task = nil
         session?.invalidateAndCancel()
         session = nil
-        try? handle?.close()
-        handle = nil
+        closeFile()
         isRecording = false
     }
 
@@ -82,13 +83,25 @@ public final class StreamRecorder: NSObject, URLSessionDataDelegate {
     }
 
     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        guard let handle else { return }
-        do {
-            try handle.write(contentsOf: data)
+        let result: Result<Bool, Error> = handleLock.withLock {
+            guard let handle else { return .success(false) }
+            return Result { try handle.write(contentsOf: data); return true }
+        }
+        switch result {
+        case .success(true):
             let count = Int64(data.count)
             bytesLock.withLock { bytesCount += count }
-        } catch {
+        case .success(false):
+            break
+        case .failure(let error):
             DispatchQueue.main.async { self.lastError = error.localizedDescription }
+        }
+    }
+
+    private func closeFile() {
+        handleLock.withLock {
+            try? handle?.close()
+            handle = nil
         }
     }
 
@@ -97,8 +110,7 @@ public final class StreamRecorder: NSObject, URLSessionDataDelegate {
             if let error, !self.stoppedByUser, (error as NSError).code != NSURLErrorCancelled {
                 self.lastError = error.localizedDescription
             }
-            try? self.handle?.close()
-            self.handle = nil
+            self.closeFile()
             self.task = nil
             self.isRecording = false
         }

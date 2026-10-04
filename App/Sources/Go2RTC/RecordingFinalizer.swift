@@ -15,7 +15,7 @@ enum RecordingFinalizer {
 
         var errorDescription: String? {
             switch self {
-            case .noVideo: return "в файле нет видео"
+            case .noVideo: return String(localized: "в файле нет видео")
             case .failed(let why): return why
             }
         }
@@ -55,13 +55,13 @@ enum RecordingFinalizer {
                 let m4a = AVURLAsset(url: try await transcodeToAAC(audioTrack, of: asset))
                 converted = m4a
                 guard let track = try await m4a.loadTracks(withMediaType: .audio).first else {
-                    throw FinalizeError.failed("звук не перекодировался")
+                    throw FinalizeError.failed(String(localized: "звук не перекодировался"))
                 }
                 source = track
             }
             let sourceRange = try await source.load(.timeRange)
             guard let target = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
-                throw FinalizeError.failed("не удалось добавить звуковую дорожку")
+                throw FinalizeError.failed(String(localized: "не удалось добавить звуковую дорожку"))
             }
             // The converted clip starts at zero; place it where the camera's sound started.
             try target.insertTimeRange(sourceRange, of: source, at: range.start)
@@ -70,21 +70,44 @@ enum RecordingFinalizer {
         }
 
         guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough) else {
-            throw FinalizeError.failed("экспорт недоступен")
+            throw FinalizeError.failed(String(localized: "экспорт недоступен"))
         }
         let output = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("mp4")
-        session.outputURL = output
-        session.outputFileType = .mp4
         session.shouldOptimizeForNetworkUse = true
-        await session.export()
-        guard session.status == .completed else {
-            try? FileManager.default.removeItem(at: output)
-            throw FinalizeError.failed(session.error?.localizedDescription ?? "экспорт не завершился")
-        }
+        try await export(session, to: output)
         _ = try FileManager.default.replaceItemAt(url, withItemAt: output)
         return true
+    }
+
+    /// `export(to:as:)` where the system has it (iOS 18, macOS 15), the old completion-style export before.
+    private static func export(_ session: AVAssetExportSession, to output: URL) async throws {
+        #if os(macOS)
+        do {
+            try await session.export(to: output, as: .mp4)
+        } catch {
+            try? FileManager.default.removeItem(at: output)
+            throw FinalizeError.failed(error.localizedDescription)
+        }
+        #else
+        if #available(iOS 18, *) {
+            do {
+                try await session.export(to: output, as: .mp4)
+            } catch {
+                try? FileManager.default.removeItem(at: output)
+                throw FinalizeError.failed(error.localizedDescription)
+            }
+        } else {
+            session.outputURL = output
+            session.outputFileType = .mp4
+            await session.export()
+            guard session.status == .completed else {
+                try? FileManager.default.removeItem(at: output)
+                throw FinalizeError.failed(session.error?.localizedDescription ?? String(localized: "экспорт не завершился"))
+            }
+        }
+        #endif
     }
 
     private static func isAAC(_ track: AVAssetTrack) async throws -> Bool {
@@ -125,23 +148,27 @@ enum RecordingFinalizer {
         writer.add(input)
 
         guard reader.startReading(), writer.startWriting() else {
-            throw FinalizeError.failed("не удалось прочитать звук: \((reader.error ?? writer.error)?.localizedDescription ?? "?")")
+            let why = (reader.error ?? writer.error)?.localizedDescription ?? "?"
+            throw FinalizeError.failed(String(localized: "не удалось прочитать звук: \(why)"))
         }
         guard let first = output.copyNextSampleBuffer() else {
             writer.cancelWriting()
-            throw FinalizeError.failed("звуковая дорожка пустая")
+            throw FinalizeError.failed(String(localized: "звуковая дорожка пустая"))
         }
         writer.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(first))
 
         let queue = DispatchQueue(label: "su.comrade.waitingpaws.transcode")
+        // Reader output, writer input and the loop state are only touched on `queue`, one callback at a time.
+        nonisolated(unsafe) let writerInput = input
+        nonisolated(unsafe) let readerOutput = output
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            var pending: CMSampleBuffer? = first
-            var finished = false
-            input.requestMediaDataWhenReady(on: queue) {
-                while !finished, input.isReadyForMoreMediaData {
-                    guard let buffer = pending ?? output.copyNextSampleBuffer(), input.append(buffer) else {
+            nonisolated(unsafe) var pending: CMSampleBuffer? = first
+            nonisolated(unsafe) var finished = false
+            writerInput.requestMediaDataWhenReady(on: queue) {
+                while !finished, writerInput.isReadyForMoreMediaData {
+                    guard let buffer = pending ?? readerOutput.copyNextSampleBuffer(), writerInput.append(buffer) else {
                         finished = true
-                        input.markAsFinished()
+                        writerInput.markAsFinished()
                         continuation.resume()
                         return
                     }
@@ -153,7 +180,8 @@ enum RecordingFinalizer {
 
         guard reader.status != .failed, writer.status == .completed else {
             try? FileManager.default.removeItem(at: url)
-            throw FinalizeError.failed("не удалось перекодировать звук: \((reader.error ?? writer.error)?.localizedDescription ?? "?")")
+            let why = (reader.error ?? writer.error)?.localizedDescription ?? "?"
+            throw FinalizeError.failed(String(localized: "не удалось перекодировать звук: \(why)"))
         }
         return url
     }
@@ -163,10 +191,10 @@ enum RecordingFinalizer {
         let clip = AVURLAsset(url: try silentClip())
         guard let source = try await clip.loadTracks(withMediaType: .audio).first,
               let target = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
-            throw FinalizeError.failed("не удалось добавить звуковую дорожку")
+            throw FinalizeError.failed(String(localized: "не удалось добавить звуковую дорожку"))
         }
         let range = try await source.load(.timeRange)
-        guard range.duration > .zero else { throw FinalizeError.failed("пустая звуковая дорожка") }
+        guard range.duration > .zero else { throw FinalizeError.failed(String(localized: "пустая звуковая дорожка")) }
         var cursor = CMTime.zero
         while cursor < end {
             let length = min(range.duration, end - cursor)
@@ -193,7 +221,7 @@ enum RecordingFinalizer {
             let frames = AVAudioFrameCount(sampleRate * 60)
             guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: frames),
                   let samples = buffer.floatChannelData?[0] else {
-                throw FinalizeError.failed("не удалось подготовить тишину")
+                throw FinalizeError.failed(String(localized: "не удалось подготовить тишину"))
             }
             buffer.frameLength = frames
             samples.update(repeating: 0, count: Int(frames))

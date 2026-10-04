@@ -28,17 +28,22 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
         self.breakAfter = breakAfter
     }
 
-    /// Human readable planned duration, e.g. "30 с ИЛИ до вставания".
+    /// Human readable planned duration, e.g. "30 с или до вставания" / "30 s or until the dog stands".
     public var durationDescription: String {
         var text = DurationText.short(duration)
-        if untilStanding { text += " или до вставания" }
+        if untilStanding { text += " " + Self.untilStandingText }
         return text
     }
+
+    /// "или до вставания": come back as soon as the dog stands up.
+    public static var untilStandingText: String { tr("или до вставания", "or until the dog stands") }
 }
 
 /// A parsed (and possibly hand-corrected) training schedule.
 public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     public static let defaultBreakDuration: TimeInterval = 120
+    /// Title of a schedule without a header line.
+    public static var defaultTitle: String { tr("Тренировка", "Training") }
 
     public var id: UUID
     public var title: String
@@ -50,7 +55,7 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     public var rawText: String
 
     public init(id: UUID = UUID(),
-                title: String = "Тренировка",
+                title: String = TrainingPlan.defaultTitle,
                 trainers: String = "",
                 date: Date? = nil,
                 notes: [String] = [],
@@ -91,7 +96,7 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         for index in exits.indices { exits[index].number = index + 1 }
     }
 
-    /// Short label used in lists and file names, e.g. "05.10.2026 · Тренировка на понедельник".
+    /// Short label used in lists, e.g. "05.10.2026 · Тренировка на понедельник".
     public var displayTitle: String {
         let trimmed = title.trimmingCharacters(in: .whitespaces)
         if let date {
@@ -100,10 +105,10 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         return trimmed
     }
 
-    public static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = "dd.MM.yyyy"
-        return formatter
-    }()
+    /// The schedule's date: "05.10.2026" / "10/5/2026".
+    public static var dateFormatter: DateFormatter {
+        CoreLanguage.current == .ru ? ruDateFormatter : enDateFormatter
+    }
+    private static let ruDateFormatter = CoreLanguage.ru.dateFormatter("ddMMyyyy")
+    private static let enDateFormatter = CoreLanguage.en.dateFormatter("ddMMyyyy")
 }

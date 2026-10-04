@@ -161,21 +161,22 @@ enum MacSettingsSheet: Identifiable, Hashable {
 }
 
 enum MacSettingsPane: String, CaseIterable, Identifiable, Hashable {
-    case camera, connection, training, files, iPhone, diagnostics
+    case camera, connection, training, files, iPhone, diagnostics, about
 
     var id: String { rawValue }
 
     /// Sidebar groups under the camera row.
-    static let groups: [[MacSettingsPane]] = [[.connection], [.training, .files], [.iPhone, .diagnostics]]
+    static let groups: [[MacSettingsPane]] = [[.connection], [.training, .files], [.iPhone, .diagnostics], [.about]]
 
     var title: String {
         switch self {
-        case .camera: return "Камера"
-        case .connection: return "Подключение"
-        case .training: return "Тренировка"
-        case .files: return "Запись и файлы"
+        case .camera: return String(localized: "Камера")
+        case .connection: return String(localized: "Подключение")
+        case .training: return String(localized: "Тренировка")
+        case .files: return String(localized: "Запись и файлы")
         case .iPhone: return "iPhone"
-        case .diagnostics: return "Диагностика"
+        case .diagnostics: return String(localized: "Диагностика")
+        case .about: return String(localized: "О приложении")
         }
     }
 
@@ -187,6 +188,7 @@ enum MacSettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .files: return "folder.fill"
         case .iPhone: return "iphone"
         case .diagnostics: return "gauge.with.needle.fill"
+        case .about: return "info.circle.fill"
         }
     }
 
@@ -197,18 +199,27 @@ enum MacSettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .files: return Color(red: 0.16, green: 0.58, blue: 0.95)
         case .iPhone: return Color(red: 0.36, green: 0.36, blue: 0.86)
         case .diagnostics: return Color(red: 0.95, green: 0.55, blue: 0.15)
+        case .about: return Color(white: 0.55)
         }
     }
 
-    /// What the sidebar search also finds the pane by.
+    /// What the sidebar search also finds the pane by, in both languages (the title is searched as shown).
     var keywords: [String] {
         switch self {
-        case .camera: return ["xiaomi", "mi home", "аккаунт", "качество", "звук", "плеер", "mse", "hls", "webrtc", "поток", "2k", "hd"]
-        case .connection: return ["go2rtc", "сервер", "адрес", "встроенный", "сеть", "логин", "пароль"]
-        case .training: return ["запись", "автоматически", "завершать", "выход"]
-        case .files: return ["папка", "finder", "видео", "фото", "запись", "место"]
-        case .iPhone: return ["телефон", "устройства", "забыть", "связь", "сеть"]
-        case .diagnostics: return ["нагрузка", "cpu", "память", "журнал", "логи"]
+        case .camera: return ["xiaomi", "mi home", "аккаунт", "качество", "звук", "плеер", "mse", "hls", "webrtc", "поток", "2k", "hd",
+                              "camera", "account", "quality", "sound", "audio", "player", "stream"]
+        case .connection: return ["go2rtc", "сервер", "адрес", "встроенный", "сеть", "логин", "пароль",
+                                  "connection", "server", "address", "embedded", "built-in", "network", "login", "username", "password"]
+        case .training: return ["запись", "автоматически", "завершать", "выход",
+                                "training", "recording", "record", "automatically", "finish", "exit"]
+        case .files: return ["папка", "finder", "видео", "фото", "запись", "место",
+                             "files", "folder", "video", "photos", "recording", "storage", "space"]
+        case .iPhone: return ["телефон", "устройства", "забыть", "связь", "сеть",
+                              "phone", "devices", "forget", "link", "network"]
+        case .diagnostics: return ["нагрузка", "cpu", "память", "журнал", "логи",
+                                   "diagnostics", "load", "performance", "memory", "log", "logs"]
+        case .about: return ["версия", "политика", "конфиденциальность", "лицензии", "version", "privacy", "licenses",
+                             "about", "policy"]
         }
     }
 }
@@ -251,7 +262,7 @@ private struct SettingsCameraRow: View {
             .clipShape(Circle())
             .overlay(Circle().strokeBorder(.primary.opacity(0.1)))
             VStack(alignment: .leading, spacing: 1) {
-                Text(camera.isConfigured ? camera.name : "Камера")
+                Text(camera.isConfigured ? camera.name : String(localized: "Камера"))
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 Text(subtitle(camera))
@@ -264,12 +275,12 @@ private struct SettingsCameraRow: View {
     }
 
     private func subtitle(_ camera: SettingsCamera) -> String {
-        guard camera.isConfigured else { return "Не выбрана" }
-        let kind = camera.isXiaomi ? "Камера Xiaomi" : "Поток go2rtc"
-        guard model.setupServerReadyOrDemo else { return "\(kind) · go2rtc не запущен" }
+        guard camera.isConfigured else { return String(localized: "Не выбрана") }
+        let kind = camera.isXiaomi ? String(localized: "Камера Xiaomi") : String(localized: "Поток go2rtc")
+        guard model.setupServerReadyOrDemo else { return String(localized: "\(kind) · go2rtc не запущен") }
         switch SetupStillStore.shared.state(for: camera.streamName, model: model) {
-        case .loaded: return "\(kind) · в сети"
-        case .failed: return "\(kind) · нет связи"
+        case .loaded: return String(localized: "\(kind) · в сети")
+        case .failed: return String(localized: "\(kind) · нет связи")
         case .loading, nil: return kind
         }
     }

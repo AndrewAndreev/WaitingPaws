@@ -21,6 +21,7 @@
 		18D4B68FFC0F6DF28E606F20 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
 		1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */; };
 		1B45915553565FDD60456B02 /* LogMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07E8A420FED84FE8A782BFB /* LogMirror.swift */; };
+		1CDF1781E48F963F97F7C8FD /* AboutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB09408266FBD3CE9B6B8826 /* AboutViews.swift */; };
 		1FE577D1926CC3C43CDC4417 /* WaitingPawsCore in Frameworks */ = {isa = PBXBuildFile; productRef = B4F844F9CD08AA8BC56C790D /* WaitingPawsCore */; };
 		208F37B20D6D8061D7CEDC6C /* MacHistoryProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AF487EFFE6D2FB22AA400BB /* MacHistoryProgress.swift */; };
 		21288095E2A1499040A448BD /* CameraPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB15E742A63332D0305C49E /* CameraPickerView.swift */; };
@@ -30,15 +31,19 @@
 		26A1C0AAB8EB7842077F5F44 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
 		2721F56420F33D188967378C /* MacHistoryTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = E284DBC656F72086C4AECDC8 /* MacHistoryTable.swift */; };
 		28A346170C064EB5D770A44C /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
+		29AFE32CE6BEF6C2D45E65A1 /* Acknowledgements.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5EC3D18A3329671AE524D52A /* Acknowledgements.txt */; };
 		29E1EE966430E935616E1C61 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
 		2AC851DC82C729B326FF24C2 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
 		2B5C02356ABEB628D2DC4F51 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
 		2C447B33CA2D830A66F6AD60 /* MacSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */; };
+		2DF245D25B64FD43DE4DDD79 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38A20951026E43C64982CCD7 /* Localizable.xcstrings */; };
 		2EC6AA5D676BB527E1183DE2 /* ConsoleReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA761F28A420093D2740492F /* ConsoleReadout.swift */; };
 		30DA9B7C10D3A01F1A1A0AF0 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
 		312542C67DA22BF708B936FB /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
+		3141DF20BF7ABA82749E2B7C /* PrivacyPolicy-ru.md in Resources */ = {isa = PBXBuildFile; fileRef = CEA5D093822E9CAD83CAB5D2 /* PrivacyPolicy-ru.md */; };
 		32C5BC7D4694B3220441C196 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */; };
 		33BA36B51071FF4F0A42230F /* MacPlanReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */; };
+		33E75F82080284406C2D48A4 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		34D011B69D7D63FABCC1EB71 /* Go2RTC.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; };
 		38C28DF7359EA3529CF915AA /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6B39818DB94C898964AF2 /* MacRootView.swift */; };
 		38FD25FEBDF1B3E69F80FA12 /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
@@ -59,7 +64,6 @@
 		59B9A6D75E43BA6D00482A3C /* MacCameraPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49544DC08EFCB32F58FEBD3C /* MacCameraPickerSheet.swift */; };
 		5A5EC8E45BBB24449A26278C /* MacPlanTimelineEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */; };
 		5BEEA029021BC39EE7CF1B22 /* MacPairingPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */; };
-		5C3FC181E91A2E9122F794FA /* Go2RTC.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5F311EC55BB5C9535C42AF30 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */; };
 		5F41A4B2A6D07C968B890BCB /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
 		60D1400A545153EC1CFBBBFA /* MacPairingPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */; };
@@ -77,12 +81,12 @@
 		74F718646D57D8FA0FA85FAD /* MacHistoryInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CB4D1AB5CEC631AB79AAF8 /* MacHistoryInspector.swift */; };
 		763399D65BA031D177BED44F /* ZoomableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6961CED894D4487A9C9977 /* ZoomableView.swift */; };
 		792907206B28D4D6A58F99D0 /* SetupServerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */; };
+		7AE4B75A5F0B841DA37CA766 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */; };
 		7F5CA5C97017F6F9E02F9A21 /* PlanInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */; };
 		80A7DF3FFDD448ED63301DF0 /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
 		827E5E6B41B910A1D067202B /* SetupXiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED967B787875E075AB3B309 /* SetupXiaomiSignInSheet.swift */; };
 		83CC8AB16746B0F7583C4DD6 /* MacHistoryTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = E284DBC656F72086C4AECDC8 /* MacHistoryTable.swift */; };
 		84F904EFE9492E462B8B9EFB /* MinimizedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */; };
-		8812D682DC47ACA6F0064FC0 /* Go2RTC.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		89853A4D5CB70C0B6AF8DE80 /* SessionHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A543FFBD67D604BF950292 /* SessionHUD.swift */; };
 		8A6587B9B49363A5B15CD02B /* LinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E82FB404801D9CB6095FA0E /* LinkViews.swift */; };
 		8AC8AF364CF28433D15F9CF8 /* SessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85DCB661B7AD5031EC737BA /* SessionScreen.swift */; };
@@ -94,6 +98,7 @@
 		91C95E3050FCF89EDCE8A83A /* MacHistoryWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA410D4D979D88D298BC0DC8 /* MacHistoryWindow.swift */; };
 		961F827DD79C9AB71FFE54D4 /* MacUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */; };
 		994096C919CDEC6DFA01A7FD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D74383E2FDB68560D6A4A287 /* Assets.xcassets */; };
+		9D36C65C9CB5D362FA6219F3 /* AboutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB09408266FBD3CE9B6B8826 /* AboutViews.swift */; };
 		9D6CA3836B21203254FCA69B /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
 		A01E860E261BB0E769DF78C8 /* RecordingFinalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */; };
 		A10E65061FEF9135B2623883 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BC4F2D63E281B08766B2C4 /* RootView.swift */; };
@@ -107,6 +112,7 @@
 		A90B8E31C84A7B8A92DE0493 /* PlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01FB3F4D076095A1AA0D6891 /* PlanEditorView.swift */; };
 		A9E23A66DFAD9DC85EA65415 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BAD79086692AA64BD6514C /* AppSettings.swift */; };
 		A9F0165F3842663E1B5482B5 /* MacHistoryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6FD9E1E7F9DFB08BC251BF /* MacHistoryModel.swift */; };
+		ABB0ADCC009B8E4D2C7B5AFB /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FA2645E678A49495282A8E8B /* InfoPlist.xcstrings */; };
 		ABB2844BE67E7FC1A37E44A0 /* CameraModeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE70FC878886DBB4722CDA4 /* CameraModeControls.swift */; };
 		ADB42AECC2E9F6D642EFED1C /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6B39818DB94C898964AF2 /* MacRootView.swift */; };
 		AE7119296703BF1EB2556ADB /* MacHistoryThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EDD0FE37A4518887FC57D0 /* MacHistoryThumbnail.swift */; };
@@ -115,6 +121,7 @@
 		B5667475471B3E49CD11609A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF078E66FEB0548DFDA1B148 /* HistoryView.swift */; };
 		B8AF3D7E6F3119FB13242691 /* CameraModesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A9E12D5DF46378F7F1F746E /* CameraModesModel.swift */; };
 		B909F3E973BE793BCA0619EE /* SyncChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98694143DBF7C1033313F1E6 /* SyncChannel.swift */; };
+		BA849AF98A691F670729D8B2 /* PrivacyPolicy-ru.md in Resources */ = {isa = PBXBuildFile; fileRef = CEA5D093822E9CAD83CAB5D2 /* PrivacyPolicy-ru.md */; };
 		BA8CF4F2EA61417D73D1CC77 /* MacHistoryWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA410D4D979D88D298BC0DC8 /* MacHistoryWindow.swift */; };
 		BA94B89FED894E5CF6FDEE21 /* CameraPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB15E742A63332D0305C49E /* CameraPickerView.swift */; };
 		BAA555D488BE845D6C57530F /* SetupCameraCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF88341DAB707F61A4FC6CF /* SetupCameraCatalog.swift */; };
@@ -123,54 +130,34 @@
 		C18BCC23D5701721C47E8372 /* ConsoleReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA761F28A420093D2740492F /* ConsoleReadout.swift */; };
 		C1F46358A171EB6D52A34E73 /* MacHistoryPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C07E802F9907CDE6B691038 /* MacHistoryPlayer.swift */; };
 		C5E579EAF0078CCE60F09112 /* MinimizedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */; };
+		C6F8A14CEF96ACEB79F43A91 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38A20951026E43C64982CCD7 /* Localizable.xcstrings */; };
 		C764961258D6DDC76B304F40 /* CameraStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B514B872913BC77102D71 /* CameraStreamView.swift */; };
 		C804316A04BEBB357E0E132E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8E692C88D60C366CFA7A12 /* Theme.swift */; };
 		C82BDFE4BCBE7EE10DF9670E /* RecordingFinalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */; };
 		CB9F39E531F2E976136C552F /* CameraStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B514B872913BC77102D71 /* CameraStreamView.swift */; };
 		CD446916425199904EA7EED1 /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
 		D0F0581E479A071794513BA0 /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
+		D2C6638D3CFDD5DD0A793BE3 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		D44E1C57BE0D09AEAB895A98 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
 		D47A9084A840646B26305955 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
 		D4C2D61C102957390A2E8914 /* MacSettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F500699389109EAB319D6074 /* MacSettingsPanes.swift */; };
 		D5E78C91DD327F17A3BBE4A6 /* LiveSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C46490ED793F437A72C93B /* LiveSessionModel.swift */; };
+		DA7232AB2D7B28082EB2C53A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */; };
 		E4695D474DCA5428DA771A67 /* MacUIState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */; };
 		E49FAD1EB4BEAFC08E7433B6 /* XiaomiLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E517FC8AC9AA66F50082A583 /* XiaomiLoginView.swift */; };
+		E8DDE808864A3F09E660CA5F /* Acknowledgements.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5EC3D18A3329671AE524D52A /* Acknowledgements.txt */; };
 		EE8F9A22B055D6E21B00D8BC /* MacHistoryDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734F99F279AB3B2058745E72 /* MacHistoryDemo.swift */; };
 		EFEAE081094C1BD9607722C5 /* CameraModesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A9E12D5DF46378F7F1F746E /* CameraModesModel.swift */; };
 		F044697D60DFE32737B4DA27 /* SyncHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA209D43CA8963E3C71A7B14 /* SyncHost.swift */; };
 		F0452A6545C600FFAEB6043C /* MacPlanReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */; };
 		F6014534F7B547988B28A1EC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
+		F6FA3B31527FB5E795C47C41 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FA2645E678A49495282A8E8B /* InfoPlist.xcstrings */; };
 		F9CB40DEBE1D55181631B49F /* ClipCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653F818994AB2BEE3174F824 /* ClipCards.swift */; };
 		FBDACEDE4C8F4CBA44FA6058 /* CameraModeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE70FC878886DBB4722CDA4 /* CameraModeControls.swift */; };
 		FC811389A6642F8613388903 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34E57CF6328D1F36D2C8BB29 /* MacSettingsView.swift */; };
 		FE9E782764F4007B64EB8050 /* PlanInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */; };
 		FF09E0C7841537F847238D38 /* PlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01FB3F4D076095A1AA0D6891 /* PlanEditorView.swift */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		0EAC0B4103A8F501DDBEA457 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				5C3FC181E91A2E9122F794FA /* Go2RTC.xcframework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		2B65ABC81F6847E2AC9FB756 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				8812D682DC47ACA6F0064FC0 /* Go2RTC.xcframework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibrarySaver.swift; sourceTree = "<group>"; };
@@ -179,6 +166,7 @@
 		0FA7FDF9F3698A259C351CEE /* MacHistoryDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryDebug.swift; sourceTree = "<group>"; };
 		100B514B872913BC77102D71 /* CameraStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraStreamView.swift; sourceTree = "<group>"; };
 		10E8CD97BB4254A1CFFB61D3 /* WaitingPaws-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "WaitingPaws-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddedGo2RTC.swift; sourceTree = "<group>"; };
 		211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingFinalizer.swift; sourceTree = "<group>"; };
 		249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimizedPanel.swift; sourceTree = "<group>"; };
@@ -187,10 +175,12 @@
 		2A9E12D5DF46378F7F1F746E /* CameraModesModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraModesModel.swift; sourceTree = "<group>"; };
 		2AF487EFFE6D2FB22AA400BB /* MacHistoryProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryProgress.swift; sourceTree = "<group>"; };
 		2C07E802F9907CDE6B691038 /* MacHistoryPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryPlayer.swift; sourceTree = "<group>"; };
+		2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "PrivacyPolicy-en.md"; sourceTree = "<group>"; };
 		2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUI.swift; sourceTree = "<group>"; };
 		33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		34E57CF6328D1F36D2C8BB29 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
 		363380F0C18A871DAEBE09A7 /* SetupKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupKit.swift; sourceTree = "<group>"; };
+		38A20951026E43C64982CCD7 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		38EDD0FE37A4518887FC57D0 /* MacHistoryThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryThumbnail.swift; sourceTree = "<group>"; };
 		3F6FD9E1E7F9DFB08BC251BF /* MacHistoryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryModel.swift; sourceTree = "<group>"; };
 		40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaitingPawsApp.swift; sourceTree = "<group>"; };
@@ -202,6 +192,7 @@
 		5A6961CED894D4487A9C9977 /* ZoomableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableView.swift; sourceTree = "<group>"; };
 		5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTrainingPanel.swift; sourceTree = "<group>"; };
 		5E82FB404801D9CB6095FA0E /* LinkViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkViews.swift; sourceTree = "<group>"; };
+		5EC3D18A3329671AE524D52A /* Acknowledgements.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Acknowledgements.txt; sourceTree = "<group>"; };
 		60FBD37155574780BB2CE260 /* WaitingPaws-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WaitingPaws-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		653F818994AB2BEE3174F824 /* ClipCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipCards.swift; sourceTree = "<group>"; };
 		67C46490ED793F437A72C93B /* LiveSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionModel.swift; sourceTree = "<group>"; };
@@ -227,6 +218,7 @@
 		C420C79201591C3471BA3CC6 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
 		C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupServerSheet.swift; sourceTree = "<group>"; };
 		CA209D43CA8963E3C71A7B14 /* SyncHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncHost.swift; sourceTree = "<group>"; };
+		CEA5D093822E9CAD83CAB5D2 /* PrivacyPolicy-ru.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "PrivacyPolicy-ru.md"; sourceTree = "<group>"; };
 		D0BC4F2D63E281B08766B2C4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		D74383E2FDB68560D6A4A287 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -241,8 +233,10 @@
 		E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanTimelineEditor.swift; sourceTree = "<group>"; };
 		E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTimelineView.swift; sourceTree = "<group>"; };
 		EA427D094B66E7898F582153 /* MacPlanSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanSupport.swift; sourceTree = "<group>"; };
+		EB09408266FBD3CE9B6B8826 /* AboutViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutViews.swift; sourceTree = "<group>"; };
 		ECE70FC878886DBB4722CDA4 /* CameraModeControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraModeControls.swift; sourceTree = "<group>"; };
 		F500699389109EAB319D6074 /* MacSettingsPanes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsPanes.swift; sourceTree = "<group>"; };
+		FA2645E678A49495282A8E8B /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -286,7 +280,11 @@
 		1BCFD267A361E13663C4D871 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				75DAEF86217CAE96431469F4 /* Legal */,
 				D74383E2FDB68560D6A4A287 /* Assets.xcassets */,
+				FA2645E678A49495282A8E8B /* InfoPlist.xcstrings */,
+				38A20951026E43C64982CCD7 /* Localizable.xcstrings */,
+				1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -364,6 +362,16 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		75DAEF86217CAE96431469F4 /* Legal */ = {
+			isa = PBXGroup;
+			children = (
+				5EC3D18A3329671AE524D52A /* Acknowledgements.txt */,
+				2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */,
+				CEA5D093822E9CAD83CAB5D2 /* PrivacyPolicy-ru.md */,
+			);
+			path = Legal;
+			sourceTree = "<group>";
+		};
 		7AA82C6C1616C957CB6D8464 /* Components */ = {
 			isa = PBXGroup;
 			children = (
@@ -429,6 +437,7 @@
 		A4FAFFC76F1FD1C6869E95FD /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				A7064652DAFED558E42C0C7B /* About */,
 				1F4B6E0B1AD4A7552D768C99 /* Camera */,
 				004274BE608A9CB9453863DE /* History */,
 				4CDFDD3B780E05EF29FE4773 /* Onboarding */,
@@ -439,6 +448,14 @@
 				D0BC4F2D63E281B08766B2C4 /* RootView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		A7064652DAFED558E42C0C7B /* About */ = {
+			isa = PBXGroup;
+			children = (
+				EB09408266FBD3CE9B6B8826 /* AboutViews.swift */,
+			);
+			path = About;
 			sourceTree = "<group>";
 		};
 		AC63180C8C67764038A1B8FE /* History */ = {
@@ -545,7 +562,6 @@
 				0C77144847346DB229383764 /* Sources */,
 				8FD4AA1F9FB40E245784750C /* Resources */,
 				A182411F9E97E07FA0F5CF44 /* Frameworks */,
-				2B65ABC81F6847E2AC9FB756 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -566,7 +582,6 @@
 				D622AA2C63A7DA6C976F3850 /* Sources */,
 				78DE4587F8438B08B1BCF45D /* Resources */,
 				C2ACA15D0FC1B1CDA86C6AD5 /* Frameworks */,
-				0EAC0B4103A8F501DDBEA457 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -605,6 +620,7 @@
 			knownRegions = (
 				Base,
 				en,
+				ru,
 			);
 			mainGroup = 96685E8E14E4C926CBAF2E0E;
 			minimizedProjectReferenceProxies = 1;
@@ -627,7 +643,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E8DDE808864A3F09E660CA5F /* Acknowledgements.txt in Resources */,
 				994096C919CDEC6DFA01A7FD /* Assets.xcassets in Resources */,
+				F6FA3B31527FB5E795C47C41 /* InfoPlist.xcstrings in Resources */,
+				C6F8A14CEF96ACEB79F43A91 /* Localizable.xcstrings in Resources */,
+				DA7232AB2D7B28082EB2C53A /* PrivacyInfo.xcprivacy in Resources */,
+				D2C6638D3CFDD5DD0A793BE3 /* PrivacyPolicy-en.md in Resources */,
+				3141DF20BF7ABA82749E2B7C /* PrivacyPolicy-ru.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -635,7 +657,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				29AFE32CE6BEF6C2D45E65A1 /* Acknowledgements.txt in Resources */,
 				5480C571E543F9862F46C8B3 /* Assets.xcassets in Resources */,
+				ABB0ADCC009B8E4D2C7B5AFB /* InfoPlist.xcstrings in Resources */,
+				2DF245D25B64FD43DE4DDD79 /* Localizable.xcstrings in Resources */,
+				7AE4B75A5F0B841DA37CA766 /* PrivacyInfo.xcprivacy in Resources */,
+				33E75F82080284406C2D48A4 /* PrivacyPolicy-en.md in Resources */,
+				BA849AF98A691F670729D8B2 /* PrivacyPolicy-ru.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -646,6 +674,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D36C65C9CB5D362FA6219F3 /* AboutViews.swift in Sources */,
 				5F311EC55BB5C9535C42AF30 /* AppModel.swift in Sources */,
 				BC8954C82632662A2A250FF9 /* AppSettings.swift in Sources */,
 				ABB2844BE67E7FC1A37E44A0 /* CameraModeControls.swift in Sources */,
@@ -718,6 +747,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1CDF1781E48F963F97F7C8FD /* AboutViews.swift in Sources */,
 				4E2ACC2223573B440A9C6BCF /* AppModel.swift in Sources */,
 				A9E23A66DFAD9DC85EA65415 /* AppSettings.swift in Sources */,
 				FBDACEDE4C8F4CBA44FA6058 /* CameraModeControls.swift in Sources */,
@@ -806,7 +836,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = su.comrade.waitingpaws.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = su.comrade.waitingpaws;
 				PRODUCT_NAME = WaitingPaws;
 				SDKROOT = macosx;
 			};
@@ -869,6 +899,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -876,6 +907,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = minimal;
 				SWIFT_VERSION = 5.0;
@@ -899,7 +931,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = su.comrade.waitingpaws.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = su.comrade.waitingpaws;
 				PRODUCT_NAME = WaitingPaws;
 				SDKROOT = macosx;
 			};
@@ -956,12 +988,14 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = minimal;
 				SWIFT_VERSION = 5.0;
@@ -988,7 +1022,7 @@
 				PRODUCT_NAME = WaitingPaws;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -1012,7 +1046,7 @@
 				PRODUCT_NAME = WaitingPaws;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};

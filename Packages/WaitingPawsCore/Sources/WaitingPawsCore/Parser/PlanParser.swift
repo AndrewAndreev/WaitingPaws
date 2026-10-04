@@ -1,12 +1,13 @@
 import Foundation
 
-/// Parses the free-form training schedule text sent by the trainer.
+/// Parses the free-form training schedule text sent by the trainer, in Russian or English.
 ///
 /// Recognised lines:
-/// - header: `🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026`
-/// - exit:   `3 выход - 5 секунд`, `5 выход - 30 секунд ИЛИ до вставания`, `1 выход - 0 секунд (выйти и сразу вернуться)`
-/// - break:  `Перерыв 5 минут` (applies to the preceding exit)
-/// - default break inside the notes: `➡️ Все перерывы 2 минуты`
+/// - header: `🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026`, `Monday training - Anna - 10/05/2026`
+/// - exit:   `3 выход - 5 секунд`, `5 выход - 30 секунд ИЛИ до вставания`, `1 выход - 0 секунд (выйти и сразу вернуться)`,
+///           `Exit 3 - 5 seconds`, `Exit 5 - 30 seconds OR until the dog stands up`
+/// - break:  `Перерыв 5 минут`, `Break 5 minutes` (applies to the preceding exit)
+/// - default break inside the notes: `➡️ Все перерывы 2 минуты`, `All breaks 2 minutes`
 /// - anything else becomes a note.
 public enum PlanParser {
     public static func parse(_ text: String) -> TrainingPlan {
@@ -31,13 +32,12 @@ public enum PlanParser {
 
             let lower = line.lowercased()
 
-            if lower.hasPrefix("перерыв"), !lower.hasPrefix("перерывы"), !exits.isEmpty,
-               let duration = DurationText.sumOfUnits(in: line) {
+            if isExitBreak(lower), !exits.isEmpty, let duration = DurationText.sumOfUnits(in: line) {
                 exits[exits.count - 1].breakAfter = duration
                 continue
             }
 
-            if lower.contains("перерыв"), let duration = DurationText.sumOfUnits(in: line) {
+            if mentionsBreak(lower), let duration = DurationText.sumOfUnits(in: line) {
                 plan.defaultBreak = duration
                 defaultFromText = true
                 notes.append(line)
@@ -56,6 +56,18 @@ public enum PlanParser {
         plan.notes = notes
         normalizeBreaks(&plan, defaultFromText: defaultFromText)
         return plan
+    }
+
+    /// "Перерыв 5 минут" / "Break 5 minutes" right after an exit: that exit's own break.
+    public static func isExitBreak(_ lower: String) -> Bool {
+        (lower.hasPrefix("перерыв") && !lower.hasPrefix("перерывы"))
+            || ((lower.hasPrefix("break") || lower.hasPrefix("pause") || lower.hasPrefix("rest"))
+                && !lower.hasPrefix("breaks") && !lower.hasPrefix("pauses"))
+    }
+
+    /// "Все перерывы 2 минуты", "All breaks 2 minutes": a line about breaks in general.
+    public static func mentionsBreak(_ lower: String) -> Bool {
+        lower.contains("перерыв") || lower.range(of: #"\b(break|breaks|pause|pauses)\b"#, options: .regularExpression) != nil
     }
 
     /// Keeps per-exit breaks only where they differ from the plan's break, so changing that one
@@ -77,13 +89,13 @@ public enum PlanParser {
     // MARK: - Lines
 
     /// Removes leading emoji, bullets and arrows: "➡️ За 30 минут" → "За 30 минут".
-    static func stripDecorations(_ line: String) -> String {
+    public static func stripDecorations(_ line: String) -> String {
         let range = NSRange(line.startIndex..., in: line)
         let stripped = decorationRegex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
         return stripped.trimmingCharacters(in: .whitespaces)
     }
 
-    static func parseExit(_ line: String) -> PlannedExit? {
+    public static func parseExit(_ line: String) -> PlannedExit? {
         let range = NSRange(line.startIndex..., in: line)
         guard let match = exitRegex.firstMatch(in: line, range: range) else { return nil }
 
@@ -111,9 +123,10 @@ public enum PlanParser {
 
         let lower = rest.lowercased()
         let untilStanding = lower.contains("до вставания") || lower.contains("пока не встанет")
+            || (lower.contains("until") && lower.contains("stand"))
 
         let durationPart: String
-        if let orRange = lower.range(of: "или") {
+        if let orRange = lower.range(of: #"(^|\s)(или|or)(\s|$)"#, options: .regularExpression) {
             durationPart = String(rest[rest.startIndex..<orRange.lowerBound])
         } else {
             durationPart = rest
@@ -138,7 +151,7 @@ public enum PlanParser {
             .map { $0.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: "-"))) }
             .filter { !$0.isEmpty }
 
-        plan.title = parts.first ?? "Тренировка"
+        plan.title = parts.first ?? TrainingPlan.defaultTitle
         plan.trainers = parts.dropFirst().joined(separator: " · ")
     }
 
@@ -149,10 +162,15 @@ public enum PlanParser {
               let dayRange = Range(match.range(at: 1), in: text),
               let monthRange = Range(match.range(at: 2), in: text),
               let yearRange = Range(match.range(at: 3), in: text),
-              let day = Int(text[dayRange]),
-              let month = Int(text[monthRange]),
+              let first = Int(text[dayRange]),
+              let second = Int(text[monthRange]),
               var year = Int(text[yearRange]) else { return nil }
         if year < 100 { year += 2000 }
+        // 05.10.2026 is day.month; an English schedule from the US writes 10/05/2026. A number above 12
+        // settles it, otherwise the app language's region decides.
+        let monthFirst = first <= 12 && (second > 12 || (CoreLanguage.current == .en && localeWritesMonthFirst))
+        let day = monthFirst ? second : first
+        let month = monthFirst ? first : second
 
         var components = DateComponents()
         components.year = year
@@ -165,12 +183,19 @@ public enum PlanParser {
         return (date, fullRange)
     }
 
+    private static var localeWritesMonthFirst: Bool {
+        let format = DateFormatter.dateFormat(fromTemplate: "dMy", options: 0, locale: CoreLanguage.en.locale) ?? ""
+        guard let m = format.firstIndex(of: "M"), let d = format.firstIndex(of: "d") else { return false }
+        return m < d
+    }
+
     // MARK: - Regular expressions
 
     private static let decorationRegex = try! NSRegularExpression(pattern: #"^[^\p{L}\p{N}(]+"#)
 
+    /// "3 выход", "выход 3", "выход №3", "Exit 3", "3rd exit", "Departure #3", followed by the duration.
     private static let exitRegex = try! NSRegularExpression(
-        pattern: #"^(?:(\d+)\s*[-–—.)]?\s*выход\p{L}*|выход\p{L}*\s*(?:№\s*)?(\d+))\s*[-–—:]*\s*(.*)$"#,
+        pattern: #"^(?:(\d+)(?:st|nd|rd|th)?\s*[-–—.)]?\s*(?:выход|exit|departure)\p{L}*|(?:выход|exit|departure)\p{L}*\s*(?:№|#|no\.?)?\s*(\d+))\s*[-–—:]*\s*(.*)$"#,
         options: [.caseInsensitive]
     )
 

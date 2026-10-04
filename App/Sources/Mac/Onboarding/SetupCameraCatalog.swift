@@ -40,7 +40,7 @@ final class SetupCameraCatalog {
         var kind: String { SetupText.cameraKind(model: model) }
         /// Tooltip with what the readable text leaves out: the Mi Home model id and the address.
         var technicalDetails: String {
-            [model.map { "Модель Mi Home: \($0)" }, host.map { "IP \($0)" }].compactMap { $0 }.joined(separator: " · ")
+            [model.map { String(localized: "Модель Mi Home: \($0)") }, host.map { "IP \($0)" }].compactMap { $0 }.joined(separator: " · ")
         }
         /// What its still shows: the go2rtc stream, or a preview of the camera itself.
         var stillSource: SetupStillSource { streamName.map { .stream($0) } ?? .camera(self) }
@@ -216,7 +216,7 @@ final class SetupCameraCatalog {
         }
         switch choice {
         case .stream(let stream):
-            guard !Self.isPreviewStream(stream.name) else { throw SetupError("Это временный поток превью, его нельзя выбрать") }
+            guard !Self.isPreviewStream(stream.name) else { throw SetupError(String(localized: "Это временный поток превью, его нельзя выбрать")) }
             model.settings.cameraTitle = stream.name
             model.settings.streamName = stream.name
         case .camera(let camera):
@@ -246,7 +246,7 @@ final class SetupCameraCatalog {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let source = source.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !Self.isPreviewStream(name) else {
-            throw SetupError("Имена на «\(Self.previewPrefix)» заняты Waiting Paws")
+            throw SetupError(String(localized: "Имена на «\(Self.previewPrefix)» заняты Waiting Paws"))
         }
         let stream = Go2RTCStream(name: name, sources: [source])
         if SetupDemo.isOn || AppModel.isUIPreview {

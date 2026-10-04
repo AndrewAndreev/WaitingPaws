@@ -29,7 +29,7 @@ struct SessionHUD: View {
             Text(phaseTitle)
                 .font(Theme.display(22, weight: .bold))
             if session.attempt > 1, !isBreak {
-                Pill(text: "попытка \(session.attempt)", tint: Theme.warning)
+                Pill(text: String(localized: "попытка \(session.attempt)"), tint: Theme.warning)
             }
             if let exit = session.currentExit, exit.untilStanding, !isBreak {
                 Image(systemName: "figure.stand")
@@ -57,19 +57,19 @@ struct SessionHUD: View {
         switch session.phase {
         case .ready:
             text = DurationText.short(session.currentExit?.duration ?? 0)
-            caption = "план"
+            caption = String(localized: "план")
         case .leaving:
             text = DurationText.clock(session.elapsed(at: now))
-            caption = "к двери"
+            caption = String(localized: "к двери")
         case .away:
             text = overdue ? "+" + DurationText.clock(-(remaining ?? 0)) : DurationText.clock(remaining ?? 0)
-            caption = "за дверью"
+            caption = String(localized: "за дверью")
         case .breakTime(_, _, _, let next):
             text = overdue ? "+" + DurationText.clock(-(remaining ?? 0)) : DurationText.clock(remaining ?? 0)
             if let next, session.plan.exits.indices.contains(next) {
-                caption = "до выхода \(session.plan.exits[next].number)"
+                caption = String(localized: "до выхода \(session.plan.exits[next].number)")
             } else {
-                caption = "до конца"
+                caption = String(localized: "до конца")
             }
         case .finished:
             text = "✓"
@@ -96,36 +96,36 @@ struct SessionHUD: View {
     private var actions: some View {
         switch session.phase {
         case .ready:
-            BigButton(title: "Начать выход", systemImage: "figure.walk") {
+            BigButton(title: String(localized: "Начать выход"), systemImage: "figure.walk") {
                 session.startExit()
             }
         case .leaving:
-            BigButton(title: "За дверью", systemImage: "door.left.hand.closed") {
+            BigButton(title: String(localized: "За дверью"), systemImage: "door.left.hand.closed") {
                 session.markBehindDoor()
             }
             HStack(spacing: 8) {
-                BigButton(title: "Вернулись", systemImage: "checkmark", style: .secondary, height: 44) {
+                BigButton(title: String(localized: "Вернулись"), systemImage: "checkmark", style: .secondary, height: 44) {
                     session.endExit()
                 }
-                BigButton(title: "Сброс", systemImage: "arrow.uturn.backward", style: .destructive, height: 44) {
+                BigButton(title: String(localized: "Сброс"), systemImage: "arrow.uturn.backward", style: .destructive, height: 44) {
                     session.resetExit()
                 }
             }
         case .away:
-            BigButton(title: "Вернулись", systemImage: "checkmark", style: .success) {
+            BigButton(title: String(localized: "Вернулись"), systemImage: "checkmark", style: .success) {
                 session.endExit()
             }
-            BigButton(title: "Фальстарт", systemImage: "arrow.uturn.backward", style: .destructive, height: 44) {
+            BigButton(title: String(localized: "Фальстарт"), systemImage: "arrow.uturn.backward", style: .destructive, height: 44) {
                 session.resetExit()
             }
         case .breakTime(_, _, _, let next):
             if let next, session.plan.exits.indices.contains(next) {
-                BigButton(title: "Начать выход \(session.plan.exits[next].number)", systemImage: "figure.walk") {
+                BigButton(title: String(localized: "Начать выход \(session.plan.exits[next].number)"), systemImage: "figure.walk") {
                     session.startExit()
                 }
-                BigButton(title: "Завершить", systemImage: "flag.checkered", style: .secondary, height: 44, action: onFinish)
+                BigButton(title: String(localized: "Завершить"), systemImage: "flag.checkered", style: .secondary, height: 44, action: onFinish)
             } else {
-                BigButton(title: "Завершить", systemImage: "flag.checkered", action: onFinish)
+                BigButton(title: String(localized: "Завершить"), systemImage: "flag.checkered", action: onFinish)
             }
         case .finished:
             EmptyView()
@@ -142,11 +142,11 @@ struct SessionHUD: View {
     private var phaseTitle: String {
         switch session.phase {
         case .ready, .leaving, .away:
-            return "Выход \(session.currentExit?.number ?? 0)"
+            return String(localized: "Выход \(session.currentExit?.number ?? 0)")
         case .breakTime(_, _, _, let next):
-            return next == nil ? "Последний перерыв" : "Перерыв"
+            return next == nil ? String(localized: "Последний перерыв") : String(localized: "Перерыв")
         case .finished:
-            return "Готово"
+            return String(localized: "Готово")
         }
     }
 }
@@ -234,9 +234,9 @@ struct SummaryCard: View {
                     .foregroundStyle(.white.opacity(0.6))
 
                 HStack(spacing: 18) {
-                    stat("\(record.completedExits)/\(record.plan.exits.count)", "выходов")
-                    stat("\(record.falseStarts)", "фальстартов")
-                    stat(DurationText.clock(record.duration), "длительность")
+                    stat("\(record.completedExits)/\(record.plan.exits.count)", String(localized: "выходов"))
+                    stat("\(record.falseStarts)", String(localized: "фальстартов"))
+                    stat(DurationText.clock(record.duration), String(localized: "длительность"))
                 }
 
                 if let name = record.recordingFileName {
@@ -262,9 +262,9 @@ struct SummaryCard: View {
                             .background(Theme.control, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .buttonStyle(PressableButtonStyle())
-                    BigButton(title: "История", systemImage: "clock.arrow.circlepath", style: .secondary, height: 44, action: onHistory)
+                    BigButton(title: String(localized: "История"), systemImage: "clock.arrow.circlepath", style: .secondary, height: 44, action: onHistory)
                 }
-                BigButton(title: "Новая тренировка", systemImage: "plus", action: onClose)
+                BigButton(title: String(localized: "Новая тренировка"), systemImage: "plus", action: onClose)
             }
         }
     }

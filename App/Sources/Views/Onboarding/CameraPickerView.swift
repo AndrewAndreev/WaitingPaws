@@ -8,6 +8,8 @@ struct CameraPickerView: View {
     @Environment(\.dismiss) private var dismiss
     var accountID: String?
     var region: XiaomiRegion
+    /// First launch only: nothing to pick, go on with the timer alone.
+    var onContinueWithoutCamera: (() -> Void)? = nil
     var onDone: (String) -> Void
 
     @State private var cameras: [Go2RTCSource] = []
@@ -25,9 +27,13 @@ struct CameraPickerView: View {
                 ContentUnavailableView {
                     Label(camerasError == nil ? "Камер не найдено" : "Не удалось получить камеры", systemImage: "video.slash")
                 } description: {
-                    Text(camerasError ?? "В аккаунте Mi Home нет камер, а в go2rtc нет потоков.")
+                    Text(camerasError ?? String(localized: "В аккаунте Mi Home нет камер, а в go2rtc нет потоков."))
                 } actions: {
                     Button("Обновить") { Task { await loadAll() } }
+                    if let onContinueWithoutCamera {
+                        Button("Продолжить без камеры", action: onContinueWithoutCamera)
+                            .buttonStyle(.borderedProminent)
+                    }
                 }
             } else {
                 list
@@ -176,7 +182,7 @@ struct CameraPickerView: View {
             streams.append(Go2RTCStream(name: name, sources: [camera.url]))
             select(name: name, title: camera.name)
         } catch {
-            model.errorMessage = "Не удалось добавить поток: \(error.localizedDescription)"
+            model.errorMessage = String(localized: "Не удалось добавить поток: \(error.localizedDescription)")
         }
     }
 

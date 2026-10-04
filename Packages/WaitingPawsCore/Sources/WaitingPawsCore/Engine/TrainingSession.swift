@@ -202,14 +202,15 @@ public final class TrainingSession {
             index = next
             let actual = now.timeIntervalSince(since)
             let early = actual < duration
-            log(.breakEnded, at: now, detail: early ? "досрочно, \(DurationText.clock(actual)) из \(DurationText.short(duration))" : nil)
+            log(.breakEnded, at: now, detail: early ? tr("досрочно, \(DurationText.clock(actual)) из \(DurationText.short(duration))",
+                                                     "early, \(DurationText.clock(actual)) of \(DurationText.short(duration))") : nil)
         default:
             return
         }
         closeBreak(at: now)
         phase = .leaving(exitIndex: index, since: now)
         log(.exitStarted, at: now, exitNumber: plan.exits[index].number, attempt: attempt,
-            detail: "план \(plan.exits[index].durationDescription)")
+            detail: tr("план \(plan.exits[index].durationDescription)", "plan \(plan.exits[index].durationDescription)"))
     }
 
     /// "За дверью": the door is closed, the countdown starts.
@@ -244,7 +245,8 @@ public final class TrainingSession {
         closeBreak(at: now)
         phase = .finished
         finishedAt = now
-        log(.sessionFinished, at: now, detail: "выходов \(completedExitsCount) из \(plan.exits.count)")
+        log(.sessionFinished, at: now, detail: tr("выходов \(completedExitsCount) из \(plan.exits.count)",
+                                                  "exits \(completedExitsCount) of \(plan.exits.count)"))
     }
 
     /// Called periodically. Ends breaks whose time has run out.
@@ -307,7 +309,8 @@ public final class TrainingSession {
                                 plannedBreak: plannedBreak)
         results.append(result)
 
-        let awayText = "за дверью \(DurationText.clock(result.awayDuration)), всего \(DurationText.clock(result.totalDuration))"
+        let awayText = tr("за дверью \(DurationText.clock(result.awayDuration)), всего \(DurationText.clock(result.totalDuration))",
+                          "outside \(DurationText.clock(result.awayDuration)), total \(DurationText.clock(result.totalDuration))")
         log(falseStart ? .falseStart : .exitEnded, at: now, exitNumber: exit.number, attempt: attempt, detail: awayText)
 
         let nextIndex: Int?
@@ -321,7 +324,8 @@ public final class TrainingSession {
 
         currentBreakStart = now
         phase = .breakTime(afterExitIndex: index, since: now, duration: plannedBreak, nextExitIndex: nextIndex)
-        log(.breakStarted, at: now, detail: "план \(DurationText.short(plannedBreak))" + (nextIndex == nil ? ", последний" : ""))
+        log(.breakStarted, at: now, detail: tr("план \(DurationText.short(plannedBreak))", "plan \(DurationText.short(plannedBreak))")
+            + (nextIndex == nil ? tr(", последний", ", last") : ""))
     }
 
     private func closeBreak(at now: Date) {

@@ -5,10 +5,12 @@ import Foundation
 /// Mac's camera and a mirror of its session and sends button presses back.
 ///
 /// Transport: WebSocket over TCP (Network.framework on both ends), one JSON `SyncMessage` per text frame.
+/// From the key exchange on, the frames are encrypted (`SyncCrypto`).
 public enum SyncProtocol {
     /// Bonjour service type advertised by the Mac.
     public static let serviceType = "_waitingpaws._tcp"
-    public static let version = 1
+    /// 2: key exchange, proof of pairing and encrypted messages (v1 sent everything in the clear).
+    public static let version = 2
 
     /// TXT record keys of the advertised service.
     public enum TXT {
@@ -75,25 +77,24 @@ public struct SyncHostInfo: Equatable, Hashable {
     }
 }
 
-/// iPhone → Mac: who is asking. `token` is the one the Mac handed out last time (skips the approval).
+/// iPhone → Mac: who is asking, with the iPhone's key for this connection (Curve25519, raw).
 public struct SyncHello: Codable, Equatable {
     public var deviceID: String
     public var deviceName: String
-    public var token: String?
+    public var publicKey: Data
     public var protocolVersion: Int
 
-    public init(deviceID: String, deviceName: String, token: String?, protocolVersion: Int = SyncProtocol.version) {
+    public init(deviceID: String, deviceName: String, publicKey: Data, protocolVersion: Int = SyncProtocol.version) {
         self.deviceID = deviceID
         self.deviceName = deviceName
-        self.token = token
+        self.publicKey = publicKey
         self.protocolVersion = protocolVersion
     }
 }
 
-/// Mac → iPhone after approval: a token for next time and access to the Mac's go2rtc.
+/// Mac → iPhone after approval (sealed): access to the Mac's go2rtc. Sent again when the password changes.
 public struct SyncWelcome: Codable, Equatable {
     public var hostName: String
-    public var token: String
     /// go2rtc API port on the Mac (LAN, Basic auth).
     public var go2rtcPort: Int
     public var username: String
@@ -101,9 +102,8 @@ public struct SyncWelcome: Codable, Equatable {
     /// The Mac's IPv4 addresses, in case the connection's own address is not usable for HTTP.
     public var addresses: [String]
 
-    public init(hostName: String, token: String, go2rtcPort: Int, username: String, password: String, addresses: [String]) {
+    public init(hostName: String, go2rtcPort: Int, username: String, password: String, addresses: [String]) {
         self.hostName = hostName
-        self.token = token
         self.go2rtcPort = go2rtcPort
         self.username = username
         self.password = password
@@ -123,9 +123,12 @@ public struct SyncState: Codable, Equatable {
     public var lastRecord: TrainingRecord?
     /// A schedule pasted on either device and waiting for «Начать» (nil while a session runs).
     public var pendingPlan: TrainingPlan?
+    /// The camera's `xiaomi://` source, for its settings on the iPhone (the Mac's go2rtc config, which also
+    /// holds the Xiaomi tokens, is closed to the LAN).
+    public var cameraSource: String?
 
     public init(session: TrainingSession.Snapshot?, recordingSince: Date?, cameraReady: Bool, cameraTitle: String,
-                streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil) {
+                streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil, cameraSource: String? = nil) {
         self.session = session
         self.recordingSince = recordingSince
         self.cameraReady = cameraReady
@@ -133,6 +136,7 @@ public struct SyncState: Codable, Equatable {
         self.streamName = streamName
         self.lastRecord = lastRecord
         self.pendingPlan = pendingPlan
+        self.cameraSource = cameraSource
     }
 }
 
@@ -149,12 +153,26 @@ public enum SyncCommand: Codable, Equatable {
 
 public enum SyncMessage: Codable, Equatable {
     case hello(SyncHello)
+    /// Mac → iPhone: the Mac's key for this connection.
+    case challenge(Data)
+    /// iPhone → Mac: proof of an earlier pairing with this Mac, nil for a new iPhone.
+    case proof(Data?)
     /// The Mac shows an approval prompt; wait.
     case pending
     case rejected(String)
+    /// An encrypted `welcome`, `state` or `command` (see `SyncCipher`).
+    case sealed(Data)
     case welcome(SyncWelcome)
     case state(SyncState)
     case command(SyncCommand)
+
+    /// Messages that only ever travel sealed.
+    public var needsSealing: Bool {
+        switch self {
+        case .welcome, .state, .command: return true
+        default: return false
+        }
+    }
 
     public func encoded() throws -> Data {
         try SyncProtocol.encoder().encode(self)

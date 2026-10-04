@@ -1,9 +1,11 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// First launch: go2rtc server → Xiaomi account → camera.
+/// First launch: go2rtc server → Xiaomi account → camera (or on without a camera). Also shown as a sheet
+/// («Подключить камеру…») after starting without one: then `onClose` is set.
 struct OnboardingFlow: View {
     @Environment(AppModel.self) private var model
+    var onClose: (() -> Void)? = nil
     @State private var path: [Step] = []
 
     enum Step: Hashable {
@@ -22,9 +24,16 @@ struct OnboardingFlow: View {
                     case .xiaomi:
                         xiaomiStep
                     case .camera(let accountID):
-                        CameraPickerView(accountID: accountID, region: model.settings.xiaomiRegion) { _ in
-                            // settings.isConfigured flips → RootView shows the main screen
+                        CameraPickerView(accountID: accountID, region: model.settings.xiaomiRegion,
+                                         onContinueWithoutCamera: onClose == nil ? continueWithoutCamera : nil) { _ in
+                            // settings.isConfigured flips → RootView shows the main screen (or the sheet closes)
+                            onClose?()
                         }
+                    }
+                }
+                .toolbar {
+                    if let onClose {
+                        ToolbarItem(placement: .cancellationAction) { Button("Закрыть", action: onClose) }
                     }
                 }
         }
@@ -33,14 +42,14 @@ struct OnboardingFlow: View {
         // A Mac on the same network already has the camera signed in: offer it before the Xiaomi login,
         // and rejoin a Mac this iPhone was linked to before without asking.
         .safeAreaInset(edge: .bottom) {
-            if path.isEmpty {
+            if path.isEmpty, onClose == nil {
                 MacLinkCard()
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
             }
         }
         .onChange(of: model.syncClient.bestMac, initial: true) { _, mac in
-            if let mac, model.syncClient.status == .idle, model.syncClient.isPaired(mac) {
+            if onClose == nil, let mac, model.syncClient.status == .idle, model.syncClient.isPaired(mac) {
                 model.syncClient.connect(to: mac)
             }
         }
@@ -59,13 +68,18 @@ struct OnboardingFlow: View {
 
     private var xiaomiStep: some View {
         XiaomiLoginView(
-            showsHero: model.settings.connectionMode == .embedded,
+            showsHero: model.settings.connectionMode == .embedded && onClose == nil,
             onDone: { accountID in path.append(.camera(accountID: accountID)) },
             onSkip: { path.append(.camera(accountID: nil)) },
             onUseExternalServer: {
                 model.settings.connectionMode = .external
                 path.append(.server)
-            })
+            },
+            onContinueWithoutCamera: onClose == nil ? continueWithoutCamera : nil)
+    }
+
+    private func continueWithoutCamera() {
+        model.settings.withoutCamera = true
     }
 }
 
@@ -115,7 +129,7 @@ struct ServerSetupView: View {
                                 .textFieldStyle(.roundedBorder)
                         }
                         statusView
-                        BigButton(title: status == .checking ? "Проверяем…" : "Проверить подключение",
+                        BigButton(title: status == .checking ? String(localized: "Проверяем…") : String(localized: "Проверить подключение"),
                                   systemImage: "antenna.radiowaves.left.and.right", style: .secondary, height: 48) {
                             Task { await check() }
                         }
@@ -123,7 +137,7 @@ struct ServerSetupView: View {
                     }
                 }
 
-                BigButton(title: "Далее: аккаунт Xiaomi", systemImage: "arrow.right") {
+                BigButton(title: String(localized: "Далее: аккаунт Xiaomi"), systemImage: "arrow.right") {
                     save()
                     onContinue()
                 }

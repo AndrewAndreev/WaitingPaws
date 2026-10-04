@@ -27,11 +27,11 @@ struct MacSummarySheet: View {
             }
 
             HStack(spacing: 0) {
-                stat("\(record.completedExits) из \(record.plan.exits.count)", "выходов")
+                stat(String(localized: "\(record.completedExits) из \(record.plan.exits.count)"), String(localized: "выходов"))
                 Divider().frame(height: 34)
-                stat("\(record.falseStarts)", "фальстартов", tint: record.falseStarts > 0 ? MacPalette.orange : nil)
+                stat("\(record.falseStarts)", String(localized: "фальстартов"), tint: record.falseStarts > 0 ? MacPalette.orange : nil)
                 Divider().frame(height: 34)
-                stat(DurationText.clock(longest), "дольше всего за дверью")
+                stat(DurationText.clock(longest), String(localized: "дольше всего за дверью"))
             }
             .padding(.vertical, 10)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -40,9 +40,9 @@ struct MacSummarySheet: View {
                 HStack {
                     Text("План и факт").font(.headline)
                     Spacer()
-                    legend(MacPalette.pink.opacity(0.35), "план")
-                    legend(MacPalette.green, "за дверью")
-                    legend(MacPalette.orange, "фальстарт")
+                    legend(MacPalette.pink.opacity(0.35), String(localized: "план"))
+                    legend(MacPalette.green, String(localized: "за дверью"))
+                    legend(MacPalette.orange, String(localized: "фальстарт"))
                 }
                 Chart {
                     ForEach(record.plan.exits) { exit in
@@ -129,7 +129,7 @@ struct MacSummarySheet: View {
         if let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize {
             parts.append(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
         }
-        if model.finalizingFileNames.contains(url.lastPathComponent) { parts.append("готовится…") }
+        if model.finalizingFileNames.contains(url.lastPathComponent) { parts.append(String(localized: "готовится…")) }
         return parts.joined(separator: " · ")
     }
 

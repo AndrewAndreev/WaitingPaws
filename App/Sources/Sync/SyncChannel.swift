@@ -4,11 +4,14 @@ import WaitingPawsCore
 
 /// One JSON `SyncMessage` per WebSocket text frame over an `NWConnection` (used on both ends).
 /// Everything runs on the main queue: the traffic is a few small messages a second.
+/// Once the key exchange set `cipher`, welcome / state / command messages go sealed; they are never sent or
+/// accepted in the clear, and a frame that does not open closes the connection.
 @MainActor
 final class SyncChannel {
     let connection: NWConnection
     var onMessage: ((SyncMessage) -> Void)?
     var onStateChange: ((NWConnection.State) -> Void)?
+    var cipher: SyncCipher?
 
     init(connection: NWConnection) {
         self.connection = connection
@@ -32,7 +35,16 @@ final class SyncChannel {
     }
 
     func send(_ message: SyncMessage) {
-        guard let data = try? message.encoded() else { return }
+        var wire = message
+        if message.needsSealing {
+            guard var cipher, let sealed = try? cipher.seal(message) else {
+                print("[sync] not sent: no key yet")
+                return
+            }
+            self.cipher = cipher
+            wire = .sealed(sealed)
+        }
+        guard let data = try? wire.encoded() else { return }
         let metadata = NWProtocolWebSocket.Metadata(opcode: .text)
         let context = NWConnection.ContentContext(identifier: "message", metadata: [metadata])
         connection.send(content: data, contentContext: context, isComplete: true, completion: .contentProcessed { error in
@@ -53,15 +65,33 @@ final class SyncChannel {
         return text.split(separator: "%").first.map(String.init)
     }
 
+    private func deliver(_ message: SyncMessage) throws {
+        switch message {
+        case .sealed(let data):
+            guard var cipher else { throw CocoaError(.coderReadCorrupt) }
+            let inner = try cipher.open(data)
+            self.cipher = cipher
+            guard inner.needsSealing else { return }
+            onMessage?(inner)
+        case let message where message.needsSealing:
+            // Never in the clear: someone on the network is trying to skip the key exchange.
+            throw CocoaError(.coderReadCorrupt)
+        default:
+            onMessage?(message)
+        }
+    }
+
     private func receive() {
         connection.receiveMessage { [weak self] data, _, _, error in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if let data, !data.isEmpty {
                     do {
-                        self.onMessage?(try SyncMessage.decode(data))
+                        try self.deliver(SyncMessage.decode(data))
                     } catch {
-                        print("[sync] bad message: \(error)")
+                        print("[sync] bad message, closing: \(error)")
+                        self.connection.cancel()
+                        return
                     }
                 }
                 if error == nil { self.receive() }

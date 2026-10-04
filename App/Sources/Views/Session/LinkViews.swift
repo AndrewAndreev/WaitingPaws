@@ -101,7 +101,7 @@ struct MacLinkCard: View {
                         .font(.system(.footnote, design: .rounded))
                         .foregroundStyle(Theme.warning)
                 }
-                BigButton(title: "Синхронизировать тренировку с Mac",
+                BigButton(title: String(localized: "Синхронизировать тренировку с Mac"),
                           systemImage: "arrow.triangle.2.circlepath") {
                     model.syncClient.connect(to: mac)
                 }
@@ -110,10 +110,13 @@ struct MacLinkCard: View {
     }
 
     private func subtitle(_ mac: SyncClient.DiscoveredMac) -> String {
-        var parts = ["«\(mac.info.name)»"]
-        if !mac.info.cameraTitle.isEmpty { parts.append("камера «\(mac.info.cameraTitle)»" + (mac.info.cameraReady ? "" : " не в сети")) }
-        if mac.info.sessionRunning, let exit = mac.info.currentExit { parts.append("выход \(exit)") }
-        if !mac.info.sessionRunning { parts.append("вход в Xiaomi уже выполнен на Mac") }
+        var parts = [String(localized: "«\(mac.info.name)»")]
+        if !mac.info.cameraTitle.isEmpty {
+            parts.append(mac.info.cameraReady ? String(localized: "камера «\(mac.info.cameraTitle)»")
+                                              : String(localized: "камера «\(mac.info.cameraTitle)» не в сети"))
+        }
+        if mac.info.sessionRunning, let exit = mac.info.currentExit { parts.append(String(localized: "выход \(exit)")) }
+        if !mac.info.sessionRunning { parts.append(String(localized: "вход в Xiaomi уже выполнен на Mac")) }
         return parts.joined(separator: " · ")
     }
 }
@@ -148,14 +151,14 @@ struct MacPendingPlanCard: View {
                         .font(.system(.subheadline, design: .rounded).monospacedDigit())
                         .foregroundStyle(.white.opacity(0.6))
                 }
-                BigButton(title: "Начать тренировку", systemImage: "play.fill") {
+                BigButton(title: String(localized: "Начать тренировку"), systemImage: "play.fill") {
                     var final = plan
                     final.renumber()
                     model.startSession(with: final)
                 }
                 HStack(spacing: 8) {
-                    BigButton(title: "Изменить", systemImage: "slider.horizontal.3", style: .secondary, height: 44, action: onEdit)
-                    BigButton(title: "Другое", systemImage: "doc.on.clipboard", style: .secondary, height: 44, action: onPaste)
+                    BigButton(title: String(localized: "Изменить"), systemImage: "slider.horizontal.3", style: .secondary, height: 44, action: onEdit)
+                    BigButton(title: String(localized: "Другое"), systemImage: "doc.on.clipboard", style: .secondary, height: 44, action: onPaste)
                 }
             }
         }
@@ -164,7 +167,7 @@ struct MacPendingPlanCard: View {
     private var summary: String {
         var parts: [String] = []
         if !plan.trainers.isEmpty { parts.append(plan.trainers) }
-        parts.append("\(plan.exits.count) вых.")
+        parts.append(pluralText(plan.exits.count, ru: ("вых.", "вых.", "вых."), en: ("exit", "exits")))
         parts.append("≈ \(DurationText.short((plan.estimatedDuration / 60).rounded() * 60))")
         return parts.joined(separator: " · ")
     }

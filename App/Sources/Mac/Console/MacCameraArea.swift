@@ -6,6 +6,7 @@ import WaitingPawsCore
 struct MacCameraArea: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui
+    @Environment(\.openWindow) private var openWindow
     var reloadToken: Int
 
     var body: some View {
@@ -44,7 +45,9 @@ struct MacCameraArea: View {
 
     @ViewBuilder
     private var stream: some View {
-        if model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
+        if !model.settings.isConfigured {
+            noCamera
+        } else if model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
             CameraPlaceholder(text: embeddedStatusText)
         } else if let server = model.settings.server, !model.settings.streamName.isEmpty {
             ZoomableView(zoom: ui.cameraZoom) {
@@ -52,19 +55,32 @@ struct MacCameraArea: View {
                                  stream: model.settings.streamName,
                                  mode: model.settings.playerMode,
                                  audioEnabled: model.settings.audioEnabled,
-                                 reloadToken: reloadToken,
+                                 reloadToken: reloadToken + model.playerGeneration,
                                  onVideoSize: { size in model.videoSize = size })
             }
         } else {
-            CameraPlaceholder(text: "Камера не выбрана")
+            CameraPlaceholder(text: String(localized: "Камера не выбрана"))
         }
+    }
+
+    /// Started without a camera: the timer, schedule and log work; a camera can be added any time.
+    private var noCamera: some View {
+        ContentUnavailableView {
+            Label("Без камеры", systemImage: "pawprint.fill")
+        } description: {
+            Text("Таймеры, расписание и лог работают. С камерой вы увидите собаку, пока вы за дверью, и сможете записывать видео.")
+        } actions: {
+            Button("Подключить камеру…") { openWindow(id: "welcome") }
+                .buttonStyle(.borderedProminent)
+        }
+        .foregroundStyle(.white.opacity(0.85))
     }
 
     private var embeddedStatusText: String {
         switch model.embedded.status {
-        case .idle, .starting: return "Запускаем go2rtc…"
+        case .idle, .starting: return String(localized: "Запускаем go2rtc…")
         case .failed(let message): return message
-        case .unavailable: return "Встроенный go2rtc не собран"
+        case .unavailable: return String(localized: "Встроенный go2rtc не собран")
         case .running: return ""
         }
     }

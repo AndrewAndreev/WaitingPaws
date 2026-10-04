@@ -8,6 +8,8 @@ struct SettingsView: View {
     @State private var checkStatus = ""
     @State private var showXiaomi = false
     @State private var showCameraPicker = false
+    @State private var confirmSignOut = false
+    @State private var signingOut = false
 
     var body: some View {
         @Bindable var settings = model.settings
@@ -23,8 +25,6 @@ struct SettingsView: View {
                     }
                     if settings.connectionMode == .embedded {
                         LabeledContent("Состояние", value: embeddedStatusText)
-                        LabeledContent("Конфиг", value: EmbeddedGo2RTC.configURL.path)
-                            .font(.footnote)
                     } else {
                         TextField("Адрес", text: $settings.serverURLString, prompt: Text("http://192.168.1.10:1984"))
                             .plainInput()
@@ -45,11 +45,28 @@ struct SettingsView: View {
                          : "Отдельный сервер go2rtc в сети: подходит, если нужен доступ не из дома или постоянная запись.")
                 }
 
-                Section("Камера") {
+                Section {
                     LabeledContent("Поток", value: settings.cameraDisplayName.isEmpty ? "—" : settings.cameraDisplayName)
                     LabeledContent("Аккаунт Xiaomi", value: settings.xiaomiAccountID.isEmpty ? "—" : "ID \(settings.xiaomiAccountID) · \(settings.xiaomiRegion.rawValue)")
                     Button("Выбрать камеру…") { showCameraPicker = true }
-                    Button("Войти в другой аккаунт Xiaomi…") { showXiaomi = true }
+                    if settings.xiaomiAccountID.isEmpty {
+                        Button("Войти в аккаунт Xiaomi…") { showXiaomi = true }
+                    } else {
+                        Button("Войти в другой аккаунт Xiaomi…") { showXiaomi = true }
+                        Button(role: .destructive) { confirmSignOut = true } label: {
+                            HStack {
+                                Text("Выйти из аккаунта Xiaomi")
+                                if signingOut { Spacer(); ProgressView() }
+                            }
+                        }
+                        .disabled(signingOut)
+                    }
+                } header: {
+                    Text("Камера")
+                } footer: {
+                    if !settings.xiaomiAccountID.isEmpty {
+                        Text("После выхода ключ доступа Xiaomi удаляется с устройства, а камеры этого аккаунта — из приложения.")
+                    }
                 }
 
                 Section {
@@ -99,8 +116,6 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    LabeledContent("Папка", value: model.store.rootDirectory.path)
-                        .font(.footnote)
                     #if os(macOS)
                     Button("Показать в Finder") { Finder.reveal(model.store.rootDirectory) }
                     #else
@@ -109,6 +124,14 @@ struct SettingsView: View {
                     #endif
                 } header: {
                     Text("Файлы")
+                }
+
+                Section {
+                    LabeledContent("Версия", value: AppInfo.version)
+                    NavigationLink("Политика конфиденциальности") { PrivacyPolicyView() }
+                    NavigationLink("Лицензии открытого ПО") { LicensesView() }
+                } header: {
+                    Text("О приложении")
                 }
             }
             .formStyle(.grouped)
@@ -131,6 +154,19 @@ struct SettingsView: View {
                 .environment(model)
                 .sheetFrame(width: 520, height: 620)
             }
+            .confirmationDialog("Выйти из аккаунта Xiaomi?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                Button("Выйти", role: .destructive) {
+                    let account = settings.xiaomiAccountID
+                    signingOut = true
+                    Task {
+                        await model.signOutOfXiaomi(accountID: account)
+                        signingOut = false
+                    }
+                }
+                Button("Отмена", role: .cancel) {}
+            } message: {
+                Text("Камеры этого аккаунта перестанут показываться. Войти снова можно в любой момент.")
+            }
             .sheet(isPresented: $showCameraPicker) {
                 NavigationStack {
                     CameraPickerView(accountID: settings.xiaomiAccountID.isEmpty ? nil : settings.xiaomiAccountID,
@@ -146,23 +182,23 @@ struct SettingsView: View {
 
     private var embeddedStatusText: String {
         switch model.embedded.status {
-        case .idle: return "не запущен"
-        case .starting: return "запускается…"
-        case .running(let version): return "работает, go2rtc \(version)"
-        case .failed(let message): return "ошибка: \(message)"
-        case .unavailable: return "фреймворк не собран"
+        case .idle: return String(localized: "не запущен")
+        case .starting: return String(localized: "запускается…")
+        case .running(let version): return String(localized: "работает, go2rtc \(version)")
+        case .failed(let message): return String(localized: "ошибка: \(message)")
+        case .unavailable: return String(localized: "фреймворк не собран")
         }
     }
 
     private func check() async {
         guard let client = model.client else {
-            checkStatus = "Некорректный адрес"
+            checkStatus = String(localized: "Некорректный адрес")
             return
         }
         checkStatus = "…"
         do {
             let version = try await client.version()
-            checkStatus = version.isEmpty ? "Сервер отвечает" : "go2rtc \(version)"
+            checkStatus = version.isEmpty ? String(localized: "Сервер отвечает") : "go2rtc \(version)"
         } catch {
             checkStatus = error.localizedDescription
         }

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>ru</string>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Waiting Paws</string>
 	<key>CFBundleExecutable</key>
@@ -14,6 +14,7 @@
 	<string>6.0</string>
 	<key>CFBundleLocalizations</key>
 	<array>
+		<string>en</string>
 		<string>ru</string>
 	</array>
 	<key>CFBundleName</key>
@@ -30,8 +31,6 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
@@ -40,9 +39,9 @@
 		<string>_waitingpaws._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Доступ к локальной сети нужен для подключения к камерам, серверу go2rtc и к Mac с Waiting Paws.</string>
+	<string>Waiting Paws connects to your camera and to Waiting Paws on your other devices over the local network.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Чтобы сохранять записи тренировок в Фото.</string>
+	<string>Waiting Paws saves training videos to your Photos library.</string>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchScreen</key>
@@ -50,13 +49,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>

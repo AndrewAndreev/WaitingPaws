@@ -58,7 +58,7 @@ enum SetupServerState: Equatable {
             case .unavailable: return .unavailable
             }
         case .external:
-            let host = model.settings.server.map { Self.hostText($0.baseURL) } ?? "адрес не указан"
+            let host = model.settings.server.map { Self.hostText($0.baseURL) } ?? String(localized: "адрес не указан")
             if case .failed(let message) = probe?.phase { return .externalFailed(host: host, message: message) }
             return .external(host: host, version: probe?.serverVersion)
         }
@@ -143,21 +143,7 @@ enum SetupText {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = info?["CFBundleVersion"] as? String ?? "1"
-        return "Версия \(version) (\(build))"
-    }
-
-    /// Russian plural: 1 камера, 2 камеры, 5 камер.
-    static func plural(_ count: Int, _ one: String, _ few: String, _ many: String) -> String {
-        let mod10 = count % 10, mod100 = count % 100
-        let word: String
-        if mod10 == 1 && mod100 != 11 {
-            word = one
-        } else if (2...4).contains(mod10) && !(12...14).contains(mod100) {
-            word = few
-        } else {
-            word = many
-        }
-        return "\(count) \(word)"
+        return String(localized: "Версия \(version) (\(build))")
     }
 
     /// "1920×1080". H.265 streams report the coded height (1088 for 1080p): within a macroblock of 16:9 it is rounded.
@@ -173,12 +159,12 @@ enum SetupText {
 
     static func regionTitle(_ region: XiaomiRegion) -> String {
         switch region {
-        case .ru: return "Россия"
-        case .de: return "Европа"
-        case .cn: return "Китай"
-        case .us: return "США"
-        case .sg: return "Сингапур"
-        case .i2: return "Индия"
+        case .ru: return String(localized: "Россия")
+        case .de: return String(localized: "Европа")
+        case .cn: return String(localized: "Китай")
+        case .us: return String(localized: "США")
+        case .sg: return String(localized: "Сингапур")
+        case .i2: return String(localized: "Индия")
         }
     }
 
@@ -186,9 +172,11 @@ enum SetupText {
     /// Only makers that are certain; anything else is «Камера Mi Home». The raw id is for tooltips only.
     static func cameraKind(model: String?) -> String {
         let parts = (model ?? "").lowercased().split(separator: ".").map(String.init)
-        let device = parts.count > 1 && parts[1] == "cateye" ? "Видеоглазок" : "Камера"
-        guard let vendor = parts.first.flatMap({ cameraVendors[$0] }) else { return "\(device) Mi Home" }
-        return "\(device) \(vendor)"
+        let peephole = parts.count > 1 && parts[1] == "cateye"
+        guard let vendor = parts.first.flatMap({ cameraVendors[$0] }) else {
+            return peephole ? String(localized: "Видеоглазок Mi Home") : String(localized: "Камера Mi Home")
+        }
+        return peephole ? String(localized: "Видеоглазок \(vendor)") : String(localized: "Камера \(vendor)")
     }
 
     private static let cameraVendors = [

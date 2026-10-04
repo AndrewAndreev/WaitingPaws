@@ -2,6 +2,12 @@ import XCTest
 @testable import WaitingPawsCore
 
 final class TrainingSessionTests: XCTestCase {
+    /// These tests check the Russian texts (the default language of the app's first users).
+    override func setUp() {
+        super.setUp()
+        CoreLanguage.current = .ru
+    }
+
     private var now = Date(timeIntervalSince1970: 1_000_000)
 
     private func makeSession() -> TrainingSession {

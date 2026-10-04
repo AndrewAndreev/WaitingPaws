@@ -71,7 +71,7 @@ struct MinimizedPanelHook: NSViewRepresentable {
             let visible = screen.visibleFrame
             let frame = CGRect(x: visible.midX - size.width / 2, y: visible.minY + 24, width: size.width, height: size.height)
             let panel = StripPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-            panel.title = "Waiting Paws — панель"
+            panel.title = String(localized: "Waiting Paws — панель")
             panel.level = .floating
             panel.isOpaque = false
             panel.backgroundColor = .clear

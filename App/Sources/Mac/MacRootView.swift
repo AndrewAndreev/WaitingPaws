@@ -13,7 +13,7 @@ struct MacMainWindow: View {
         // `--preview-unconfigured`: behave as on a first launch (UI checks next to a configured copy).
         if CommandLine.arguments.contains("--preview-unconfigured") { return false }
         #endif
-        return model.settings.isConfigured || WaitingPawsApp.previewConfigured
+        return model.settings.isSetUp || WaitingPawsApp.previewConfigured
     }
 
     var body: some View {
@@ -23,7 +23,7 @@ struct MacMainWindow: View {
             ContentUnavailableView {
                 Label("Камера не подключена", systemImage: "video.slash")
             } description: {
-                Text("Войдите в Xiaomi или выберите поток go2rtc в окне приветствия.")
+                Text("Войдите в Xiaomi, выберите поток go2rtc или продолжите без камеры в окне приветствия.")
             } actions: {
                 Button("Подключить камеру…") { openWindow(id: "welcome") }
                     .buttonStyle(.borderedProminent)

@@ -45,12 +45,21 @@ final class AppModel {
     /// Photos save failures per file name, shown inline next to that file only.
     private(set) var photosSaveErrors: [String: String] = [:]
 
+    /// Bumped when every player must reconnect (go2rtc's API came back after the app was suspended).
+    var playerGeneration = 0
+    /// The selected camera's `xiaomi://` source, once read (quality, camera settings on a linked iPhone).
+    private(set) var currentXiaomiSource: String?
+
     private var currentRecordingURL: URL?
     private var tickTask: Task<Void, Never>?
     private var awakeActivity: NSObjectProtocol?
+    #if os(iOS)
+    @ObservationIgnored private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    @ObservationIgnored private var recordingCutByBackground = false
+    #endif
 
     init() {
-        LogMirror.start(directory: Self.storeRoot.appendingPathComponent("Logs", isDirectory: true))
+        LogMirror.start(directory: Self.logsDirectory)
         reloadHistory()
         startEmbeddedIfNeeded()
         setUpSync()
@@ -176,6 +185,15 @@ final class AppModel {
             : SessionStore.defaultRoot
     }
 
+    /// The app's own log (stdout/stderr, go2rtc): `Library/Caches/Logs`, not among the user's files and not
+    /// in backups.
+    static var logsDirectory: URL {
+        if isUIPreview { return storeRoot.appendingPathComponent("Logs", isDirectory: true) }
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return caches.appendingPathComponent("Logs", isDirectory: true)
+    }
+
     var client: Go2RTCClient? {
         settings.server.map { Go2RTCClient(server: $0) }
     }
@@ -223,7 +241,8 @@ final class AppModel {
         self.session = session
         lastRecord = nil
         if !plan.rawText.isEmpty, !Self.isUIPreview, !Self.isDemoLaunch { settings.lastPlanText = plan.rawText }
-        if settings.autoRecord, !Self.isUIPreview { startRecording() }
+        // Without a camera the training is the timer and the log only.
+        if settings.autoRecord, settings.isConfigured, !Self.isUIPreview { startRecording() }
         keepAwake(true)
         startTicking()
     }
@@ -273,7 +292,7 @@ final class AppModel {
         do {
             try store.save(record)
         } catch {
-            errorMessage = "Не удалось сохранить лог: \(error.localizedDescription)"
+            errorMessage = String(localized: "Не удалось сохранить лог: \(error.localizedDescription)")
         }
         history.insert(record, at: 0)
         lastRecord = record
@@ -302,11 +321,11 @@ final class AppModel {
     private func startRecordingWhenReady() async {
         await waitForServer()
         guard let client, !settings.streamName.isEmpty else {
-            errorMessage = "Камера не настроена"
+            errorMessage = String(localized: "Камера не настроена")
             return
         }
         guard !recorder.isRecording else { return }
-        let plan = session?.plan ?? TrainingPlan(title: "Запись")
+        let plan = session?.plan ?? TrainingPlan(title: String(localized: "Запись"))
         let fileURL = store.newRecordingURL(for: plan)
         do {
             try recorder.start(url: client.mp4URL(stream: settings.streamName),
@@ -322,7 +341,7 @@ final class AppModel {
             }
             print("[rec] started \(fileURL.lastPathComponent)")
         } catch {
-            errorMessage = "Не удалось начать запись: \(error.localizedDescription)"
+            errorMessage = String(localized: "Не удалось начать запись: \(error.localizedDescription)")
         }
     }
 
@@ -422,7 +441,7 @@ final class AppModel {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .auto: return "Авто"
+            case .auto: return String(localized: "Авто")
             case .sd: return "SD"
             case .hd: return "HD"
             case .uhd: return "2K"
@@ -452,8 +471,10 @@ final class AppModel {
         guard let client, let source = await xiaomiSource(client: client),
               let components = URLComponents(string: source) else {
             xiaomiQuality = nil
+            currentXiaomiSource = nil
             return
         }
+        currentXiaomiSource = source
         let raw = components.queryItems?.first { $0.name == "subtype" }?.value
         switch raw {
         case nil, "hd": xiaomiQuality = .hd
@@ -466,7 +487,7 @@ final class AppModel {
     func setXiaomiQuality(_ quality: XiaomiQuality) async {
         guard let client else { return }
         guard let source = await xiaomiSource(client: client), var components = URLComponents(string: source) else {
-            errorMessage = "Не удалось сменить качество: go2rtc не отдал адрес камеры"
+            errorMessage = String(localized: "Не удалось сменить качество: go2rtc не отдал адрес камеры")
             return
         }
         var items = (components.queryItems ?? []).filter { $0.name != "subtype" }
@@ -476,9 +497,10 @@ final class AppModel {
         do {
             try await client.addStream(name: settings.streamName, source: updated)
             xiaomiQuality = quality
+            currentXiaomiSource = updated
             print("[camera] quality \(quality.rawValue): \(updated)")
         } catch {
-            errorMessage = "Не удалось сменить качество: \(error.localizedDescription)"
+            errorMessage = String(localized: "Не удалось сменить качество: \(error.localizedDescription)")
         }
     }
 
@@ -490,8 +512,57 @@ final class AppModel {
             await cameraModes.load(server: nil, source: nil)
             return
         }
-        let source = await xiaomiSource(client: Go2RTCClient(server: server), stream: activeStreamName)
+        let source: String?
+        #if os(iOS)
+        // The Mac's go2rtc config (with the Xiaomi tokens) is closed to the LAN: the Mac sends the source itself.
+        source = isLinkedToMac ? syncClient.state?.cameraSource
+            : await xiaomiSource(client: Go2RTCClient(server: server), stream: activeStreamName)
+        #else
+        source = await xiaomiSource(client: Go2RTCClient(server: server), stream: activeStreamName)
+        #endif
         await cameraModes.load(server: server, source: source)
+    }
+
+    /// What the camera settings depend on (a `.task` id).
+    var cameraModesKey: String {
+        #if os(iOS)
+        if isLinkedToMac { return "mac|\(activeStreamName)|\(syncClient.state?.cameraSource ?? "")" }
+        #endif
+        return "own|\(activeStreamName)"
+    }
+
+    // MARK: - Xiaomi account
+
+    /// «Выйти из аккаунта Xiaomi»: go2rtc forgets the account's token, its cameras are removed from go2rtc, and
+    /// when one of them was selected the app goes on without a camera.
+    func signOutOfXiaomi(accountID: String) async {
+        await waitForServer()
+        guard let client else { return }
+        do {
+            try await client.xiaomiLogout(accountID: accountID)
+        } catch {
+            errorMessage = String(localized: "Не удалось выйти из аккаунта Xiaomi: \(error.localizedDescription)")
+            return
+        }
+        print("[xiaomi] signed out of account \(accountID)")
+        let prefix = "xiaomi://\(accountID):"
+        let names = ((try? await client.streams()) ?? []).map(\.name)
+        let sources = (try? await client.configuredSources(streams: names)) ?? [:]
+        var removedSelected = currentXiaomiSource?.hasPrefix(prefix) == true
+        for (name, list) in sources where list.contains(where: { $0.hasPrefix(prefix) }) {
+            try? await client.deleteStream(name: name)
+            if name == settings.streamName { removedSelected = true }
+        }
+        if settings.xiaomiAccountID == accountID { settings.xiaomiAccountID = "" }
+        if removedSelected {
+            settings.streamName = ""
+            settings.cameraTitle = ""
+            settings.withoutCamera = true
+            currentXiaomiSource = nil
+            xiaomiQuality = nil
+            videoSize = nil
+            await cameraModes.load(server: nil, source: nil)
+        }
     }
 
     // MARK: - History
@@ -545,6 +616,46 @@ final class AppModel {
         lastClip = nil
     }
 
+    // MARK: - App lifecycle
+
+    #if os(iOS)
+    /// The app went to the background. iOS suspends it soon (there is no background mode for recording a
+    /// camera), so a recording gets the usual ~30 s of grace and is then closed cleanly; it goes on when the
+    /// app is back. The training itself keeps time by the clock and catches up on return.
+    func didEnterBackground() {
+        guard recorder.isRecording, !isLinkedToMac, backgroundTask == .invalid else { return }
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Recording") { [weak self] in
+            MainActor.assumeIsolated { self?.cutRecordingForBackground() }
+        }
+    }
+
+    private func cutRecordingForBackground() {
+        if recorder.isRecording {
+            recordingCutByBackground = true
+            stopRecording(deleteFile: false)
+            print("[rec] stopped: the app stayed in the background")
+        }
+        endBackgroundTask()
+    }
+
+    private func endBackgroundTask() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        backgroundTask = .invalid
+    }
+
+    /// Back in the foreground: reopen go2rtc's API if iOS closed it, and resume a recording cut by the suspension.
+    func didBecomeActive() async {
+        endBackgroundTask()
+        if await embedded.recoverIfNeeded() { playerGeneration += 1 }
+        guard recordingCutByBackground else { return }
+        recordingCutByBackground = false
+        startRecording()
+        linkNotice = LinkNotice(title: String(localized: "Запись продолжена"),
+                                detail: String(localized: "Пока приложение было свёрнуто, видео не записывалось. Начало записи — в истории."))
+    }
+    #endif
+
     // MARK: - Screen
 
     private func keepAwake(_ on: Bool) {
@@ -595,7 +706,7 @@ extension AppModel {
 
     var activeCameraName: String {
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.cameraTitle ?? "Камера Mac" }
+        if syncClient.isConnected { return syncClient.state?.cameraTitle ?? String(localized: "Камера Mac") }
         #endif
         return settings.cameraDisplayName
     }
@@ -658,7 +769,8 @@ extension AppModel {
                       cameraTitle: settings.cameraDisplayName,
                       streamName: settings.streamName,
                       lastRecord: lastRecord,
-                      pendingPlan: session == nil ? pendingPlan : nil)
+                      pendingPlan: session == nil ? pendingPlan : nil,
+                      cameraSource: currentXiaomiSource)
         }
         syncHost.commandHandler = { [unowned self] command in applyRemote(command) }
         syncHost.accessProvider = { [unowned self] in
@@ -667,6 +779,11 @@ extension AppModel {
         }
         syncHost.onPairingRequest = { [unowned self] request in MacPairingPrompt.present(request, host: syncHost) }
         syncHost.onPairingCancelled = { request in MacPairingPrompt.cancel(request) }
+        // A forgotten iPhone must not keep watching the camera with the password it was given.
+        syncHost.onDeviceForgotten = { [unowned self] in
+            embedded.setLANPassword(settings.rotateLanPassword())
+            syncHost.refreshAccess()
+        }
         if settings.shareWithIPhone { syncHost.start() }
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }
@@ -755,8 +872,8 @@ extension AppModel {
         }
         let macName = syncClient.hostName ?? "Mac"
         if previous == nil {
-            linkNotice = LinkNotice(title: "Синхронизировано с «\(macName)»",
-                                    detail: "Тренировка, запись и лог — на Mac, шаги общие.")
+            linkNotice = LinkNotice(title: String(localized: "Синхронизировано с «\(macName)»"),
+                                    detail: String(localized: "Тренировка, запись и лог — на Mac, шаги общие."))
         }
         // Recording without a training on the Mac: same full-screen view here, the screen stays on.
         if state.session == nil {
@@ -766,7 +883,8 @@ extension AppModel {
                 keepAwake(true)
             } else if state.recordingSince == nil, previous?.recordingSince != nil, previous?.session == nil {
                 keepAwake(false)
-                linkNotice = LinkNotice(title: "Видео сохранено на Mac", detail: "Оно в истории на «\(macName)».")
+                linkNotice = LinkNotice(title: String(localized: "Видео сохранено на Mac"),
+                                        detail: String(localized: "Оно в истории на «\(macName)»."))
             }
         }
         if let snapshot = state.session {

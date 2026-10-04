@@ -29,7 +29,7 @@ struct ConsoleReadout: View {
             Spacer(minLength: 0)
             HStack {
                 Button { ui.confirmFinish = true } label: {
-                    ShortcutLabel(title: "Завершить", symbol: "flag.checkered", key: "⌘.")
+                    ShortcutLabel(title: String(localized: "Завершить"), symbol: "flag.checkered", key: "⌘.")
                 }
                 Spacer()
                 Text("Пробел — следующий шаг")
@@ -50,7 +50,7 @@ struct ConsoleReadout: View {
                     Text("ПОПЫТКА \(live.session.attempt)").foregroundStyle(MacPalette.orange)
                 }
                 Spacer()
-                PhaseBadge(text: live.overdue ? "Сверх плана" : live.phaseName, tint: live.tint)
+                PhaseBadge(text: live.overdue ? String(localized: "Сверх плана") : live.phaseName, tint: live.tint)
             }
             .font(.system(size: 11, weight: .bold))
             .tracking(1.2)
@@ -71,12 +71,12 @@ struct ConsoleReadout: View {
 
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
                 GridRow {
-                    stat("\(live.session.completedExitsCount) из \(live.plan.exits.count)", "выходов")
-                    stat("\(live.session.falseStartsCount)", "фальстартов", tint: live.session.falseStartsCount > 0 ? MacPalette.orange : nil)
+                    stat(String(localized: "\(live.session.completedExitsCount) из \(live.plan.exits.count)"), String(localized: "выходов"))
+                    stat("\(live.session.falseStartsCount)", String(localized: "фальстартов"), tint: live.session.falseStartsCount > 0 ? MacPalette.orange : nil)
                 }
                 GridRow {
-                    stat(DurationText.clock(live.now.timeIntervalSince(live.session.startedAt)), "идёт тренировка")
-                    stat("≈ \(MacFormat.time.string(from: live.eta))", "конец по плану")
+                    stat(DurationText.clock(live.now.timeIntervalSince(live.session.startedAt)), String(localized: "идёт тренировка"))
+                    stat("≈ \(MacFormat.time.string(from: live.eta))", String(localized: "конец по плану"))
                 }
             }
             .padding(.top, 8)
@@ -90,12 +90,13 @@ struct ConsoleReadout: View {
     }
 
     private var detail: String {
+        let plan = live.session.currentExit?.durationDescription ?? ""
         switch live.phase {
         case .ready: return "\(live.timerCaption) · \(live.subtitle)"
-        case .leaving: return "идём к двери · план \(live.session.currentExit?.durationDescription ?? "")"
+        case .leaving: return String(localized: "идём к двери · план \(plan)")
         case .away:
             let away = DurationText.clock(live.session.elapsed(at: live.now))
-            return "за дверью \(away) · план \(live.session.currentExit?.durationDescription ?? "")"
+            return String(localized: "за дверью \(away) · план \(plan)")
         case .breakTime: return "\(live.timerCaption) · \(live.subtitle)"
         case .finished: return live.subtitle
         }
@@ -116,23 +117,25 @@ struct ConsoleReadout: View {
         let canDoor: Bool = { if case .leaving = phase { return true }; return false }()
         let canReturn = phase.isOutside
         let primary: Int = canDoor ? 1 : (live.isAway ? 2 : (canStart ? 0 : -1))
+        let space = String(localized: "Пробел")
+        let startTitle = String(localized: "Начать выход")
         return Grid(horizontalSpacing: 8, verticalSpacing: 8) {
             GridRow {
-                step(live.isBreak ? (live.primary?.title ?? "Начать выход") : "Начать выход", "figure.walk",
-                     key: primary == 0 ? "Пробел" : nil, enabled: canStart, prominent: primary == 0) {
+                step(live.isBreak ? (live.primary?.title ?? startTitle) : startTitle, "figure.walk",
+                     key: primary == 0 ? space : nil, enabled: canStart, prominent: primary == 0) {
                     live.session.startExit()
                 }
-                step("За дверью", "door.left.hand.closed", key: primary == 1 ? "Пробел" : nil,
+                step(String(localized: "За дверью"), "door.left.hand.closed", key: primary == 1 ? space : nil,
                      enabled: canDoor, prominent: primary == 1) {
                     live.session.markBehindDoor()
                 }
             }
             GridRow {
-                step("Вернулись", "checkmark", key: primary == 2 ? "Пробел" : nil, enabled: canReturn,
+                step(String(localized: "Вернулись"), "checkmark", key: primary == 2 ? space : nil, enabled: canReturn,
                      prominent: primary == 2, tint: MacPalette.green) {
                     live.session.endExit()
                 }
-                step("Фальстарт", "arrow.uturn.backward", key: canReturn ? "⌫" : nil, enabled: canReturn, prominent: false) {
+                step(String(localized: "Фальстарт"), "arrow.uturn.backward", key: canReturn ? "⌫" : nil, enabled: canReturn, prominent: false) {
                     live.session.resetExit()
                 }
             }
@@ -232,7 +235,7 @@ struct ClipRecordingHUD: View {
                     Text("Видео появится в истории").font(.system(size: 11)).foregroundStyle(.secondary)
                 }
                 Button { model.stopRecording(deleteFile: false) } label: {
-                    ShortcutLabel(title: "Остановить", symbol: "stop.fill", key: "⌘R", prominent: true)
+                    ShortcutLabel(title: String(localized: "Остановить"), symbol: "stop.fill", key: "⌘R", prominent: true)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(MacPalette.red)

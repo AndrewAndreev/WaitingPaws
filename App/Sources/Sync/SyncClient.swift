@@ -37,6 +37,11 @@ final class SyncClient {
 
     @ObservationIgnored private var browser: NWBrowser?
     @ObservationIgnored private var channel: SyncChannel?
+    /// This connection's key exchange (see `SyncCrypto`).
+    @ObservationIgnored private var privateKey = SyncCrypto.newKey()
+    @ObservationIgnored private var handshake: SyncCrypto.Handshake?
+    /// No valid pairing secret on this connection: the Mac asked for «Разрешить», a new secret comes with welcome.
+    @ObservationIgnored private var freshPairing = false
     /// Reconnect to this Mac when it shows up again (set after a successful connection, cleared by "Отключиться").
     @ObservationIgnored private var autoReconnectName: String?
 
@@ -59,7 +64,7 @@ final class SyncClient {
             .first
     }
 
-    /// A Mac this iPhone has joined before (a token is stored for it).
+    /// A Mac this iPhone has joined before (a pairing secret is stored for it).
     func isPaired(_ mac: DiscoveredMac) -> Bool {
         KeychainStore.get(Self.tokenKey(mac.info.name)) != nil
     }
@@ -114,17 +119,20 @@ final class SyncClient {
         channel?.cancel()
         let channel = SyncChannel(connection: NWConnection(to: mac.endpoint, using: SyncChannel.parameters()))
         self.channel = channel
+        privateKey = SyncCrypto.newKey()
+        handshake = nil
+        freshPairing = false
         status = .connecting(mac.info.name)
         channel.onStateChange = { [weak self, weak channel] state in
             guard let self, let channel, channel === self.channel else { return }
             switch state {
             case .ready:
                 channel.send(.hello(SyncHello(deviceID: Self.deviceID, deviceName: UIDevice.current.name,
-                                              token: KeychainStore.get(Self.tokenKey(mac.info.name)))))
+                                              publicKey: self.privateKey.publicKey.rawRepresentation)))
             case .failed(let error):
-                self.lost("Нет связи с Mac: \(error.localizedDescription)")
+                self.lost(String(localized: "Нет связи с Mac: \(error.localizedDescription)"))
             case .cancelled:
-                if self.isConnected { self.lost("Mac отключился") }
+                if self.isConnected || self.isBusy { self.lost(String(localized: "Mac отключился")) }
             default:
                 break
             }
@@ -150,7 +158,25 @@ final class SyncClient {
 
     private func handle(_ message: SyncMessage, macName: String, channel: SyncChannel) {
         switch message {
+        case .challenge(let macKey):
+            guard handshake == nil else { return }
+            let phoneKey = privateKey.publicKey.rawRepresentation
+            guard let handshake = try? SyncCrypto.Handshake(privateKey: privateKey, peerKey: macKey, phoneKey: phoneKey,
+                                                            macKey: macKey, deviceID: Self.deviceID) else {
+                lost(String(localized: "Нет связи с Mac"))
+                return
+            }
+            self.handshake = handshake
+            let secret = KeychainStore.get(Self.tokenKey(macName))
+            freshPairing = secret == nil
+            channel.cipher = handshake.cipher(isMac: false, pairingSecret: secret)
+            channel.send(.proof(secret.map { handshake.proof(pairingSecret: $0) }))
         case .pending:
+            // The Mac did not recognise us (new iPhone, or forgotten there): keys without the old secret.
+            if let handshake, !freshPairing {
+                freshPairing = true
+                channel.cipher = handshake.cipher(isMac: false, pairingSecret: nil)
+            }
             status = .waitingApproval(macName)
         case .rejected(let reason):
             autoReconnectName = nil
@@ -158,7 +184,10 @@ final class SyncClient {
             self.channel = nil
             reset(to: .failed(reason))
         case .welcome(let welcome):
-            KeychainStore.set(welcome.token, for: Self.tokenKey(macName))
+            if freshPairing, let handshake {
+                KeychainStore.set(handshake.newPairingSecret(), for: Self.tokenKey(macName))
+                freshPairing = false
+            }
             let address = channel.remoteIPv4 ?? welcome.addresses.first ?? "127.0.0.1"
             server = URL(string: "http://\(address):\(welcome.go2rtcPort)/").map {
                 Go2RTCServer(baseURL: $0, username: welcome.username, password: welcome.password)
@@ -170,7 +199,7 @@ final class SyncClient {
         case .state(let state):
             self.state = state
             onState?(state)
-        case .hello, .command:
+        case .hello, .proof, .sealed, .command:
             break
         }
     }

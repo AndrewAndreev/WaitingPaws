@@ -16,7 +16,7 @@ WINLIST=/tmp/wp-winlist
 [[ -x $WINLIST ]] || swiftc -O Tools/winlist.swift -o $WINLIST
 EXTRA=()
 if [[ -n "$DEMO_CAMERA" ]]; then
-  CONTAINER_TMP=~/Library/Containers/su.comrade.waitingpaws.mac/Data/tmp
+  CONTAINER_TMP=~/Library/Containers/su.comrade.waitingpaws/Data/tmp
   mkdir -p $CONTAINER_TMP && cp Tools/demo-camera.jpg $CONTAINER_TMP/demo-camera.jpg
   EXTRA=(--demo-camera=$CONTAINER_TMP/demo-camera.jpg)
 fi

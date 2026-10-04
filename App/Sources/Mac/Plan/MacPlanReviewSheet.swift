@@ -79,18 +79,17 @@ struct MacPlanReviewSheet: View {
     /// «9 выходов, 2 перерыва, правило фальстарта и 3 заметки. Проверьте…».
     private func summary(_ lines: [MacPlanTextLine]) -> String {
         guard !plan.rawText.isEmpty else {
-            return "\(MacPlanFormat.exits(plan.exits.count)). Проверьте длительности и перерывы перед стартом."
+            return String(localized: "\(MacPlanFormat.exits(plan.exits.count)). Проверьте длительности и перерывы перед стартом.")
         }
         var parts = [MacPlanFormat.exits(lines.filter(\.isExit).count)]
         let breaks = lines.filter(\.isBreak).count
-        if breaks > 0 { parts.append(MacPlanFormat.plural(breaks, "перерыв", "перерыва", "перерывов")) }
-        if lines.contains(where: { $0.kind == .rule }) { parts.append("правило фальстарта") }
+        if breaks > 0 { parts.append(MacPlanFormat.breaks(breaks)) }
+        if lines.contains(where: { $0.kind == .rule }) { parts.append(String(localized: "правило фальстарта")) }
         let notes = lines.filter { $0.kind == .note }.count
-        if notes > 0 { parts.append(MacPlanFormat.plural(notes, "заметка", "заметки", "заметок")) }
-        let list = parts.count > 1
-            ? parts.dropLast().joined(separator: ", ") + " и " + parts.last!
-            : parts[0]
-        return "\(list.capitalizedFirst). Проверьте и поправьте, если что-то прочитано не так."
+        if notes > 0 { parts.append(MacPlanFormat.notes(notes)) }
+        // «a, b и c» / "a, b, and c".
+        let list = parts.formatted(.list(type: .and).locale(CoreLanguage.current.locale))
+        return String(localized: "\(list.capitalizedFirst). Проверьте и поправьте, если что-то прочитано не так.")
     }
 
     // MARK: Bottom bar
@@ -123,7 +122,7 @@ struct MacPlanReviewSheet: View {
                     .controlSize(.large)
                     .help("Оставить расписание на пульте и поправить его на таймлайне · Esc")
                 Button(action: onStart) {
-                    ShortcutLabel(title: "Начать тренировку", symbol: "play.fill", key: "⌘↩", prominent: true)
+                    ShortcutLabel(title: String(localized: "Начать тренировку"), symbol: "play.fill", key: "⌘↩", prominent: true)
                         .padding(.horizontal, 2)
                 }
                 .buttonStyle(.borderedProminent)
@@ -237,12 +236,12 @@ private struct PlanSourcePane: View {
 
     private func help(_ line: MacPlanTextLine) -> String {
         switch line.kind {
-        case .header: "Заголовок: название, тренеры и дата"
-        case .exit(let number, _): "Выход \(number) — щёлкните, чтобы выбрать его в таблице"
-        case .ownBreak: "Свой перерыв после выхода выше"
-        case .defaultBreak: "Перерыв между выходами"
-        case .rule: "Правило фальстарта"
-        case .note: "Заметка тренера"
+        case .header: String(localized: "Заголовок: название, тренеры и дата")
+        case .exit(let number, _): String(localized: "Выход \(number) — щёлкните, чтобы выбрать его в таблице")
+        case .ownBreak: String(localized: "Свой перерыв после выхода выше")
+        case .defaultBreak: String(localized: "Перерыв между выходами")
+        case .rule: String(localized: "Правило фальстарта")
+        case .note: String(localized: "Заметка тренера")
         case .blank: ""
         }
     }
@@ -254,16 +253,16 @@ private struct PlanSourcePane: View {
         return HStack(spacing: 14) {
             legendItem(MacPlanTint.exit(scheme), MacPlanFormat.exits(exits))
             if breaks > 0 {
-                legendItem(MacPlanTint.pause(scheme), MacPlanFormat.plural(breaks, "перерыв", "перерыва", "перерывов"))
+                legendItem(MacPlanTint.pause(scheme), MacPlanFormat.breaks(breaks))
             }
             if lines.contains(where: { $0.kind == .rule }) {
-                legendItem(MacPlanTint.rule(scheme), "фальстарт")
+                legendItem(MacPlanTint.rule(scheme), String(localized: "фальстарт"))
             }
             if notes > 0 {
-                legendItem(.secondary.opacity(0.6), MacPlanFormat.plural(notes, "заметка", "заметки", "заметок"), hollow: true)
+                legendItem(.secondary.opacity(0.6), MacPlanFormat.notes(notes), hollow: true)
             }
             Spacer(minLength: 0)
-            Text(MacPlanFormat.plural(lines.count, "строка", "строки", "строк")).foregroundStyle(.tertiary)
+            Text(pluralText(lines.count, ru: ("строка", "строки", "строк"), en: ("line", "lines"))).foregroundStyle(.tertiary)
         }
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
@@ -348,14 +347,21 @@ private struct PlanTablePane: View {
                     }
                     .disabled(ownBreaks.isEmpty)
                     .fixedSize()
-                    .help(ownBreaks.isEmpty
-                          ? "У всех выходов общий перерыв"
-                          : "Убрать свои перерывы: " + ownBreaks.map { "после \($0.number)-го — \(DurationText.short($0.breakAfter ?? 0))" }.joined(separator: ", "))
+                    .help(resetBreaksHelp)
                 }
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    /// «Убрать свои перерывы: после 3-го — 5 мин, …».
+    private var resetBreaksHelp: String {
+        guard !ownBreaks.isEmpty else { return String(localized: "У всех выходов общий перерыв") }
+        let list = ownBreaks
+            .map { String(localized: "после \($0.number)-го — \(DurationText.short($0.breakAfter ?? 0))") }
+            .joined(separator: ", ")
+        return String(localized: "Убрать свои перерывы: \(list)")
     }
 
     /// Break between exits: presets, the current value if it is not one of them, «Другой…».
@@ -375,7 +381,7 @@ private struct PlanTablePane: View {
         .help("Перерыв между выходами — у всех, кроме выходов со своим перерывом")
         .popover(isPresented: $customDefaultBreak, arrowEdge: .bottom) {
             MacDurationEditor(value: Binding(get: { plan.defaultBreak }, set: { setDefaultBreak($0 ?? plan.defaultBreak) }),
-                              title: "Перерыв между выходами", presets: MacPlanFormat.breakPresets,
+                              title: String(localized: "Перерыв между выходами"), presets: MacPlanFormat.breakPresets,
                               tint: MacPalette.blue) { customDefaultBreak = false }
         }
     }
@@ -493,24 +499,24 @@ private struct PlanTablePane: View {
     private var tableFooter: some View {
         let hasSelection = !selection.isEmpty
         return HStack(spacing: 2) {
-            footerButton("plus", "Добавить выход · ⌘N") { add(after: selection) }
+            footerButton("plus", String(localized: "Добавить выход · ⌘N")) { add(after: selection) }
                 .keyboardShortcut("n", modifiers: .command)
-            footerButton("minus", "Удалить выбранные · ⌫") { deleteSelected() }
+            footerButton("minus", String(localized: "Удалить выбранные · ⌫")) { deleteSelected() }
                 .disabled(!hasSelection || plan.exits.count <= selection.count)
             Divider().frame(height: 14).padding(.horizontal, 6)
-            footerButton("plus.square.on.square", "Дублировать · ⌘D") { duplicate(selection) }
+            footerButton("plus.square.on.square", String(localized: "Дублировать · ⌘D")) { duplicate(selection) }
                 .keyboardShortcut("d", modifiers: .command)
                 .disabled(!hasSelection)
-            footerButton("arrow.up", "Выше · ⌥⌘↑") { shiftSelection(by: -1) }
+            footerButton("arrow.up", String(localized: "Выше · ⌥⌘↑")) { shiftSelection(by: -1) }
                 .keyboardShortcut(.upArrow, modifiers: [.command, .option])
                 .disabled(selectedIndices.first.map { $0 == 0 } ?? true)
-            footerButton("arrow.down", "Ниже · ⌥⌘↓") { shiftSelection(by: 1) }
+            footerButton("arrow.down", String(localized: "Ниже · ⌥⌘↓")) { shiftSelection(by: 1) }
                 .keyboardShortcut(.downArrow, modifiers: [.command, .option])
                 .disabled(selectedIndices.last.map { $0 == plan.exits.count - 1 } ?? true)
             Spacer(minLength: 8)
             ViewThatFits(in: .horizontal) {
-                footerHints(drag: "Перетащите строку, чтобы изменить порядок")
-                footerHints(drag: "Строки можно перетаскивать")
+                footerHints(drag: String(localized: "Перетащите строку, чтобы изменить порядок"))
+                footerHints(drag: String(localized: "Строки можно перетаскивать"))
                 footerHints(drag: nil)
             }
         }
@@ -671,7 +677,7 @@ private struct ExitDurationCell: View {
         .help("Выход \(exit.number): \(exit.durationDescription) — изменить")
         .popover(isPresented: $editing, arrowEdge: .bottom) {
             MacDurationEditor(value: Binding(get: { exit.duration }, set: { exit.duration = max(0, $0 ?? exit.duration) }),
-                              title: "Выход \(exit.number) — за дверью", presets: MacPlanFormat.exitPresets,
+                              title: String(localized: "Выход \(exit.number) — за дверью"), presets: MacPlanFormat.exitPresets,
                               tint: MacPalette.pink) { editing = false }
         }
     }
@@ -720,7 +726,7 @@ private struct BreakAfterCell: View {
             .popover(isPresented: $custom, arrowEdge: .bottom) {
                 MacDurationEditor(value: Binding(get: { exit.breakAfter },
                                                  set: { exit.breakAfter = $0 == defaultBreak ? nil : $0 }),
-                                  title: "Перерыв после выхода \(exit.number)", presets: MacPlanFormat.breakPresets,
+                                  title: String(localized: "Перерыв после выхода \(exit.number)"), presets: MacPlanFormat.breakPresets,
                                   defaultValue: defaultBreak, tint: MacPalette.blue) { custom = false }
             }
         }

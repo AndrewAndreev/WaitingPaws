@@ -9,6 +9,8 @@ struct SessionScreen: View {
     @State private var showHistory = false
     @State private var showSettings = false
     @State private var showCameraPicker = false
+    /// «Подключить камеру…» after starting without one: the first-launch setup as a sheet.
+    @State private var showCameraSetup = false
     @State private var confirmFinish = false
     @State private var confirmAbandon = false
     @State private var reloadToken = 0
@@ -69,7 +71,10 @@ struct SessionScreen: View {
         #endif
         .task(id: model.settings.streamName) { await model.refreshXiaomiQuality() }
         // Camera modes also through a linked Mac: they live in the camera.
-        .task(id: "\(model.activeStreamName)|\(model.isLinkedToMac)") { await model.refreshCameraModes() }
+        .task(id: model.cameraModesKey) { await model.refreshCameraModes() }
+        .onChange(of: model.settings.isConfigured) { _, configured in
+            if configured { showCameraSetup = false }
+        }
         .onAppear {
             #if DEBUG
             // `--demo-screen plan|camera` opens a sheet right away (UI checks without tapping).
@@ -113,6 +118,11 @@ struct SessionScreen: View {
         .sheet(isPresented: $showSettings) {
             SettingsView().environment(model).sheetFrame()
         }
+        .sheet(isPresented: $showCameraSetup) {
+            OnboardingFlow(onClose: { showCameraSetup = false })
+                .environment(model)
+                .sheetFrame(width: 520, height: 640)
+        }
         .sheet(isPresented: $showCameraPicker) {
             NavigationStack {
                 CameraPickerView(accountID: model.settings.xiaomiAccountID.isEmpty ? nil : model.settings.xiaomiAccountID,
@@ -124,7 +134,7 @@ struct SessionScreen: View {
             .sheetFrame(width: 520, height: 560)
         }
         #if os(macOS)
-        .alert(model.syncHost.pairingRequest.map { "Подключить «\($0.deviceName)»?" } ?? "",
+        .alert(model.syncHost.pairingRequest.map { String(localized: "Подключить «\($0.deviceName)»?") } ?? "",
                isPresented: Binding(get: { model.syncHost.pairingRequest != nil },
                                     set: { if !$0 { model.syncHost.answerPairing(allow: false) } })) {
             Button("Разрешить") { model.syncHost.answerPairing(allow: true) }
@@ -182,19 +192,26 @@ struct SessionScreen: View {
         #endif
     }
 
+    /// Started without a camera (and not watching a Mac's): the timer works, the camera can be added.
+    private var hasNoCamera: Bool {
+        !model.isLinkedToMac && !model.settings.isConfigured
+    }
+
     @ViewBuilder
     private var liveCamera: some View {
-        if !model.isLinkedToMac, model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
+        if hasNoCamera {
+            NoCameraView(onConnect: { showCameraSetup = true })
+        } else if !model.isLinkedToMac, model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
             CameraPlaceholder(text: embeddedStatusText)
         } else if let server = model.activeServer, !model.activeStreamName.isEmpty {
             CameraStreamView(server: server,
                              stream: model.activeStreamName,
                              mode: model.activePlayerMode,
                              audioEnabled: model.settings.audioEnabled,
-                             reloadToken: reloadToken,
+                             reloadToken: reloadToken + model.playerGeneration,
                              onVideoSize: { size in model.videoSize = size })
         } else {
-            CameraPlaceholder(text: model.isLinkedToMac ? "На Mac не выбрана камера" : "Камера не выбрана")
+            CameraPlaceholder(text: model.isLinkedToMac ? String(localized: "На Mac не выбрана камера") : String(localized: "Камера не выбрана"))
         }
     }
 
@@ -202,8 +219,15 @@ struct SessionScreen: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            CameraMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true })
-            RecordingPill()
+            if hasNoCamera {
+                Button { showCameraSetup = true } label: {
+                    Pill(text: String(localized: "Без камеры"), systemImage: "video.slash", tint: .white.opacity(0.85))
+                }
+                .buttonStyle(PressableButtonStyle())
+            } else {
+                CameraMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true })
+                RecordingPill()
+            }
             Spacer()
             LinkPill()
             if model.session != nil {
@@ -234,9 +258,9 @@ struct SessionScreen: View {
 
     private var embeddedStatusText: String {
         switch model.embedded.status {
-        case .idle, .starting: return "Запускаем go2rtc…"
+        case .idle, .starting: return String(localized: "Запускаем go2rtc…")
         case .failed(let message): return message
-        case .unavailable: return "Встроенный go2rtc не собран"
+        case .unavailable: return String(localized: "Встроенный go2rtc не собран")
         case .running: return ""
         }
     }
@@ -267,6 +291,7 @@ struct SessionScreen: View {
             } else {
                 PlanEntryCard(
                     hasLastPlan: model.lastPlan != nil,
+                    canRecord: !hasNoCamera,
                     onPaste: { showPlanInput = true },
                     onRepeat: {
                         if let plan = model.lastPlan { model.startSession(with: plan) } else { showPlanInput = true }
@@ -282,6 +307,8 @@ struct SessionScreen: View {
 struct PlanEntryCard: View {
     @Environment(AppModel.self) private var model
     var hasLastPlan: Bool
+    /// A camera is there (own or the linked Mac's): video can be recorded.
+    var canRecord = true
     var onPaste: () -> Void
     var onRepeat: () -> Void
     /// Video only: no plan, no log.
@@ -296,19 +323,25 @@ struct PlanEntryCard: View {
                 Text("Вставьте расписание от тренера и проверьте выходы.")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
-                Toggle(isOn: $settings.autoRecord) {
-                    Label("Записывать видео", systemImage: "record.circle")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                }
-                .tint(Theme.accent)
-                BigButton(title: "Вставить расписание", systemImage: "doc.on.clipboard", action: onPaste)
-                HStack(spacing: 8) {
-                    if hasLastPlan {
-                        BigButton(title: "Повторить прошлое", systemImage: "arrow.counterclockwise",
-                                  style: .secondary, height: 44, action: onRepeat)
+                if canRecord {
+                    Toggle(isOn: $settings.autoRecord) {
+                        Label("Записывать видео", systemImage: "record.circle")
+                            .font(.system(.subheadline, design: .rounded, weight: .medium))
                     }
-                    BigButton(title: "Только запись", systemImage: "record.circle",
-                              style: .secondary, height: 44, action: onRecordOnly)
+                    .tint(Theme.accent)
+                }
+                BigButton(title: String(localized: "Вставить расписание"), systemImage: "doc.on.clipboard", action: onPaste)
+                if hasLastPlan || canRecord {
+                    HStack(spacing: 8) {
+                        if hasLastPlan {
+                            BigButton(title: String(localized: "Повторить прошлое"), systemImage: "arrow.counterclockwise",
+                                      style: .secondary, height: 44, action: onRepeat)
+                        }
+                        if canRecord {
+                            BigButton(title: String(localized: "Только запись"), systemImage: "record.circle",
+                                      style: .secondary, height: 44, action: onRecordOnly)
+                        }
+                    }
                 }
             }
         }
@@ -386,9 +419,9 @@ private struct RecordingPill: View {
                     Pill(text: "REC " + DurationText.clock(model.recordingDuration(at: context.date)),
                          systemImage: "record.circle.fill", tint: Theme.danger)
                 } else if !model.isLinkedToMac, model.recorder.lastError != nil {
-                    Pill(text: "Запись не идёт", systemImage: "exclamationmark.triangle.fill", tint: Theme.warning)
+                    Pill(text: String(localized: "Запись не идёт"), systemImage: "exclamationmark.triangle.fill", tint: Theme.warning)
                 } else {
-                    Pill(text: "Запись", systemImage: "record.circle", tint: .white.opacity(0.85))
+                    Pill(text: String(localized: "Запись"), systemImage: "record.circle", tint: .white.opacity(0.85))
                 }
             }
             .buttonStyle(PressableButtonStyle())
@@ -404,10 +437,10 @@ private struct PerformanceBar: View {
         let s = model.performance.sample
         HStack(spacing: 10) {
             Text(String(format: "CPU %.0f%% · main %.0f%%", s.cpuTotal, s.cpuMain))
-            Text(String(format: "%.0f МБ", s.memoryMB))
-            Text(String(format: "UI +%.0f мс", s.maxHangMs))
+            Text("\(s.memoryMB, specifier: "%.0f") МБ")
+            Text("UI +\(s.maxHangMs, specifier: "%.0f") мс")
                 .foregroundStyle(s.maxHangMs > 250 ? Theme.danger : (s.maxHangMs > 80 ? Theme.warning : .white))
-            Text("\(s.threads) потоков")
+            Text(pluralText(s.threads, ru: ("поток", "потока", "потоков"), en: ("thread", "threads")))
             Spacer()
         }
         .font(.system(.caption2, design: .monospaced))
@@ -415,5 +448,36 @@ private struct PerformanceBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Theme.panel, in: Capsule())
+    }
+}
+
+/// Instead of the camera when the app runs without one: what still works and how to add a camera.
+struct NoCameraView: View {
+    var onConnect: () -> Void
+
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(white: 0.10), Color(white: 0.03)], startPoint: .top, endPoint: .bottom)
+            VStack(spacing: 12) {
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 34, weight: .light))
+                    .foregroundStyle(Theme.accent.opacity(0.8))
+                Text("Без камеры")
+                    .font(Theme.display(20, weight: .bold))
+                Text("Таймеры, расписание и лог работают. С камерой вы увидите собаку, пока вы за дверью, и сможете записывать видео.")
+                    .font(.system(.footnote, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 360)
+                Button(action: onConnect) {
+                    Label("Подключить камеру…", systemImage: "video.badge.plus")
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.black)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+            }
+            .padding(24)
+        }
     }
 }

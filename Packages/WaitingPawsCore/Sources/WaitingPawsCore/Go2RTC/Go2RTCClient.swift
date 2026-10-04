@@ -1,7 +1,7 @@
 import Foundation
 
 /// Connection parameters of a go2rtc server.
-public struct Go2RTCServer: Codable, Equatable, Hashable {
+public struct Go2RTCServer: Codable, Equatable, Hashable, Sendable {
     public var baseURL: URL
     public var username: String
     public var password: String
@@ -79,12 +79,25 @@ public enum XiaomiRegion: String, CaseIterable, Codable, Identifiable {
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .cn: return "Китай (по умолчанию)"
-        case .ru: return "Россия"
-        case .de: return "Европа (de)"
-        case .us: return "США"
-        case .sg: return "Сингапур"
-        case .i2: return "Индия"
+        case .cn: return tr("Китай (по умолчанию)", "China (default)")
+        case .ru: return tr("Россия", "Russia")
+        case .de: return tr("Европа (de)", "Europe (de)")
+        case .us: return tr("США", "United States")
+        case .sg: return tr("Сингапур", "Singapore")
+        case .i2: return tr("Индия", "India")
+        }
+    }
+
+    /// The Mi Home server region most likely for this device's region (the user can change it).
+    public static var suggested: XiaomiRegion {
+        guard let region = Locale.current.region?.identifier else { return CoreLanguage.current == .ru ? .ru : .de }
+        switch region {
+        case "RU", "BY", "KZ", "KG", "AM", "UZ", "TJ": return .ru
+        case "CN", "HK", "MO", "TW": return .cn
+        case "US", "CA", "MX", "BR", "AR", "CL", "CO", "PE": return .us
+        case "IN": return .i2
+        case "SG", "MY", "ID", "TH", "VN", "PH", "AU", "NZ", "JP", "KR": return .sg
+        default: return .de
         }
     }
 }
@@ -97,18 +110,18 @@ public enum Go2RTCError: LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidURL: return "Некорректный адрес сервера"
+        case .invalidURL: return tr("Некорректный адрес сервера", "Invalid server address")
         case .http(let status, let message):
             let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
-            return text.isEmpty ? "Сервер ответил HTTP \(status)" : "HTTP \(status): \(text)"
-        case .decoding(let what): return "Не удалось разобрать ответ сервера (\(what))"
-        case .noSources: return "Камеры не найдены"
+            return text.isEmpty ? tr("Сервер ответил HTTP \(status)", "The server answered HTTP \(status)") : "HTTP \(status): \(text)"
+        case .decoding(let what): return tr("Не удалось разобрать ответ сервера (\(what))", "Couldn't read the server's response (\(what))")
+        case .noSources: return tr("Камеры не найдены", "No cameras found")
         }
     }
 }
 
 /// Thin async client for the go2rtc HTTP API.
-public final class Go2RTCClient {
+public final class Go2RTCClient: Sendable {
     public let server: Go2RTCServer
     private let session: URLSession
 
@@ -208,6 +221,12 @@ public final class Go2RTCClient {
 
     /// Reads one stream from the `streams:` section of a go2rtc YAML config. Handles the forms
     /// go2rtc itself writes (`name: url`, a block list under `name:`) and a flow list `[a, b]`.
+    /// Sources of several streams from one read of the config file.
+    public func configuredSources(streams names: [String]) async throws -> [String: [String]] {
+        let yaml = String(decoding: try await request("GET", path: "api/config"), as: UTF8.self)
+        return Dictionary(uniqueKeysWithValues: names.map { ($0, Self.streamSources(inConfig: yaml, stream: $0)) })
+    }
+
     static func streamSources(inConfig yaml: String, stream: String) -> [String] {
         func unquote<S: StringProtocol>(_ text: S) -> String {
             var value = text.trimmingCharacters(in: .whitespaces)
@@ -270,6 +289,21 @@ public final class Go2RTCClient {
 
     public func xiaomiSubmitVerify(_ code: String) async throws -> XiaomiLoginStep {
         try await xiaomiAuth(form: ["verify": code])
+    }
+
+    /// Forgets a Mi Home account: go2rtc drops its token from memory and from its config
+    /// (`POST /api/xiaomi/logout`, a Waiting Paws addition — another go2rtc answers 404).
+    public func xiaomiLogout(accountID: String) async throws {
+        var request = URLRequest(url: url(path: "api/xiaomi/logout"))
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Self.formEncode(["id": accountID]).data(using: .utf8)
+        applyAuth(&request)
+        let (data, response) = try await session.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw Go2RTCError.http(status: status, message: String(decoding: data, as: UTF8.self))
+        }
     }
 
     /// Cameras of the given account, as ready-to-use `xiaomi://` sources.
@@ -386,7 +420,8 @@ public final class Go2RTCClient {
             if phone != nil || email != nil {
                 return .verify(phone: phone?.isEmpty == false ? phone : nil, email: email?.isEmpty == false ? email : nil)
             }
-            throw Go2RTCError.http(status: status, message: "Xiaomi отклонил вход: проверьте логин и пароль")
+            throw Go2RTCError.http(status: status, message: tr("Xiaomi отклонил вход: проверьте логин и пароль",
+                                                               "Xiaomi rejected the sign-in: check the login and password"))
         default:
             throw Go2RTCError.http(status: status, message: String(decoding: data, as: UTF8.self))
         }

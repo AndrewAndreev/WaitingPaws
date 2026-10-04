@@ -5,8 +5,9 @@ import Observation
 import WaitingPawsCore
 
 /// Mac side of the iPhone link: advertises `_waitingpaws._tcp` over Bonjour, lets an iPhone join after
-/// the user allows it once (a token is remembered per device), pushes the session state on every change
-/// and applies the iPhone's button presses. The Mac stays the owner of the session and the recording.
+/// the user allows it once (a pairing secret is remembered per device, see `SyncCrypto`), pushes the session
+/// state on every change and applies the iPhone's button presses. The Mac stays the owner of the session
+/// and the recording. Everything after the key exchange is encrypted.
 @MainActor
 @Observable
 final class SyncHost {
@@ -19,6 +20,7 @@ final class SyncHost {
         var id: String { deviceID }
         let deviceID: String
         var name: String
+        /// The pairing secret (named `token` since protocol v1, whose tokens keep working as secrets).
         var token: String
     }
 
@@ -40,6 +42,8 @@ final class SyncHost {
     @ObservationIgnored var onPairingRequest: ((PairingRequest) -> Void)?
     /// That iPhone went away before an answer (close the prompt).
     @ObservationIgnored var onPairingCancelled: ((PairingRequest) -> Void)?
+    /// An iPhone was forgotten: the go2rtc password it knew must change (then `refreshAccess()`).
+    @ObservationIgnored var onDeviceForgotten: (() -> Void)?
 
     let hostName = Host.current().localizedName ?? "Mac"
 
@@ -53,6 +57,9 @@ final class SyncHost {
         let channel: SyncChannel
         var hello: SyncHello?
         var approved = false
+        var handshake: SyncCrypto.Handshake?
+        /// Set when the iPhone proved an earlier pairing; nil for a new one (its secret comes on approval).
+        var pairingSecret: String?
     }
 
     @ObservationIgnored private var listener: NWListener?
@@ -179,7 +186,7 @@ final class SyncHost {
         if allow {
             approve(request.id)
         } else if let client = clients[request.id] {
-            client.channel.send(.rejected("На Mac подключение отклонили"))
+            client.channel.send(.rejected(String(localized: "На Mac подключение отклонили")))
             Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(300))
                 self?.drop(request.id)
@@ -191,6 +198,12 @@ final class SyncHost {
         pairedDevices.removeAll { $0.deviceID == device.deviceID }
         savePairings()
         for (id, client) in clients where client.hello?.deviceID == device.deviceID { drop(id) }
+        onDeviceForgotten?()
+    }
+
+    /// Sends the current go2rtc access again to every connected iPhone (after the password changed).
+    func refreshAccess() {
+        for client in clients.values where client.approved { client.channel.send(.welcome(welcome())) }
     }
 
     // MARK: - Connections
@@ -207,52 +220,81 @@ final class SyncHost {
             }
         }
         channel.start()
+        // A connection that never finishes the key exchange (or a port scan) does not hang around.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(20))
+            guard let self, let client = self.clients[id], !client.approved, self.pairingRequest?.id != id else { return }
+            self.drop(id)
+        }
     }
 
     private func handle(_ message: SyncMessage, from id: UUID) {
         guard var client = clients[id] else { return }
         switch message {
         case .hello(let hello):
+            guard client.hello == nil else { return }
+            guard hello.protocolVersion == SyncProtocol.version else {
+                client.channel.send(.rejected(String(localized: "Обновите Waiting Paws на iPhone и на Mac")))
+                return
+            }
+            let key = SyncCrypto.newKey()
+            let macPublic = key.publicKey.rawRepresentation
+            guard let handshake = try? SyncCrypto.Handshake(privateKey: key, peerKey: hello.publicKey,
+                                                            phoneKey: hello.publicKey, macKey: macPublic,
+                                                            deviceID: hello.deviceID) else {
+                drop(id)
+                return
+            }
             client.hello = hello
+            client.handshake = handshake
             clients[id] = client
             print("[sync] hello from \(hello.deviceName)")
+            client.channel.send(.challenge(macPublic))
+        case .proof(let proof):
+            guard let hello = client.hello, let handshake = client.handshake, !client.approved,
+                  client.channel.cipher == nil else { return }
             let known = pairedDevices.first { $0.deviceID == hello.deviceID }
-            if let known, known.token == hello.token {
-                approve(id)
-            } else if autoAccept {
+            if let proof, let known, handshake.verify(proof: proof, pairingSecret: known.token) {
+                client.pairingSecret = known.token
+                client.channel.cipher = handshake.cipher(isMac: true, pairingSecret: known.token)
+                clients[id] = client
                 approve(id)
             } else {
+                client.channel.cipher = handshake.cipher(isMac: true, pairingSecret: nil)
+                clients[id] = client
+                // Tells the iPhone to switch to the keys without its old secret (a new pairing follows).
                 client.channel.send(.pending)
-                let request = PairingRequest(id: id, deviceName: hello.deviceName)
-                pairingRequest = request
-                onPairingRequest?(request)
+                if autoAccept {
+                    approve(id)
+                } else {
+                    let request = PairingRequest(id: id, deviceName: hello.deviceName)
+                    pairingRequest = request
+                    onPairingRequest?(request)
+                }
             }
         case .command(let command):
             guard client.approved else { return }
             print("[sync] command \(command)")
             commandHandler?(command)
             broadcastIfChanged()
-        case .pending, .rejected, .welcome, .state:
+        case .challenge, .pending, .rejected, .sealed, .welcome, .state:
             break
         }
     }
 
     private func approve(_ id: UUID) {
-        guard var client = clients[id], let hello = client.hello else { return }
+        guard var client = clients[id], let hello = client.hello, let handshake = client.handshake else { return }
         client.approved = true
         clients[id] = client
 
-        var device = pairedDevices.first { $0.deviceID == hello.deviceID }
-            ?? PairedDevice(deviceID: hello.deviceID, name: hello.deviceName, token: Self.newToken())
-        device.name = hello.deviceName
+        // A new iPhone: both sides derive the same secret from this handshake; it never crosses the network.
+        let secret = client.pairingSecret ?? handshake.newPairingSecret()
+        let device = PairedDevice(deviceID: hello.deviceID, name: hello.deviceName, token: secret)
         pairedDevices.removeAll { $0.deviceID == hello.deviceID }
         pairedDevices.append(device)
         savePairings()
 
-        let access = accessProvider?() ?? SyncWelcomeAccess(port: EmbeddedGo2RTC.apiPort, username: "", password: "")
-        client.channel.send(.welcome(SyncWelcome(hostName: hostName, token: device.token, go2rtcPort: access.port,
-                                                 username: access.username, password: access.password,
-                                                 addresses: Self.ipv4Addresses())))
+        client.channel.send(.welcome(welcome()))
         if let state = stateProvider?() { client.channel.send(.state(state)) }
         updateConnected()
         print("[sync] \(hello.deviceName) joined")
@@ -316,8 +358,10 @@ final class SyncHost {
         }
     }
 
-    private static func newToken() -> String {
-        (0..<4).map { _ in UUID().uuidString.replacingOccurrences(of: "-", with: "") }.joined().lowercased()
+    private func welcome() -> SyncWelcome {
+        let access = accessProvider?() ?? SyncWelcomeAccess(port: EmbeddedGo2RTC.apiPort, username: "", password: "")
+        return SyncWelcome(hostName: hostName, go2rtcPort: access.port, username: access.username,
+                           password: access.password, addresses: Self.ipv4Addresses())
     }
 
     /// LAN IPv4 addresses of this Mac (Wi-Fi / Ethernet), for the iPhone's go2rtc URL.
