@@ -24,6 +24,7 @@
 		26A1C0AAB8EB7842077F5F44 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
 		28A346170C064EB5D770A44C /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
 		29E1EE966430E935616E1C61 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
+		2AC851DC82C729B326FF24C2 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
 		2B5C02356ABEB628D2DC4F51 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
 		30DA9B7C10D3A01F1A1A0AF0 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
 		312542C67DA22BF708B936FB /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
@@ -88,6 +89,7 @@
 		CB9F39E531F2E976136C552F /* CameraStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B514B872913BC77102D71 /* CameraStreamView.swift */; };
 		CD446916425199904EA7EED1 /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
 		D0F0581E479A071794513BA0 /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
+		D44E1C57BE0D09AEAB895A98 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
 		D47A9084A840646B26305955 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
 		D5E78C91DD327F17A3BBE4A6 /* LiveSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C46490ED793F437A72C93B /* LiveSessionModel.swift */; };
 		E4695D474DCA5428DA771A67 /* MacUIState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */; };
@@ -174,6 +176,7 @@
 		E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceMonitor.swift; sourceTree = "<group>"; };
 		E517FC8AC9AA66F50082A583 /* XiaomiLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiLoginView.swift; sourceTree = "<group>"; };
 		E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanTimelineEditor.swift; sourceTree = "<group>"; };
+		EA427D094B66E7898F582153 /* MacPlanSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanSupport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -315,6 +318,7 @@
 			isa = PBXGroup;
 			children = (
 				28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */,
+				EA427D094B66E7898F582153 /* MacPlanSupport.swift */,
 				E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */,
 			);
 			path = Plan;
@@ -572,6 +576,7 @@
 				3C2C291FDBDB142AA9910F71 /* MacConsoleView.swift in Sources */,
 				91C95E3050FCF89EDCE8A83A /* MacHistoryWindow.swift in Sources */,
 				F0452A6545C600FFAEB6043C /* MacPlanReviewSheet.swift in Sources */,
+				2AC851DC82C729B326FF24C2 /* MacPlanSupport.swift in Sources */,
 				457FA2EEF8C2AA3CFCB15AA7 /* MacPlanTimelineEditor.swift in Sources */,
 				ADB42AECC2E9F6D642EFED1C /* MacRootView.swift in Sources */,
 				FC811389A6642F8613388903 /* MacSettingsView.swift in Sources */,
@@ -621,6 +626,7 @@
 				30DA9B7C10D3A01F1A1A0AF0 /* MacConsoleView.swift in Sources */,
 				BA8CF4F2EA61417D73D1CC77 /* MacHistoryWindow.swift in Sources */,
 				33BA36B51071FF4F0A42230F /* MacPlanReviewSheet.swift in Sources */,
+				D44E1C57BE0D09AEAB895A98 /* MacPlanSupport.swift in Sources */,
 				5A5EC8E45BBB24449A26278C /* MacPlanTimelineEditor.swift in Sources */,
 				38C28DF7359EA3529CF915AA /* MacRootView.swift in Sources */,
 				7467AB7B4B5BE90B6E4EAEAC /* MacSettingsView.swift in Sources */,
