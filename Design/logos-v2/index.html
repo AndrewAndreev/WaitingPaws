@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — логотипы v2</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; background: #131315; color: #ececef; }
+  body.light { background: #ededf0; color: #141416; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+           padding: 14px 24px; background: rgba(19,19,21,.86); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); }
+  body.light header { background: rgba(237,237,240,.86); border-color: rgba(0,0,0,.08); }
+  h1 { font-size: 17px; margin: 0 8px 0 0; font-weight: 700; }
+  .pals { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pal { border: 1px solid rgba(127,127,127,.35); background: transparent; color: inherit; border-radius: 999px; padding: 5px 11px 5px 6px;
+         display: inline-flex; gap: 7px; align-items: center; cursor: pointer; font: inherit; font-size: 13px; }
+  .pal.on { border-color: currentColor; background: rgba(127,127,127,.16); }
+  .sw { width: 18px; height: 18px; border-radius: 50%; display: inline-block; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(127,127,127,.4); }
+  .sw i, .dots button i { position: absolute; right: 0; bottom: 0; width: 50%; height: 50%; }
+  .tools { margin-left: auto; display: flex; gap: 8px; }
+  .btn { border: 1px solid rgba(127,127,127,.35); background: transparent; color: inherit; border-radius: 10px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+  .btn:hover { background: rgba(127,127,127,.14); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 22px; padding: 24px; }
+  .card { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.06); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  body.light .card { background: #fff; border-color: rgba(0,0,0,.06); }
+  .card.wide { grid-column: span 2; }
+  .icon { width: 100%; border-radius: 22.37%; overflow: hidden; line-height: 0; box-shadow: 0 8px 26px rgba(0,0,0,.32); }
+  .icon.wide { border-radius: 26px; }
+  .icon svg { display: block; width: 100%; height: auto; }
+  .main { cursor: zoom-in; }
+  .meta { display: flex; gap: 10px; align-items: baseline; }
+  .num { font-weight: 800; font-size: 20px; opacity: .45; font-variant-numeric: tabular-nums; }
+  .name { font-weight: 650; font-size: 15px; }
+  .chosen { margin-top: -6px; font-size: 12px; font-weight: 650; color: #FFB8CC; }
+  .card.pick { border-color: rgba(255,184,204,.55); }
+  .idea { font-size: 12.5px; opacity: .62; margin-top: -8px; min-height: 36px; }
+  .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: auto; }
+  .minis { display: flex; align-items: flex-end; gap: 9px; }
+  .minis .icon { box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  .dots { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 120px; }
+  .dots button { width: 14px; height: 14px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(127,127,127,.45); }
+  .dots button.on { outline: 2px solid currentColor; outline-offset: 1px; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.72); backdrop-filter: blur(8px); display: none; z-index: 20; overflow: auto; }
+  .modal.open { display: block; }
+  .sheet { max-width: 1000px; margin: 40px auto; background: #1c1c1f; color: #ececef; border-radius: 24px; padding: 26px; display: grid; grid-template-columns: 340px 1fr; gap: 28px; }
+  .sheet.wide { grid-template-columns: 1fr; }
+  @media (max-width: 1040px) { .sheet { grid-template-columns: minmax(0, 1fr); margin: 40px 12px; } }
+  .sheet .icon { max-width: 100%; }
+  @media (max-width: 560px) {
+    header { padding: 10px 12px; position: static; } .tools { margin-left: 0; }
+    .grid { grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+    .card { padding: 10px; gap: 8px; border-radius: 16px; } .card.wide { grid-column: 1 / -1; }
+    .name { font-size: 13px; } .num { font-size: 15px; } .idea { display: none; } .minis { display: none; } .dots { max-width: none; justify-content: flex-start; }
+    .sheet { padding: 16px; margin: 52px 8px 16px; }
+    .phone { grid-template-columns: repeat(4, 56px); gap: 14px 12px; padding: 16px 10px 12px; }
+    .phone .icon, .ph { width: 56px !important; } .sizes { gap: 8px; }
+    .lockup .wm { font-size: 26px; } .lockup .icon { width: 64px !important; }
+  }
+  .sheet h2 { margin: 0 0 4px; font-size: 22px; }
+  .sizes { display: flex; align-items: flex-end; gap: 14px; margin: 18px 0; flex-wrap: wrap; }
+  .sizes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; opacity: .85; }
+  .phone { border-radius: 26px; padding: 22px 18px 16px; background: linear-gradient(160deg, #3b4a6b, #1d2236 60%, #301d36); display: grid; grid-template-columns: repeat(4, 64px); gap: 18px 22px; justify-content: center; }
+  .phone.lightwp { background: linear-gradient(160deg, #f6e7da, #d9e4f5 60%, #f3d6e4); margin-top: 12px; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+  .lightwp .app { color: #222; text-shadow: none; }
+  .ph { width: 64px; aspect-ratio: 1; border-radius: 22.37%; }
+  .lockup { display: flex; align-items: center; gap: 18px; padding: 20px; border-radius: 18px; margin-top: 18px; }
+  .lockup .wm { font: 800 38px/1 "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif; letter-spacing: -.5px; }
+  .lockup .sub { font-size: 13px; opacity: .6; margin-top: 6px; }
+  .actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+  .close { position: fixed; top: 18px; right: 24px; font-size: 28px; background: none; border: 0; color: #fff; cursor: pointer; }
+  .note { padding: 0 24px 40px; opacity: .55; font-size: 12.5px; }
+  code { background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Waiting Paws · логотипы v2</h1>
+  <div class="pals" id="pals"></div>
+  <div class="tools"><button class="btn" id="pageBg">Светлый фон страницы</button></div>
+</header>
+<main class="grid" id="grid"></main>
+<p class="note">Все варианты нарисованы кодом в <code>logos.js</code>; <code>node build.js</code> пересобирает SVG/PNG-файлы и листы в <code>svg/</code>, <code>png/</code>, <code>sheets/</code>.
+  Клик по иконке — крупный просмотр, мелкие размеры, домашний экран и экспорт SVG/PNG 1024×1024 в выбранной палитре. Точки под карточкой меняют палитру только этой карточки.</p>
+
+<div class="modal" id="modal"><button class="close" id="close">×</button><div class="sheet" id="sheet"></div></div>
+
+<script src="logos.js"></script>
+<script>
+const { PALETTES, CONCEPTS, fullSVG } = WP;
+const state = { mode: 'mix', per: {} };
+const palFor = i => state.per[i] || (state.mode === 'mix' ? CONCEPTS[i].pal : state.mode);
+const cssBg = p => Array.isArray(p.bg) ? `linear-gradient(160deg, ${p.bg[0]}, ${p.bg[1]})` : p.bg;
+let n = 0;
+const icon = (i, pk, attrs = '') => `<div class="icon ${CONCEPTS[i].wide ? 'wide' : ''}" ${attrs}>${fullSVG(CONCEPTS[i], pk, { uid: 'g' + (++n) })}</div>`;
+const dots = (i, pk, extra = '') => Object.entries(PALETTES).map(([k, p]) =>
+  `<button title="${p.name}" data-card="${i}" data-pal="${k}" ${extra} class="${k === pk ? 'on' : ''}" style="background:${cssBg(p)}"><i style="background:${p.fg}"></i></button>`).join('');
+
+function renderHeader() {
+  document.getElementById('pals').innerHTML =
+    `<button class="pal ${state.mode === 'mix' ? 'on' : ''}" data-mode="mix"><span class="sw" style="background:conic-gradient(#FFB8CC 0 25%, #EE7A3B 0 50%, #1E6B57 0 75%, #8D6EFF 0)"></span>Микс</button>` +
+    Object.entries(PALETTES).map(([k, p]) => `<button class="pal ${state.mode === k ? 'on' : ''}" data-mode="${k}"><span class="sw" style="background:${cssBg(p)}"><i style="background:${p.fg}"></i></span>${p.name}</button>`).join('');
+}
+
+function renderGrid() {
+  n = 0;
+  document.getElementById('grid').innerHTML = CONCEPTS.map((c, i) => {
+    const pk = palFor(i);
+    const minis = c.wide ? '<div></div>' : `<div class="minis">${[60, 40, 29, 20].map(s => icon(i, pk, `style="width:${s}px"`)).join('')}</div>`;
+    return `<section class="card ${c.wide ? 'wide' : ''} ${c.chosen ? 'pick' : ''}">
+      ${icon(i, pk, `data-i="${i}"`).replace('class="icon', 'class="main icon')}
+      <div class="meta"><span class="num">${c.id}</span><span class="name">${c.name}</span></div>
+      ${c.chosen ? `<div class="chosen">★ Иконка приложения · ${PALETTES[c.chosen].name}</div>` : ''}
+      <div class="idea">${c.idea}</div>
+      <div class="row">${minis}<div class="dots">${dots(i, pk)}</div></div>
+    </section>`;
+  }).join('');
+}
+
+const modal = document.getElementById('modal'), sheet = document.getElementById('sheet');
+function openModal(i) {
+  const c = CONCEPTS[i], pk = palFor(i), p = PALETTES[pk];
+  const fake = ['#34C759', '#0A84FF', '#FF9F0A', '#5E5CE6', '#FF375F', '#64D2FF', '#30D158'];
+  const names = ['Фото', 'Камера', 'Заметки', 'Погода', 'Музыка', 'Карты', 'Часы'];
+  const home = Array.from({ length: 8 }, (_, k) => k === 5
+    ? `<div class="app">${icon(i, pk, 'style="width:64px"')}<span>Waiting Paws</span></div>`
+    : `<div class="app"><div class="ph" style="background:linear-gradient(160deg, ${fake[k % 7]}, ${fake[(k + 3) % 7]})"></div><span>${names[k % 7]}</span></div>`).join('');
+  const dark = !['#FFFFFF', '#FFF1E3', '#DDF4EA', '#FFB8CC'].includes(Array.isArray(p.bg) ? '' : p.bg);
+  sheet.className = 'sheet' + (c.wide ? ' wide' : '');
+  sheet.dataset.i = i;
+  sheet.innerHTML = `
+    <div>${icon(i, pk, `style="width:${c.wide ? '100%' : '340px'}"`)}
+      <div class="actions"><button class="btn" data-export="svg">Скачать SVG</button><button class="btn" data-export="png">Скачать PNG ${c.wide ? '1600×560' : '1024'}</button></div>
+      <div class="dots" style="max-width:none;justify-content:flex-start;margin-top:14px">${dots(i, pk, 'data-modal="1"')}</div>
+    </div>
+    <div>
+      <div class="num">${c.id}</div><h2>${c.name}</h2><div style="opacity:.7">${c.idea}</div>
+      <div style="opacity:.55;font-size:12.5px;margin-top:6px">Палитра: ${p.name}</div>
+      ${c.wide ? '' : `<div class="sizes">${[180, 120, 87, 60, 40, 29, 16].map(s => `<figure>${icon(i, pk, `style="width:${s}px"`)}<span>${s}px</span></figure>`).join('')}</div>
+        <div class="phone">${home}</div><div class="phone lightwp">${home}</div>
+        <div class="lockup" style="background:${dark ? '#0f0f11' : '#f4f4f4'};color:${dark ? '#fff' : '#111'}">${icon(i, pk, 'style="width:84px"')}<div><div class="wm">Waiting Paws</div><div class="sub">Тренировка коротких выходов</div></div></div>`}
+    </div>`;
+  modal.classList.add('open');
+}
+
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+function doExport(kind) {
+  const i = +sheet.dataset.i, c = CONCEPTS[i], pk = palFor(i), [w, h] = WP.viewOf(c);
+  const svg = fullSVG(c, pk), base = `waiting-paws-${c.id}-${c.slug}-${pk}`;
+  if (kind === 'svg') return download(new Blob([svg], { type: 'image/svg+xml' }), base + '.svg');
+  const img = new Image();
+  img.onload = () => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h); cv.toBlob(b => download(b, base + '.png')); };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, .main');
+  if (!t) { if (e.target === modal) modal.classList.remove('open'); return; }
+  if (t.dataset.mode) { state.mode = t.dataset.mode; state.per = {}; renderHeader(); renderGrid(); return; }
+  if (t.dataset.pal) { state.per[+t.dataset.card] = t.dataset.pal; renderGrid(); if (t.dataset.modal) openModal(+t.dataset.card); return; }
+  if (t.dataset.export) return doExport(t.dataset.export);
+  if (t.id === 'close') return modal.classList.remove('open');
+  if (t.id === 'pageBg') { document.body.classList.toggle('light'); t.textContent = document.body.classList.contains('light') ? 'Тёмный фон страницы' : 'Светлый фон страницы'; return; }
+  if (t.classList.contains('main')) openModal(+t.dataset.i);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('open'); });
+
+renderHeader();
+renderGrid();
+</script>
+</body>
+</html>

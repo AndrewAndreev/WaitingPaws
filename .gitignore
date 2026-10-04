@@ -1,0 +1,8 @@
+.DS_Store
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.build/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+GoMobile/build/
+Frameworks/
