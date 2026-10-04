@@ -20,6 +20,8 @@ fi
 
 mkdir -p "$SRC/mobile"
 cp "$HERE"/mobile/*.go "$SRC/mobile/"
+# Additions to go2rtc's own packages (camera settings via Mi Cloud: /api/xiaomi/miot).
+cp "$HERE"/xiaomi/*.go "$SRC/internal/xiaomi/"
 
 # Local patches for the in-app build (see README):
 # 1. Xiaomi CS2 media queue: 100 frames die after ~2 s of consumer stall (WebKit throttling, Wi-Fi roaming);
@@ -46,6 +48,10 @@ go get -tool golang.org/x/mobile/cmd/gobind@latest >/dev/null
 go get golang.org/x/mobile/bind@latest >/dev/null
 go mod tidy >/dev/null
 
+# Build next to the sources and swap at the end, so an Xcode build started meanwhile still finds the old one.
+NEW="$BUILD/Go2RTC.xcframework"
+rm -rf "$NEW"
+gomobile bind -target ios,iossimulator,macos -iosversion 17.0 -ldflags="-s -w" -o "$NEW" ./mobile
 rm -rf "$OUT"
-gomobile bind -target ios,iossimulator,macos -iosversion 17.0 -ldflags="-s -w" -o "$OUT" ./mobile
+mv "$NEW" "$OUT"
 echo "Built $OUT"

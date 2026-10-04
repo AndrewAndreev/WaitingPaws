@@ -62,7 +62,8 @@ func Start(configPath string, overrides string) error {
 		mp4.Init()     // MP4 output (recording)
 		hls.Init()     // HLS output
 		mjpeg.Init()   // MJPEG fallback
-		xiaomi.Init()  // Mi Home cameras + /api/xiaomi login
+		xiaomi.Init()     // Mi Home cameras + /api/xiaomi login
+		xiaomi.InitMiot() // /api/xiaomi/miot: camera settings via Mi Cloud (Waiting Paws addition)
 
 		started = true
 	})

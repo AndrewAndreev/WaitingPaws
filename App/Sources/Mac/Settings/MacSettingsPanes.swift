@@ -180,6 +180,8 @@ private struct SettingsCameraPane: View {
             }
         }
 
+        SettingsCameraModesSection(camera: camera)
+
         Section {
             LabeledContent("Поток go2rtc") {
                 Text(camera.isConfigured ? camera.streamName : "—")
@@ -289,12 +291,54 @@ private struct SettingsCameraPane: View {
         #endif
         guard camera.isConfigured, model.setupServerReady, let client = model.client else { return }
         await model.refreshXiaomiQuality()
+        // Again on every visit: the modes may have been changed in Mi Home meanwhile.
+        await model.refreshCameraModes()
         let name = model.settings.streamName
         var sources = (try? await client.configuredSources(stream: name)) ?? []
         if sources.isEmpty {
             sources = (try? await client.streams())?.first { $0.name == name }?.sources ?? []
         }
         source = sources.first
+    }
+}
+
+/// Night mode, image flip, status light… as the camera's MIoT spec declares them (Mi Home cameras only).
+private struct SettingsCameraModesSection: View {
+    @Environment(AppModel.self) private var model
+    let camera: SettingsCamera
+
+    var body: some View {
+        let modes = model.cameraModes
+        if modes.hasOptions {
+            Section {
+                ForEach(modes.pictureOptions) { CameraModeFormRow(option: $0) }
+                ForEach(modes.behaviourOptions) { CameraModeFormRow(option: $0) }
+            } header: {
+                HStack(spacing: 6) {
+                    Text("Режим камеры")
+                    if modes.state == .loading || !modes.pending.isEmpty { ProgressView().controlSize(.mini) }
+                }
+            } footer: {
+                Group {
+                    if let error = modes.changeError {
+                        Text(error).foregroundStyle(.red)
+                    } else if case .unavailable(let reason) = modes.state {
+                        Text(reason).foregroundStyle(.orange)
+                    } else {
+                        Text("Настройки хранятся в самой камере и меняются через облако Xiaomi, как в Mi Home.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .font(.footnote)
+            }
+        } else if camera.isXiaomi, modes.state == .loading {
+            Section("Режим камеры") {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Читаю настройки камеры…").foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 }
 

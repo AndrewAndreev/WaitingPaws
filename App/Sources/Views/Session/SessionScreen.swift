@@ -46,6 +46,8 @@ struct SessionScreen: View {
         }
         .background(Color.black.ignoresSafeArea())
         .task(id: model.settings.streamName) { await model.refreshXiaomiQuality() }
+        // Camera modes also through a linked Mac: they live in the camera.
+        .task(id: "\(model.activeStreamName)|\(model.isLinkedToMac)") { await model.refreshCameraModes() }
         .onAppear {
             #if DEBUG
             // `--demo-screen plan|camera` opens a sheet right away (UI checks without tapping).
@@ -287,6 +289,7 @@ private struct CameraMenu: View {
                     Label("Качество · \(quality.title)", systemImage: "sparkles.tv")
                 }
             }
+            CameraModeMenuItems()
             Toggle("Звук", systemImage: "speaker.wave.2", isOn: Binding(
                 get: { model.settings.audioEnabled },
                 set: { model.settings.audioEnabled = $0 }))

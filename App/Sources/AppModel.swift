@@ -13,6 +13,8 @@ final class AppModel {
     let recorder = StreamRecorder()
     let embedded = EmbeddedGo2RTC()
     let performance = PerformanceMonitor()
+    /// Night mode and the other settings of the Mi Home camera on screen.
+    let cameraModes = CameraModesModel()
     #if os(macOS)
     /// Lets an iPhone on the same network watch the camera and drive the training running on this Mac.
     let syncHost = SyncHost()
@@ -43,6 +45,8 @@ final class AppModel {
         #if DEBUG
         // `--demo-history`: sample trainings in the history list (in memory, nothing is written).
         if CommandLine.arguments.contains("--demo-history") { history = DemoData.history() }
+        // `--demo-camera-modes`: the C302's night mode & co. without a camera.
+        if CommandLine.arguments.contains("--demo-camera-modes") { cameraModes.loadDemo() }
         #endif
         performance.startHangLogging()
         if settings.showPerformance || CommandLine.arguments.contains("--perf") { performance.start() }
@@ -370,8 +374,8 @@ final class AppModel {
 
     /// The selected stream's `xiaomi://` source. While the camera is live, `/api/streams` describes the
     /// running connection without the source URL, so the config file is read instead.
-    private func xiaomiSource(client: Go2RTCClient) async -> String? {
-        let name = settings.streamName
+    private func xiaomiSource(client: Go2RTCClient, stream name: String? = nil) async -> String? {
+        let name = name ?? settings.streamName
         if let stream = (try? await client.streams())?.first(where: { $0.name == name }),
            let source = stream.sources.first(where: { $0.hasPrefix("xiaomi://") }) {
             return source
@@ -413,6 +417,18 @@ final class AppModel {
         } catch {
             errorMessage = "Не удалось сменить качество: \(error.localizedDescription)"
         }
+    }
+
+    /// Reads which modes the camera on screen has (night mode, flip…) and their values. On an iPhone
+    /// linked to a Mac it asks the Mac's go2rtc: the settings live in the camera, not in either app.
+    func refreshCameraModes() async {
+        await waitForServer()
+        guard let server = activeServer, !Self.isUIPreview else {
+            await cameraModes.load(server: nil, source: nil)
+            return
+        }
+        let source = await xiaomiSource(client: Go2RTCClient(server: server), stream: activeStreamName)
+        await cameraModes.load(server: server, source: source)
     }
 
     // MARK: - History

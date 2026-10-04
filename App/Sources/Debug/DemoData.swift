@@ -84,7 +84,13 @@ enum DemoData {
             return session.makeRecord(recordingFileName: nil)
         }
     }
+
+    /// Camera settings of the Xiaomi C302 (`xiaomi.camera.c302n`), a fragment of its miot-spec.org spec.
+    static let c302Spec = #"""
+    {"services": [{"iid": 2, "type": "urn:miot-spec-v2:service:camera-control:0000782F:xiaomi-c302n:1", "properties": [{"iid": 3, "type": "urn:miot-spec-v2:property:night-shot:00000057:xiaomi-c302n:1", "format": "uint8", "access": ["read", "write", "notify"], "value-list": [{"value": 0, "description": "Off"}, {"value": 1, "description": "On"}, {"value": 2, "description": "Auto"}]}, {"iid": 4, "type": "urn:miot-spec-v2:property:image-rollover:00000058:xiaomi-c302n:1", "format": "uint16", "access": ["read", "write", "notify"], "value-range": [0, 270, 90]}, {"iid": 5, "type": "urn:miot-spec-v2:property:time-watermark:00000087:xiaomi-c302n:1", "format": "bool", "access": ["read", "write", "notify"]}, {"iid": 7, "type": "urn:miot-spec-v2:property:glimmer-full-color:00000089:xiaomi-c302n:1", "format": "bool", "access": ["read", "write", "notify"]}, {"iid": 9, "type": "urn:miot-spec-v2:property:human-tracking:000001A8:xiaomi-c302n:1", "format": "bool", "access": ["read", "write", "notify"]}, {"iid": 12, "type": "urn:miot-spec-v2:property:power-frequency:0000036B:xiaomi-c302n:1", "format": "uint8", "access": ["read", "write", "notify"], "value-list": [{"value": 0, "description": "auto"}, {"value": 1, "description": "50"}, {"value": 2, "description": "60"}]}]}, {"iid": 4, "type": "urn:miot-spec-v2:service:indicator-light:00007803:xiaomi-c302n:1", "properties": [{"iid": 1, "type": "urn:miot-spec-v2:property:on:00000006:xiaomi-c302n:1", "format": "bool", "access": ["read", "write", "notify"]}]}, {"iid": 8, "type": "urn:miot-spec-v2:service:ai-detection:000078C8:xiaomi-c302n:1", "properties": [{"iid": 22, "type": "urn:miot-spec-v2:property:pet-tracking:000003E4:xiaomi-c302n:1", "format": "bool", "access": ["read", "write", "notify"]}]}]}
+    """#
 }
+
 
 #if os(macOS)
 typealias NSImageOrUIImage = NSImage

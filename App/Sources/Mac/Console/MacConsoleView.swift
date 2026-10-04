@@ -45,7 +45,10 @@ struct MacConsoleView: View {
             return .handled
         }
         .onAppear { focused = true }
-        .task(id: model.settings.streamName) { await model.refreshXiaomiQuality() }
+        .task(id: model.settings.streamName) {
+            await model.refreshXiaomiQuality()
+            await model.refreshCameraModes()
+        }
         .sheet(isPresented: $ui.reviewingPlan, onDismiss: { focused = true }) {
             MacPlanReviewSheet(plan: pendingPlanBinding,
                                onStart: { ui.startPending(model) },
@@ -246,6 +249,10 @@ private struct CameraToolbarMenu: View {
                     Text("Сейчас \(Int(size.width))×\(Int(size.height))")
                 }
             }
+            if model.cameraModes.hasOptions {
+                Divider()
+                CameraModeMenuItems()
+            }
         } label: {
             HStack(spacing: 6) {
                 StatusDot(color: cameraOnline ? MacPalette.green : .secondary, size: 6)
@@ -255,7 +262,7 @@ private struct CameraToolbarMenu: View {
                 }
             }
         }
-        .help("Камера и качество")
+        .help("Камера, качество и режим съёмки")
     }
 
     private var cameraOnline: Bool {

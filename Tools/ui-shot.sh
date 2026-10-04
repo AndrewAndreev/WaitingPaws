@@ -11,6 +11,7 @@ set -e
 OUT=$1; TITLE=$2; shift 2
 cd "$(dirname "$0")/.."
 BUNDLE="$PWD/${APP_BUNDLE:-DerivedData/Build/Products/Debug/WaitingPaws.app}"
+[[ "$APP_BUNDLE" == /* ]] && BUNDLE=$APP_BUNDLE
 WINLIST=/tmp/wp-winlist
 [[ -x $WINLIST ]] || swiftc -O Tools/winlist.swift -o $WINLIST
 EXTRA=()

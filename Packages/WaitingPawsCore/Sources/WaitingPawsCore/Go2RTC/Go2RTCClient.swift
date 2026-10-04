@@ -292,6 +292,76 @@ public final class Go2RTCClient {
         return cameras
     }
 
+    // MARK: - Xiaomi camera settings
+
+    /// Current values of camera settings, through the app's go2rtc (`POST /api/xiaomi/miot`, a Waiting Paws
+    /// addition — another go2rtc answers 404). Properties the camera did not report are left out;
+    /// when it reported none, the camera's error is thrown.
+    public func xiaomiProperties(source: String, _ ids: [MiotPropertyID]) async throws -> [MiotPropertyID: MiotValue] {
+        guard !ids.isEmpty else { return [:] }
+        let params = ids.map { ["siid": $0.siid, "piid": $0.piid] }
+        let results = try await miot(source: source, method: "get", params: params)
+        var values: [MiotPropertyID: MiotValue] = [:]
+        var firstError: Error?
+        for result in results {
+            do {
+                try XiaomiCameraError.check(result.code)
+                if let value = result.value { values[MiotPropertyID(siid: result.siid, piid: result.piid)] = value }
+            } catch {
+                firstError = firstError ?? error
+            }
+        }
+        if values.isEmpty, let firstError { throw firstError }
+        return values
+    }
+
+    /// Changes one camera setting (night mode, image flip…).
+    public func setXiaomiProperty(source: String, _ id: MiotPropertyID, to value: MiotValue) async throws {
+        let results = try await miot(source: source, method: "set",
+                                     params: [["siid": id.siid, "piid": id.piid, "value": value.jsonObject]])
+        guard let result = results.first else { throw Go2RTCError.decoding("xiaomi miot") }
+        try XiaomiCameraError.check(result.code)
+    }
+
+    private struct MiotResult: Decodable {
+        var siid: Int
+        var piid: Int
+        var code: Int
+        var value: MiotValue?
+
+        enum CodingKeys: String, CodingKey { case siid, piid, code, value }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            siid = try container.decode(Int.self, forKey: .siid)
+            piid = try container.decode(Int.self, forKey: .piid)
+            code = (try? container.decode(Int.self, forKey: .code)) ?? 0
+            // String properties (time ranges…) are not settings the app shows.
+            value = try? container.decode(MiotValue.self, forKey: .value)
+        }
+    }
+
+    private func miot(source: String, method: String, params: [[String: Any]]) async throws -> [MiotResult] {
+        let json = try JSONSerialization.data(withJSONObject: params)
+        var request = URLRequest(url: url(path: "api/xiaomi/miot"))
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Self.formEncode(["src": source, "method": method, "params": String(decoding: json, as: UTF8.self)])
+            .data(using: .utf8)
+        applyAuth(&request)
+
+        let (data, response) = try await session.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw Go2RTCError.http(status: status, message: String(decoding: data, as: UTF8.self))
+        }
+        do {
+            return try JSONDecoder().decode([MiotResult].self, from: data)
+        } catch {
+            throw Go2RTCError.decoding("xiaomi miot")
+        }
+    }
+
     private func xiaomiAuth(form: [String: String]) async throws -> XiaomiLoginStep {
         var request = URLRequest(url: url(path: "api/xiaomi"))
         request.httpMethod = "POST"
