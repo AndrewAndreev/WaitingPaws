@@ -79,14 +79,15 @@ struct DebugWindowOpener: ViewModifier {
     private static var done = false
 
     func body(content: Content) -> some View {
-        content.task {
+        content.onAppear {
             #if DEBUG
             guard !Self.done, let index = CommandLine.arguments.firstIndex(of: "--open"),
                   index + 1 < CommandLine.arguments.count else { return }
             Self.done = true
-            switch CommandLine.arguments[index + 1] {
-            case "settings": openSettings()
-            case let id: openWindow(id: id)
+            let target = CommandLine.arguments[index + 1]
+            // A beat later: on first launch the main window hands over to the welcome window right away.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                if target == "settings" { openSettings() } else { openWindow(id: target) }
             }
             #endif
         }
