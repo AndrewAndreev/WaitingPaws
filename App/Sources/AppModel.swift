@@ -439,7 +439,12 @@ final class AppModel {
     var lastClip: RecordingClip?
 
     /// Recording right now without a training session.
-    var isRecordingClip: Bool { recorder.isRecording && session == nil }
+    var isRecordingClip: Bool {
+        #if DEBUG
+        if Self.demoRecordingSince != nil, session == nil { return true }
+        #endif
+        return recorder.isRecording && session == nil
+    }
 
     func reloadHistory() {
         history = store.loadAll()

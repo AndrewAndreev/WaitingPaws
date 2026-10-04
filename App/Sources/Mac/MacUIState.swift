@@ -19,6 +19,8 @@ final class MacUIState {
     var showXiaomiSignIn = false
     var confirmFinish = false
     var confirmAbandon = false
+    /// Zoom of the camera picture in the training window (gestures and the View menu).
+    let cameraZoom = ZoomState()
 
     init() {
         #if DEBUG
@@ -111,6 +113,23 @@ struct MacCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {}
+        CommandGroup(before: .toolbar) {
+            Button("Увеличить") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.zoom(by: ZoomState.step) } }
+                .keyboardShortcut("=", modifiers: .command)
+                .disabled(ui.cameraZoom.scale >= ZoomState.maxScale)
+            Button("Уменьшить") {
+                withAnimation(.spring(response: 0.3)) {
+                    ui.cameraZoom.zoom(by: 1 / ZoomState.step)
+                    ui.cameraZoom.settle()
+                }
+            }
+            .keyboardShortcut("-", modifiers: .command)
+            .disabled(!ui.cameraZoom.isZoomed)
+            Button("Без увеличения") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.reset() } }
+                .keyboardShortcut("0", modifiers: .command)
+                .disabled(!ui.cameraZoom.isZoomed)
+            Divider()
+        }
         CommandMenu("Тренировка") {
             Button("Вставить расписание") { ui.pasteSchedule(model) }
                 .keyboardShortcut("v", modifiers: [.command, .shift])

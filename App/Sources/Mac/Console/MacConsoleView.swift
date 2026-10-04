@@ -15,18 +15,34 @@ struct MacConsoleView: View {
 
     var body: some View {
         @Bindable var ui = ui
+        // Recording without a training: nothing to read or plan, the picture takes the whole window and the
+        // clock floats over it. The camera stays the first child either way, so the player is not recreated.
+        let clipMode = model.isRecordingClip
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 MacCameraArea(reloadToken: reloadToken)
-                Divider()
-                rightPanel
-                    .frame(width: 400)
+                    .overlay {
+                        if clipMode {
+                            ClipRecordingHUD()
+                                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                        }
+                    }
+                if !clipMode {
+                    Divider()
+                    rightPanel
+                        .frame(width: 400)
+                        .transition(.move(edge: .trailing))
+                }
             }
             .frame(maxHeight: .infinity)
-            Divider()
-            timeline
-                .frame(height: 232)
+            if !clipMode {
+                Divider()
+                timeline
+                    .frame(height: 232)
+                    .transition(.move(edge: .bottom))
+            }
         }
+        .animation(.smooth(duration: 0.35), value: clipMode)
         .background(Color.black)
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
@@ -104,8 +120,6 @@ struct MacConsoleView: View {
             TimelineView(.periodic(from: .now, by: 0.5)) { context in
                 ConsoleReadout(live: live(session, at: context.date))
             }
-        } else if model.isRecordingClip {
-            ClipRecordingPanel()
         } else {
             NewTrainingPanel()
         }

@@ -20,6 +20,9 @@ struct WaitingPawsApp: App {
                 .modifier(DebugWindowOpener(model: model))
         }
         .defaultSize(width: 1440, height: 860)
+        // The items carry their own titles; AppKit's «Значок и текст» would add a second row of labels and break
+        // the title, so the toolbar's display-mode menu is turned off.
+        .windowToolbarLabelStyle(fixed: .iconOnly)
         .commands { MacCommands(model: model, ui: ui) }
 
         // First launch: sign in to Xiaomi or pick a go2rtc stream (Xcode-style welcome window).
@@ -43,6 +46,7 @@ struct WaitingPawsApp: App {
                 .tint(MacPalette.accent)
         }
         .defaultSize(width: 1360, height: 840)
+        .windowToolbarLabelStyle(fixed: .iconOnly)
         // Only from the toolbar button / ⌘Y — not at launch, not restored from the previous session.
         .defaultLaunchBehavior(.suppressed)
         .restorationBehavior(.disabled)
@@ -53,6 +57,7 @@ struct WaitingPawsApp: App {
                 .environment(ui)
                 .tint(MacPalette.accent)
         }
+        .windowToolbarLabelStyle(fixed: .iconOnly)
         #else
         WindowGroup {
             RootView()

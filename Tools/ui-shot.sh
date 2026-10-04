@@ -24,7 +24,12 @@ pkill -f "$BUNDLE/Contents/MacOS/WaitingPaws" 2>/dev/null && sleep 1 || true
 open -n -g --stdout /tmp/wp-ui-shot.log --stderr /tmp/wp-ui-shot.log "$BUNDLE" --args -ApplePersistenceIgnoreState YES --ui-preview "${EXTRA[@]}" "$@"
 sleep 1
 PID=$(pgrep -nf "$BUNDLE/Contents/MacOS/WaitingPaws")
-sleep ${WAIT:-4}
+# Windows show up after 2–10 s depending on the machine's load: wait for them, then let them render.
+for _ in {1..40}; do
+  [[ -n "$($WINLIST $PID)" ]] && break
+  sleep 0.5
+done
+sleep ${WAIT:-3}
 N=2
 FOUND=0
 # The window titled exactly <title> wins; otherwise the first one that contains it.
