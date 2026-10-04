@@ -89,8 +89,7 @@ struct NewTrainingPanel: View {
 
     @ViewBuilder
     private var lastPlan: some View {
-        let last = PlanParser.parse(model.settings.lastPlanText)
-        if last.isValid {
+        if let last = model.lastPlan {
             VStack(alignment: .leading, spacing: 8) {
                 SectionHeader(title: "Прошлое расписание") {
                     if let date = last.date { Text(MacFormat.shortDate.string(from: date)) }

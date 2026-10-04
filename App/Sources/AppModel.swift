@@ -122,6 +122,21 @@ final class AppModel {
         #endif
     }()
 
+    /// DEBUG `--demo-session`: the sample schedule must not become the user's «last pasted text».
+    static let isDemoLaunch: Bool = {
+        #if DEBUG
+        return CommandLine.arguments.contains("--demo-session")
+        #else
+        return false
+        #endif
+    }()
+
+    /// The schedule of the latest training in history: what «Повторить прошлое» offers. Nothing before the
+    /// first training (a pasted text alone is not a past training).
+    var lastPlan: TrainingPlan? {
+        history.first { $0.plan.isValid }?.plan
+    }
+
     static var storeRoot: URL {
         isUIPreview
             ? FileManager.default.temporaryDirectory.appendingPathComponent("WaitingPawsPreview", isDirectory: true)
@@ -162,7 +177,7 @@ final class AppModel {
         #if os(iOS)
         if syncClient.isConnected {
             // The Mac owns trainings while linked: it starts the session (and its recording) and mirrors it back.
-            if !plan.rawText.isEmpty { settings.lastPlanText = plan.rawText }
+            if !plan.rawText.isEmpty, !Self.isDemoLaunch { settings.lastPlanText = plan.rawText }
             lastRecord = nil
             syncClient.send(.startSession(plan))
             return
@@ -174,7 +189,7 @@ final class AppModel {
         session.autoFinishAfterLastBreak = settings.autoFinishAfterLastBreak
         self.session = session
         lastRecord = nil
-        if !plan.rawText.isEmpty, !Self.isUIPreview { settings.lastPlanText = plan.rawText }
+        if !plan.rawText.isEmpty, !Self.isUIPreview, !Self.isDemoLaunch { settings.lastPlanText = plan.rawText }
         if settings.autoRecord, !Self.isUIPreview { startRecording() }
         keepAwake(true)
         startTicking()

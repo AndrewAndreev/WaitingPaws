@@ -54,8 +54,7 @@ final class MacUIState {
 
     /// ⌘⇧R: the previous schedule again.
     func repeatLast(_ model: AppModel) {
-        let plan = PlanParser.parse(model.settings.lastPlanText)
-        guard plan.isValid else { return }
+        guard let plan = model.lastPlan else { return }
         setPending(plan)
         reviewingPlan = true
     }
@@ -136,7 +135,7 @@ struct MacCommands: Commands {
                 .disabled(model.session != nil)
             Button("Повторить прошлое") { ui.repeatLast(model) }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-                .disabled(model.session != nil || model.settings.lastPlanText.isEmpty)
+                .disabled(model.session != nil || model.lastPlan == nil)
             Button("Начать тренировку") { ui.startPending(model) }
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(ui.pendingPlan == nil || model.session != nil)

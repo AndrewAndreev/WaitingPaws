@@ -245,11 +245,10 @@ struct SessionScreen: View {
                 .frame(maxWidth: 560)
             #endif
             PlanEntryCard(
-                hasLastPlan: !model.settings.lastPlanText.isEmpty,
+                hasLastPlan: model.lastPlan != nil,
                 onPaste: { showPlanInput = true },
                 onRepeat: {
-                    let plan = PlanParser.parse(model.settings.lastPlanText)
-                    if plan.isValid { model.startSession(with: plan) } else { showPlanInput = true }
+                    if let plan = model.lastPlan { model.startSession(with: plan) } else { showPlanInput = true }
                 },
                 onRecordOnly: { model.startRecording() })
             .frame(maxWidth: 560)

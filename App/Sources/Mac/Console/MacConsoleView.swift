@@ -47,6 +47,9 @@ struct MacConsoleView: View {
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
         .toolbar { toolbar }
+        // A solid bar: by default the black picture and the grey panel run up under the toolbar and its
+        // capsules straddle the seam between them.
+        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
@@ -222,9 +225,6 @@ struct MacConsoleView: View {
 
 /// Before anything is pasted: where the plan will appear.
 private struct EmptyTimeline: View {
-    @Environment(AppModel.self) private var model
-    @Environment(MacUIState.self) private var ui
-
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "chart.bar.xaxis")
@@ -233,13 +233,10 @@ private struct EmptyTimeline: View {
             Text("Здесь появится план на шкале времени")
                 .font(.headline)
                 .foregroundStyle(.secondary)
-            Text("Вставьте расписание от тренера — выходы и перерывы можно будет растянуть мышью перед стартом.")
+            // The paste itself lives in the panel on the right: one place for it.
+            Text("После вставки расписания выходы и перерывы можно растянуть мышью перед стартом.")
                 .font(.callout)
                 .foregroundStyle(.tertiary)
-            Button { ui.pasteSchedule(model) } label: {
-                ShortcutLabel(title: "Вставить расписание", symbol: "doc.on.clipboard", key: "⌘⇧V")
-            }
-            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .underPageBackgroundColor))
