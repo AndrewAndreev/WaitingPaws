@@ -15,12 +15,12 @@ struct MacHistoryTable: View {
         ScrollViewReader { scroller in
             Table(rows, selection: $controller.selection, sortOrder: $controller.sortOrder) {
                 TableColumn("Дата", value: \.date) { row in
-                    HStack(spacing: 6) {
-                        KindIcon(isClip: row.isClip)
+                    HStack(spacing: 8) {
+                        MacHistoryThumbnail(video: row.video, preparing: preparing(row), isClip: row.isClip)
                         Text(MacHistoryFormat.day(row.date))
                     }
                 }
-                .width(min: 96, ideal: 104)
+                .width(min: 134, ideal: 140)
 
                 TableColumn("Начало", value: \.startMinute) { row in
                     Text(MacFormat.time.string(from: row.date)).monospacedDigit()
@@ -37,7 +37,7 @@ struct MacHistoryTable: View {
                 TableColumn("Тренеры", value: \.trainers) { row in
                     if row.trainers.isEmpty { Dash() } else { Text(row.trainers).help(row.trainers) }
                 }
-                .width(min: 70, ideal: 96)
+                .width(min: 70, ideal: 106)
 
                 TableColumn("Выходы", value: \.exitsDone) { row in
                     if let record = row.record {
@@ -84,7 +84,7 @@ struct MacHistoryTable: View {
                 .width(min: 88, ideal: 90)
 
                 TableColumn("Видео", value: \.videoBytes) { row in
-                    VideoCell(video: row.video, preparing: row.video.map { model.finalizingFileNames.contains($0.fileName) } ?? false)
+                    VideoCell(video: row.video, preparing: preparing(row))
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .width(min: 52, ideal: 56)
@@ -111,6 +111,11 @@ struct MacHistoryTable: View {
                 if let id = controller.selection { withAnimation { scroller.scrollTo(id, anchor: .center) } }
             }
         }
+    }
+
+    /// The row's video is being remuxed right now.
+    private func preparing(_ row: MacHistoryRow) -> Bool {
+        row.video.map { model.finalizingFileNames.contains($0.fileName) } ?? false
     }
 
     /// ⌘C on a training copies its log.
@@ -149,20 +154,6 @@ struct MacHistoryRowMenu: View {
 }
 
 // MARK: - Cells
-
-/// Paw for a training, film for a recording without one.
-private struct KindIcon: View {
-    let isClip: Bool
-    @Environment(\.backgroundProminence) private var prominence
-
-    var body: some View {
-        Image(systemName: isClip ? "film" : "pawprint.fill")
-            .font(.system(size: 10.5))
-            .foregroundStyle(isClip || prominence == .increased ? AnyShapeStyle(.secondary) : AnyShapeStyle(MacPalette.accent))
-            .frame(width: 14)
-            .help(isClip ? "Запись без тренировки" : "Тренировка")
-    }
-}
 
 private struct Dash: View {
     var body: some View { Text("—").foregroundStyle(.tertiary) }

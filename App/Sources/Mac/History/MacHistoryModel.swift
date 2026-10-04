@@ -14,6 +14,8 @@ struct MacHistoryVideo: Equatable {
     let url: URL
     var bytes: Int64
     var duration: TimeInterval?
+    /// Changes when the file is rewritten (remuxed after recording): the table's thumbnail is keyed by it.
+    var modified: Date?
 
     var fileName: String { url.lastPathComponent }
 }
@@ -292,8 +294,10 @@ final class MacHistoryController {
     func refreshFiles(_ model: AppModel) async {
         var found: [String: MacHistoryVideo] = [:]
         func add(_ url: URL) {
-            let bytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
-            found[url.lastPathComponent] = MacHistoryVideo(url: url, bytes: bytes, duration: videos[url.lastPathComponent]?.duration)
+            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+            let bytes = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+            found[url.lastPathComponent] = MacHistoryVideo(url: url, bytes: bytes, duration: videos[url.lastPathComponent]?.duration,
+                                                          modified: attributes?[.modificationDate] as? Date)
         }
         for record in records(model) {
             if let url = videoURL(for: record, model: model) { add(url) }
