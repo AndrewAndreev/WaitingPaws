@@ -148,13 +148,21 @@ struct MacWelcomeView: View {
                         .controlSize(.small)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .waiting:
-                    empty(title: "Камер пока нет", symbol: "video.slash", text: waitingText)
+                    switch SetupServerState.of(model) {
+                    case .failed, .unavailable:
+                        empty(title: "Камер пока нет", symbol: "video.slash", text: waitingText)
+                    case .external:
+                        empty(title: "Сервер не указан", symbol: "server.rack",
+                              text: "Укажите адрес своего go2rtc: «Свой сервер go2rtc…» слева.")
+                    default:
+                        // go2rtc is on its way: the sign-in sheet waits for it.
+                        signInEmpty
+                    }
                 case .failed(let message):
                     empty(title: "Нет связи с go2rtc", symbol: "exclamationmark.triangle", text: message)
                 case .ready:
                     if catalog.isEmpty {
-                        empty(title: "Пока пусто", symbol: "video.badge.plus",
-                              text: "Войдите в Xiaomi — камеры Mi Home появятся здесь.")
+                        signInEmpty
                     } else {
                         list
                     }
@@ -192,8 +200,44 @@ struct MacWelcomeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// Nothing in go2rtc yet: the way to the cameras is the Xiaomi account (a stream is the second option).
+    private var signInEmpty: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "video.badge.plus")
+                .font(.system(size: 34, weight: .light))
+                .foregroundStyle(.tertiary)
+                .padding(.bottom, 4)
+            Text("Камер пока нет")
+                .font(.headline)
+            Text("Войдите в аккаунт Xiaomi — камеры из приложения Mi Home появятся здесь.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Войти в Xiaomi…") { sheet = .signIn }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.top, 10)
+            Button("Или добавьте поток RTSP / ONVIF…") { sheet = .streams }
+                .buttonStyle(.borderless)
+                .font(.callout)
+                .padding(.top, 2)
+        }
+        .padding(.horizontal, 44)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private var list: some View {
         List(selection: $selection) {
+            if catalog.accounts.isEmpty {
+                // Only streams so far: the Mi Home cameras are one sign-in away.
+                Section {
+                    SetupMiHomeSignInCard(style: .listRow) { sheet = .signIn }
+                        .selectionDisabled()
+                } header: {
+                    WelcomeSectionHeader(title: "Mi Home", detail: nil)
+                }
+            }
             ForEach(catalog.accounts) { account in
                 Section {
                     if let error = account.error {
@@ -204,8 +248,8 @@ struct MacWelcomeView: View {
                             .selectionDisabled()
                     }
                     ForEach(account.cameras) { camera in
-                        WelcomeSourceRow(title: camera.name, detail: camera.model ?? "Камера Mi Home",
-                                         stream: camera.streamName, isCamera: true)
+                        WelcomeSourceRow(title: camera.name, detail: camera.kind, tooltip: camera.technicalDetails,
+                                         source: camera.stillSource, isCamera: true)
                             .tag(camera.id)
                     }
                 } header: {
@@ -216,8 +260,9 @@ struct MacWelcomeView: View {
             if !catalog.otherStreams.isEmpty {
                 Section {
                     ForEach(catalog.otherStreams) { stream in
-                        WelcomeSourceRow(title: stream.name, detail: stream.sources.first ?? "Источник не указан",
-                                         stream: stream.name, isCamera: false)
+                        let detail = stream.sources.first.map(SettingsText.redacted) ?? "Источник не указан"
+                        WelcomeSourceRow(title: stream.name, detail: detail, tooltip: detail,
+                                         source: .stream(stream.name), isCamera: false)
                             .tag(SetupCameraCatalog.streamID(stream.name))
                     }
                 } header: {
@@ -278,6 +323,9 @@ struct MacWelcomeView: View {
         }
         guard force else { return }
         for stream in catalog.streams { SetupStillStore.shared.request(stream.name, model: model, force: true) }
+        for camera in catalog.accounts.flatMap(\.cameras) where camera.streamName == nil {
+            SetupStillStore.shared.request(camera.stillSource, model: model, force: true)
+        }
     }
 
     private var firstID: String? {
@@ -388,18 +436,21 @@ private struct WelcomeSectionHeader: View {
     }
 }
 
-/// A Mi Home camera or a go2rtc stream: still, name, model or source, and whether a picture came through.
+/// A Mi Home camera or a go2rtc stream: still (a preview for a camera that is not a stream yet), name,
+/// kind of camera or source, and whether a picture came through.
 private struct WelcomeSourceRow: View {
     @Environment(AppModel.self) private var model
     let title: String
     let detail: String
-    let stream: String?
+    /// The Mi Home model id and address, or the source.
+    let tooltip: String
+    let source: SetupStillSource
     let isCamera: Bool
 
     var body: some View {
-        let still = stream.flatMap { SetupStillStore.shared.state(for: $0, model: model) }
+        let still = SetupStillStore.shared.state(for: source, model: model)
         HStack(spacing: 10) {
-            SetupStill(stream: stream, width: 64, cornerRadius: 5,
+            SetupStill(source: source, width: 64, cornerRadius: 5,
                        symbol: isCamera ? "video.fill" : "antenna.radiowaves.left.and.right")
                 .saturation(still == .failed ? 0 : 1)
             VStack(alignment: .leading, spacing: 2) {
@@ -422,7 +473,7 @@ private struct WelcomeSourceRow: View {
         }
         .padding(.vertical, 3)
         .opacity(still == .failed ? 0.65 : 1)
-        .help(detail)
+        .help(tooltip.isEmpty ? detail : tooltip)
     }
 
     private func detailText(_ still: SetupStillStore.State?) -> String {

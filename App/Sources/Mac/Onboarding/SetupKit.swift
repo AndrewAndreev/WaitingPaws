@@ -182,6 +182,20 @@ enum SetupText {
         }
     }
 
+    /// "chuangmi.camera.039a01" → «Камера Xiaomi»: the device type and the maker from the Mi Home model id.
+    /// Only makers that are certain; anything else is «Камера Mi Home». The raw id is for tooltips only.
+    static func cameraKind(model: String?) -> String {
+        let parts = (model ?? "").lowercased().split(separator: ".").map(String.init)
+        let device = parts.count > 1 && parts[1] == "cateye" ? "Видеоглазок" : "Камера"
+        guard let vendor = parts.first.flatMap({ cameraVendors[$0] }) else { return "\(device) Mi Home" }
+        return "\(device) \(vendor)"
+    }
+
+    private static let cameraVendors = [
+        "xiaomi": "Xiaomi", "mijia": "Xiaomi", "chuangmi": "Xiaomi", "isa": "Xiaomi",
+        "xiaovv": "Xiaovv", "lumi": "Aqara",
+    ]
+
     /// "rtsp://192.168.1.20:554/live" → "RTSP"; Mi Home sources → "Mi Home".
     static func sourceBadge(_ source: String?) -> String? {
         guard let source, let scheme = source.split(separator: ":").first.map(String.init), !scheme.isEmpty,
@@ -292,8 +306,10 @@ struct SetupIconTile: View {
 
 /// DEBUG launch arguments for UI checks of the setup screens without a server or a Xiaomi account:
 /// `--demo-cameras` fills the lists with a signed-in Mi Home account, cameras and an RTSP stream
-/// (nothing is sent anywhere and nothing is saved); `--demo-welcome-sheet signin|captcha|verify|server|streams|picker`
-/// and `--demo-settings-sheet signin|picker` open a sheet; `--demo-pane <pane>` selects a Settings pane.
+/// (nothing is sent anywhere and nothing is saved); with `--demo-catalog no-xiaomi` there is no Xiaomi account
+/// and only the RTSP stream (also the Settings camera), with `--demo-catalog empty` neither.
+/// `--demo-welcome-sheet signin|captcha|verify|server|streams|picker` and `--demo-settings-sheet signin|picker`
+/// open a sheet; `--demo-pane <pane>` selects a Settings pane.
 enum SetupDemo {
     static var isOn: Bool {
         #if DEBUG
@@ -330,46 +346,86 @@ enum SetupDemo {
     static let cameraName = "Прихожая"
     static let cameraModel = "chuangmi.camera.069a01"
     static let cameraSize = CGSize(width: 2304, height: 1296)
+    static let rtspStream = "testcam"
+    static let rtspSize = CGSize(width: 1280, height: 720)
+
+    /// `--demo-catalog no-xiaomi|empty`: go2rtc without a Xiaomi account (and without streams).
+    static var hasXiaomi: Bool { argument(after: "--demo-catalog") == nil }
+    static var hasStreams: Bool { argument(after: "--demo-catalog") != "empty" }
 
     #if DEBUG
+    private static let kitchenDID = "1093845577"
+    private static let nurseryDID = "1093845604"
+
     static var accounts: [SetupCameraCatalog.Account] {
+        guard hasXiaomi else { return [] }
         let region = XiaomiRegion.ru
-        func source(_ name: String, did: String, model: String, ip: String) -> Go2RTCSource {
-            Go2RTCSource(name: name, info: "ip: \(ip), mac: 64:90:C1:00:00:00",
-                         url: "xiaomi://\(accountID):ru@\(ip)?did=\(did)&model=\(model)")
+        func camera(_ name: String, did: String, model: String, ip: String, stream: String?) -> SetupCameraCatalog.Camera {
+            let source = Go2RTCSource(name: name, info: "ip: \(ip), mac: 64:90:C1:00:00:00",
+                                      url: "xiaomi://\(accountID):ru@\(ip)?did=\(did)&model=\(model)")
+            return .init(source: source, accountID: accountID, region: region, streamName: stream)
         }
         return [SetupCameraCatalog.Account(id: accountID, region: region, cameras: [
-            .init(source: source(cameraName, did: "1093845561", model: cameraModel, ip: "192.168.1.34"),
-                  accountID: accountID, region: region, streamName: cameraStream),
-            .init(source: source("Кухня", did: "1093845577", model: "chuangmi.camera.039a01", ip: "192.168.1.35"),
-                  accountID: accountID, region: region, streamName: nil),
-            .init(source: source("Балкон", did: "1093845590", model: "isa.camera.hlc7", ip: "192.168.1.36"),
-                  accountID: accountID, region: region, streamName: "balkon"),
+            camera(cameraName, did: "1093845561", model: cameraModel, ip: "192.168.1.34", stream: cameraStream),
+            // Not a stream yet: a preview that came through, one still on its way, one offline (no address).
+            camera("Кухня", did: kitchenDID, model: "chuangmi.camera.039a01", ip: "192.168.1.35", stream: nil),
+            camera("Балкон", did: "1093845590", model: "isa.camera.hlc7", ip: "192.168.1.36", stream: "balkon"),
+            camera("Детская", did: nurseryDID, model: "chuangmi.camera.ipc019", ip: "192.168.1.37", stream: nil),
+            camera("Дача", did: "1093845618", model: "mijia.camera.v3", ip: "", stream: nil),
         ], error: nil)]
     }
 
     static var streams: [Go2RTCStream] {
-        let cameras = accounts[0].cameras
+        guard hasStreams else { return [] }
+        let rtsp = Go2RTCStream(name: rtspStream, sources: ["rtsp://192.168.1.20:554/live"])
+        guard let cameras = accounts.first?.cameras else { return [rtsp] }
         return [
             Go2RTCStream(name: cameraStream, sources: [cameras[0].source.url]),
             Go2RTCStream(name: "balkon", sources: [cameras[2].source.url]),
-            Go2RTCStream(name: "testcam", sources: ["rtsp://192.168.1.20:554/live"]),
+            rtsp,
         ]
     }
 
-    /// Stills: the `--demo-camera` picture for the hall, colour bars for the RTSP stream, nothing (offline) for the balcony.
+    /// Stills: the `--demo-camera` picture for the hall (and, mirrored, the kitchen preview), colour bars for
+    /// the RTSP stream, a preview on its way for the nursery, nothing (offline) for the balcony and the dacha.
     @MainActor
-    static func still(for stream: String) -> SetupStillStore.State {
-        switch stream {
-        case cameraStream:
+    static func still(for source: SetupStillSource) -> SetupStillStore.State {
+        switch source {
+        case .stream(cameraStream):
             guard let image = DemoData.cameraImage else { return .failed }
             return .loaded(image, cameraSize)
-        case "testcam":
-            return .loaded(testPattern, CGSize(width: 1280, height: 720))
+        case .stream(rtspStream):
+            return .loaded(testPattern, rtspSize)
+        case .camera(let camera) where camera.deviceID == kitchenDID && camera.host != nil:
+            guard let image = kitchenPreview else { return .failed }
+            return .loaded(image, CGSize(width: 1920, height: 1080))
+        case .camera(let camera) where camera.deviceID == nurseryDID:
+            return .loading
         default:
             return .failed
         }
     }
+
+    @MainActor
+    static func still(for stream: String) -> SetupStillStore.State { still(for: .stream(stream)) }
+
+    /// The demo camera picture mirrored and closer: looks like another room.
+    @MainActor
+    private static let kitchenPreview: NSImage? = {
+        guard let image = DemoData.cameraImage else { return nil }
+        let size = NSSize(width: 960, height: 540)
+        return NSImage(size: size, flipped: false) { rect in
+            let flip = NSAffineTransform()
+            flip.translateX(by: rect.width, yBy: 0)
+            flip.scaleX(by: -1, yBy: 1)
+            flip.concat()
+            image.draw(in: rect.insetBy(dx: -rect.width * 0.4, dy: -rect.height * 0.4).offsetBy(dx: rect.width * 0.3, dy: rect.height * 0.12),
+                       from: .zero, operation: .copy, fraction: 1)
+            NSColor(calibratedRed: 1, green: 0.85, blue: 0.6, alpha: 0.12).setFill()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+    }()
 
     @MainActor
     static let testPattern: NSImage = {

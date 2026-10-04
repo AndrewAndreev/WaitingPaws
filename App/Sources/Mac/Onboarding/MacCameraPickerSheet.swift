@@ -5,7 +5,10 @@ import WaitingPawsCore
 private let pickerTileWidth: CGFloat = 200
 
 /// Выбор камеры (D3): Mi Home cameras and other go2rtc streams as Home-style tiles. Choosing one registers
-/// its stream in go2rtc when needed, saves it as the app's camera and closes the sheet.
+/// its stream in go2rtc when needed, saves it as the app's camera and closes the sheet. Mi Home cameras that
+/// are not streams yet get a preview on demand (`SetupStillStore`). Without a Xiaomi account on go2rtc the
+/// Mi Home part is a card with «Войти в Xiaomi…»: after the sign-in its cameras appear right here, so the sheet
+/// also switches the training window from a stream to a Mi Home camera.
 struct MacCameraPickerSheet: View {
     /// Only go2rtc streams (welcome window «Выбрать поток go2rtc…»).
     var onlyStreams = false
@@ -26,6 +29,9 @@ struct MacCameraPickerSheet: View {
     @State private var choosing = false
     @State private var error: String?
     @State private var addingStream = false
+    @State private var signingIn = false
+    /// After a sign-in here every account is listed, not only `accountID`.
+    @State private var allAccounts = false
 
     private let columns = Array(repeating: GridItem(.fixed(pickerTileWidth), spacing: 16, alignment: .top), count: 3)
 
@@ -38,6 +44,13 @@ struct MacCameraPickerSheet: View {
         }
         .frame(width: 680, height: onlyStreams ? 380 : 548)
         .task(id: model.setupServerReady) { await reload() }
+        .sheet(isPresented: $signingIn) {
+            SetupXiaomiSignInSheet { account in
+                allAccounts = true
+                Task { await reload(selecting: account) }
+            }
+            .environment(model)
+        }
     }
 
     // MARK: Header
@@ -93,13 +106,11 @@ struct MacCameraPickerSheet: View {
                 Button("Повторить") { Task { await reload() } }
             }
         case .ready:
-            if visibleAccounts.isEmpty && catalog.otherStreams.isEmpty {
+            if onlyStreams && catalog.otherStreams.isEmpty {
                 ContentUnavailableView {
-                    Label(onlyStreams ? "В go2rtc нет потоков" : "Камер не найдено", systemImage: "video.slash")
+                    Label("В go2rtc нет потоков", systemImage: "video.slash")
                 } description: {
-                    Text(onlyStreams
-                         ? "Добавьте источник по адресу: rtsp://, onvif:// или http://."
-                         : "В аккаунте Mi Home нет камер, а в go2rtc нет потоков.")
+                    Text("Добавьте источник по адресу: rtsp://, onvif:// или http://.")
                 } actions: {
                     addStreamButton
                 }
@@ -116,8 +127,13 @@ struct MacCameraPickerSheet: View {
     private var grid: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                if !onlyStreams && catalog.accounts.isEmpty {
+                    SetupMiHomeSignInCard(style: .card) { signingIn = true }
+                        .disabled(!model.setupServerReadyOrDemo)
+                }
                 ForEach(visibleAccounts) { account in
-                    section(title: "Mi Home", detail: "ID \(account.id) · \(SetupText.regionTitle(account.region))") {
+                    section(title: "Mi Home", detail: "ID \(account.id) · \(SetupText.regionTitle(account.region))",
+                            accessory: account.id == visibleAccounts.first?.id ? .signIn : nil) {
                         if let error = account.error {
                             Label("Камеры не загрузились: \(error)", systemImage: "exclamationmark.triangle.fill")
                                 .font(.callout)
@@ -135,7 +151,7 @@ struct MacCameraPickerSheet: View {
                         }
                     }
                 }
-                section(title: visibleAccounts.isEmpty ? "Потоки go2rtc" : "Другие потоки go2rtc", detail: nil, showsAdd: true) {
+                section(title: visibleAccounts.isEmpty ? "Потоки go2rtc" : "Другие потоки go2rtc", detail: nil, accessory: .addStream) {
                     if catalog.otherStreams.isEmpty {
                         Text("Здесь появятся RTSP, ONVIF и другие источники go2rtc.")
                             .font(.callout)
@@ -156,7 +172,9 @@ struct MacCameraPickerSheet: View {
         .scrollBounceBehavior(.basedOnSize)
     }
 
-    private func section<Content: View>(title: String, detail: String?, showsAdd: Bool = false,
+    private enum SectionAccessory { case signIn, addStream }
+
+    private func section<Content: View>(title: String, detail: String?, accessory: SectionAccessory? = nil,
                                         @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -165,7 +183,17 @@ struct MacCameraPickerSheet: View {
                     Text(detail).font(.callout).foregroundStyle(.secondary)
                 }
                 Spacer()
-                if showsAdd { addStreamButton.buttonStyle(.borderless) }
+                switch accessory {
+                case .signIn:
+                    Button("Войти в другой аккаунт…", systemImage: "person.badge.key") { signingIn = true }
+                        .buttonStyle(.borderless)
+                        .help("Добавить камеры ещё одного аккаунта Xiaomi")
+                        .disabled(!model.setupServerReadyOrDemo)
+                case .addStream:
+                    addStreamButton.buttonStyle(.borderless)
+                case nil:
+                    EmptyView()
+                }
             }
             content()
         }
@@ -225,13 +253,19 @@ struct MacCameraPickerSheet: View {
 
     // MARK: Actions
 
-    private func reload(force: Bool = false) async {
-        await catalog.load(model, account: onlyStreams ? nil : accountID)
-        if selection == nil || catalog.choice(for: selection) == nil {
+    /// `selecting`: an account just signed in to — its first camera gets selected.
+    private func reload(force: Bool = false, selecting account: String? = nil) async {
+        await catalog.load(model, account: onlyStreams || allAccounts ? nil : accountID)
+        if let account, let camera = catalog.accounts.first(where: { $0.id == account })?.cameras.first {
+            selection = camera.id
+        } else if selection == nil || catalog.choice(for: selection) == nil {
             selection = catalog.currentID(model) ?? firstID
         }
         guard force else { return }
         for stream in catalog.streams { SetupStillStore.shared.request(stream.name, model: model, force: true) }
+        for camera in visibleAccounts.flatMap(\.cameras) where camera.streamName == nil {
+            SetupStillStore.shared.request(camera.stillSource, model: model, force: true)
+        }
     }
 
     /// The first camera go2rtc already plays (or the first stream): a sensible default to confirm with Return.
@@ -264,20 +298,20 @@ private struct SetupPickerTile: View {
     let choice: SetupCameraCatalog.Choice
     let selected: Bool
 
-    private var streamName: String? {
+    private var stillSource: SetupStillSource {
         switch choice {
-        case .camera(let camera): return camera.streamName
-        case .stream(let stream): return stream.name
+        case .camera(let camera): return camera.stillSource
+        case .stream(let stream): return .stream(stream.name)
         }
     }
 
     private var still: SetupStillStore.State? {
-        streamName.flatMap { SetupStillStore.shared.state(for: $0, model: model) }
+        SetupStillStore.shared.state(for: stillSource, model: model)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            SetupStill(stream: streamName, width: pickerTileWidth, cornerRadius: 10,
+            SetupStill(source: stillSource, width: pickerTileWidth, cornerRadius: 10,
                        symbol: isCamera ? "video.fill" : "antenna.radiowaves.left.and.right")
                 .saturation(still == .failed ? 0 : 1)
                 .overlay(alignment: .bottomLeading) { chip.padding(7) }
@@ -306,7 +340,7 @@ private struct SetupPickerTile: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(isCamera ? .tail : .middle)
-                    .help(subtitle)
+                    .help(tooltip)
             }
             .padding(.horizontal, 2)
         }
@@ -327,27 +361,43 @@ private struct SetupPickerTile: View {
         }
     }
 
+    /// "2304×1296 · Камера Xiaomi" (the raw model id only in the tooltip) or the stream's source.
     private var subtitle: String {
         switch choice {
         case .camera(let camera):
-            let model = camera.model ?? "Камера Mi Home"
-            if case .loaded(_, let size) = still { return "\(SetupText.pixels(size)) · \(model)" }
-            return model
+            if case .loaded(_, let size) = still { return "\(SetupText.pixels(size)) · \(camera.kind)" }
+            return camera.kind
         case .stream(let stream):
-            return stream.sources.first ?? "Источник не указан"
+            return stream.sources.first.map(SettingsText.redacted) ?? "Источник не указан"
+        }
+    }
+
+    private var tooltip: String {
+        switch choice {
+        case .camera(let camera): return camera.technicalDetails.isEmpty ? camera.kind : camera.technicalDetails
+        case .stream: return subtitle
         }
     }
 
     @ViewBuilder
     private var chip: some View {
-        let badge: String? = {
-            if case .stream(let stream) = choice { return SetupText.sourceBadge(stream.sources.first) }
-            return nil
-        }()
-        if streamName == nil {
-            // A Mi Home camera that go2rtc does not play yet: no picture until it is chosen.
-            chipBody { Text("Mi Home") }
-        } else {
+        switch choice {
+        case .camera:
+            chipBody {
+                switch still {
+                case .loaded:
+                    StatusDot(color: MacPalette.green, size: 6)
+                    Text("В сети")
+                case .failed:
+                    StatusDot(color: .white.opacity(0.5), size: 6)
+                    Text("Не в сети")
+                case .loading, nil:
+                    ProgressView().controlSize(.mini).tint(.white)
+                    Text("Подключение…")
+                }
+            }
+        case .stream(let stream):
+            let badge = SetupText.sourceBadge(stream.sources.first)
             chipBody {
                 switch still {
                 case .loaded:
@@ -372,6 +422,48 @@ private struct SetupPickerTile: View {
             .padding(.vertical, 3)
             .glassEffect(.regular.tint(.black.opacity(0.25)), in: Capsule())
             .environment(\.colorScheme, .dark)
+    }
+}
+
+/// «Камеры Mi Home» when go2rtc has no Xiaomi account: one sentence and a prominent «Войти в Xiaomi…».
+struct SetupMiHomeSignInCard: View {
+    enum Style {
+        /// A card of its own (camera picker).
+        case card
+        /// A row of a grouped form (Settings).
+        case formRow
+        /// A list row whose icon lines up with the stills of the rows below (welcome window).
+        case listRow
+    }
+
+    var style: Style = .card
+    var signIn: () -> Void
+
+    var body: some View {
+        HStack(spacing: style == .card ? 14 : 10) {
+            SetupIconTile(symbol: "video.fill", color: MacPalette.pinkDeep, size: style == .listRow ? 30 : (style == .card ? 40 : 34))
+                .frame(width: style == .listRow ? 64 : nil)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Камеры Mi Home")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(style == .listRow ? "Нужен вход в аккаунт Xiaomi" : "Войдите в аккаунт Xiaomi — здесь появятся камеры из Mi Home.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button("Войти в Xiaomi…", action: signIn)
+                .buttonStyle(.borderedProminent)
+                .controlSize(style == .listRow ? .small : .regular)
+        }
+        .padding(style == .card ? 14 : 3)
+        .background {
+            if style == .card {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.primary.opacity(0.045))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.primary.opacity(0.06)))
+            }
+        }
     }
 }
 

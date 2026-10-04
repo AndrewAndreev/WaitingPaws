@@ -27,9 +27,23 @@ final class SetupCameraCatalog {
 
         var id: String { "camera|\(accountID)|\(source.url)" }
         var name: String { source.name }
-        /// Mi Home model id from the source URL ("chuangmi.camera.069a01").
+        /// Mi Home model id from the source URL ("chuangmi.camera.069a01"): for tooltips only.
         var model: String? { SetupCameraCatalog.query("model", in: source.url) }
         var deviceID: String? { SetupCameraCatalog.query("did", in: source.url) }
+        /// The camera's address in the home network, which go2rtc dials. Mi Home gives none for a camera
+        /// that is offline: no preview is tried then.
+        var host: String? {
+            guard let host = URLComponents(string: source.url)?.host, !host.isEmpty else { return nil }
+            return host
+        }
+        /// "Камера Xiaomi" instead of "chuangmi.camera.039a01".
+        var kind: String { SetupText.cameraKind(model: model) }
+        /// Tooltip with what the readable text leaves out: the Mi Home model id and the address.
+        var technicalDetails: String {
+            [model.map { "Модель Mi Home: \($0)" }, host.map { "IP \($0)" }].compactMap { $0 }.joined(separator: " · ")
+        }
+        /// What its still shows: the go2rtc stream, or a preview of the camera itself.
+        var stillSource: SetupStillSource { streamName.map { .stream($0) } ?? .camera(self) }
     }
 
     struct Account: Identifiable, Hashable {
@@ -61,6 +75,12 @@ final class SetupCameraCatalog {
     private(set) var refreshing = false
 
     nonisolated static func streamID(_ name: String) -> String { "stream|\(name)" }
+
+    /// Prefix of the short-lived go2rtc streams that fetch a preview of a Mi Home camera go2rtc does not
+    /// play yet (`SetupStillStore`). They are left out of every list and never saved as the app's camera.
+    nonisolated static let previewPrefix = "__wp_preview_"
+
+    nonisolated static func isPreviewStream(_ name: String) -> Bool { name.hasPrefix(previewPrefix) }
 
     /// Streams that are not one of the listed Mi Home cameras.
     var otherStreams: [Go2RTCStream] {
@@ -139,7 +159,10 @@ final class SetupCameraCatalog {
             for await result in group { results.append(result) }
             loaded = results.sorted { $0.0 < $1.0 }.map(\.1)
         }
-        let allStreams = await loadedStreams
+        let loadedAll = await loadedStreams
+        // Preview streams of a quit or crashed preview: not the user's, removed quietly.
+        SetupStillStore.shared.removeLeftoverPreviews(loadedAll.map(\.name), model: model)
+        let allStreams = loadedAll.filter { !Self.isPreviewStream($0.name) }
         streams = allStreams
         accounts = loaded.map { account in
             var account = account
@@ -160,7 +183,7 @@ final class SetupCameraCatalog {
         return await withTaskGroup(of: Go2RTCStream.self) { group in
             for stream in streams {
                 group.addTask {
-                    guard stream.sources.isEmpty,
+                    guard stream.sources.isEmpty, !SetupCameraCatalog.isPreviewStream(stream.name),
                           let configured = try? await client.configuredSources(stream: stream.name),
                           !configured.isEmpty else { return stream }
                     return Go2RTCStream(name: stream.name, sources: configured)
@@ -193,15 +216,19 @@ final class SetupCameraCatalog {
         }
         switch choice {
         case .stream(let stream):
+            guard !Self.isPreviewStream(stream.name) else { throw SetupError("Это временный поток превью, его нельзя выбрать") }
             model.settings.cameraTitle = stream.name
             model.settings.streamName = stream.name
         case .camera(let camera):
-            var name = camera.streamName
+            var name = camera.streamName.flatMap { Self.isPreviewStream($0) ? nil : $0 }
             if name == nil {
                 guard let client = model.client else { throw Go2RTCError.invalidURL }
+                // One connection to the camera at a time: a preview still running gives way first.
+                await SetupStillStore.shared.cancelPreview(of: camera, model: model)
                 let fresh = uniqueStreamName(Go2RTCClient.streamName(for: camera.name))
                 try await client.addStream(name: fresh, source: camera.source.url)
                 streams.append(Go2RTCStream(name: fresh, sources: [camera.source.url]))
+                SetupStillStore.shared.adoptPreview(of: camera, as: fresh, model: model)
                 name = fresh
             }
             model.settings.xiaomiAccountID = camera.accountID
@@ -218,6 +245,9 @@ final class SetupCameraCatalog {
     func addStream(name: String, source: String, model: AppModel) async throws -> Go2RTCStream {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let source = source.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !Self.isPreviewStream(name) else {
+            throw SetupError("Имена на «\(Self.previewPrefix)» заняты Waiting Paws")
+        }
         let stream = Go2RTCStream(name: name, sources: [source])
         if SetupDemo.isOn || AppModel.isUIPreview {
             streams.append(stream)
@@ -241,9 +271,33 @@ final class SetupCameraCatalog {
     }
 }
 
+/// A message for the user, shown as is.
+struct SetupError: LocalizedError {
+    let errorDescription: String?
+    init(_ message: String) { errorDescription = message }
+}
+
 // MARK: - Stills
 
-/// Stills of go2rtc streams for tiles, rows and the Settings sidebar, cached for the app's lifetime.
+/// What a still shows: a go2rtc stream, or a Mi Home camera go2rtc does not play yet (a preview).
+enum SetupStillSource: Hashable {
+    case stream(String)
+    case camera(SetupCameraCatalog.Camera)
+
+    var id: String {
+        switch self {
+        case .stream(let name): return SetupCameraCatalog.streamID(name)
+        case .camera(let camera): return camera.id
+        }
+    }
+}
+
+/// Stills for tiles, rows and the Settings sidebar, cached for the app's lifetime: frames of go2rtc streams
+/// and previews of Mi Home cameras that are not streams yet.
+///
+/// A preview registers a temporary stream `__wp_preview_<did>` with the camera's `xiaomi://` source, takes one
+/// keyframe from it and deletes it again — also after a failure, a timeout or a cancel. At most two previews
+/// run at a time (each is a P2P session to a camera) and each gets 12 s. The user's own streams are never touched.
 @MainActor
 @Observable
 final class SetupStillStore {
@@ -255,25 +309,63 @@ final class SetupStillStore {
         case failed
     }
 
+    static let previewTimeout: Duration = .seconds(12)
+
     private(set) var states: [String: State] = [:]
     @ObservationIgnored private var tasks: [String: Task<Void, Never>] = [:]
     /// A camera that was offline is tried again after a while, not on every redraw.
     @ObservationIgnored private var failedAt: [String: Date] = [:]
+    @ObservationIgnored private let previewSlots = SetupPreviewSlots(limit: 2)
+    /// Temporary streams that exist in go2rtc right now: the leftovers cleanup keeps away from them.
+    @ObservationIgnored private var livePreviewStreams: Set<String> = []
 
     private func key(_ stream: String, _ model: AppModel) -> String {
         "\(model.settings.server?.baseURL.absoluteString ?? "-")|\(stream)"
     }
 
-    func state(for stream: String, model: AppModel) -> State? {
-        #if DEBUG
-        if SetupDemo.isOn { return SetupDemo.still(for: stream) }
-        #endif
-        return states[key(stream, model)]
+    private func previewKey(_ camera: SetupCameraCatalog.Camera, _ model: AppModel) -> String {
+        key(Self.previewStreamName(camera), model)
     }
 
-    /// Starts loading a still unless one is cached (or loading); `force` refreshes it.
+    /// `__wp_preview_1093845577`: one per camera, so two windows asking for the same preview share it.
+    nonisolated static func previewStreamName(_ camera: SetupCameraCatalog.Camera) -> String {
+        let raw = camera.deviceID ?? camera.source.url
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+        var safe = String(String.UnicodeScalarView(raw.unicodeScalars.map { allowed.contains($0) ? $0 : "_" }))
+        if camera.deviceID == nil || safe.count > 40 { safe = String(safe.suffix(40)) }
+        return SetupCameraCatalog.previewPrefix + safe
+    }
+
+    func state(for stream: String, model: AppModel) -> State? {
+        state(for: .stream(stream), model: model)
+    }
+
+    func state(for source: SetupStillSource, model: AppModel) -> State? {
+        #if DEBUG
+        if SetupDemo.isOn { return SetupDemo.still(for: source) }
+        #endif
+        switch source {
+        case .stream(let name):
+            return states[key(name, model)]
+        case .camera(let camera):
+            // No address in the home network: Mi Home sees the camera offline.
+            if camera.host == nil { return .failed }
+            return states[previewKey(camera, model)]
+        }
+    }
+
+    /// Starts loading a still unless one is cached (or loading). `force` refreshes a stream's still and
+    /// retries a failed preview; a preview that came through stays for the session.
+    func request(_ source: SetupStillSource, model: AppModel, force: Bool = false) {
+        switch source {
+        case .stream(let name): request(name, model: model, force: force)
+        case .camera(let camera): requestPreview(camera, model: model, force: force)
+        }
+    }
+
     func request(_ stream: String, model: AppModel, force: Bool = false) {
-        guard !SetupDemo.isOn, model.setupServerReady, let server = model.settings.server else { return }
+        guard !SetupDemo.isOn, model.setupServerReady, let server = model.settings.server,
+              !SetupCameraCatalog.isPreviewStream(stream) else { return }
         let key = key(stream, model)
         if !force, let state = states[key] {
             guard state == .failed, Date().timeIntervalSince(failedAt[key] ?? .distantPast) > 60 else { return }
@@ -294,15 +386,164 @@ final class SetupStillStore {
             tasks[key] = nil
         }
     }
+
+    // MARK: Mi Home previews
+
+    private func requestPreview(_ camera: SetupCameraCatalog.Camera, model: AppModel, force: Bool) {
+        guard !SetupDemo.isOn, camera.streamName == nil, camera.host != nil,
+              model.setupServerReady, let server = model.settings.server else { return }
+        let key = previewKey(camera, model)
+        switch states[key] {
+        case .loading, .loaded: return
+        case .failed:
+            guard force || Date().timeIntervalSince(failedAt[key] ?? .distantPast) > 120 else { return }
+        case nil: break
+        }
+        if tasks[key] != nil { return }
+        states[key] = .loading
+        let stream = Self.previewStreamName(camera)
+        let source = camera.source.url
+        let embedded = model.settings.connectionMode == .embedded
+        tasks[key] = Task {
+            let still = await preview(source: source, stream: stream, server: server, embedded: embedded)
+            if Task.isCancelled {
+                // Cancelled for a real stream of the same camera (`cancelPreview`): nothing is known.
+                if states[key] == .loading { states[key] = nil }
+            } else if let still {
+                states[key] = .loaded(still.image, still.pixelSize)
+            } else {
+                states[key] = .failed
+                failedAt[key] = Date()
+            }
+            tasks[key] = nil
+        }
+    }
+
+    /// Waits for a free slot, registers the temporary stream, grabs a keyframe within the time budget and
+    /// removes the stream whatever happened.
+    private func preview(source: String, stream: String, server: Go2RTCServer, embedded: Bool) async -> SetupFrameGrabber.Still? {
+        guard await previewSlots.acquire() else { return nil }
+        defer { previewSlots.release() }
+        guard !Task.isCancelled else { return nil }
+        let client = Go2RTCClient(server: server)
+        livePreviewStreams.insert(stream)
+        let still = await SetupFrameGrabber.withDeadline(Self.previewTimeout) { () async -> SetupFrameGrabber.Still? in
+            do {
+                try await client.addStream(name: stream, source: source)
+            } catch {
+                print("[setup] preview \(stream): \(error.localizedDescription)")
+                return nil
+            }
+            return await SetupFrameGrabber.grab(stream: stream, server: server, embedded: embedded)
+        }
+        // A fresh task: the delete has to go out even when this one was cancelled.
+        await Task { await Self.deletePreviewStream(stream, client: client) }.value
+        livePreviewStreams.remove(stream)
+        return still
+    }
+
+    nonisolated private static func deletePreviewStream(_ stream: String, client: Go2RTCClient) async {
+        guard SetupCameraCatalog.isPreviewStream(stream) else { return }
+        for attempt in 0..<2 {
+            do {
+                try await client.deleteStream(name: stream)
+                return
+            } catch {
+                print("[setup] preview \(stream) not removed (\(attempt + 1)): \(error.localizedDescription)")
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
+    }
+
+    /// Stops a preview of `camera` (and waits until its temporary stream is gone).
+    func cancelPreview(of camera: SetupCameraCatalog.Camera, model: AppModel) async {
+        guard let task = tasks[previewKey(camera, model)] else { return }
+        task.cancel()
+        await task.value
+    }
+
+    /// The camera became the go2rtc stream `stream`: its preview serves as that stream's still until a real one comes.
+    func adoptPreview(of camera: SetupCameraCatalog.Camera, as stream: String, model: AppModel) {
+        guard case .loaded = states[previewKey(camera, model)], states[key(stream, model)] == nil else { return }
+        states[key(stream, model)] = states[previewKey(camera, model)]
+    }
+
+    /// Removes temporary preview streams that outlived their preview (the app quit in the middle of one).
+    func removeLeftoverPreviews(_ streams: [String], model: AppModel) {
+        guard !AppModel.isUIPreview, let client = model.client else { return }
+        for stream in streams where SetupCameraCatalog.isPreviewStream(stream) && !livePreviewStreams.contains(stream) {
+            print("[setup] removing leftover preview stream \(stream)")
+            Task { await Self.deletePreviewStream(stream, client: client) }
+        }
+    }
+}
+
+/// At most `limit` previews at once; the rest wait in order. A waiting preview that is cancelled leaves the queue.
+@MainActor
+private final class SetupPreviewSlots {
+    private let limit: Int
+    private var busy = 0
+    private var waiting: [(id: UUID, continuation: CheckedContinuation<Bool, Never>)] = []
+
+    init(limit: Int) { self.limit = limit }
+
+    /// `false` when cancelled while waiting (no slot is held then).
+    func acquire() async -> Bool {
+        if busy < limit {
+            busy += 1
+            return true
+        }
+        let id = UUID()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                if Task.isCancelled {
+                    continuation.resume(returning: false)
+                } else {
+                    waiting.append((id, continuation))
+                }
+            }
+        } onCancel: {
+            Task { @MainActor in self.leave(id) }
+        }
+    }
+
+    /// Hands the slot to the next preview in line, or frees it.
+    func release() {
+        if waiting.isEmpty {
+            busy -= 1
+        } else {
+            waiting.removeFirst().continuation.resume(returning: true)
+        }
+    }
+
+    private func leave(_ id: UUID) {
+        guard let index = waiting.firstIndex(where: { $0.id == id }) else { return }
+        waiting.remove(at: index).continuation.resume(returning: false)
+    }
 }
 
 /// One frame of a go2rtc stream: `/api/frame.jpeg` when the server can make JPEGs (it needs ffmpeg),
 /// otherwise the first keyframe of a short `/api/stream.mp4` decoded with AVFoundation — the embedded
 /// go2rtc is built without ffmpeg.
 enum SetupFrameGrabber {
-    struct Still {
+    /// Made once and only read afterwards.
+    struct Still: @unchecked Sendable {
         let image: NSImage
         let pixelSize: CGSize
+    }
+
+    /// `operation`'s result, or `nil` once `timeout` has passed — the operation is cancelled then.
+    static func withDeadline<T: Sendable>(_ timeout: Duration, _ operation: @escaping @Sendable () async -> T?) async -> T? {
+        await withTaskGroup(of: T?.self) { group in
+            group.addTask { await operation() }
+            group.addTask {
+                try? await Task.sleep(for: timeout)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
     }
 
     static func grab(stream: String, server: Go2RTCServer, embedded: Bool) async -> Still? {
@@ -328,17 +569,7 @@ enum SetupFrameGrabber {
     private static func mp4Keyframe(client: Go2RTCClient, stream: String) async -> Still? {
         let url = client.url(path: "api/stream.mp4", query: ["src": stream, "video": "h264,h265"])
         let request = request(url, server: client.server, timeout: 12)
-        let data: Data? = await withTaskGroup(of: Data?.self) { group in
-            group.addTask { await download(request) }
-            group.addTask {
-                try? await Task.sleep(for: .seconds(15))
-                return nil
-            }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first
-        }
-        guard let data else { return nil }
+        guard let data = await withDeadline(.seconds(15), { await download(request) }) else { return nil }
         return await decode(data)
     }
 
@@ -411,17 +642,27 @@ enum SetupFrameGrabber {
     }
 }
 
-/// A still of a go2rtc stream (16:9), or a quiet camera glyph while there is none.
+/// A still (16:9) of a go2rtc stream or a Mi Home camera, or a quiet camera glyph while there is none.
 struct SetupStill: View {
     @Environment(AppModel.self) private var model
-    /// Registered stream; `nil` for a Mi Home camera that is not a go2rtc stream yet.
-    let stream: String?
+    let source: SetupStillSource?
     var width: CGFloat
     var cornerRadius: CGFloat = 6
     var symbol = "video.fill"
 
+    init(source: SetupStillSource?, width: CGFloat, cornerRadius: CGFloat = 6, symbol: String = "video.fill") {
+        self.source = source
+        self.width = width
+        self.cornerRadius = cornerRadius
+        self.symbol = symbol
+    }
+
+    init(stream: String?, width: CGFloat, cornerRadius: CGFloat = 6, symbol: String = "video.fill") {
+        self.init(source: stream.map { .stream($0) }, width: width, cornerRadius: cornerRadius, symbol: symbol)
+    }
+
     var body: some View {
-        let state = stream.flatMap { SetupStillStore.shared.state(for: $0, model: model) }
+        let state = source.flatMap { SetupStillStore.shared.state(for: $0, model: model) }
         ZStack {
             LinearGradient(colors: [Color(white: 0.24), Color(white: 0.12)], startPoint: .top, endPoint: .bottom)
             Image(systemName: state == .failed ? "video.slash.fill" : symbol)
@@ -440,8 +681,8 @@ struct SetupStill: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).strokeBorder(.white.opacity(0.08)))
         .animation(.easeOut(duration: 0.25), value: state)
-        .task(id: "\(stream ?? "-")|\(model.setupServerReady)") {
-            if let stream { SetupStillStore.shared.request(stream, model: model) }
+        .task(id: "\(source?.id ?? "-")|\(model.setupServerReady)") {
+            if let source { SetupStillStore.shared.request(source, model: model) }
         }
     }
 }
