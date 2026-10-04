@@ -545,10 +545,22 @@ extension AppModel {
         #if os(iOS)
         if syncClient.isConnected { return syncClient.state?.recordingSince != nil }
         #endif
+        #if DEBUG
+        if Self.demoRecordingSince != nil { return true }
+        #endif
         return recorder.isRecording
     }
 
+    #if DEBUG
+    /// `--demo-recording`: everything shows a recording in progress (nothing is written).
+    static let demoRecordingSince: Date? = CommandLine.arguments.contains("--demo-recording")
+        ? Date().addingTimeInterval(-83) : nil
+    #endif
+
     func recordingDuration(at now: Date) -> TimeInterval {
+        #if DEBUG
+        if let since = Self.demoRecordingSince { return now.timeIntervalSince(since) }
+        #endif
         #if os(iOS)
         if syncClient.isConnected { return syncClient.state?.recordingSince.map { now.timeIntervalSince($0) } ?? 0 }
         #endif

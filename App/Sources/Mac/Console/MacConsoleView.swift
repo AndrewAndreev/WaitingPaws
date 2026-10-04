@@ -160,35 +160,47 @@ struct MacConsoleView: View {
 
     // MARK: - Toolbar
 
+    /// Icon and title on every item (a bare icon in a row of similar capsules says too little), groups apart:
+    /// camera · recording and sound · the linked iPhone · history and finishing.
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem { CameraToolbarMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 }) }
         ToolbarSpacer(.fixed)
-        ToolbarItem { RecordingToolbarButton() }
-        ToolbarItem {
+        ToolbarItemGroup {
+            RecordingToolbarButton()
             Toggle(isOn: Binding(get: { model.settings.audioEnabled }, set: { model.settings.audioEnabled = $0 })) {
                 Label("Звук", systemImage: model.settings.audioEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    .padding(.horizontal, ToolbarLook.padding)
+                    .labelStyle(.titleAndIcon)
             }
-            .help("Звук с камеры в приложении (запись всегда со звуком)")
+            .help(model.settings.audioEnabled ? "Выключить звук камеры в приложении (запись всегда со звуком)"
+                                              : "Включить звук камеры в приложении (запись всегда со звуком)")
         }
         if !model.syncHost.connectedDevices.isEmpty {
             ToolbarSpacer(.fixed)
             ToolbarItem {
                 Label(model.syncHost.connectedDevices.joined(separator: ", "), systemImage: "iphone")
-                    .labelStyle(.titleAndIcon)
                     .foregroundStyle(MacPalette.blue)
+                    .padding(.horizontal, ToolbarLook.padding + 6)
+                    .labelStyle(.titleAndIcon)
                     .help("iPhone видит камеру и ведёт эту тренировку")
             }
         }
         ToolbarSpacer(.fixed)
-        ToolbarItem {
-            Button { openWindow(id: "history") } label: { Label("История", systemImage: "clock.arrow.circlepath") }
-                .help("История тренировок · ⌘Y")
-        }
-        if model.session != nil {
-            ToolbarItem {
-                Button { ui.confirmFinish = true } label: { Label("Завершить", systemImage: "flag.checkered") }
-                    .help("Завершить тренировку · ⌘.")
+        ToolbarItemGroup {
+            Button { openWindow(id: "history") } label: {
+                Label("История", systemImage: "clock.arrow.circlepath")
+                    .labelStyle(.titleAndIcon)
+                    .padding(.horizontal, ToolbarLook.padding)
+            }
+            .help("История тренировок · ⌘Y")
+            if model.session != nil {
+                Button { ui.confirmFinish = true } label: {
+                    Label("Завершить", systemImage: "flag.checkered")
+                        .labelStyle(.titleAndIcon)
+                        .padding(.horizontal, ToolbarLook.padding)
+                }
+                .help("Завершить тренировку · ⌘.")
             }
         }
     }
@@ -218,6 +230,11 @@ private struct EmptyTimeline: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .underPageBackgroundColor))
     }
+}
+
+/// Toolbar items breathe a little more than the system default.
+private enum ToolbarLook {
+    static let padding: CGFloat = 4
 }
 
 /// Camera name with status; choose camera, quality, reconnect.
@@ -254,15 +271,19 @@ private struct CameraToolbarMenu: View {
                 CameraModeMenuItems()
             }
         } label: {
-            HStack(spacing: 6) {
-                StatusDot(color: cameraOnline ? MacPalette.green : .secondary, size: 6)
-                Text(model.settings.cameraDisplayName.isEmpty ? "Камера" : model.settings.cameraDisplayName)
-                if let quality = model.xiaomiQuality {
-                    Text(quality.title).font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
-                }
-            }
+            // A toolbar menu keeps only one title from its label (no extra views, tight icon spacing),
+            // so the status icon, name and quality are one Text.
+            Text("\(Image(systemName: cameraOnline ? "video.fill" : "video.slash"))\u{2002}\(title)")
+                .padding(.horizontal, ToolbarLook.padding)
         }
-        .help("Камера, качество и режим съёмки")
+        .help(cameraOnline ? "Камера, качество и режим съёмки" : "Камера не на связи — выбрать или переподключить")
+    }
+
+    /// «Прихожая · HD»; a long Mi Home name is cut in the middle by the toolbar.
+    private var title: String {
+        let name = model.settings.cameraDisplayName.isEmpty ? "Камера" : model.settings.cameraDisplayName
+        guard let quality = model.xiaomiQuality else { return name }
+        return "\(name) · \(quality.title)"
     }
 
     private var cameraOnline: Bool {
@@ -279,8 +300,11 @@ private struct RecordingToolbarButton: View {
             Button { model.toggleRecording() } label: {
                 if model.isRecordingNow {
                     RecBadge(text: DurationText.clock(model.recordingDuration(at: context.date)))
+                        .padding(.horizontal, ToolbarLook.padding + 4)
                 } else {
                     Label("Запись", systemImage: "record.circle")
+                        .padding(.horizontal, ToolbarLook.padding)
+                        .labelStyle(.titleAndIcon)
                 }
             }
             .help(model.isRecordingNow ? "Остановить запись · ⌘R" : "Записать видео · ⌘R")

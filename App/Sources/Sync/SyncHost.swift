@@ -77,6 +77,10 @@ final class SyncHost {
            let devices = try? JSONDecoder().decode([PairedDevice].self, from: data) {
             pairedDevices = devices
         }
+        #if DEBUG
+        // `--demo-iphone`: a connected iPhone in the toolbar and Settings (nothing listens).
+        if CommandLine.arguments.contains("--demo-iphone") { connectedDevices = ["iPhone"] }
+        #endif
     }
 
     // MARK: - Lifecycle
