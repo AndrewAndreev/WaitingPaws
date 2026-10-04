@@ -6,6 +6,7 @@ import WaitingPawsCore
 struct MacMainWindow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         if model.settings.isConfigured || WaitingPawsApp.previewConfigured {
@@ -18,6 +19,12 @@ struct MacMainWindow: View {
             } actions: {
                 Button("Подключить камеру…") { openWindow(id: "welcome") }
                     .buttonStyle(.borderedProminent)
+            }
+            .onAppear {
+                // First launch: only the welcome window, like Xcode. (A `.suppressed` launch behaviour on this
+                // scene leaves the app without any window when the welcome one is suppressed too.)
+                openWindow(id: "welcome")
+                dismissWindow(id: "main")
             }
         }
     }

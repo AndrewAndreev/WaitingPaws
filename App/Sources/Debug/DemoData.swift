@@ -28,10 +28,11 @@ enum DemoData {
     🔖 Фальстарт: если пошла к двери во время длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход
     """
 
-    /// `--demo-camera <path>`: a still picture instead of the live stream.
+    /// `--demo-camera=<path>`: a still picture instead of the live stream. One argument on purpose: AppKit
+    /// treats a separate argument that is an existing file path as a document to open and then shows no window.
     static let cameraImage: NSImageOrUIImage? = {
-        guard let index = CommandLine.arguments.firstIndex(of: "--demo-camera"), index + 1 < CommandLine.arguments.count else { return nil }
-        return NSImageOrUIImage(contentsOfFile: CommandLine.arguments[index + 1])
+        guard let argument = CommandLine.arguments.first(where: { $0.hasPrefix("--demo-camera=") }) else { return nil }
+        return NSImageOrUIImage(contentsOfFile: String(argument.dropFirst("--demo-camera=".count)))
     }()
 
     private final class Clock {

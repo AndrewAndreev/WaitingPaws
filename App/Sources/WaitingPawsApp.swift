@@ -20,7 +20,6 @@ struct WaitingPawsApp: App {
                 .modifier(DebugWindowOpener())
         }
         .defaultSize(width: 1440, height: 860)
-        .defaultLaunchBehavior(model.settings.isConfigured || Self.previewConfigured ? .presented : .suppressed)
         .commands { MacCommands(model: model, ui: ui) }
 
         // First launch: sign in to Xiaomi or pick a go2rtc stream (Xcode-style welcome window).
@@ -33,7 +32,8 @@ struct WaitingPawsApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        .defaultLaunchBehavior(model.settings.isConfigured || Self.previewConfigured ? .suppressed : .presented)
+        // No launch behaviour here: the main window opens at launch and hands over to this one when no
+        // camera is set up (a `.suppressed` here also kept the main window from opening).
 
         Window("История", id: "history") {
             MacHistoryWindow()
@@ -60,7 +60,7 @@ struct WaitingPawsApp: App {
     }
 
     #if os(macOS)
-    /// DEBUG `--demo-camera <path>` shows the «Пульт» with a still picture even without a configured camera.
+    /// DEBUG `--demo-camera=<path>` shows the «Пульт» with a still picture even without a configured camera.
     static var previewConfigured: Bool {
         #if DEBUG
         return DemoData.cameraImage != nil

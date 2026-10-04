@@ -17,7 +17,7 @@ EXTRA=()
 if [[ -n "$DEMO_CAMERA" ]]; then
   CONTAINER_TMP=~/Library/Containers/su.comrade.waitingpaws.mac/Data/tmp
   mkdir -p $CONTAINER_TMP && cp Tools/demo-camera.jpg $CONTAINER_TMP/demo-camera.jpg
-  EXTRA=(--demo-camera $CONTAINER_TMP/demo-camera.jpg)
+  EXTRA=(--demo-camera=$CONTAINER_TMP/demo-camera.jpg)
 fi
 pkill -f "$BUNDLE/Contents/MacOS/WaitingPaws" 2>/dev/null && sleep 1 || true
 open -n -g --stdout /tmp/wp-ui-shot.log --stderr /tmp/wp-ui-shot.log "$BUNDLE" --args -ApplePersistenceIgnoreState YES --ui-preview "${EXTRA[@]}" "$@"
