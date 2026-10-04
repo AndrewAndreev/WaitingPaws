@@ -80,7 +80,8 @@ struct MacHistoryDemo {
         return MacHistoryDemo(records: records, clips: clips.sorted { $0.date > $1.date }, folder: folder)
     }
 
-    /// A camera-like H.264 video: the still (or a plain room) with a ticking timestamp, one frame every 2 s.
+    /// A camera-like H.264 video: the still (or a plain room with the dog somewhere else each time), daylight or
+    /// lamp light by the hour, a ticking timestamp; one frame every 2 s.
     private static func writeVideo(to url: URL, start: Date, duration: TimeInterval, background: CGImage?) async throws {
         let width = 640, height = 360
         let partial = url.deletingLastPathComponent().appendingPathComponent("partial-" + url.lastPathComponent)
@@ -103,6 +104,10 @@ struct MacHistoryDemo {
         stamp.dateFormat = "yyyy/MM/dd HH:mm:ss"
         let font = CTFontCreateWithName("Menlo-Bold" as CFString, 13, nil)
         let space = CGColorSpaceCreateDeviceRGB()
+        let hour = Calendar.current.component(.hour, from: start)
+        let light = hour < 16 ? CGColor(red: 0.85, green: 0.93, blue: 1, alpha: 0.16) : CGColor(red: 1, green: 0.55, blue: 0.15, alpha: 0.14)
+        let spot = Int(start.timeIntervalSince1970 / 60) % 5
+        let dog = CGPoint(x: 90 + CGFloat(spot) * 105, y: 46 + CGFloat(spot % 2) * 24)
 
         var second = 0
         while TimeInterval(second) <= duration {
@@ -125,7 +130,10 @@ struct MacHistoryDemo {
                     context.fill(CGRect(x: 0, y: 0, width: width, height: 120))
                     context.setFillColor(CGColor(red: 0.45, green: 0.40, blue: 0.34, alpha: 1))
                     context.fill(CGRect(x: 270, y: 120, width: 100, height: 190))
+                    drawDog(in: context, at: dog, facingLeft: spot >= 3)
                 }
+                context.setFillColor(light)
+                context.fill(bounds)
                 let text = NSAttributedString(string: stamp.string(from: start.addingTimeInterval(TimeInterval(second))), attributes: [
                     NSAttributedString.Key(kCTFontAttributeName as String): font,
                     NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 1, alpha: 0.85),
@@ -141,6 +149,25 @@ struct MacHistoryDemo {
         await writer.finishWriting()
         if let error = writer.error { throw error }
         try FileManager.default.moveItem(at: partial, to: url)
+    }
+
+    /// A lying dog, ~150 × 60 px, drawn around `origin` (bottom-left based coordinates).
+    private static func drawDog(in context: CGContext, at origin: CGPoint, facingLeft: Bool) {
+        context.saveGState()
+        context.translateBy(x: origin.x, y: origin.y)
+        if facingLeft { context.scaleBy(x: -1, y: 1) }
+        context.setFillColor(CGColor(red: 0.12, green: 0.11, blue: 0.10, alpha: 0.35))
+        context.fillEllipse(in: CGRect(x: -58, y: -8, width: 140, height: 18))
+        context.setFillColor(CGColor(red: 0.43, green: 0.29, blue: 0.18, alpha: 1))
+        context.fillEllipse(in: CGRect(x: -78, y: 6, width: 30, height: 10))
+        context.setFillColor(CGColor(red: 0.69, green: 0.50, blue: 0.32, alpha: 1))
+        context.fillEllipse(in: CGRect(x: -52, y: -2, width: 104, height: 40))
+        context.fillEllipse(in: CGRect(x: 34, y: 14, width: 38, height: 34))
+        context.fillEllipse(in: CGRect(x: 60, y: 16, width: 24, height: 16))
+        context.setFillColor(CGColor(red: 0.43, green: 0.29, blue: 0.18, alpha: 1))
+        context.fillEllipse(in: CGRect(x: 38, y: 26, width: 14, height: 24))
+        context.fillEllipse(in: CGRect(x: 78, y: 22, width: 8, height: 7))
+        context.restoreGState()
     }
 
     private static func aspectFill(_ size: CGSize, in bounds: CGRect) -> CGRect {
