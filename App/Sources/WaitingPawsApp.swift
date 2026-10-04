@@ -28,7 +28,7 @@ struct WaitingPawsApp: App {
                 .environment(model)
                 .environment(ui)
                 .tint(MacPalette.accent)
-                .modifier(DebugWindowOpener(model: model))
+                .modifier(DebugWindowOpener(model: model, window: "welcome"))
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
@@ -80,6 +80,8 @@ struct WaitingPawsApp: App {
 struct DebugWindowOpener: ViewModifier {
     /// Passed in: this modifier sits outside the `.environment(model)` of the window content.
     let model: AppModel
+    /// Which window this is on: an unconfigured main window closes itself at once, so the welcome one opens instead.
+    var window = "main"
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     private static var done = false
@@ -96,6 +98,9 @@ struct DebugWindowOpener: ViewModifier {
                     MacPairingPrompt.present(SyncHost.PairingRequest(id: UUID(), deviceName: "iPhone Андрея"), host: model.syncHost)
                 }
             }
+            let configured = (model.settings.isConfigured || WaitingPawsApp.previewConfigured)
+                && !CommandLine.arguments.contains("--preview-unconfigured")
+            guard window != "main" || configured else { return }
             guard !Self.done, let index = CommandLine.arguments.firstIndex(of: "--open"),
                   index + 1 < CommandLine.arguments.count else { return }
             Self.done = true
