@@ -17,9 +17,9 @@ struct LinkPill: View {
         switch model.syncClient.status {
         case .connected(let name):
             Menu {
-                Text("Связано с «\(name)»")
+                Text("Тренировка синхронизирована с «\(name)»")
                 Text("Камера, запись и лог — на Mac")
-                Button("Отключиться от Mac", systemImage: "xmark.circle", role: .destructive) {
+                Button("Отключить синхронизацию", systemImage: "xmark.circle", role: .destructive) {
                     model.syncClient.disconnect()
                 }
             } label: {
@@ -51,9 +51,9 @@ struct MacLinkCard: View {
                 HStack(spacing: 14) {
                     ProgressView().tint(Theme.info)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(isWaiting ? "Подтвердите на Mac" : "Подключаемся к Mac")
+                        Text(isWaiting ? "Подтвердите на Mac" : "Синхронизируем с Mac")
                             .font(Theme.display(18, weight: .bold))
-                        Text(isWaiting ? "На «\(name)» появился запрос — нажмите «Разрешить». Это нужно один раз."
+                        Text(isWaiting ? "На «\(name)» появился запрос — нажмите «Разрешить». Это нужно один раз для этого iPhone."
                                        : "«\(name)»")
                             .font(.system(.subheadline, design: .rounded))
                             .foregroundStyle(.white.opacity(0.6))
@@ -70,9 +70,9 @@ struct MacLinkCard: View {
                             .font(.system(size: 22))
                             .foregroundStyle(Theme.info)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Связано с «\(name)»")
+                            Text("Тренировка синхронизирована с «\(name)»")
                                 .font(.system(.headline, design: .rounded))
-                            Text("Тренировка запустится на Mac, там же запись и лог. Нажатия здесь и там — одни и те же.")
+                            Text("Тренировка запустится на Mac, там же запись и лог. Шаги здесь и на Mac — одни и те же.")
                                 .font(.system(.footnote, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.6))
                         }
@@ -100,7 +100,7 @@ struct MacLinkCard: View {
                         .foregroundStyle(Theme.info)
                         .frame(width: 32)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(mac.info.sessionRunning ? "На Mac идёт тренировка" : "Рядом Mac с камерой")
+                        Text(mac.info.sessionRunning ? "На Mac идёт тренировка" : "Рядом Mac с Waiting Paws")
                             .font(Theme.display(20, weight: .bold))
                         Text(subtitle(mac))
                             .font(.system(.subheadline, design: .rounded))
@@ -114,8 +114,8 @@ struct MacLinkCard: View {
                         .font(.system(.footnote, design: .rounded))
                         .foregroundStyle(Theme.warning)
                 }
-                BigButton(title: mac.info.sessionRunning ? "Подключиться к тренировке" : "Использовать камеру Mac",
-                          systemImage: "link") {
+                BigButton(title: "Синхронизировать тренировку с Mac",
+                          systemImage: "arrow.triangle.2.circlepath") {
                     model.syncClient.connect(to: mac)
                 }
             }

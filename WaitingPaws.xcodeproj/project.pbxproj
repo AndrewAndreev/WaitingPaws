@@ -13,6 +13,7 @@
 		0AD1CD73A6DD1C01A2B7C695 /* SessionHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A543FFBD67D604BF950292 /* SessionHUD.swift */; };
 		0F7486DEFC2CA4BFD0376160 /* MacUIState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */; };
 		1195428CB49F8D9B997EF706 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8E692C88D60C366CFA7A12 /* Theme.swift */; };
+		12191F3C92C8990AC320BE32 /* NewTrainingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */; };
 		15917BF9D596D04A47214BD9 /* KeyboardPrewarmer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5D87597A0F52F2D42B6E6F /* KeyboardPrewarmer.swift */; };
 		18D4B68FFC0F6DF28E606F20 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
 		1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */; };
@@ -25,6 +26,8 @@
 		28A346170C064EB5D770A44C /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
 		29E1EE966430E935616E1C61 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
 		2B5C02356ABEB628D2DC4F51 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
+		2C447B33CA2D830A66F6AD60 /* MacSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */; };
+		2EC6AA5D676BB527E1183DE2 /* ConsoleReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA761F28A420093D2740492F /* ConsoleReadout.swift */; };
 		30DA9B7C10D3A01F1A1A0AF0 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
 		312542C67DA22BF708B936FB /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
 		32C5BC7D4694B3220441C196 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */; };
@@ -34,11 +37,13 @@
 		38FD25FEBDF1B3E69F80FA12 /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
 		39F5CF6E49596FCA8A1844DA /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
 		3C2C291FDBDB142AA9910F71 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
+		3D02A0EC6348B36CDB24C029 /* MacCameraArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */; };
 		402CC4C9EB23741F56D70616 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BC4F2D63E281B08766B2C4 /* RootView.swift */; };
 		40F2F685381D7F13DC20C13D /* LiveSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C46490ED793F437A72C93B /* LiveSessionModel.swift */; };
 		427AB731D226280986A118E3 /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
 		457F514281F5D00C669262F4 /* MacWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785D1BAD352BFFA46C471742 /* MacWelcomeView.swift */; };
 		457FA2EEF8C2AA3CFCB15AA7 /* MacPlanTimelineEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */; };
+		473AD97AF9885AECBAEF0BC8 /* MacCameraArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */; };
 		4E2ACC2223573B440A9C6BCF /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */; };
 		5480C571E543F9862F46C8B3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D74383E2FDB68560D6A4A287 /* Assets.xcassets */; };
 		580F4712E7221F688A06DB41 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */; };
@@ -48,19 +53,24 @@
 		5F311EC55BB5C9535C42AF30 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */; };
 		5F41A4B2A6D07C968B890BCB /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
 		61C282CC287EA600A07E5C31 /* SyncHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA209D43CA8963E3C71A7B14 /* SyncHost.swift */; };
+		640C5DD542567CEA878C5886 /* SessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */; };
 		65FB4571AC493789B3CD4903 /* ClipCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653F818994AB2BEE3174F824 /* ClipCards.swift */; };
 		68955F775B4AC4C8BB29EB26 /* Go2RTC.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; };
 		6BB3B6E5CEB872ED61A7CBB7 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C67571FE1A685FF1E89C85 /* GlassCard.swift */; };
+		6BE9A7979831E72AC39EF9C6 /* SessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */; };
 		729C4E6F362987B7E34AFFBD /* SyncChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98694143DBF7C1033313F1E6 /* SyncChannel.swift */; };
 		73B7BE5633DB1673E5C5D813 /* MacUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */; };
 		7467AB7B4B5BE90B6E4EAEAC /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34E57CF6328D1F36D2C8BB29 /* MacSettingsView.swift */; };
 		763399D65BA031D177BED44F /* ZoomableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6961CED894D4487A9C9977 /* ZoomableView.swift */; };
 		7F5CA5C97017F6F9E02F9A21 /* PlanInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */; };
 		80A7DF3FFDD448ED63301DF0 /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
+		84F904EFE9492E462B8B9EFB /* MinimizedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */; };
 		8812D682DC47ACA6F0064FC0 /* Go2RTC.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		89853A4D5CB70C0B6AF8DE80 /* SessionHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A543FFBD67D604BF950292 /* SessionHUD.swift */; };
 		8A6587B9B49363A5B15CD02B /* LinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E82FB404801D9CB6095FA0E /* LinkViews.swift */; };
 		8AC8AF364CF28433D15F9CF8 /* SessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85DCB661B7AD5031EC737BA /* SessionScreen.swift */; };
+		8AEC529897F318743067E9D1 /* NewTrainingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */; };
+		8BCB2874058D432CE589F09F /* MacSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */; };
 		8FFE05025837B6EB9C8EFC24 /* MacCameraPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49544DC08EFCB32F58FEBD3C /* MacCameraPickerSheet.swift */; };
 		905E3E3F3505BD2CDA40767B /* SessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85DCB661B7AD5031EC737BA /* SessionScreen.swift */; };
 		908A4752DD246826DC468FDD /* LogMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07E8A420FED84FE8A782BFB /* LogMirror.swift */; };
@@ -82,6 +92,8 @@
 		BA8CF4F2EA61417D73D1CC77 /* MacHistoryWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA410D4D979D88D298BC0DC8 /* MacHistoryWindow.swift */; };
 		BA94B89FED894E5CF6FDEE21 /* CameraPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB15E742A63332D0305C49E /* CameraPickerView.swift */; };
 		BC8954C82632662A2A250FF9 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BAD79086692AA64BD6514C /* AppSettings.swift */; };
+		C18BCC23D5701721C47E8372 /* ConsoleReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA761F28A420093D2740492F /* ConsoleReadout.swift */; };
+		C5E579EAF0078CCE60F09112 /* MinimizedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */; };
 		C764961258D6DDC76B304F40 /* CameraStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B514B872913BC77102D71 /* CameraStreamView.swift */; };
 		C804316A04BEBB357E0E132E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8E692C88D60C366CFA7A12 /* Theme.swift */; };
 		C82BDFE4BCBE7EE10DF9670E /* RecordingFinalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */; };
@@ -134,6 +146,7 @@
 		10E8CD97BB4254A1CFFB61D3 /* WaitingPaws-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "WaitingPaws-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddedGo2RTC.swift; sourceTree = "<group>"; };
 		211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingFinalizer.swift; sourceTree = "<group>"; };
+		249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimizedPanel.swift; sourceTree = "<group>"; };
 		28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanReviewSheet.swift; sourceTree = "<group>"; };
 		2A678D81862F5BE1D040A257 /* WaitingPawsCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WaitingPawsCore; path = Packages/WaitingPawsCore; sourceTree = SOURCE_ROOT; };
 		2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUI.swift; sourceTree = "<group>"; };
@@ -145,6 +158,7 @@
 		4B8E692C88D60C366CFA7A12 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Go2RTC.xcframework; path = Frameworks/Go2RTC.xcframework; sourceTree = "<group>"; };
 		5A6961CED894D4487A9C9977 /* ZoomableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableView.swift; sourceTree = "<group>"; };
+		5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTrainingPanel.swift; sourceTree = "<group>"; };
 		5E82FB404801D9CB6095FA0E /* LinkViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkViews.swift; sourceTree = "<group>"; };
 		60FBD37155574780BB2CE260 /* WaitingPaws-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WaitingPaws-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		653F818994AB2BEE3174F824 /* ClipCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipCards.swift; sourceTree = "<group>"; };
@@ -154,9 +168,11 @@
 		81A6B39818DB94C898964AF2 /* MacRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRootView.swift; sourceTree = "<group>"; };
 		82A543FFBD67D604BF950292 /* SessionHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHUD.swift; sourceTree = "<group>"; };
 		83BAD79086692AA64BD6514C /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacCameraArea.swift; sourceTree = "<group>"; };
 		8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DurationField.swift; sourceTree = "<group>"; };
 		98694143DBF7C1033313F1E6 /* SyncChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncChannel.swift; sourceTree = "<group>"; };
 		9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
+		9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSummarySheet.swift; sourceTree = "<group>"; };
 		A07E8A420FED84FE8A782BFB /* LogMirror.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMirror.swift; sourceTree = "<group>"; };
 		A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUIState.swift; sourceTree = "<group>"; };
 		AC3612DF5625E044251C2ABF /* SyncClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncClient.swift; sourceTree = "<group>"; };
@@ -170,10 +186,12 @@
 		D74383E2FDB68560D6A4A287 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D82D001539C92D7959753385 /* MacConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacConsoleView.swift; sourceTree = "<group>"; };
 		DA410D4D979D88D298BC0DC8 /* MacHistoryWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryWindow.swift; sourceTree = "<group>"; };
+		DA761F28A420093D2740492F /* ConsoleReadout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleReadout.swift; sourceTree = "<group>"; };
 		DF078E66FEB0548DFDA1B148 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceMonitor.swift; sourceTree = "<group>"; };
 		E517FC8AC9AA66F50082A583 /* XiaomiLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiLoginView.swift; sourceTree = "<group>"; };
 		E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanTimelineEditor.swift; sourceTree = "<group>"; };
+		E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTimelineView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -323,7 +341,13 @@
 		8ADA58F84C3050554F0F2D9D /* Console */ = {
 			isa = PBXGroup;
 			children = (
+				DA761F28A420093D2740492F /* ConsoleReadout.swift */,
+				84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */,
 				D82D001539C92D7959753385 /* MacConsoleView.swift */,
+				9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */,
+				249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */,
+				5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */,
+				E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */,
 			);
 			path = Console;
 			sourceTree = "<group>";
@@ -559,6 +583,7 @@
 				21288095E2A1499040A448BD /* CameraPickerView.swift in Sources */,
 				C764961258D6DDC76B304F40 /* CameraStreamView.swift in Sources */,
 				65FB4571AC493789B3CD4903 /* ClipCards.swift in Sources */,
+				2EC6AA5D676BB527E1183DE2 /* ConsoleReadout.swift in Sources */,
 				2B5C02356ABEB628D2DC4F51 /* DemoData.swift in Sources */,
 				38FD25FEBDF1B3E69F80FA12 /* DurationField.swift in Sources */,
 				427AB731D226280986A118E3 /* EmbeddedGo2RTC.swift in Sources */,
@@ -568,6 +593,7 @@
 				B166198A847F3E9D6C687367 /* LinkViews.swift in Sources */,
 				D5E78C91DD327F17A3BBE4A6 /* LiveSessionModel.swift in Sources */,
 				908A4752DD246826DC468FDD /* LogMirror.swift in Sources */,
+				473AD97AF9885AECBAEF0BC8 /* MacCameraArea.swift in Sources */,
 				8FFE05025837B6EB9C8EFC24 /* MacCameraPickerSheet.swift in Sources */,
 				3C2C291FDBDB142AA9910F71 /* MacConsoleView.swift in Sources */,
 				91C95E3050FCF89EDCE8A83A /* MacHistoryWindow.swift in Sources */,
@@ -575,9 +601,12 @@
 				457FA2EEF8C2AA3CFCB15AA7 /* MacPlanTimelineEditor.swift in Sources */,
 				ADB42AECC2E9F6D642EFED1C /* MacRootView.swift in Sources */,
 				FC811389A6642F8613388903 /* MacSettingsView.swift in Sources */,
+				8BCB2874058D432CE589F09F /* MacSummarySheet.swift in Sources */,
 				73B7BE5633DB1673E5C5D813 /* MacUI.swift in Sources */,
 				E4695D474DCA5428DA771A67 /* MacUIState.swift in Sources */,
 				09615CC5776F3A3C61CA1FDE /* MacWelcomeView.swift in Sources */,
+				C5E579EAF0078CCE60F09112 /* MinimizedPanel.swift in Sources */,
+				12191F3C92C8990AC320BE32 /* NewTrainingPanel.swift in Sources */,
 				32C5BC7D4694B3220441C196 /* OnboardingFlow.swift in Sources */,
 				26A1C0AAB8EB7842077F5F44 /* PerformanceMonitor.swift in Sources */,
 				1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */,
@@ -587,6 +616,7 @@
 				A10E65061FEF9135B2623883 /* RootView.swift in Sources */,
 				89853A4D5CB70C0B6AF8DE80 /* SessionHUD.swift in Sources */,
 				8AC8AF364CF28433D15F9CF8 /* SessionScreen.swift in Sources */,
+				640C5DD542567CEA878C5886 /* SessionTimelineView.swift in Sources */,
 				F6014534F7B547988B28A1EC /* SettingsView.swift in Sources */,
 				B909F3E973BE793BCA0619EE /* SyncChannel.swift in Sources */,
 				80A7DF3FFDD448ED63301DF0 /* SyncClient.swift in Sources */,
@@ -608,6 +638,7 @@
 				BA94B89FED894E5CF6FDEE21 /* CameraPickerView.swift in Sources */,
 				CB9F39E531F2E976136C552F /* CameraStreamView.swift in Sources */,
 				F9CB40DEBE1D55181631B49F /* ClipCards.swift in Sources */,
+				C18BCC23D5701721C47E8372 /* ConsoleReadout.swift in Sources */,
 				29E1EE966430E935616E1C61 /* DemoData.swift in Sources */,
 				39F5CF6E49596FCA8A1844DA /* DurationField.swift in Sources */,
 				28A346170C064EB5D770A44C /* EmbeddedGo2RTC.swift in Sources */,
@@ -617,6 +648,7 @@
 				8A6587B9B49363A5B15CD02B /* LinkViews.swift in Sources */,
 				40F2F685381D7F13DC20C13D /* LiveSessionModel.swift in Sources */,
 				1B45915553565FDD60456B02 /* LogMirror.swift in Sources */,
+				3D02A0EC6348B36CDB24C029 /* MacCameraArea.swift in Sources */,
 				59B9A6D75E43BA6D00482A3C /* MacCameraPickerSheet.swift in Sources */,
 				30DA9B7C10D3A01F1A1A0AF0 /* MacConsoleView.swift in Sources */,
 				BA8CF4F2EA61417D73D1CC77 /* MacHistoryWindow.swift in Sources */,
@@ -624,9 +656,12 @@
 				5A5EC8E45BBB24449A26278C /* MacPlanTimelineEditor.swift in Sources */,
 				38C28DF7359EA3529CF915AA /* MacRootView.swift in Sources */,
 				7467AB7B4B5BE90B6E4EAEAC /* MacSettingsView.swift in Sources */,
+				2C447B33CA2D830A66F6AD60 /* MacSummarySheet.swift in Sources */,
 				961F827DD79C9AB71FFE54D4 /* MacUI.swift in Sources */,
 				0F7486DEFC2CA4BFD0376160 /* MacUIState.swift in Sources */,
 				457F514281F5D00C669262F4 /* MacWelcomeView.swift in Sources */,
+				84F904EFE9492E462B8B9EFB /* MinimizedPanel.swift in Sources */,
+				8AEC529897F318743067E9D1 /* NewTrainingPanel.swift in Sources */,
 				580F4712E7221F688A06DB41 /* OnboardingFlow.swift in Sources */,
 				D47A9084A840646B26305955 /* PerformanceMonitor.swift in Sources */,
 				25DEE27E7DA565261F9B9A46 /* PhotoLibrarySaver.swift in Sources */,
@@ -636,6 +671,7 @@
 				402CC4C9EB23741F56D70616 /* RootView.swift in Sources */,
 				0AD1CD73A6DD1C01A2B7C695 /* SessionHUD.swift in Sources */,
 				905E3E3F3505BD2CDA40767B /* SessionScreen.swift in Sources */,
+				6BE9A7979831E72AC39EF9C6 /* SessionTimelineView.swift in Sources */,
 				18D4B68FFC0F6DF28E606F20 /* SettingsView.swift in Sources */,
 				729C4E6F362987B7E34AFFBD /* SyncChannel.swift in Sources */,
 				9D6CA3836B21203254FCA69B /* SyncClient.swift in Sources */,
