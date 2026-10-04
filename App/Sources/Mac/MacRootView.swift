@@ -8,7 +8,7 @@ struct MacMainWindow: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        if model.settings.isConfigured {
+        if model.settings.isConfigured || WaitingPawsApp.previewConfigured {
             MacConsoleView()
         } else {
             ContentUnavailableView {
