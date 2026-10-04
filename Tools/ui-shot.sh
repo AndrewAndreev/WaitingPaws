@@ -20,7 +20,7 @@ if [[ -n "$DEMO_CAMERA" ]]; then
   EXTRA=(--demo-camera $CONTAINER_TMP/demo-camera.jpg)
 fi
 pkill -f "$BUNDLE/Contents/MacOS/WaitingPaws" 2>/dev/null && sleep 1 || true
-open -n -g --stdout /tmp/wp-ui-shot.log --stderr /tmp/wp-ui-shot.log "$BUNDLE" --args --ui-preview "${EXTRA[@]}" "$@"
+open -n -g --stdout /tmp/wp-ui-shot.log --stderr /tmp/wp-ui-shot.log "$BUNDLE" --args -ApplePersistenceIgnoreState YES --ui-preview "${EXTRA[@]}" "$@"
 sleep 1
 PID=$(pgrep -nf "$BUNDLE/Contents/MacOS/WaitingPaws")
 sleep ${WAIT:-4}
