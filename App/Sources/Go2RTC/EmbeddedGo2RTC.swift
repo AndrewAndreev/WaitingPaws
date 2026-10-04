@@ -56,12 +56,26 @@ final class EmbeddedGo2RTC {
 
     """
 
-    /// Inline config merged on top of the file at every launch: loopback only, RTSP server off.
-    static let overrides = """
-    {"api":{"listen":"127.0.0.1:\(apiPort)"},"rtsp":{"listen":""},"webrtc":{"listen":"127.0.0.1:\(webrtcPort)","candidates":["127.0.0.1:\(webrtcPort)"]}}
-    """
+    /// Basic-auth user for LAN clients (the iPhone linked to this Mac).
+    static let lanUsername = "waitingpaws"
 
-    func start() async {
+    /// Inline config merged on top of the file at every launch: loopback only, RTSP server off.
+    /// With `lanPassword` the API also listens on the LAN; go2rtc skips auth for loopback requests
+    /// (`local_auth: false`), so the app itself keeps talking to 127.0.0.1 without credentials.
+    static func overrides(lanPassword: String?) -> String {
+        let api: String
+        if let lanPassword {
+            api = #"{"listen":":\#(apiPort)","username":"\#(lanUsername)","password":"\#(lanPassword)"}"#
+        } else {
+            api = #"{"listen":"127.0.0.1:\#(apiPort)"}"#
+        }
+        return #"{"api":\#(api),"rtsp":{"listen":""},"webrtc":{"listen":"127.0.0.1:\#(webrtcPort)","candidates":["127.0.0.1:\#(webrtcPort)"]}}"#
+    }
+
+    /// Whether the API listens on the LAN (decided at start; go2rtc cannot be restarted in-process).
+    private(set) var lanEnabled = false
+
+    func start(lanPassword: String? = nil) async {
         switch status {
         case .starting, .running, .unavailable: return
         case .idle, .failed: break
@@ -75,10 +89,12 @@ final class EmbeddedGo2RTC {
             return
         }
         let configURL = Self.configURL
+        let overrides = Self.overrides(lanPassword: lanPassword)
+        lanEnabled = lanPassword != nil
         let task = Task.detached(priority: .userInitiated) { () throws -> String in
             try Self.ensureConfig(at: configURL)
             var error: NSError?
-            if !MobileStart(configURL.path, Self.overrides, &error) {
+            if !MobileStart(configURL.path, overrides, &error) {
                 throw error ?? NSError(domain: "go2rtc", code: 1, userInfo: [NSLocalizedDescriptionKey: "go2rtc не запустился"])
             }
             return MobileVersion().components(separatedBy: "+").first ?? MobileVersion()

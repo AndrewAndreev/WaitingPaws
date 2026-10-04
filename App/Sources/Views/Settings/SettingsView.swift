@@ -69,6 +69,26 @@ struct SettingsView: View {
                     Toggle("Сохранять видео в Фото", isOn: $settings.saveToPhotos)
                 }
 
+                #if os(macOS)
+                Section {
+                    Toggle("Разрешить подключение с iPhone", isOn: $settings.shareWithIPhone)
+                        .onChange(of: settings.shareWithIPhone) { _, on in
+                            if on { model.syncHost.start() } else { model.syncHost.stop() }
+                        }
+                    ForEach(model.syncHost.pairedDevices) { device in
+                        LabeledContent(device.name) {
+                            Button("Забыть") { model.syncHost.forget(device) }
+                        }
+                    }
+                } header: {
+                    Text("iPhone")
+                } footer: {
+                    Text(settings.shareWithIPhone && !model.embedded.lanEnabled && settings.connectionMode == .embedded
+                         ? "iPhone в той же сети найдёт этот Mac, покажет его камеру и сможет вести тренировку. Видео для iPhone станет доступно после перезапуска приложения."
+                         : "iPhone в той же сети найдёт этот Mac, покажет его камеру и сможет вести тренировку. Запись и лог остаются на Mac. Первое подключение каждого iPhone нужно разрешить здесь.")
+                }
+                #endif
+
                 Section("Диагностика") {
                     Toggle("Показывать нагрузку", isOn: $settings.showPerformance)
                         .onChange(of: settings.showPerformance) { _, on in

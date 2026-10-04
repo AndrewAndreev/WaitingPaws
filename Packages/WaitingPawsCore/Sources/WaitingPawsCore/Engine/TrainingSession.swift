@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-public enum SessionPhase: Equatable {
+public enum SessionPhase: Equatable, Codable {
     /// Waiting for the "Начать выход" tap.
     case ready(exitIndex: Int)
     /// Walking to the door; the dog is still watching.
@@ -39,6 +39,10 @@ public final class TrainingSession {
     public private(set) var finishedAt: Date?
     /// Finish the session automatically when the break after the last exit runs out.
     public var autoFinishAfterLastBreak = true
+    /// Set on a mirror of a session that runs on another device (iPhone connected to a Mac): the buttons
+    /// call the usual actions, but they are forwarded here instead of changing this copy, and `tick` does
+    /// nothing. The owner applies the command and sends back a new `Snapshot` (`restore`).
+    public var commandHandler: ((SessionCommand) -> Void)?
 
     private let clock: () -> Date
     private var currentBreakStart: Date?
@@ -50,6 +54,57 @@ public final class TrainingSession {
         self.startedAt = now
         self.phase = plan.exits.isEmpty ? .finished : .ready(exitIndex: 0)
         log(.sessionStarted, at: now)
+    }
+
+    // MARK: - Snapshot (sync between devices)
+
+    /// The whole state of a session: enough to rebuild an identical copy on another device.
+    public struct Snapshot: Codable, Equatable {
+        public var plan: TrainingPlan
+        public var startedAt: Date
+        public var phase: SessionPhase
+        public var events: [SessionEvent]
+        public var results: [ExitResult]
+        public var attempt: Int
+        public var finishedAt: Date?
+        public var autoFinishAfterLastBreak: Bool
+        public var currentBreakStart: Date?
+    }
+
+    public var snapshot: Snapshot {
+        Snapshot(plan: plan, startedAt: startedAt, phase: phase, events: events, results: results, attempt: attempt,
+                 finishedAt: finishedAt, autoFinishAfterLastBreak: autoFinishAfterLastBreak,
+                 currentBreakStart: currentBreakStart)
+    }
+
+    /// A copy of a session that runs elsewhere (no `sessionStarted` event is added).
+    public init(snapshot: Snapshot, clock: @escaping () -> Date = Date.init) {
+        self.plan = snapshot.plan
+        self.startedAt = snapshot.startedAt
+        self.clock = clock
+        self.phase = snapshot.phase
+        apply(snapshot)
+    }
+
+    /// Whether `snapshot` describes this very session (same plan and start), so `restore` can be used.
+    public func isSameSession(as snapshot: Snapshot) -> Bool {
+        snapshot.plan.id == plan.id && snapshot.startedAt == startedAt
+    }
+
+    /// Updates the state in place from a newer snapshot of the same session.
+    public func restore(_ snapshot: Snapshot) {
+        guard isSameSession(as: snapshot) else { return }
+        apply(snapshot)
+    }
+
+    private func apply(_ snapshot: Snapshot) {
+        if phase != snapshot.phase { phase = snapshot.phase }
+        if events != snapshot.events { events = snapshot.events }
+        if results != snapshot.results { results = snapshot.results }
+        if attempt != snapshot.attempt { attempt = snapshot.attempt }
+        if finishedAt != snapshot.finishedAt { finishedAt = snapshot.finishedAt }
+        autoFinishAfterLastBreak = snapshot.autoFinishAfterLastBreak
+        currentBreakStart = snapshot.currentBreakStart
     }
 
     // MARK: - Derived state
@@ -136,6 +191,7 @@ public final class TrainingSession {
 
     /// "Начать выход": the person heads for the door.
     public func startExit() {
+        if let commandHandler { commandHandler(.startExit); return }
         let now = clock()
         let index: Int
         switch phase {
@@ -158,6 +214,7 @@ public final class TrainingSession {
 
     /// "За дверью": the door is closed, the countdown starts.
     public func markBehindDoor() {
+        if let commandHandler { commandHandler(.markBehindDoor); return }
         guard case .leaving(let index, let since) = phase else { return }
         let now = clock()
         phase = .away(exitIndex: index, since: since, leftAt: now)
@@ -166,16 +223,19 @@ public final class TrainingSession {
 
     /// "Выход закончен": back inside, the break begins.
     public func endExit() {
+        if let commandHandler { commandHandler(.endExit); return }
         finishCurrentExit(falseStart: false)
     }
 
     /// "Сбросить выход": false start — back inside, take a break and repeat the same exit.
     public func resetExit() {
+        if let commandHandler { commandHandler(.resetExit); return }
         finishCurrentExit(falseStart: true)
     }
 
     /// Ends the session right now (also used by the auto-finish after the last break).
     public func finish() {
+        if let commandHandler { commandHandler(.finish); return }
         guard !phase.isFinished else { return }
         let now = clock()
         if phase.isOutside {
@@ -189,6 +249,7 @@ public final class TrainingSession {
 
     /// Called periodically. Ends breaks whose time has run out.
     public func tick(at now: Date? = nil) {
+        guard commandHandler == nil else { return }
         let now = now ?? clock()
         guard case .breakTime(_, let since, let duration, let next) = phase else { return }
         guard now.timeIntervalSince(since) >= duration else { return }
@@ -271,5 +332,21 @@ public final class TrainingSession {
 
     private func log(_ kind: SessionEventKind, at time: Date, exitNumber: Int? = nil, attempt: Int? = nil, detail: String? = nil) {
         events.append(SessionEvent(time: time, kind: kind, exitNumber: exitNumber, attempt: attempt, detail: detail))
+    }
+}
+
+/// A button press on a session, sent to the device that owns it.
+public enum SessionCommand: String, Codable, CaseIterable {
+    case startExit, markBehindDoor, endExit, resetExit, finish
+
+    /// Applies the command to a session owned by this device.
+    public func apply(to session: TrainingSession) {
+        switch self {
+        case .startExit: session.startExit()
+        case .markBehindDoor: session.markBehindDoor()
+        case .endExit: session.endExit()
+        case .resetExit: session.resetExit()
+        case .finish: session.finish()
+        }
     }
 }

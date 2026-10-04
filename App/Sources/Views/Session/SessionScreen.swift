@@ -86,6 +86,16 @@ struct SessionScreen: View {
             .environment(model)
             .sheetFrame(width: 520, height: 560)
         }
+        #if os(macOS)
+        .alert(model.syncHost.pairingRequest.map { "Подключить «\($0.deviceName)»?" } ?? "",
+               isPresented: Binding(get: { model.syncHost.pairingRequest != nil },
+                                    set: { if !$0 { model.syncHost.answerPairing(allow: false) } })) {
+            Button("Разрешить") { model.syncHost.answerPairing(allow: true) }
+            Button("Отклонить", role: .cancel) { model.syncHost.answerPairing(allow: false) }
+        } message: {
+            Text("iPhone увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках.")
+        }
+        #endif
         .alert("Ошибка", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("Ок", role: .cancel) {}
         } message: {
@@ -113,17 +123,17 @@ struct SessionScreen: View {
 
     @ViewBuilder
     private var camera: some View {
-        if model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
+        if !model.isLinkedToMac, model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
             CameraPlaceholder(text: embeddedStatusText)
-        } else if let server = model.settings.server, !model.settings.streamName.isEmpty {
+        } else if let server = model.activeServer, !model.activeStreamName.isEmpty {
             CameraStreamView(server: server,
-                             stream: model.settings.streamName,
-                             mode: model.settings.playerMode,
+                             stream: model.activeStreamName,
+                             mode: model.activePlayerMode,
                              audioEnabled: model.settings.audioEnabled,
                              reloadToken: reloadToken,
                              onVideoSize: { size in model.videoSize = size })
         } else {
-            CameraPlaceholder(text: "Камера не выбрана")
+            CameraPlaceholder(text: model.isLinkedToMac ? "На Mac не выбрана камера" : "Камера не выбрана")
         }
     }
 
@@ -134,6 +144,7 @@ struct SessionScreen: View {
             CameraMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true })
             RecordingPill()
             Spacer()
+            LinkPill()
             if model.session != nil {
                 Menu {
                     Button("Завершить тренировку", systemImage: "flag.checkered") { confirmFinish = true }
@@ -186,6 +197,10 @@ struct SessionScreen: View {
             ClipSavedCard(clip: clip, onClose: { model.lastClip = nil }, onHistory: { showHistory = true })
                 .frame(maxWidth: 560)
         } else {
+            #if os(iOS)
+            MacLinkCard()
+                .frame(maxWidth: 560)
+            #endif
             PlanEntryCard(
                 hasLastPlan: !model.settings.lastPlanText.isEmpty,
                 onPaste: { showPlanInput = true },
@@ -245,9 +260,13 @@ private struct CameraMenu: View {
 
     var body: some View {
         Menu {
-            Button("Выбрать камеру…", systemImage: "video.badge.plus", action: onPickCamera)
+            if model.isLinkedToMac {
+                Text("Камеру и качество выбирают на Mac")
+            } else {
+                Button("Выбрать камеру…", systemImage: "video.badge.plus", action: onPickCamera)
+            }
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
-            if let quality = model.xiaomiQuality {
+            if !model.isLinkedToMac, let quality = model.xiaomiQuality {
                 Menu {
                     Picker("Качество", selection: Binding(
                         get: { quality },
@@ -272,7 +291,7 @@ private struct CameraMenu: View {
                 get: { model.settings.audioEnabled },
                 set: { model.settings.audioEnabled = $0 }))
         } label: {
-            Pill(text: model.settings.cameraDisplayName, systemImage: "video.fill", fixed: false)
+            Pill(text: model.activeCameraName, systemImage: "video.fill", fixed: false)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -289,10 +308,10 @@ private struct RecordingPill: View {
             Button {
                 model.toggleRecording()
             } label: {
-                if model.recorder.isRecording {
-                    Pill(text: "REC " + DurationText.clock(model.recorder.duration(at: context.date)),
+                if model.isRecordingNow {
+                    Pill(text: "REC " + DurationText.clock(model.recordingDuration(at: context.date)),
                          systemImage: "record.circle.fill", tint: Theme.danger)
-                } else if model.recorder.lastError != nil {
+                } else if !model.isLinkedToMac, model.recorder.lastError != nil {
                     Pill(text: "Запись не идёт", systemImage: "exclamationmark.triangle.fill", tint: Theme.warning)
                 } else {
                     Pill(text: "Запись", systemImage: "record.circle", tint: .white.opacity(0.85))

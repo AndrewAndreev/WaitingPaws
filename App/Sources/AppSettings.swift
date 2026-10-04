@@ -56,6 +56,8 @@ final class AppSettings {
         static let saveToPhotos = "saveToPhotos"
         static let showPerformance = "showPerformance"
         static let lastPlanText = "lastPlanText"
+        static let shareWithIPhone = "shareWithIPhone"
+        static let lanPassword = "go2rtc.lanPassword"
     }
 
     var connectionMode: ConnectionMode { didSet { Self.defaults.set(connectionMode.rawValue, forKey: Key.connectionMode) } }
@@ -76,6 +78,19 @@ final class AppSettings {
     /// Diagnostics overlay (CPU, memory, main-thread hangs) on the main screen.
     var showPerformance: Bool { didSet { Self.defaults.set(showPerformance, forKey: Key.showPerformance) } }
     var lastPlanText: String { didSet { Self.defaults.set(lastPlanText, forKey: Key.lastPlanText) } }
+    /// Mac: let iPhones on the same network find this Mac, watch its camera and drive its training.
+    /// Opens the embedded go2rtc API on the LAN (Basic auth) from the next launch.
+    var shareWithIPhone: Bool { didSet { Self.defaults.set(shareWithIPhone, forKey: Key.shareWithIPhone) } }
+
+    /// Password of the embedded go2rtc for LAN clients (linked iPhones); generated once.
+    /// Kept in the app's own (sandboxed) defaults, not the keychain: it only guards the video on the home
+    /// network, and keychain items of an ad-hoc signed Mac build trigger an access prompt after every rebuild.
+    var lanPassword: String {
+        if let existing = Self.defaults.string(forKey: Key.lanPassword), !existing.isEmpty { return existing }
+        let generated = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+        Self.defaults.set(generated, forKey: Key.lanPassword)
+        return generated
+    }
 
     init() {
         let d = Self.defaults
@@ -98,6 +113,7 @@ final class AppSettings {
         saveToPhotos = d.object(forKey: Key.saveToPhotos) as? Bool ?? false
         #endif
         lastPlanText = d.string(forKey: Key.lastPlanText) ?? ""
+        shareWithIPhone = d.object(forKey: Key.shareWithIPhone) as? Bool ?? true
     }
 
     var server: Go2RTCServer? {

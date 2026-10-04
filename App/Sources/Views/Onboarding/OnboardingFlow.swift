@@ -29,6 +29,22 @@ struct OnboardingFlow: View {
                 }
         }
         .background(Color(white: 0.04))
+        #if os(iOS)
+        // A Mac on the same network already has the camera signed in: offer it before the Xiaomi login,
+        // and rejoin a Mac this iPhone was linked to before without asking.
+        .safeAreaInset(edge: .bottom) {
+            if path.isEmpty {
+                MacLinkCard()
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+            }
+        }
+        .onChange(of: model.syncClient.bestMac, initial: true) { _, mac in
+            if let mac, model.syncClient.status == .idle, model.syncClient.isPaired(mac) {
+                model.syncClient.connect(to: mac)
+            }
+        }
+        #endif
     }
 
     /// Embedded mode starts straight at the Xiaomi login; external mode asks for the server first.

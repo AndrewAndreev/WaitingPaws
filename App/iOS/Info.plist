@@ -35,8 +35,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_waitingpaws._tcp</string>
+	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Доступ к локальной сети нужен для подключения к серверу go2rtc и камерам.</string>
+	<string>Доступ к локальной сети нужен для подключения к камерам, серверу go2rtc и к Mac с Waiting Paws.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Чтобы сохранять записи тренировок в Фото.</string>
 	<key>UIFileSharingEnabled</key>

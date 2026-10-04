@@ -54,7 +54,9 @@ targets:
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         ITSAppUsesNonExemptEncryption: false
-        NSLocalNetworkUsageDescription: Доступ к локальной сети нужен для подключения к серверу go2rtc и камерам.
+        NSLocalNetworkUsageDescription: Доступ к локальной сети нужен для подключения к камерам, серверу go2rtc и к Mac с Waiting Paws.
+        NSBonjourServices:
+          - _waitingpaws._tcp
         NSPhotoLibraryAddUsageDescription: Чтобы сохранять записи тренировок в Фото.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
@@ -95,6 +97,9 @@ targets:
         CFBundleDevelopmentRegion: ru
         CFBundleLocalizations: [ru]
         NSHumanReadableCopyright: ""
+        NSLocalNetworkUsageDescription: Доступ к локальной сети нужен для подключения к камерам и к iPhone с Waiting Paws.
+        NSBonjourServices:
+          - _waitingpaws._tcp
         NSPhotoLibraryAddUsageDescription: Чтобы сохранять записи тренировок в Фото.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true

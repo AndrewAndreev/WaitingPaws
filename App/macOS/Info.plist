@@ -31,8 +31,14 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_waitingpaws._tcp</string>
+	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Доступ к локальной сети нужен для подключения к камерам и к iPhone с Waiting Paws.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Чтобы сохранять записи тренировок в Фото.</string>
 </dict>

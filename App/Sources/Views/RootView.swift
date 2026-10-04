@@ -6,12 +6,12 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if model.settings.isConfigured {
+            if model.settings.isConfigured || model.isLinkedToMac {
                 SessionScreen()
             } else {
                 OnboardingFlow()
             }
         }
-        .animation(.easeInOut, value: model.settings.isConfigured)
+        .animation(.easeInOut, value: model.settings.isConfigured || model.isLinkedToMac)
     }
 }

@@ -13,6 +13,13 @@ final class AppModel {
     let recorder = StreamRecorder()
     let embedded = EmbeddedGo2RTC()
     let performance = PerformanceMonitor()
+    #if os(macOS)
+    /// Lets an iPhone on the same network watch the camera and drive the training running on this Mac.
+    let syncHost = SyncHost()
+    #else
+    /// Finds Macs running Waiting Paws and mirrors a training running there.
+    let syncClient = SyncClient()
+    #endif
 
     private(set) var session: TrainingSession?
     private(set) var history: [TrainingRecord] = []
@@ -32,6 +39,7 @@ final class AppModel {
         LogMirror.start(directory: SessionStore.defaultRoot.appendingPathComponent("Logs", isDirectory: true))
         reloadHistory()
         startEmbeddedIfNeeded()
+        setUpSync()
         performance.startHangLogging()
         if settings.showPerformance || CommandLine.arguments.contains("--perf") { performance.start() }
         #if os(iOS)
@@ -88,7 +96,12 @@ final class AppModel {
     /// Boots the in-process go2rtc when the embedded mode is selected.
     func startEmbeddedIfNeeded() {
         guard settings.connectionMode == .embedded else { return }
-        Task { await embedded.start() }
+        #if os(macOS)
+        let lanPassword = settings.shareWithIPhone ? settings.lanPassword : nil
+        #else
+        let lanPassword: String? = nil
+        #endif
+        Task { await embedded.start(lanPassword: lanPassword) }
     }
 
     /// Waits (up to ~8 s) until the embedded server answers; returns immediately for an external server.
@@ -107,6 +120,15 @@ final class AppModel {
     func startSession(with plan: TrainingPlan) {
         var plan = plan
         plan.renumber()
+        #if os(iOS)
+        if syncClient.isConnected {
+            // The Mac owns trainings while linked: it starts the session (and its recording) and mirrors it back.
+            if !plan.rawText.isEmpty { settings.lastPlanText = plan.rawText }
+            lastRecord = nil
+            syncClient.send(.startSession(plan))
+            return
+        }
+        #endif
         // A recording that broke off earlier must not end up attached to this session.
         if !recorder.isRecording { currentRecordingURL = nil }
         let session = TrainingSession(plan: plan)
@@ -120,6 +142,10 @@ final class AppModel {
     }
 
     func finishSession() {
+        if isMirroringSession {
+            session?.finish() // forwarded to the Mac
+            return
+        }
         stopRecording(deleteFile: false)
         session?.finish()
         completeSessionIfNeeded()
@@ -127,6 +153,12 @@ final class AppModel {
 
     /// Drops the running session without saving anything (asked explicitly by the user).
     func abandonSession() {
+        #if os(iOS)
+        if isMirroringSession {
+            syncClient.send(.abandonSession)
+            return
+        }
+        #endif
         stopRecording(deleteFile: true)
         session = nil
         lastRecord = nil
@@ -167,10 +199,16 @@ final class AppModel {
     // MARK: - Recording
 
     func toggleRecording() {
-        if recorder.isRecording { stopRecording(deleteFile: false) } else { startRecording() }
+        if isRecordingNow { stopRecording(deleteFile: false) } else { startRecording() }
     }
 
     func startRecording() {
+        #if os(iOS)
+        if syncClient.isConnected {
+            syncClient.send(.startRecording)
+            return
+        }
+        #endif
         Task { await startRecordingWhenReady() }
     }
 
@@ -202,6 +240,12 @@ final class AppModel {
     }
 
     func stopRecording(deleteFile: Bool) {
+        #if os(iOS)
+        if syncClient.isConnected {
+            syncClient.send(.stopRecording)
+            return
+        }
+        #endif
         guard recorder.isRecording || currentRecordingURL != nil else { return }
         // A session keeps the screen awake on its own; a recording without one releases it here.
         defer { if session == nil { keepAwake(false) } }
@@ -419,6 +463,162 @@ final class AppModel {
 }
 
 /// A video recorded without a training session: no plan and no log.
+// MARK: - iPhone ↔ Mac link
+
+extension AppModel {
+    /// The session on screen is a mirror of a training running on the linked Mac.
+    var isMirroringSession: Bool { session?.commandHandler != nil }
+
+    /// Whether this iPhone shows a Mac's camera and training right now.
+    var isLinkedToMac: Bool {
+        #if os(iOS)
+        return syncClient.isConnected
+        #else
+        return false
+        #endif
+    }
+
+    /// go2rtc the camera view and the recorder talk to: the linked Mac's, or our own.
+    var activeServer: Go2RTCServer? {
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.server }
+        #endif
+        return settings.server
+    }
+
+    var activeStreamName: String {
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.state?.streamName ?? "" }
+        #endif
+        return settings.streamName
+    }
+
+    var activeCameraName: String {
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.state?.cameraTitle ?? "Камера Mac" }
+        #endif
+        return settings.cameraDisplayName
+    }
+
+    /// MSE works through the Mac's API port alone (WebRTC would need its UDP ports open on the LAN).
+    var activePlayerMode: PlayerMode {
+        isLinkedToMac ? .mse : settings.playerMode
+    }
+
+    var isRecordingNow: Bool {
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.state?.recordingSince != nil }
+        #endif
+        return recorder.isRecording
+    }
+
+    func recordingDuration(at now: Date) -> TimeInterval {
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.state?.recordingSince.map { now.timeIntervalSince($0) } ?? 0 }
+        #endif
+        return recorder.duration(at: now)
+    }
+
+    func setUpSync() {
+        #if os(macOS)
+        syncHost.stateProvider = { [unowned self] in
+            SyncState(session: session?.snapshot,
+                      recordingSince: recorder.isRecording ? recorder.startedAt : nil,
+                      cameraReady: settings.isConfigured && (settings.connectionMode == .external || embedded.status.isRunning),
+                      cameraTitle: settings.cameraDisplayName,
+                      streamName: settings.streamName,
+                      lastRecord: lastRecord)
+        }
+        syncHost.commandHandler = { [unowned self] command in applyRemote(command) }
+        syncHost.accessProvider = { [unowned self] in
+            SyncHost.SyncWelcomeAccess(port: EmbeddedGo2RTC.apiPort, username: EmbeddedGo2RTC.lanUsername,
+                                       password: embedded.lanEnabled ? settings.lanPassword : "")
+        }
+        if settings.shareWithIPhone { syncHost.start() }
+        #else
+        syncClient.onState = { [unowned self] state in applySyncState(state) }
+        syncClient.startBrowsing()
+        #if DEBUG
+        // `--demo-remote-steps`: once linked, press "Начать выход" and then "За дверью" from the iPhone.
+        if CommandLine.arguments.contains("--demo-remote-steps") {
+            Task { [weak self] in
+                while self?.isMirroringSession != true { try? await Task.sleep(for: .milliseconds(300)) }
+                try? await Task.sleep(for: .seconds(3))
+                self?.session?.startExit()
+                try? await Task.sleep(for: .seconds(4))
+                self?.session?.markBehindDoor()
+                // `--demo-remote-finish`: then "Вернулись", recording on, and finish (exercises the summary + log).
+                guard CommandLine.arguments.contains("--demo-remote-finish") else { return }
+                try? await Task.sleep(for: .seconds(3))
+                self?.session?.endExit()
+                try? await Task.sleep(for: .seconds(1))
+                self?.startRecording()
+                try? await Task.sleep(for: .seconds(8))
+                self?.finishSession()
+            }
+        }
+        #endif
+        #endif
+    }
+
+    #if os(macOS)
+    /// A button press from a linked iPhone.
+    private func applyRemote(_ command: SyncCommand) {
+        switch command {
+        case .session(let command):
+            if command == .finish {
+                finishSession()
+            } else if let session {
+                command.apply(to: session)
+            }
+        case .startSession(let plan):
+            if session == nil { startSession(with: plan) }
+        case .abandonSession:
+            abandonSession()
+        case .startRecording:
+            if !recorder.isRecording { startRecording() }
+        case .stopRecording:
+            stopRecording(deleteFile: false)
+        }
+    }
+    #endif
+
+    #if os(iOS)
+    /// Mirrors the Mac's session; keeps the log of a mirrored training when it ends.
+    private func applySyncState(_ state: SyncState?) {
+        guard let state else {
+            if isMirroringSession {
+                session = nil
+                keepAwake(false)
+            }
+            return
+        }
+        if let snapshot = state.session {
+            if let session, isMirroringSession, session.isSameSession(as: snapshot) {
+                session.restore(snapshot)
+            } else if session == nil || isMirroringSession {
+                let mirror = TrainingSession(snapshot: snapshot)
+                mirror.commandHandler = { [weak self] command in self?.syncClient.send(.session(command)) }
+                session = mirror
+                lastRecord = nil
+                lastClip = nil
+                keepAwake(true)
+            }
+        } else if isMirroringSession {
+            session = nil
+            keepAwake(false)
+            // The Mac saved the record together with the video; keep the log here too (the video stays on the Mac).
+            if var record = state.lastRecord, !history.contains(where: { $0.id == record.id }) {
+                record.recordingFileName = nil
+                try? store.save(record)
+                history.insert(record, at: 0)
+                lastRecord = record
+            }
+        }
+    }
+    #endif
+}
+
 struct RecordingClip: Identifiable, Hashable {
     let url: URL
     let date: Date
