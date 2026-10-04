@@ -33,18 +33,29 @@ struct SettingsCamera {
     var isXiaomi: Bool
     var isDemo = false
 
+    /// `source`: the stream's source once read from go2rtc — it settles whether this is a Mi Home camera.
+    /// Without it the quality go2rtc reported decides; the saved account only while go2rtc is not running
+    /// (it stays saved after switching to an RTSP stream).
     @MainActor
-    init(_ model: AppModel) {
+    init(_ model: AppModel, source: String? = nil) {
         let settings = model.settings
         #if DEBUG
         if SetupDemo.isOn && !settings.isConfigured {
-            isConfigured = true
-            name = SetupDemo.cameraName
-            streamName = SetupDemo.cameraStream
-            accountID = SetupDemo.accountID
-            region = .ru
-            isXiaomi = true
             isDemo = true
+            region = .ru
+            if SetupDemo.hasXiaomi {
+                isConfigured = true
+                name = SetupDemo.cameraName
+                streamName = SetupDemo.cameraStream
+                accountID = SetupDemo.accountID
+                isXiaomi = true
+            } else {
+                isConfigured = SetupDemo.hasStreams
+                name = isConfigured ? SetupDemo.rtspStream : ""
+                streamName = isConfigured ? SetupDemo.rtspStream : ""
+                accountID = ""
+                isXiaomi = false
+            }
             return
         }
         #endif
@@ -53,7 +64,13 @@ struct SettingsCamera {
         streamName = settings.streamName
         accountID = settings.xiaomiAccountID
         region = settings.xiaomiRegion
-        isXiaomi = model.xiaomiQuality != nil || !settings.xiaomiAccountID.isEmpty
+        if let source {
+            isXiaomi = source.hasPrefix("xiaomi://")
+        } else if model.setupServerReady {
+            isXiaomi = model.xiaomiQuality != nil
+        } else {
+            isXiaomi = !settings.xiaomiAccountID.isEmpty
+        }
     }
 }
 
@@ -85,11 +102,13 @@ private struct SettingsCameraPane: View {
     @State private var switchingQuality = false
     /// The stream's source as written in the go2rtc config.
     @State private var source: String?
+    /// Xiaomi accounts signed in on go2rtc; `nil` while unknown (go2rtc not running, no xiaomi module).
+    @State private var accounts: [String]?
     @State private var demoQuality: AppModel.XiaomiQuality = .auto
 
     var body: some View {
         @Bindable var settings = model.settings
-        let camera = SettingsCamera(model)
+        let camera = SettingsCamera(model, source: source)
 
         Section {
             VStack(spacing: 10) {
@@ -104,12 +123,22 @@ private struct SettingsCameraPane: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                        .help(cameraModel(camera).map { "Модель Mi Home: \($0)" } ?? "")
                 }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
         }
         .task(id: settings.streamName) { await load(camera) }
+        // Again after a sign-in or a camera change in a sheet.
+        .task(id: "\(model.setupServerReady)|\(sheet == nil)") { await loadAccounts() }
+
+        if accounts?.isEmpty == true {
+            // No Xiaomi account on go2rtc: the way to Mi Home cameras, right under the picture.
+            Section {
+                SetupMiHomeSignInCard(style: .formRow) { sheet = .signIn }
+            }
+        }
 
         Section {
             LabeledContent {
@@ -119,12 +148,12 @@ private struct SettingsCameraPane: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
-                .disabled(!camera.isDemo && (model.xiaomiQuality == nil || switchingQuality))
+                .disabled(!qualityAvailable(camera) || switchingQuality)
             } label: {
                 Text("Качество")
                 if !camera.isConfigured {
                     Text("Сначала выберите камеру.")
-                } else if !camera.isDemo && model.xiaomiQuality == nil {
+                } else if !qualityAvailable(camera) {
                     Text("Меняется только у камер Mi Home.")
                 }
             }
@@ -166,24 +195,34 @@ private struct SettingsCameraPane: View {
                         .textSelection(.enabled)
                 }
             }
-            LabeledContent("Аккаунт Xiaomi",
-                           value: camera.accountID.isEmpty ? "—" : "ID \(camera.accountID) · \(SetupText.regionTitle(camera.region))")
+            if camera.isXiaomi {
+                LabeledContent("Аккаунт Xiaomi",
+                               value: camera.accountID.isEmpty ? "—" : "ID \(camera.accountID) · \(SetupText.regionTitle(camera.region))")
+            }
         } header: {
             Text("Источник")
         } footer: {
             HStack(spacing: 8) {
                 Spacer()
-                Button("Войти в другой аккаунт Xiaomi…") { sheet = .signIn }
+                // With no account the card above already offers the sign-in.
+                if accounts?.isEmpty != true {
+                    Button(accounts == nil ? "Войти в Xiaomi…" : "Войти в другой аккаунт Xiaomi…") { sheet = .signIn }
+                }
                 Button("Выбрать камеру…") { sheet = .picker(accountID: nil) }
             }
         }
     }
 
+    private func qualityAvailable(_ camera: SettingsCamera) -> Bool {
+        camera.isDemo ? camera.isXiaomi : model.xiaomiQuality != nil
+    }
+
+    /// "Камера Xiaomi · аккаунт 6218440137" (the Mi Home model id stays in the tooltip) or "RTSP · 192.168.1.20".
     private func detailLine(_ camera: SettingsCamera) -> String {
         guard camera.isConfigured else { return "Выберите камеру Mi Home или поток go2rtc." }
-        let model = camera.isDemo ? SetupDemo.cameraModel : source.flatMap { SetupCameraCatalog.query("model", in: $0) }
-        if camera.isXiaomi, !camera.accountID.isEmpty {
-            return [model, "аккаунт Xiaomi \(camera.accountID)"].compactMap { $0 }.joined(separator: " · ")
+        if camera.isXiaomi {
+            return [SetupText.cameraKind(model: cameraModel(camera)),
+                    camera.accountID.isEmpty ? nil : "аккаунт \(camera.accountID)"].compactMap { $0 }.joined(separator: " · ")
         }
         if let source, let badge = SetupText.sourceBadge(source) {
             let host = URLComponents(string: source)?.host
@@ -192,8 +231,16 @@ private struct SettingsCameraPane: View {
         return "Поток go2rtc"
     }
 
+    private func cameraModel(_ camera: SettingsCamera) -> String? {
+        source.flatMap { SetupCameraCatalog.query("model", in: $0) }
+    }
+
     private func currentSize(_ camera: SettingsCamera) -> String {
-        if camera.isDemo { return SetupText.pixels(SetupDemo.cameraSize) }
+        #if DEBUG
+        if camera.isDemo, camera.isConfigured, case .loaded(_, let size) = SetupDemo.still(for: camera.streamName) {
+            return SetupText.pixels(size)
+        }
+        #endif
         guard let size = model.videoSize else { return camera.isConfigured ? "—" : "нет камеры" }
         return SetupText.pixels(size)
     }
@@ -217,9 +264,30 @@ private struct SettingsCameraPane: View {
         }
     }
 
+    private func loadAccounts() async {
+        #if DEBUG
+        if SetupDemo.isOn {
+            accounts = SetupDemo.accounts.map(\.id)
+            return
+        }
+        #endif
+        guard model.setupServerReady, let client = model.client else {
+            accounts = nil
+            return
+        }
+        // A server without the xiaomi module answers 404: unknown, no sign-in card then.
+        accounts = try? await client.xiaomiAccounts()
+    }
+
     private func load(_ camera: SettingsCamera) async {
         source = nil
-        guard camera.isConfigured, !camera.isDemo, model.setupServerReady, let client = model.client else { return }
+        #if DEBUG
+        if camera.isDemo {
+            source = SetupDemo.streams.first { $0.name == camera.streamName }?.sources.first
+            return
+        }
+        #endif
+        guard camera.isConfigured, model.setupServerReady, let client = model.client else { return }
         await model.refreshXiaomiQuality()
         let name = model.settings.streamName
         var sources = (try? await client.configuredSources(stream: name)) ?? []
@@ -290,7 +358,10 @@ private struct SettingsCameraCard: View {
     }
 
     private var chipText: String? {
-        if camera.isDemo { return "В эфире · \(SetupText.pixels(SetupDemo.cameraSize))" }
+        if camera.isDemo {
+            guard case .loaded(_, let size) = demoStill else { return nil }
+            return "В эфире · \(SetupText.pixels(size))"
+        }
         guard isPlaying else { return nil }
         return liveSize.map { "В эфире · \(SetupText.pixels($0))" } ?? "Подключение…"
     }
@@ -334,8 +405,14 @@ private struct SettingsCameraCard: View {
     }
 
     private var demoImage: NSImage? {
+        guard case .loaded(let image, _) = demoStill else { return nil }
+        return image
+    }
+
+    private var demoStill: SetupStillStore.State? {
         #if DEBUG
-        return DemoData.cameraImage
+        guard camera.isDemo, camera.isConfigured else { return nil }
+        return SetupDemo.still(for: camera.streamName)
         #else
         return nil
         #endif
