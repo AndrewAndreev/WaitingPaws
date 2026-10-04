@@ -43,6 +43,44 @@
       ${collar ? `<path d="M452 594Q512 622 572 594" fill="none" stroke="${collar}" stroke-width="20" stroke-linecap="round"/>` : ''}`;
   };
 
+  // sitting dog in profile facing right, base at y=862: snout, ear and front leg keep it readable at icon sizes
+  const dogSide = ({ tilt = -14 } = {}) => `
+    <path d="M332 838C262 842 236 790 252 744" fill="none" stroke="${F}" stroke-width="32" stroke-linecap="round"/>
+    <path d="M492 536C528 526 578 540 602 580C626 618 630 664 620 712L614 842Q614 862 594 862H462C398 862 328 852 320 792C312 722 358 662 420 642C454 630 476 594 492 536Z" fill="${F}"/>
+    <g fill="none" stroke="${K}" stroke-width="10" stroke-linecap="round" opacity=".42"><path d="M570 706L566 852"/><path d="M478 858C440 830 428 760 452 716"/></g>
+    <path d="M518 554Q556 572 594 562" fill="none" stroke="${A}" stroke-width="18" stroke-linecap="round"/>
+    <g transform="rotate(${tilt} 540 540)">
+      <circle cx="548" cy="468" r="77" fill="${F}"/>
+      <path d="M584 440C632 432 682 444 694 470C704 492 690 512 664 516C636 520 604 518 586 512Z" fill="${F}"/>
+      <ellipse cx="684" cy="474" rx="18" ry="14" fill="${E}"/>
+      <path d="M676 504Q656 518 630 510" fill="none" stroke="${E}" stroke-width="8" stroke-linecap="round" opacity=".55"/>
+      <circle cx="576" cy="454" r="12" fill="${E}"/><circle cx="580" cy="450" r="4" fill="${H}"/>
+      <path d="M532 410C498 402 470 440 468 500C466 548 484 572 506 566C530 560 540 516 548 470C552 444 550 418 532 410Z" fill="${A}"/>
+    </g>`;
+
+  // the same profile pose reduced to a few big shapes: no inner lines, collar, mouth or separate nose
+  const dogSideSimple = ({ tilt = -10 } = {}) => `
+    <path d="M352 846C290 848 262 806 272 752" fill="none" stroke="${F}" stroke-width="40" stroke-linecap="round"/>
+    <path d="M500 522C486 580 456 620 418 648C350 696 322 772 336 828C342 852 362 862 390 862H596C612 862 620 854 620 838V720C626 650 610 580 566 534Z" fill="${F}"/>
+    <g transform="rotate(${tilt} 540 540)">
+      <circle cx="552" cy="468" r="80" fill="${F}"/>
+      <path d="M584 436L670 444C692 446 708 462 708 481C708 500 692 514 672 514L600 520C590 520 580 512 576 504Z" fill="${F}"/>
+      <path d="M540 404C504 396 474 428 470 480C466 530 476 566 500 570C524 574 536 540 544 500C550 466 556 414 540 404Z" fill="${A}"/>
+      <circle cx="586" cy="452" r="12" fill="${E}"/>
+    </g>`;
+
+  // dog with its back to us, but with two-tone ears, haunches and a tapered tail (clearer than dogBack)
+  const dogBackClear = () => `
+    <path d="M466 560C440 590 428 615 426 650C424 690 410 720 380 760C352 800 362 862 420 862H604C662 862 672 800 644 760C614 720 600 690 598 650C596 615 584 590 558 560Z" fill="${F}"/>
+    <path d="M590 838C650 848 728 850 768 812C790 792 800 768 794 750C790 738 776 738 772 750C764 784 730 810 662 816C630 819 606 818 594 816Z" fill="${F}"/>
+    <g fill="none" stroke="${K}" stroke-width="10" stroke-linecap="round" opacity=".45"><path d="M440 856C424 812 432 774 466 748"/><path d="M584 856C600 812 592 774 558 748"/></g>
+    <g transform="rotate(-10 512 560)">
+      <circle cx="512" cy="498" r="88" fill="${F}"/>
+      <path d="M470 432C420 420 372 450 368 512C365 556 384 584 410 580C436 576 446 540 452 500Z" fill="${A}"/>
+      <path d="M554 432C604 420 652 450 656 512C659 556 640 584 614 580C588 576 578 540 572 500Z" fill="${A}"/>
+      <path d="M462 578Q512 600 562 578" fill="none" stroke="${A}" stroke-width="18" stroke-linecap="round"/>
+    </g>`;
+
   // paws poking out from under a door (door bottom at y=650)
   const underDoorPaws = () => `
     ${paw(420, 712, .7, 180)}${paw(604, 712, .7, 180)}
@@ -61,6 +99,41 @@
       const [x, y] = P(cx, cy, r, deg - 90);
       return `<text transform="translate(${x} ${y}) rotate(${r1(deg)})" text-anchor="middle" font-size="${size}" fill="${fill}" ${FONT}>${ch}</text>`;
     }).join('');
+  };
+
+  // hourglass with glass outline, bars and optional sand
+  const glassPath = (cx, cy, hw, hh, w = .216) => [-1, 1].map(s => `M${cx + s * hw} ${cy - hh}C${cx + s * hw} ${r1(cy - .403 * hh)} ${r1(cx + s * w * hw)} ${r1(cy - .201 * hh)} ${r1(cx + s * w * hw)} ${cy}C${r1(cx + s * w * hw)} ${r1(cy + .201 * hh)} ${cx + s * hw} ${r1(cy + .403 * hh)} ${cx + s * hw} ${cy + hh}`).join('');
+  const hgBars = ({ cx, cy, hw, hh, bh, over }, fill, extra = '') => [cy - hh - bh, cy + hh].map(y =>
+    `<rect x="${cx - hw - over}" y="${y}" width="${2 * (hw + over)}" height="${bh}" rx="${bh / 2}" fill="${fill}"${extra}/>`).join('');
+  const hourglass = (o) => {
+    const { cx, cy, hw, hh, sw, sand = true } = o;
+    const bars = fill => hgBars(o, fill);
+    const top = `M${r1(cx - .52 * hw)} ${r1(cy - .47 * hh)}Q${cx} ${r1(cy - .37 * hh)} ${r1(cx + .52 * hw)} ${r1(cy - .47 * hh)}C${r1(cx + .38 * hw)} ${r1(cy - .26 * hh)} ${r1(cx + .09 * hw)} ${r1(cy - .15 * hh)} ${r1(cx + .05 * hw)} ${r1(cy - .02 * hh)}H${r1(cx - .05 * hw)}C${r1(cx - .09 * hw)} ${r1(cy - .15 * hh)} ${r1(cx - .38 * hw)} ${r1(cy - .26 * hh)} ${r1(cx - .52 * hw)} ${r1(cy - .47 * hh)}Z`;
+    const pile = `M${r1(cx - .58 * hw)} ${r1(cy + .93 * hh)}Q${cx} ${r1(cy + .55 * hh)} ${r1(cx + .58 * hw)} ${r1(cy + .93 * hh)}Z`;
+    return bars(F) + `<path d="${glassPath(cx, cy, hw, hh)}" fill="none" stroke="${F}" stroke-width="${sw}" stroke-linecap="round"/>` +
+      (sand ? `<path d="${top}" fill="${F}" opacity=".55"/><path d="${pile}" fill="${F}"/>` : '');
+  };
+
+  // content with a transparent gap cut around an hourglass (a mask, so it works on gradient backgrounds too)
+  const cutAround = (o, u, content) => `<defs><mask id="cut${u}" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+    <rect width="1024" height="1024" fill="#fff"/>
+    <path d="${glassPath(o.cx, o.cy, o.hw, o.hh)}" fill="none" stroke="#000" stroke-width="${o.sw + 2 * o.gap}" stroke-linecap="round"/>
+    ${hgBars(o, '#000', ` stroke="#000" stroke-width="${2 * o.gap}"`)}</mask></defs><g mask="url(#cut${u})">${content}</g>`;
+
+  // whole paw lying on top of an outline hourglass; the glass passes behind it with a gap (masked, works on gradients)
+  const PAW_HULL = 'M-88 -22L-34 -72L34 -72L88 -22L64 70L-64 70Z';
+  const pawOver = (o, u, [x, y, s, rot = 0], fill, gap = 24) => `<defs><mask id="po${u}" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+    <rect width="1024" height="1024" fill="#fff"/>
+    <g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" fill="#000" stroke="#000" stroke-width="${r1(2 * gap / s)}" stroke-linejoin="round"><path d="${PAD}"/>${TOES}<path d="${PAW_HULL}"/></g>
+    </mask></defs><g mask="url(#po${u})">${hourglass({ ...o, sand: false })}</g>${paw(x, y, s, rot, fill)}`;
+
+  // solid hourglass and paw combined with inversion: where they overlap the paw becomes a cut-out
+  const solidGlass = ({ cx, cy, hw, hh }, w = .2, e = 6) => `M${cx - hw} ${cy - hh - e}V${cy - hh}C${cx - hw} ${r1(cy - .403 * hh)} ${r1(cx - w * hw)} ${r1(cy - .201 * hh)} ${r1(cx - w * hw)} ${cy}C${r1(cx - w * hw)} ${r1(cy + .201 * hh)} ${cx - hw} ${r1(cy + .403 * hh)} ${cx - hw} ${cy + hh}V${cy + hh + e}H${cx + hw}V${cy + hh}C${cx + hw} ${r1(cy + .403 * hh)} ${r1(cx + w * hw)} ${r1(cy + .201 * hh)} ${r1(cx + w * hw)} ${cy}C${r1(cx + w * hw)} ${r1(cy - .201 * hh)} ${cx + hw} ${r1(cy - .403 * hh)} ${cx + hw} ${cy - hh}V${cy - hh - e}Z`;
+  const pawInvert = (o, u, [x, y, s, rot = 0]) => {
+    const glassSolid = fill => `<g fill="${fill}"><path d="${solidGlass(o)}"/>${hgBars(o, fill)}</g>`;
+    const m = (id, inner) => `<mask id="${id}${u}" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024"><rect width="1024" height="1024" fill="#fff"/>${inner}</mask>`;
+    return `<defs>${m('pi', paw(x, y, s, rot, '#000'))}${m('gi', glassSolid('#000'))}</defs>
+      <g mask="url(#pi${u})">${glassSolid(F)}</g><g mask="url(#gi${u})">${paw(x, y, s, rot, F)}</g>`;
   };
 
   // simple stroke "z" for the sleeping dog
@@ -126,13 +199,29 @@
     <rect x="170" y="842" width="684" height="24" rx="12" fill="${F}" opacity=".5"/>
     ${dogBack(F, { collar: A })}`);
 
-  add('05b', 'Ждёт у двери · часы', 'night', 'Тот же сюжет, а над собакой часы — сколько ещё ждать.', () => `
+  add('05b', 'Ждёт у двери · часы', 'night', 'Собака в профиль сидит у двери и смотрит вверх, над ней часы — сколько ещё ждать.', () => `
     <path d="M302 842V372A210 210 0 0 1 722 372V842Z" fill="${M}"/>
     <circle cx="512" cy="300" r="74" fill="${K}" stroke="${F}" stroke-width="18"/>
     <path d="M512 300V256M512 300L544 318" fill="none" stroke="${F}" stroke-width="14" stroke-linecap="round"/>
     <circle cx="670" cy="640" r="16" fill="${F}" opacity=".55"/>
     <rect x="170" y="842" width="684" height="24" rx="12" fill="${F}" opacity=".5"/>
-    ${dogBack(F, { collar: A })}`, { chosen: 'night' });
+    ${dogSide()}`);
+
+  add('05c', 'Ждёт у двери · спиной', 'night', 'Исходная поза спиной, но с тёмными ушами, бёдрами и хвостом — форма читается лучше.', () => `
+    <path d="M302 842V372A210 210 0 0 1 722 372V842Z" fill="${M}"/>
+    <circle cx="512" cy="300" r="74" fill="${K}" stroke="${F}" stroke-width="18"/>
+    <path d="M512 300V256M512 300L544 318" fill="none" stroke="${F}" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="670" cy="640" r="16" fill="${F}" opacity=".55"/>
+    <rect x="170" y="842" width="684" height="24" rx="12" fill="${F}" opacity=".5"/>
+    ${dogBackClear()}`);
+
+  add('05d', 'Ждёт у двери · простой силуэт', 'night', 'Та же поза в профиль, но силуэт из нескольких крупных форм: ухо цветом и глаз, без линий и мелочей.', () => `
+    <path d="M302 842V372A210 210 0 0 1 722 372V842Z" fill="${M}"/>
+    <circle cx="512" cy="300" r="74" fill="${K}" stroke="${F}" stroke-width="18"/>
+    <path d="M512 300V256M512 300L544 318" fill="none" stroke="${F}" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="670" cy="640" r="16" fill="${F}" opacity=".55"/>
+    <rect x="170" y="842" width="684" height="24" rx="12" fill="${F}" opacity=".5"/>
+    ${dogSideSimple()}`);
 
   add('06', 'Лапа-многоточие', 'violet', 'Индикатор «печатает…» превращается в лапу: ожидание.', () => `
     <path d="M330 690L248 852L476 726Z" fill="${F}"/>
@@ -142,13 +231,37 @@
     <circle cx="652" cy="420" r="58" fill="${K}" opacity=".4"/>
     <path d="${PAD}" transform="translate(512 512) scale(1.2)" fill="${K}"/>`);
 
-  add('07', 'Песочные часы', 'mint', 'Время утекает, а внизу остаётся след лапы.', () => `
+  add('07', 'Песочные часы', 'night', 'Время утекает, а внизу остаётся след лапы.', () => `
     <rect x="270" y="176" width="484" height="58" rx="29" fill="${F}"/>
     <rect x="270" y="790" width="484" height="58" rx="29" fill="${F}"/>
     <path d="M336 234C336 400 474 456 474 512C474 568 336 624 336 790M688 234C688 400 550 456 550 512C550 568 688 624 688 790" fill="none" stroke="${F}" stroke-width="30" stroke-linecap="round"/>
     <path d="M420 380Q512 408 604 380C580 440 528 466 520 506H504C496 466 444 440 420 380Z" fill="${F}" opacity=".5"/>
     <line x1="512" y1="520" x2="512" y2="628" stroke="${F}" stroke-width="10" stroke-linecap="round" stroke-dasharray="1 22"/>
-    ${paw(512, 706, .6)}`);
+    ${paw(512, 706, .6)}`, { chosen: 'night' });
+
+  const sideBySide = { cx: 676, cy: 500, hw: 118, hh: 236, bh: 46, over: 42, sw: 28, gap: 26 };
+  add('07b', 'Лапа и часы', 'night', 'Большая лапа и песочные часы внахлёст, примерно одного размера.', u =>
+    cutAround(sideBySide, u, paw(392, 572, 1.85, -16)) + hourglass(sideBySide));
+
+  add('07c', 'Лапа и часы · два тона', 'night', 'То же, но лапа вторым оттенком — часы выходят на первый план.', u =>
+    cutAround(sideBySide, u, paw(392, 572, 1.85, -16, A)) + hourglass(sideBySide));
+
+  const behindGlass = { cx: 512, cy: 512, hw: 178, hh: 268, bh: 56, over: 60, sw: 30, gap: 22, sand: false };
+  add('07d', 'Лапа за стеклом', 'night', 'Большая лапа за песочными часами: пальцы по бокам от талии, подушечка в нижней колбе.', u =>
+    cutAround(behindGlass, u, paw(512, 566, 1.9, 0, A)) + hourglass(behindGlass));
+
+  const centred = { cx: 512, cy: 512, hw: 186, hh: 286, bh: 56, over: 60, sw: 30 };
+  add('07e', 'Лапа поверх часов', 'night', 'Часы целиком, лапа лежит поверх талии — ничего не перекрыто, обе формы одного размера.', u =>
+    pawOver(centred, u, [512, 532, 1.62], A));
+
+  add('07f', 'Лапа поверх часов · один цвет', 'night', 'То же одним цветом — самый лаконичный вариант.', u =>
+    pawOver(centred, u, [512, 532, 1.62], F));
+
+  add('07g', 'Лапа поверх часов · ниже', 'night', 'Лапа опущена к нижней колбе, сверху остаётся пустая верхняя колба часов.', u =>
+    pawOver({ cx: 512, cy: 492, hw: 176, hh: 262, bh: 56, over: 60, sw: 30 }, u, [512, 604, 1.78], A));
+
+  add('07h', 'Часы и лапа · инверсия', 'night', 'Силуэт часов и лапа одного размера: где они совпадают, лапа становится вырезом.', u =>
+    pawInvert({ cx: 512, cy: 500, hw: 170, hh: 250, bh: 52, over: 54 }, u, [512, 590, 1.75]));
 
   add('08', 'Пёс в окне', 'apricot', 'Знакомая картина: морда и лапы на подоконнике — ждёт хозяина.', u => `
     <defs><clipPath id="w${u}"><circle cx="512" cy="480" r="300"/></clipPath></defs>
@@ -313,7 +426,7 @@
 
   const SLUG = {
     '01a': 'door-paws', '01b': 'door-paws-arch', '02': 'keyhole-dog', '03a': 'stopwatch', '03b': 'stopwatch-progress', '04': 'lens',
-    '05a': 'dog-at-door', '05b': 'dog-at-door-clock', '06': 'typing-paw', '07': 'hourglass', '08': 'window-dog', '09': 'door-with-ears',
+    '05a': 'dog-at-door', '05b': 'dog-at-door-clock', '05c': 'dog-at-door-back', '05d': 'dog-at-door-simple', '06': 'typing-paw', '07': 'hourglass', '07b': 'paw-and-hourglass', '07c': 'paw-and-hourglass-two-tone', '07d': 'paw-behind-glass', '07e': 'paw-over-hourglass', '07f': 'paw-over-hourglass-mono', '07g': 'paw-over-hourglass-low', '07h': 'paw-hourglass-inverted', '08': 'window-dog', '09': 'door-with-ears',
     '10': 'sleeping-dog', '11': 'alarm-dog', '12': 'paw-clock', '13': 'nose-on-glass', '14a': 'rec-paw', '14b': 'timer-paw',
     '15': 'doorway-light', '16': 'heart-paw', '17': 'doghouse', '18': 'face-floppy', '19': 'face-shiba', '20a': 'spinner',
     '20b': 'spinner-dots', '21': 'repeat', '22': 'tag-0-30', '23': 'emblem', '24': 'paw-clock-pad', '25': 'peek', '26': 'wordmark',

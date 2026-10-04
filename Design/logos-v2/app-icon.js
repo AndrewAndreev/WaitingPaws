@@ -9,7 +9,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { CONCEPTS, PALETTES, fullSVG } = require('./logos.js');
 
-const CONCEPT = '05b', PALETTE = 'night';
+const CONCEPT = '07', PALETTE = 'night';
 
 const project = path.resolve(__dirname, '../..');
 const srcDir = path.join(project, 'Design/app-icon');

@@ -4,8 +4,20 @@
     {
       "name": "logos",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["Design/logos-v2/serve.js", "8765"],
+      "runtimeArgs": [
+        "Design/logos-v2/serve.js",
+        "8765"
+      ],
       "port": 8765
+    },
+    {
+      "name": "mac-screens",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/worktrees/mac-screens/MacLab/Screenshots/serve.js"
+      ],
+      "port": 8766,
+      "autoPort": true
     }
   ]
 }
