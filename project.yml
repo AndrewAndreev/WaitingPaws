@@ -110,7 +110,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: su.comrade.waitingpaws.mac
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        CODE_SIGN_IDENTITY: "-"
+        # Apple Development (automatic, team above) instead of ad-hoc: a stable signature keeps the
+        # Local Network / firewall permissions across rebuilds.
+        CODE_SIGN_IDENTITY: "Apple Development"
 
 schemes:
   WaitingPaws-iOS:
