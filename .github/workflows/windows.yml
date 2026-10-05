@@ -54,7 +54,13 @@ jobs:
         run: |
           tag="${GITHUB_REF_NAME}"
           files=(dist/*-Setup.exe dist/*-win-x64.zip dist/*-Setup.exe.blockmap dist/latest.yml)
-          if ! gh release view "$tag" > /dev/null 2>&1; then
+          if gh release view "$tag" > /dev/null 2>&1; then
+            # A release published with its files already (e.g. built locally) keeps them; this build stays an artifact.
+            if [ "$(gh release view "$tag" --json assets --jq '.assets | length')" != "0" ]; then
+              echo "The release already has its files; this build is kept as the workflow artifact."
+              exit 0
+            fi
+          else
             gh release create "$tag" --draft --title "Waiting Paws ${tag#windows-v} for Windows" --notes-file RELEASE_NOTES.md
           fi
           gh release upload "$tag" "${files[@]}" --clobber
