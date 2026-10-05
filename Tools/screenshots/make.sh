@@ -66,8 +66,11 @@ if [[ $WHAT == all || $WHAT == ios ]]; then
     ios $lang 05-history --demo-history --demo-screen history
     ios $lang 06-home --demo-history
     ios $lang 07-record --demo-recording
+    WAIT=9 ios $lang 08-cameras --demo-cameras --demo-screen camera
   done
   xcrun simctl terminate $SIM su.comrade.waitingpaws >/dev/null 2>&1 || true
+  # Shut down, so that `simctl … booted` in other tools never lands in this simulator.
+  xcrun simctl shutdown $SIM >/dev/null 2>&1 || true
 fi
 
 # MARK: Mac
@@ -103,7 +106,7 @@ jpeg() { magick "$1" -alpha off -quality 92 -sampling-factor 4:4:4 "${1%.png}.jp
 rm -rf $OUT && mkdir -p $OUT/showcase
 for lang in en ru; do
   mkdir -p $OUT/app-store/$lang/iphone-6.9 $OUT/app-store/$lang/mac
-  for name in 01-outside 02-plan 03-break 04-log 05-history 06-home 07-record; do
+  for name in 01-outside 02-plan 03-break 04-log 05-history 06-home 07-record 08-cameras; do
     cp $RAW/ios-$lang-$name.png $OUT/app-store/$lang/iphone-6.9/$name.png
   done
   for pair in 01-session:m01-session 02-plan:m02-plan 03-review:m03-review-2 04-break:m04-break \
