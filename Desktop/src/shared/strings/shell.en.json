@@ -25,5 +25,7 @@
   "Отклонить": "Decline",
   "Камера не отвечает по UDP — так бывает, когда брандмауэр Windows не пропускает go2rtc. Разрешите Waiting Paws в частных сетях.": "The camera doesn't answer over UDP — this happens when Windows Firewall blocks go2rtc. Allow Waiting Paws on private networks.",
   "Открыть настройки брандмауэра": "Open Firewall Settings",
-  "Настройки камеры…": "Camera Settings…"
+  "Настройки камеры…": "Camera Settings…",
+  "iPhone видит камеру и ведёт эту тренировку": "An iPhone sees the camera and is running this training",
+  "Записать видео": "Record Video"
 }

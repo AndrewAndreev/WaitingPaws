@@ -80,7 +80,7 @@ export function GlobalDialogs() {
           open
           onOpenChange={(open) => !open && void call('sync.respond', request.id, false)}
           icon={<PhoneIcon style={{ color: 'var(--info)', width: 24, height: 24, marginTop: 2 }} />}
-          title={t('«%@» хочет подключиться', request.deviceName)}
+          title={t('«%@» хочет подключиться', request.model && request.model !== request.deviceName ? `${request.deviceName} (${request.model})` : request.deviceName)}
           description={t('iPhone увидит камеру и сможет вести тренировку на этом компьютере. Разрешайте только своим устройствам.')}
           hideClose
           width={460}

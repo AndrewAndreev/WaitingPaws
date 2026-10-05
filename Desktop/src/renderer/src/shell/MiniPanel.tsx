@@ -5,6 +5,7 @@ import { call, ui, useNow, useStore } from '../store'
 import { isRecording } from '../model'
 import { falseStart, primaryStep, primaryStepTitle } from '../actions'
 import { LiveSession } from '../training/live'
+import { useAppearance } from './appearance'
 import { FalseStartIcon, PawFilledIcon, RestoreIcon, StopFilledIcon } from '../ui/icons'
 
 /// While the main window is minimized during a training or a recording, a compact always-on-top strip with the timer
@@ -14,6 +15,7 @@ export function MiniPanel() {
   const app = useStore((store) => store.app)
   const now = useNow(500)
   useEffect(() => window.wp.onState((state) => ui.set({ app: state })), [])
+  useAppearance(app ?? null)
   useEffect(() => {
     document.documentElement.classList.add('mini')
   }, [])

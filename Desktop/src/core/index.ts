@@ -28,6 +28,7 @@ export * from './go2rtcClient'
 export * from './streamRecorder'
 export * from './cameraModes'
 export * from './miotSpecProvider'
+export * from './syncDevice'
 export * from './syncProtocol'
 export {
   type DateEncoding,

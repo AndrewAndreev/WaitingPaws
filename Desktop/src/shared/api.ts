@@ -31,6 +31,19 @@ export type XiaomiQuality = 'auto' | '1' | '2' | '3'
 export interface PairingRequest {
   id: string
   deviceName: string
+  /// From the iPhone's hello ("iphone", "iPhone 16"); missing from older builds.
+  platform?: string | null
+  model?: string | null
+}
+
+export interface PairedDeviceInfo {
+  id: string
+  name: string
+  platform?: string | null
+  model?: string | null
+  /// Epoch ms of the last connection.
+  lastSeen?: number | null
+  connected?: boolean
 }
 
 export interface CameraModeOptionJSON {
@@ -73,7 +86,7 @@ export interface AppState {
   sync: {
     enabled: boolean
     connectedDevices: string[]
-    pairedDevices: { id: string; name: string }[]
+    pairedDevices: PairedDeviceInfo[]
     pairingRequests: PairingRequest[]
     error: string | null
     /// The name iPhones see (Bonjour, `welcome.hostName`).

@@ -1,9 +1,13 @@
+import { randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-/// iPhones allowed to join (the Mac app keeps `[SyncHost.PairedDevice]` in its defaults). Stored in
-/// `%APPDATA%\Waiting Paws\sync-devices.json`; each device's pairing secret is encrypted with Electron's
-/// safeStorage (DPAPI on Windows) when it is available, base64 otherwise (like the server password in settings).
+/// iPhones allowed to join (the Mac app keeps `[SyncHost.PairedDevice]` in its defaults) and this computer's own
+/// identity for the link (the Mac's `SyncIdentity`): a stable host id the iPhones bind their pairings to, and the
+/// last PC model read. Stored in `%APPDATA%\Waiting Paws\sync-devices.json`:
+///   { "hostID": "…", "model": "Dell XPS 15 9510", "devices": [{ deviceID, name, secret, platform, model, … }] }
+/// Each device's pairing secret is encrypted with Electron's safeStorage (DPAPI on Windows) when it is available,
+/// base64 otherwise (like the server password in settings).
 
 export interface PairedDevice {
   deviceID: string
@@ -14,6 +18,12 @@ export interface PairedDevice {
   secret: string | null
   /// Epoch ms.
   pairedAt: number
+  /// From the device's last hello (`SyncPlatform` raw value, "iPhone 16"); null for pairings made before these
+  /// were sent.
+  platform: string | null
+  model: string | null
+  /// When it last joined (epoch ms).
+  lastSeen: number | null
 }
 
 /// How secrets are kept at rest.
@@ -63,10 +73,19 @@ interface StoredDevice {
   name: string
   secret: string
   pairedAt?: number
+  platform?: string
+  model?: string
+  lastSeen?: number
+}
+
+interface StoredFile {
+  hostID?: string
+  model?: string
+  devices: StoredDevice[]
 }
 
 export interface PairedDeviceStoreOptions {
-  /// The JSON file; null keeps the devices in memory only.
+  /// The JSON file; null keeps everything in memory only.
   file: string | null
   box?: SecretBox
   log?: (line: string) => void
@@ -76,6 +95,8 @@ export class PairedDeviceStore {
   private list: PairedDevice[] = []
   /// Stored values of secrets that could not be decrypted, kept as they are in the file.
   private undecryptable = new Map<string, string>()
+  private storedHostID: string | null = null
+  private storedModel: string | null = null
   private readonly box: SecretBox
   private readonly log: (line: string) => void
 
@@ -89,21 +110,53 @@ export class PairedDeviceStore {
     return this.list
   }
 
+  /// This computer's id for the link (TXT `id`, `welcome.hostID`): made once, then kept.
+  get hostID(): string {
+    if (!this.storedHostID) {
+      this.storedHostID = randomUUID().toUpperCase()
+      this.write()
+    }
+    return this.storedHostID
+  }
+
+  /// The PC model found last time (null before the first look).
+  get hostModel(): string | null {
+    return this.storedModel
+  }
+
+  set hostModel(model: string | null) {
+    if (model === this.storedModel) return
+    this.storedModel = model
+    this.write()
+  }
+
   find(deviceID: string): PairedDevice | null {
     return this.list.find((device) => device.deviceID === deviceID) ?? null
   }
 
-  /// Adds the device or replaces the one with the same id (a new secret after pairing again, a new name).
-  save(device: { deviceID: string; name: string; secret: string; pairedAt?: number }): void {
+  /// Adds the device or updates the one with the same id (a new secret after pairing again, a new name or model),
+  /// keeping its place in the list.
+  save(device: {
+    deviceID: string
+    name: string
+    secret: string
+    pairedAt?: number
+    platform?: string | null
+    model?: string | null
+    lastSeen?: number | null
+  }): void {
     const previous = this.find(device.deviceID)
     const entry: PairedDevice = {
       deviceID: device.deviceID,
       name: device.name,
       secret: device.secret,
       pairedAt: device.pairedAt ?? (previous?.secret === device.secret ? previous.pairedAt : Date.now()),
+      platform: device.platform !== undefined ? device.platform : (previous?.platform ?? null),
+      model: device.model !== undefined ? device.model : (previous?.model ?? null),
+      lastSeen: device.lastSeen !== undefined ? device.lastSeen : (previous?.lastSeen ?? null),
     }
     this.undecryptable.delete(device.deviceID)
-    this.list = [...this.list.filter((item) => item.deviceID !== device.deviceID), entry]
+    this.list = previous ? this.list.map((item) => (item === previous ? entry : item)) : [...this.list, entry]
     this.write()
   }
 
@@ -126,7 +179,9 @@ export class PairedDeviceStore {
       return // No file yet: no paired devices.
     }
     try {
-      const parsed = JSON.parse(raw) as { devices?: unknown }
+      const parsed = JSON.parse(raw) as Partial<StoredFile>
+      if (typeof parsed.hostID === 'string' && parsed.hostID !== '') this.storedHostID = parsed.hostID
+      if (typeof parsed.model === 'string') this.storedModel = parsed.model
       const devices = Array.isArray(parsed.devices) ? parsed.devices : []
       for (const item of devices as Partial<StoredDevice>[]) {
         if (!item || typeof item.deviceID !== 'string' || typeof item.secret !== 'string') continue
@@ -141,6 +196,9 @@ export class PairedDeviceStore {
           name: typeof item.name === 'string' ? item.name : 'iPhone',
           secret,
           pairedAt: typeof item.pairedAt === 'number' ? item.pairedAt : 0,
+          platform: typeof item.platform === 'string' ? item.platform : null,
+          model: typeof item.model === 'string' ? item.model : null,
+          lastSeen: typeof item.lastSeen === 'number' ? item.lastSeen : null,
         })
       }
     } catch (error) {
@@ -156,12 +214,19 @@ export class PairedDeviceStore {
     for (const device of this.list) {
       const stored = device.secret !== null ? this.box.encrypt(device.secret) : this.undecryptable.get(device.deviceID)
       if (stored === undefined) continue
-      devices.push({ deviceID: device.deviceID, name: device.name, secret: stored, pairedAt: device.pairedAt })
+      const entry: StoredDevice = { deviceID: device.deviceID, name: device.name, secret: stored, pairedAt: device.pairedAt }
+      if (device.platform !== null) entry.platform = device.platform
+      if (device.model !== null) entry.model = device.model
+      if (device.lastSeen !== null) entry.lastSeen = device.lastSeen
+      devices.push(entry)
     }
+    const content: StoredFile = { devices }
+    if (this.storedHostID) content.hostID = this.storedHostID
+    if (this.storedModel !== null) content.model = this.storedModel
     try {
       mkdirSync(dirname(file), { recursive: true })
       const temp = file + '.tmp'
-      writeFileSync(temp, JSON.stringify({ devices }, null, 2))
+      writeFileSync(temp, JSON.stringify(content, null, 2))
       renameSync(temp, file)
     } catch (error) {
       this.log(`[sync] could not save paired devices: ${(error as Error).message}`)

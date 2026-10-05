@@ -6,7 +6,7 @@ import { connect as connectTCP, type Socket } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { PlannedExit, SyncHostInfo, SyncMessage, TrainingPlan, TrainingSession, setCoreLanguage } from '@core/index'
+import { PlannedExit, SyncHello, SyncHostInfo, SyncMessage, TrainingPlan, TrainingSession, setCoreLanguage } from '@core/index'
 import { SyncCrypto, type SyncCipher, type SyncHandshake } from '@core/node/syncCrypto'
 import { SyncHost, type SyncHostCommand, type SyncHostState, syncHostInfo, syncState } from '../src/main/sync/host'
 import { PairedDeviceStore, type SecretBox } from '../src/main/sync/deviceStore'
@@ -14,6 +14,7 @@ import { webSocketAccept } from '../src/main/sync/websocket'
 import { answerQuery, serviceNames, serviceRecords } from '../src/main/sync/bonjour'
 import { RecordType, type ResourceRecord, decodeMessage, encodeMessage, readName } from '../src/main/sync/dnsPacket'
 import { onSubnet, welcomeAddresses } from '../src/main/sync/network'
+import { parseRegQuery, pcModelName } from '../src/main/sync/identity'
 
 // MARK: - Helpers
 
@@ -58,6 +59,7 @@ class Harness {
   constructor(
     readonly directory: string,
     box?: SecretBox,
+    model: string | Promise<string> = 'Dell XPS 15 9510',
   ) {
     this.host = new SyncHost(
       {
@@ -74,6 +76,7 @@ class Harness {
         bonjour: false,
         devices: new PairedDeviceStore({ file: join(directory, 'sync-devices.json'), box }),
         stateInterval: 40,
+        model,
         log: () => undefined,
       },
     )
@@ -122,7 +125,10 @@ class TestPhone {
 
   async join(): Promise<void> {
     await this.opened
-    this.send({ kind: 'hello', hello: { deviceID: this.deviceID, deviceName: this.deviceName, publicKey: this.privateKey.publicKey, protocolVersion: 2 } })
+    this.send({
+      kind: 'hello',
+      hello: SyncHello.make({ deviceID: this.deviceID, deviceName: this.deviceName, publicKey: this.privateKey.publicKey, platform: 'iphone', model: 'iPhone 16' }),
+    })
   }
 
   send(message: SyncMessage): void {
@@ -203,8 +209,8 @@ describe('SyncHost', () => {
   const hosts: SyncHost[] = []
   const phones: TestPhone[] = []
 
-  const harness = (box?: SecretBox) => {
-    const value = new Harness(directory, box)
+  const harness = (box?: SecretBox, model?: string | Promise<string>) => {
+    const value = new Harness(directory, box, model)
     hosts.push(value.host)
     return value
   }
@@ -236,7 +242,7 @@ describe('SyncHost', () => {
     await until(() => h.host.view().pairingRequests.length === 1)
     const changesBefore = h.changes
     const [request] = h.host.view().pairingRequests
-    expect(request.deviceName).toBe('Test iPhone')
+    expect(request).toMatchObject({ deviceName: 'Test iPhone', platform: 'iphone', model: 'iPhone 16' })
     // Nothing sealed reaches a phone that is not allowed yet.
     await sleep(50)
     expect(phone.count('welcome')).toBe(0)
@@ -245,21 +251,28 @@ describe('SyncHost', () => {
     const welcome = await phone.next('welcome')
     expect(welcome.welcome).toMatchObject({ hostName: 'Test PC', go2rtcPort: 1984, username: 'waitingpaws', password: 'lan-password-1' })
     expect(Array.isArray(welcome.welcome.addresses)).toBe(true)
+    // Who this computer is: its stable id (kept with the devices), a PC, its model.
+    const hostID = h.host.identity.id
+    expect(hostID).toMatch(/^[0-9A-F-]{36}$/)
+    expect(welcome.welcome).toMatchObject({ hostID, platform: 'windows', model: 'Dell XPS 15 9510' })
     const state = await phone.next('state')
     expect(state.state).toEqual(syncState(baseState()))
     expect(h.changes).toBeGreaterThan(changesBefore)
 
-    // Both sides keep the same new secret; the host's is in the file.
+    // Both sides keep the same new secret; the host's is in the file, with what the hello said about the phone.
     expect(phone.secret).toMatch(/^[A-Za-z0-9+/]{43}=$/)
     const stored = new PairedDeviceStore({ file: join(directory, 'sync-devices.json') })
-    expect(stored.find('PHONE-1')?.secret).toBe(phone.secret)
-    expect(h.host.view()).toEqual({
+    expect(stored.find('PHONE-1')).toMatchObject({ secret: phone.secret, platform: 'iphone', model: 'iPhone 16' })
+    expect(stored.hostID).toBe(hostID)
+    const view = h.host.view()
+    expect(view).toEqual({
       enabled: true,
       connectedDevices: ['Test iPhone'],
-      pairedDevices: [{ id: 'PHONE-1', name: 'Test iPhone' }],
+      pairedDevices: [{ id: 'PHONE-1', name: 'Test iPhone', platform: 'iphone', model: 'iPhone 16', lastSeen: expect.any(Number), connected: true }],
       pairingRequests: [],
       error: null,
     })
+    expect(Math.abs(view.pairedDevices[0].lastSeen! - Date.now())).toBeLessThan(5000)
 
     // Commands from the phone reach the backend in its terms.
     phone.send({ kind: 'command', command: { kind: 'session', command: 'endExit' } })
@@ -311,17 +324,21 @@ describe('SyncHost', () => {
     const port = await first.start()
     const phone = track(await pair(first, port))
     const secret = phone.secret
+    const hostID = first.host.identity.id
     phone.close()
     first.host.stop()
 
-    // A new host on the same file: the pairing survived the "restart".
+    // A new host on the same file: the pairing and the host id survived the "restart".
     const second = harness()
     const port2 = await second.start()
-    expect(second.host.view().pairedDevices).toEqual([{ id: 'PHONE-1', name: 'Test iPhone' }])
+    expect(second.host.view().pairedDevices).toEqual([
+      { id: 'PHONE-1', name: 'Test iPhone', platform: 'iphone', model: 'iPhone 16', lastSeen: expect.any(Number), connected: false },
+    ])
     const again = track(new TestPhone(port2, 'PHONE-1', 'Test iPhone', secret))
     await again.join()
     const welcome = await again.next('welcome')
     expect(welcome.welcome.password).toBe('lan-password-1')
+    expect(welcome.welcome.hostID).toBe(hostID)
     await again.next('state')
     expect(again.count('pending')).toBe(0)
     expect(second.host.view().pairingRequests).toEqual([])
@@ -347,7 +364,7 @@ describe('SyncHost', () => {
     expect(impostor.count('welcome')).toBe(0)
     expect(h.host.view().pairingRequests).toEqual([])
     // The real pairing is untouched.
-    expect(h.host.view().pairedDevices).toEqual([{ id: 'PHONE-1', name: 'Test iPhone' }])
+    expect(h.host.view().pairedDevices.map(({ id, name }) => ({ id, name }))).toEqual([{ id: 'PHONE-1', name: 'Test iPhone' }])
   })
 
   it('forgets a device: disconnects it, tells the backend, its secret stops working', async () => {
@@ -375,6 +392,28 @@ describe('SyncHost', () => {
     h.host.refreshAccess()
     const welcome = await phone.next('welcome')
     expect(welcome.welcome.password).toBe('lan-password-2')
+  })
+
+  it('sends the PC model once it is known, and remembers it for the next start', async () => {
+    let resolveModel: (model: string) => void = () => undefined
+    const h = harness(undefined, new Promise<string>((resolve) => (resolveModel = resolve)))
+    const port = await h.start()
+    const phone = new TestPhone(port)
+    track(phone)
+    await phone.join()
+    await phone.next('pending')
+    await until(() => h.host.view().pairingRequests.length === 1)
+    h.host.respond(h.host.view().pairingRequests[0].id, true)
+    const first = await phone.next('welcome')
+    // Not known yet: the field is left out (the iPhone shows «ПК»).
+    expect(first.welcome.model).toBeNull()
+    expect(first.welcome.platform).toBe('windows')
+
+    resolveModel('HP EliteBook 840 G8 Notebook PC')
+    const second = await phone.next('welcome')
+    expect(second.welcome.model).toBe('HP EliteBook 840 G8 Notebook PC')
+    expect(second.welcome.hostID).toBe(first.welcome.hostID)
+    expect(new PairedDeviceStore({ file: join(directory, 'sync-devices.json') }).hostModel).toBe('HP EliteBook 840 G8 Notebook PC')
   })
 
   it('closes connections that skip the key exchange or send garbage, and keeps working', async () => {
@@ -414,7 +453,7 @@ describe('SyncHost', () => {
     const port = await h.start()
     const phone = track(new TestPhone(port))
     await phone.ready()
-    phone.send({ kind: 'hello', hello: { deviceID: 'OLD', deviceName: 'Old iPhone', publicKey: SyncCrypto.newKey().publicKey, protocolVersion: 1 } })
+    phone.send({ kind: 'hello', hello: SyncHello.make({ deviceID: 'OLD', deviceName: 'Old iPhone', publicKey: SyncCrypto.newKey().publicKey, protocolVersion: 1 }) })
     const rejected = await phone.next('rejected')
     expect(rejected.reason).toBe('Обновите Waiting Paws на iPhone и на компьютере')
   })
@@ -452,7 +491,7 @@ describe('SyncHost', () => {
       received = received.subarray(received.indexOf('\r\n\r\n') + 4)
 
       const hello = Buffer.from(
-        SyncMessage.encode({ kind: 'hello', hello: { deviceID: 'RAW', deviceName: 'Raw', publicKey: SyncCrypto.newKey().publicKey, protocolVersion: 2 } }),
+        SyncMessage.encode({ kind: 'hello', hello: SyncHello.make({ deviceID: 'RAW', deviceName: 'Raw', publicKey: SyncCrypto.newKey().publicKey }) }),
       )
       const half = Math.floor(hello.length / 2)
       socket.write(clientFrame(0x1, hello.subarray(0, half), false))
@@ -502,14 +541,49 @@ describe('SyncHost', () => {
 describe('SyncHost helpers', () => {
   it('maps the state and the TXT record like the Mac', () => {
     const session = new TrainingSession(plan, { clock: () => 1_000 })
-    expect(SyncHostInfo.txt(syncHostInfo('PC', syncState(baseState())))).toEqual({ v: '2', cam: 'Прихожая', ready: '1', session: '0' })
+    expect(SyncHostInfo.txt(syncHostInfo('PC', syncState(baseState())))).toEqual({ v: '2', cam: 'Прихожая', ready: '1', session: '0', os: 'windows' })
     const running = syncState({ ...baseState(), session: session.snapshot })
-    expect(SyncHostInfo.txt(syncHostInfo('PC', running))).toEqual({ v: '2', cam: 'Прихожая', ready: '1', session: '1', exit: '1' })
+    expect(SyncHostInfo.txt(syncHostInfo('PC', running))).toEqual({ v: '2', cam: 'Прихожая', ready: '1', session: '1', exit: '1', os: 'windows' })
     session.startExit()
     session.markBehindDoor()
     session.endExit()
     const onBreak = syncState({ ...baseState(), session: session.snapshot })
     expect(syncHostInfo('PC', onBreak).currentExit).toBe(2)
+
+    // With the identity: id, os=windows, model; read back by the iPhone as a PC.
+    const identity = { id: 'A1B2', platform: 'windows', model: 'Dell XPS 15 9510' }
+    const txt = SyncHostInfo.txt(syncHostInfo('DESKTOP-7Q', syncState(baseState()), identity))
+    expect(txt).toEqual({ v: '2', cam: 'Прихожая', ready: '1', session: '0', id: 'A1B2', os: 'windows', model: 'Dell XPS 15 9510' })
+    expect(SyncHostInfo.device(SyncHostInfo.fromTXT('DESKTOP-7Q', txt))).toEqual({ id: 'A1B2', name: 'DESKTOP-7Q', kind: 'windows', model: 'Dell XPS 15 9510' })
+    // An unknown model is left out of the TXT record.
+    expect(SyncHostInfo.txt(syncHostInfo('PC', null, { ...identity, model: '' }))).not.toHaveProperty('model')
+  })
+
+  it('names the PC model from the BIOS values, nothing for a self-built PC', () => {
+    const output = [
+      'HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\BIOS',
+      '    BiosMajorRelease    REG_DWORD    0x5',
+      '    BaseBoardProduct    REG_SZ    X670E GAMING PLUS WIFI (MS-7E16)',
+      '    SystemFamily    REG_SZ    To be filled by O.E.M.',
+      '    SystemManufacturer    REG_SZ    Micro-Star International Co., Ltd.',
+      '    SystemProductName    REG_SZ    MS-7E16',
+      '    SystemVersion    REG_SZ    1.0',
+      '',
+    ].join('\r\n')
+    const parsed = parseRegQuery(output)
+    expect(parsed).toMatchObject({ SystemManufacturer: 'Micro-Star International Co., Ltd.', SystemProductName: 'MS-7E16' })
+    expect(pcModelName(parsed)).toBe('')
+
+    expect(pcModelName({ SystemManufacturer: 'Dell Inc.', SystemProductName: 'XPS 15 9510' })).toBe('Dell XPS 15 9510')
+    expect(pcModelName({ SystemManufacturer: 'HP', SystemProductName: 'HP EliteBook 840 G8 Notebook PC' })).toBe('HP EliteBook 840 G8 Notebook PC')
+    expect(pcModelName({ SystemManufacturer: 'LENOVO', SystemProductName: '20XW0026GE', SystemVersion: 'ThinkPad X1 Carbon Gen 9' })).toBe('ThinkPad X1 Carbon Gen 9')
+    expect(pcModelName({ SystemManufacturer: 'LENOVO', SystemProductName: '82JW', SystemVersion: 'Legion 5 15ACH6H' })).toBe('Legion 5 15ACH6H')
+    expect(pcModelName({ SystemManufacturer: 'Microsoft Corporation', SystemProductName: 'Surface Laptop 4' })).toBe('Surface Laptop 4')
+    expect(pcModelName({ SystemManufacturer: 'ASUSTeK COMPUTER INC.', SystemProductName: 'ROG Zephyrus G14 GA401QM' })).toBe('ASUS ROG Zephyrus G14 GA401QM')
+    expect(pcModelName({ SystemManufacturer: 'Apple Inc.', SystemProductName: 'MacBookPro16,1' })).toBe('MacBook Pro')
+    expect(pcModelName({ SystemManufacturer: 'System manufacturer', SystemProductName: 'System Product Name' })).toBe('')
+    expect(pcModelName({ SystemManufacturer: 'To Be Filled By O.E.M.', SystemProductName: 'To Be Filled By O.E.M.' })).toBe('')
+    expect(pcModelName({})).toBe('')
   })
 
   it('lists the address the iPhone came to first', () => {

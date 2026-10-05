@@ -34,7 +34,7 @@ export function IPhonePane() {
         <Card>
           {sync.pairedDevices.length === 0 && <Row icon={<PhoneIcon />} title={<span className="muted">{t('Пока ни один iPhone не подключался.')}</span>} />}
           {sync.pairedDevices.map((device) => {
-            const online = sync.connectedDevices.includes(device.name)
+            const online = device.connected ?? sync.connectedDevices.includes(device.name)
             return (
               <Row
                 key={device.id}

@@ -170,7 +170,7 @@ describe('SyncMessage JSON shape', () => {
       JSON.parse(
         SyncMessage.encode({
           kind: 'hello',
-          hello: { deviceID: 'id', deviceName: 'iPhone', publicKey: new Uint8Array(32).fill(255), protocolVersion: 2 },
+          hello: { deviceID: 'id', deviceName: 'iPhone', publicKey: new Uint8Array(32).fill(255), protocolVersion: 2, platform: null, model: null },
         }),
       ),
     ).toEqual({

@@ -1,22 +1,18 @@
 {
   "Найти параметр": "Find a setting",
   "%@ · запускается go2rtc": "%@ · starting go2rtc",
-
   "Выбрать другую камеру…": "Choose Another Camera…",
   "Размер кадра, который присылает камера.": "The frame size the camera is sending.",
   "Как картинка идёт с go2rtc в окно. Если видео не показывается или отстаёт, попробуйте другой.": "How the picture gets from go2rtc to the window. If the video doesn’t show or lags, try another one.",
   "После выхода ключ доступа Xiaomi удаляется с этого компьютера, а камеры аккаунта — из приложения.": "Signing out removes the Xiaomi access key from this computer and the account’s cameras from the app.",
   "Ещё один аккаунт — камеры из другого дома Mi Home.": "Another account — cameras from another Mi Home household.",
-
   "go2rtc.exe не найден": "go2rtc.exe not found",
   "Открыт и в локальной сети — для iPhone, с паролем.": "Also open on the local network — for iPhone, with a password.",
   "Только для этого компьютера.": "This computer only.",
   "Адрес в сети, логин и пароль, если они заданы в go2rtc.": "Its network address, plus the username and password if go2rtc has them set.",
   "свой сервер": "own server",
-
   "Не давать компьютеру засыпать": "Keep the computer awake",
   "Пока идёт тренировка или запись, экран не гаснет и компьютер не уходит в сон — запись не оборвётся.": "While a training or a recording runs, the screen stays on and the computer doesn’t go to sleep, so the recording isn’t cut off.",
-
   "Видео и логи тренировок хранятся на этом компьютере.": "Training videos and logs are stored on this computer.",
   "Папки": "Folders",
   "Логи тренировок": "Training Logs",
@@ -26,7 +22,6 @@
   "Все тренировки с их логами и видео, и отдельные записи. Это нельзя отменить.": "Every training with its log and video, and standalone recordings. This can’t be undone.",
   "Удалить всю историю…": "Delete All History…",
   "Логи и видео будут удалены с этого компьютера. Это нельзя отменить.": "Logs and videos will be deleted from this computer. This can’t be undone.",
-
   "iPhone в той же сети показывает камеру этого компьютера и ведёт тренировку.": "An iPhone on the same network shows this computer’s camera and runs the training.",
   "Компьютер виден приложению Waiting Paws на iPhone в той же Wi‑Fi сети.": "Waiting Paws on an iPhone on the same Wi‑Fi network can see this computer.",
   "iPhone не сможет подключиться": "iPhone can’t connect",
@@ -41,7 +36,6 @@
   "Здесь появится запрос — нажмите «Разрешить». Дальше этот iPhone будет подключаться сам.": "A request appears here — click “Allow”. After that, this iPhone connects by itself.",
   "Имя на iPhone": "Name on iPhone",
   "Под этим именем компьютер появится в приложении на iPhone.": "The iPhone app shows this computer under this name.",
-
   "Оформление": "Appearance",
   "Тема и язык приложения.": "The app’s theme and language.",
   "Тема": "Theme",
@@ -51,7 +45,6 @@
   "Тёмная": "Dark",
   "Язык": "Language",
   "Интерфейс и тексты логов для тренера.": "The interface and the logs for the trainer.",
-
   "Если картинка отстаёт или камера не подключается.": "When the picture lags or the camera won’t connect.",
   "Показывать задержку видео": "Show video delay",
   "Над камерой: на сколько секунд картинка отстаёт от камеры — сеть и буфер плеера.": "Over the camera: how many seconds the picture trails the camera — network and player buffer.",
@@ -61,10 +54,11 @@
   "Скопировать сведения": "Copy Information",
   "Система": "System",
   "Журнал": "Log",
-
   "Версия %@": "Version %@",
   "go2rtc, Electron и другие библиотеки внутри приложения.": "go2rtc, Electron and the other libraries inside the app.",
   "Поддержка": "Support",
   "Вопросы и сообщения о проблемах — на странице проекта на GitHub.": "Questions and problem reports — on the project’s GitHub page.",
-  "Текст не найден.": "The text wasn’t found."
+  "Текст не найден.": "The text wasn’t found.",
+  "Сервер go2rtc": "go2rtc Server",
+  "Тренировки коротких выходов из дома: расписание тренера, таймеры выходов и перерывов, лог для тренера. Камера Mi Home или любой поток go2rtc показывает собаку, пока вы за дверью.": "Training for short exits from home: the trainer’s schedule, exit and break timers, a log for the trainer. A Mi Home camera or any go2rtc stream shows your dog while you’re outside."
 }

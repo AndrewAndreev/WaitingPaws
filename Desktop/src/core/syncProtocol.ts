@@ -2,7 +2,10 @@
 //
 // iPhone ↔ Mac link. The Mac owns the session, the camera (embedded go2rtc) and the recording; an iPhone
 // on the same network finds it over Bonjour, asks to join (the Mac user allows it once), then shows the
-// Mac's camera and a mirror of its session and sends button presses back.
+// Mac's camera and a mirror of its session and sends button presses back. Several Macs and iPhones can share
+// a network (and Windows PCs as hosts): each side tells who it is (`SyncDevice`: id, name, kind, model), and
+// pairings are bound to the ids. The identity fields are optional, so builds before them still understand
+// every message.
 //
 // Transport: WebSocket over TCP, one JSON `SyncMessage` per text frame. From the key exchange on, the
 // frames are encrypted (`SyncCipher`, src/core/node/syncCrypto.ts).
@@ -29,6 +32,7 @@ import {
 import { TrainingPlan } from './models'
 import { TrainingRecord } from './sessionLog'
 import { SessionCommand, TrainingSession, type TrainingSessionSnapshot } from './trainingSession'
+import { SyncDevice, SyncPlatform } from './syncDevice'
 import { parseSwiftInt } from './text'
 
 export const SyncProtocol = {
@@ -49,6 +53,12 @@ export const SyncProtocol = {
     session: 'session',
     /** Current exit number while a training runs. */
     exit: 'exit',
+    /** The host's stable id (`SyncDevice.id`); hosts before it are known by their name only. */
+    id: 'id',
+    /** `SyncPlatform` raw value ("mac", "windows"); missing = a Mac. */
+    platform: 'os',
+    /** "MacBook Air", "Mac mini". */
+    model: 'model',
   },
 
   /** `encoder()` / `decoder()` date strategy. */
@@ -59,12 +69,18 @@ export const SyncProtocol = {
 
 /** What a Mac advertises before anyone connects (from the Bonjour TXT record). */
 export interface SyncHostInfo {
+  /** The Bonjour service name: the host's name, made unique on the network by Bonjour ("MacBook Pro (2)"). */
   name: string
   version: number
   cameraTitle: string
   cameraReady: boolean
   sessionRunning: boolean
   currentExit: number | null
+  /** null for hosts that don't send one yet (they are told apart by name). */
+  id: string | null
+  /** `SyncPlatform` raw value; null = a Mac (the only host before the field existed). */
+  platform: string | null
+  model: string
 }
 
 export const SyncHostInfo = {
@@ -76,11 +92,15 @@ export const SyncHostInfo = {
       cameraReady: fields.cameraReady ?? false,
       sessionRunning: fields.sessionRunning ?? false,
       currentExit: fields.currentExit ?? null,
+      id: fields.id ?? null,
+      platform: fields.platform ?? null,
+      model: fields.model ?? '',
     }
   },
 
   fromTXT(name: string, txt: Record<string, string>): SyncHostInfo {
     const { TXT } = SyncProtocol
+    const id = txt[TXT.id]
     return {
       name,
       version: parseSwiftInt(txt[TXT.version] ?? '') ?? 0,
@@ -88,6 +108,9 @@ export const SyncHostInfo = {
       cameraReady: txt[TXT.ready] === '1',
       sessionRunning: txt[TXT.session] === '1',
       currentExit: parseSwiftInt(txt[TXT.exit] ?? ''),
+      id: id === undefined || id === '' ? null : id,
+      platform: txt[TXT.platform] ?? null,
+      model: txt[TXT.model] ?? '',
     }
   },
 
@@ -100,7 +123,20 @@ export const SyncHostInfo = {
       [TXT.session]: info.sessionRunning ? '1' : '0',
     }
     if (info.currentExit !== null) txt[TXT.exit] = `${info.currentExit}`
+    if (info.id !== null) txt[TXT.id] = info.id
+    if (info.platform !== null) txt[TXT.platform] = info.platform
+    if (info.model !== '') txt[TXT.model] = info.model
     return txt
+  },
+
+  /** The host as the UI shows it. Without an id the name stands in for it ("name:" keeps the two apart). */
+  device(info: SyncHostInfo): SyncDevice {
+    return {
+      id: info.id ?? 'name:' + info.name,
+      name: info.name,
+      kind: info.platform === null ? 'mac' : SyncPlatform.from(info.platform),
+      model: info.model,
+    }
   },
 }
 
@@ -112,6 +148,34 @@ export interface SyncHello {
   deviceName: string
   publicKey: Uint8Array
   protocolVersion: number
+  /** `SyncPlatform` raw value; null from builds before it (always an iPhone then). */
+  platform: string | null
+  /** "iPhone 16 Pro": iOS gives apps only "iPhone" as the device name, so the model is what tells two apart. */
+  model: string | null
+}
+
+export const SyncHello = {
+  make(
+    fields: Pick<SyncHello, 'deviceID' | 'deviceName' | 'publicKey'> & Partial<SyncHello>,
+  ): SyncHello {
+    return {
+      deviceID: fields.deviceID,
+      deviceName: fields.deviceName,
+      publicKey: fields.publicKey,
+      protocolVersion: fields.protocolVersion ?? SyncProtocol.version,
+      platform: fields.platform ?? null,
+      model: fields.model ?? null,
+    }
+  },
+
+  device(hello: SyncHello): SyncDevice {
+    return {
+      id: hello.deviceID,
+      name: hello.deviceName,
+      kind: hello.platform === null ? 'iphone' : SyncPlatform.from(hello.platform),
+      model: hello.model ?? '',
+    }
+  },
 }
 
 /** Mac → iPhone after approval (sealed): access to the Mac's go2rtc. Sent again when the password changes. */
@@ -123,6 +187,27 @@ export interface SyncWelcome {
   password: string
   /** The Mac's IPv4 addresses, in case the connection's own address is not usable for HTTP. */
   addresses: string[]
+  /** Who the host is (as in its TXT record, but sealed); null from builds before these fields. */
+  hostID: string | null
+  platform: string | null
+  model: string | null
+}
+
+export const SyncWelcome = {
+  make(
+    fields: Pick<SyncWelcome, 'hostName' | 'go2rtcPort' | 'username' | 'password' | 'addresses'> & Partial<SyncWelcome>,
+  ): SyncWelcome {
+    return {
+      hostName: fields.hostName,
+      go2rtcPort: fields.go2rtcPort,
+      username: fields.username,
+      password: fields.password,
+      addresses: fields.addresses,
+      hostID: fields.hostID ?? null,
+      platform: fields.platform ?? null,
+      model: fields.model ?? null,
+    }
+  },
 }
 
 /** Mac → iPhone: everything the iPhone shows, sent on every change. */
@@ -197,13 +282,17 @@ export type SyncMessage =
 
 const dates = SYNC_DATES
 
+// The identity fields are optional: left out when nil (`encodeIfPresent`), so older builds read the rest.
+
 function encodeHello(hello: SyncHello): JSONObject {
-  return {
+  return compact({
     deviceID: hello.deviceID,
     deviceName: hello.deviceName,
     publicKey: base64Encode(hello.publicKey),
     protocolVersion: hello.protocolVersion,
-  }
+    platform: hello.platform ?? null,
+    model: hello.model ?? null,
+  })
 }
 
 function decodeHello(value: unknown, path: string): SyncHello {
@@ -213,17 +302,22 @@ function decodeHello(value: unknown, path: string): SyncHello {
     deviceName: json.string('deviceName'),
     publicKey: json.required('publicKey', expectData),
     protocolVersion: json.int('protocolVersion'),
+    platform: json.optionalString('platform'),
+    model: json.optionalString('model'),
   }
 }
 
 function encodeWelcome(welcome: SyncWelcome): JSONObject {
-  return {
+  return compact({
     hostName: welcome.hostName,
     go2rtcPort: welcome.go2rtcPort,
     username: welcome.username,
     password: welcome.password,
     addresses: welcome.addresses,
-  }
+    hostID: welcome.hostID ?? null,
+    platform: welcome.platform ?? null,
+    model: welcome.model ?? null,
+  })
 }
 
 function decodeWelcome(value: unknown, path: string): SyncWelcome {
@@ -234,6 +328,9 @@ function decodeWelcome(value: unknown, path: string): SyncWelcome {
     username: json.string('username'),
     password: json.string('password'),
     addresses: json.array('addresses', expectString),
+    hostID: json.optionalString('hostID'),
+    platform: json.optionalString('platform'),
+    model: json.optionalString('model'),
   }
 }
 

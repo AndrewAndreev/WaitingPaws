@@ -7,12 +7,14 @@ import type { TrainingPlan } from '@core/models'
 import type { TrainingRecord } from '@core/sessionLog'
 import type { TrainingSessionSnapshot } from '@core/trainingSession'
 import { tr } from '@core/localization'
-import { type SyncCommand, type SyncHello, SyncHostInfo, SyncMessage, SyncProtocol, type SyncState, type SyncWelcome } from '@core/syncProtocol'
+import { type SyncCommand, SyncHello, SyncHostInfo, SyncMessage, SyncProtocol, type SyncState, type SyncWelcome } from '@core/syncProtocol'
+import { SyncDevice } from '@core/syncDevice'
 import { SyncCrypto, type SyncHandshake } from '@core/node/syncCrypto'
 import { write as appLog } from '../log'
 import { BonjourAdvertiser, truncateLabel } from './bonjour'
 import { SyncChannel } from './channel'
 import { PairedDeviceStore, defaultDeviceStore } from './deviceStore'
+import { hostPlatform, readPCModel } from './identity'
 import { welcomeAddresses } from './network'
 import { acceptWebSocket } from './websocket'
 
@@ -23,7 +25,10 @@ import { acceptWebSocket } from './websocket'
 /// - hello → challenge → proof; a known iPhone with a valid proof joins right away, a new one waits for «Разрешить»
 ///   here (`view().pairingRequests`, answered with `respond`), and both sides derive the new pairing secret;
 /// - after that everything is sealed (`SyncCipher`): `welcome` with the go2rtc access, states, commands;
-/// - paired iPhones are kept in `sync-devices.json` (deviceStore.ts).
+/// - paired iPhones are kept in `sync-devices.json` (deviceStore.ts), bound to their ids, with kind, model and when
+///   they were last seen;
+/// - this computer tells who it is (TXT `id`/`os`/`model`, sealed in `welcome`): a stable host id kept in the same
+///   file, kind "windows" and the PC model when the BIOS has a real one (identity.ts).
 /// On Windows the first listen on the network makes the firewall ask whether Waiting Paws may accept connections
 /// (private networks are enough).
 
@@ -61,9 +66,21 @@ export interface SyncHostDependencies {
 
 export interface SyncHostView {
   enabled: boolean
+  /// Names of the iPhones connected right now (one per device), sorted.
   connectedDevices: string[]
-  pairedDevices: { id: string; name: string }[]
-  pairingRequests: { id: string; deviceName: string }[]
+  pairedDevices: {
+    id: string
+    name: string
+    /// From the device's last hello: `SyncPlatform` raw value ("iphone", "ipad"); missing for pairings made before.
+    platform?: string
+    /// "iPhone 16"; missing when unknown (show `SyncDevice.modelTitle`, i.e. the kind).
+    model?: string
+    /// When it last joined, epoch ms.
+    lastSeen?: number
+    /// Connected right now.
+    connected?: boolean
+  }[]
+  pairingRequests: { id: string; deviceName: string; platform?: string; model?: string }[]
   error: string | null
 }
 
@@ -85,6 +102,11 @@ export interface SyncHostOptions {
   stateInterval?: number
   /// How long a connection may take to finish the key exchange, ms (default 20 s; a pending approval waits).
   handshakeTimeout?: number
+  /// This computer's id for the link. Default: made once and kept in the device store.
+  hostID?: string
+  /// This PC's model ("Dell XPS 15 9510", "" when unknown). Default: read from the BIOS registry values in the
+  /// background (the last one found is used until then).
+  model?: string | Promise<string>
   log?: (line: string) => void
 }
 
@@ -110,8 +132,7 @@ interface Client {
 
 interface PairingRequest {
   id: string
-  deviceID: string
-  deviceName: string
+  hello: SyncHello
 }
 
 export class SyncHost {
@@ -132,6 +153,9 @@ export class SyncHost {
   private bonjourError: string | null = null
   private broadcastTimer: NodeJS.Timeout | null = null
   private broadcastPending = false
+  /// This PC's model as last known ("" when unknown).
+  private model = ''
+  private modelRequested = false
   private readonly log: (line: string) => void
 
   constructor(
@@ -141,11 +165,17 @@ export class SyncHost {
     this.name = truncateLabel(options.name ?? computerName())
     this.log = options.log ?? appLog
     this.store = options.devices ?? null
+    if (typeof options.model === 'string') this.model = options.model
   }
 
   /// The TCP port while listening.
   get port(): number | null {
     return this.listeningPort
+  }
+
+  /// This computer as the iPhones see it (TXT `id`/`os`/`model`, `welcome.hostID`/`platform`/`model`).
+  get identity(): { id: string; platform: string; model: string } {
+    return { id: this.options.hostID ?? this.store?.hostID ?? '', platform: hostPlatform, model: this.model }
   }
 
   // MARK: - Lifecycle
@@ -154,8 +184,31 @@ export class SyncHost {
     if (this.wanted) return
     this.wanted = true
     this.deps.onChange()
-    if (this.store) this.listen()
+    if (this.store) this.storeReady()
     else this.loadStore()
+  }
+
+  private storeReady(): void {
+    if (typeof this.options.model !== 'string' && this.store?.hostModel) this.model = this.store.hostModel
+    this.listen()
+    this.refreshModel()
+  }
+
+  /// Reads the PC model once (off the main thread); a new one goes into the TXT record and to connected iPhones.
+  private refreshModel(): void {
+    if (this.modelRequested || typeof this.options.model === 'string') return
+    this.modelRequested = true
+    Promise.resolve(this.options.model ?? readPCModel())
+      .catch(() => '')
+      .then((model) => {
+        if (this.store) this.store.hostModel = model
+        if (model === this.model) return
+        this.model = model
+        this.log(`[sync] this PC: ${model || 'model unknown'}`)
+        const state = this.currentState()
+        if (state) this.advertiser?.updateTXT(SyncHostInfo.txt(this.hostInfo(state)))
+        this.refreshAccess()
+      })
   }
 
   /// Closes every connection and the listener, says goodbye over Bonjour.
@@ -194,7 +247,7 @@ export class SyncHost {
         this.store = store
         this.storeLoading = false
         this.deps.onChange()
-        if (this.wanted) this.listen()
+        if (this.wanted) this.storeReady()
       })
   }
 
@@ -279,7 +332,7 @@ export class SyncHost {
     if (allow) {
       this.approve(request.id)
     } else {
-      this.log(`[sync] ${request.deviceName} was declined`)
+      this.log(`[sync] ${request.hello.deviceName} was declined`)
       this.clients.get(request.id)?.channel.send({
         kind: 'rejected',
         reason: tr('На компьютере подключение отклонили', 'The connection was declined on the computer'),
@@ -303,14 +356,31 @@ export class SyncHost {
   }
 
   view(): SyncHostView {
+    // One entry per device (by id), sorted by name as Finder sorts ("iPhone 9" before "iPhone 10").
+    const connected = new Map<string, string>()
+    for (const client of this.clients.values()) {
+      if (client.approved && client.hello && !connected.has(client.hello.deviceID)) connected.set(client.hello.deviceID, client.hello.deviceName)
+    }
     return {
       enabled: this.wanted,
-      connectedDevices: [...this.clients.values()]
-        .filter((client) => client.approved && client.hello)
-        .map((client) => client.hello!.deviceName)
-        .sort(),
-      pairedDevices: (this.store?.devices ?? []).map((device) => ({ id: device.deviceID, name: device.name })),
-      pairingRequests: this.requests.map((request) => ({ id: request.id, deviceName: request.deviceName })),
+      connectedDevices: [...connected.values()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })),
+      pairedDevices: (this.store?.devices ?? []).map((device) => ({
+        id: device.deviceID,
+        name: device.name,
+        ...(device.platform !== null ? { platform: device.platform } : {}),
+        ...(device.model ? { model: device.model } : {}),
+        ...(device.lastSeen !== null ? { lastSeen: device.lastSeen } : {}),
+        connected: connected.has(device.deviceID),
+      })),
+      pairingRequests: this.requests.map(({ id, hello }) => {
+        const device = SyncHello.device(hello)
+        return {
+          id,
+          deviceName: hello.deviceName,
+          platform: device.kind ?? hello.platform ?? undefined,
+          ...(device.model ? { model: device.model } : {}),
+        }
+      }),
       error: this.listenError ?? this.bonjourError,
     }
   }
@@ -377,7 +447,7 @@ export class SyncHost {
         }
         client.hello = hello
         client.handshake = handshake
-        this.log(`[sync] hello from ${hello.deviceName}`)
+        this.log(`[sync] hello from ${hello.deviceName} (${SyncDevice.modelTitle(SyncHello.device(hello))}, ${hello.deviceID.slice(0, 8)})`)
         client.channel.send({ kind: 'challenge', publicKey: key.publicKey })
         return
       }
@@ -417,7 +487,7 @@ export class SyncHost {
 
   private askApproval(client: Client, hello: SyncHello): void {
     // The same iPhone asking again (it reconnected): the new request replaces the old one.
-    for (const request of this.requests.filter((item) => item.deviceID === hello.deviceID)) this.drop(request.id)
+    for (const request of this.requests.filter((item) => item.hello.deviceID === hello.deviceID)) this.drop(request.id)
     if (this.requests.length >= maxPairingRequests) {
       client.channel.send({
         kind: 'rejected',
@@ -426,7 +496,7 @@ export class SyncHost {
       setTimeout(() => this.drop(client.id), 300)
       return
     }
-    this.requests.push({ id: client.id, deviceID: hello.deviceID, deviceName: hello.deviceName })
+    this.requests.push({ id: client.id, hello })
     this.log(`[sync] ${hello.deviceName} asks to join`)
     this.deps.onChange()
   }
@@ -442,7 +512,15 @@ export class SyncHost {
 
     // A new iPhone: both sides derive the same secret from this handshake; it never crosses the network.
     const secret = client.pairingSecret ?? client.handshake.newPairingSecret()
-    this.store?.save({ deviceID: hello.deviceID, name: hello.deviceName, secret })
+    const device = SyncHello.device(hello)
+    this.store?.save({
+      deviceID: hello.deviceID,
+      name: hello.deviceName,
+      secret,
+      platform: device.kind ?? hello.platform,
+      model: hello.model,
+      lastSeen: Date.now(),
+    })
     // An older connection of the same iPhone (it reconnected while the old one hung on) goes away.
     for (const other of [...this.clients.values()]) if (other !== client && other.hello?.deviceID === hello.deviceID) this.drop(other.id)
 
@@ -452,7 +530,7 @@ export class SyncHost {
       client.lastState = SyncMessage.encode({ kind: 'state', state })
       client.channel.send({ kind: 'state', state })
     }
-    this.log(`[sync] ${hello.deviceName} joined`)
+    this.log(`[sync] ${hello.deviceName} (${SyncDevice.modelTitle(device)}) joined`)
     this.deps.onChange()
   }
 
@@ -518,7 +596,7 @@ export class SyncHost {
   }
 
   private hostInfo(state: SyncState | null): SyncHostInfo {
-    return syncHostInfo(this.name, state)
+    return syncHostInfo(this.name, state, this.identity)
   }
 
   private welcome(client: Client): SyncWelcome {
@@ -528,12 +606,16 @@ export class SyncHost {
     } catch (error) {
       this.log(`[sync] go2rtc access unavailable: ${(error as Error).message}`)
     }
+    const identity = this.identity
     return {
       hostName: this.name,
       go2rtcPort: access.port,
       username: access.username,
       password: access.password,
       addresses: welcomeAddresses(client.channel.localIPv4),
+      hostID: identity.id || null,
+      platform: identity.platform,
+      model: identity.model || null,
     }
   }
 }
@@ -555,7 +637,11 @@ export function syncState(state: SyncHostState): SyncState {
 
 /// What the Bonjour TXT record says about this computer (the Mac's `currentInfo`): camera, whether a training runs
 /// and its current exit (the next one during a break).
-export function syncHostInfo(name: string, state: SyncState | null): SyncHostInfo {
+export function syncHostInfo(
+  name: string,
+  state: SyncState | null,
+  identity: { id: string; platform: string; model: string } = { id: '', platform: hostPlatform, model: '' },
+): SyncHostInfo {
   const session = state?.session ?? null
   let exit: number | null = null
   if (session) {
@@ -572,6 +658,9 @@ export function syncHostInfo(name: string, state: SyncState | null): SyncHostInf
     cameraReady: state?.cameraReady ?? false,
     sessionRunning: session !== null,
     currentExit: exit,
+    id: identity.id || null,
+    platform: identity.platform,
+    model: identity.model,
   })
 }
 
