@@ -32,8 +32,21 @@ cp "$HERE"/api/*.go "$SRC/internal/api/"
 # 1-2. Xiaomi CS2 transport: our copy of pkg/xiaomi/miss/cs2/conn.go (bigger UDP and reorder buffers, a full command
 #      queue drops instead of killing the connection, no "unknown msg" spam, stats in the log). It is a copy of
 #      v1.9.14: compare with upstream before changing GO2RTC_VERSION.
-[ "$GO2RTC_VERSION" = "v1.9.14" ] || { echo "GoMobile/xiaomi-cs2/conn.go is based on v1.9.14: port it to $GO2RTC_VERSION first"; exit 1; }
+[ "$GO2RTC_VERSION" = "v1.9.14" ] || { echo "GoMobile/xiaomi-cs2/conn.go and GoMobile/mp4/muxer.go are based on v1.9.14: port them to $GO2RTC_VERSION first"; exit 1; }
 cp "$HERE"/xiaomi-cs2/*.go "$SRC/pkg/xiaomi/miss/cs2/"
+# 2a. Recordings keep real time: our copy of pkg/mp4/muxer.go keeps the source's pauses (frames the camera never sent,
+#     a reconnect) in /api/stream.mp4 instead of cutting each one over 1 s down to 1 ms, and the Xiaomi sound follows
+#     the camera's clock (audioclock.go) instead of counting from 0 on every connect. The live player is unchanged.
+cp "$HERE"/mp4/*.go "$SRC/pkg/mp4/"
+cp "$HERE"/xiaomi-miss/*.go "$SRC/pkg/xiaomi/miss/"
+MP4API="$SRC/internal/mp4/mp4.go"
+sed -i '' 's|^	cons := mp4.NewConsumer(medias)$|&; cons.KeepTimeline() // Waiting Paws: GoMobile/mp4/muxer.go|' "$MP4API"
+grep -q 'cons.KeepTimeline() // Waiting Paws' "$MP4API" || { echo "stream.mp4 timeline patch failed"; exit 1; }
+MISS="$SRC/pkg/xiaomi/miss/producer.go"
+sed -i '' 's|^	var audioTS uint32$|&; audio := newAudioClock(p.client) // Waiting Paws: audioclock.go|' "$MISS"
+sed -i '' 's|^		p.Recv += len(pkt.Payload)$|&; audioTS = audio.follow(audioTS, pkt) // Waiting Paws|' "$MISS"
+grep -q 'audio := newAudioClock(p.client)' "$MISS" && grep -q 'audioTS = audio.follow(audioTS, pkt)' "$MISS" ||
+  { echo "xiaomi audio clock patch failed"; exit 1; }
 # 2b. Each viewer (MSE player, recording, linked iPhone) gets a queue of 64 frames (~3 s at 20 fps); a viewer that
 #     falls behind for longer loses frames and freezes until the next keyframe. 256 frames ride out such hiccups.
 TRACK="$SRC/pkg/core/track.go"

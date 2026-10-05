@@ -114,12 +114,14 @@ enum RecordingFinalizer {
         try await track.load(.formatDescriptions).contains { CMFormatDescriptionGetMediaSubType($0) == kAudioFormatMPEG4AAC }
     }
 
-    /// Decodes the camera's sound (Opus, FLAC, …) and encodes it as AAC into a temporary .m4a.
+    /// Decodes the camera's sound (Opus, FLAC, …) and encodes it as AAC into a temporary .m4a, with silence for the
+    /// pauses in it (see `SoundPauses`).
     private static func transcodeToAAC(_ track: AVAssetTrack, of asset: AVAsset) async throws -> URL {
         let description = try await track.load(.formatDescriptions).first
         let sourceChannels = description.flatMap { CMAudioFormatDescriptionGetStreamBasicDescription($0)?.pointee.mChannelsPerFrame } ?? 1
         let channels = sourceChannels >= 2 ? 2 : 1
         let sampleRate = 44_100
+        let pauses = try SoundPauses(in: track, of: asset)
 
         let reader = try AVAssetReader(asset: asset)
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
@@ -162,17 +164,20 @@ enum RecordingFinalizer {
         nonisolated(unsafe) let writerInput = input
         nonisolated(unsafe) let readerOutput = output
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            nonisolated(unsafe) var pending: CMSampleBuffer? = first
+            nonisolated(unsafe) var placer = pauses
+            nonisolated(unsafe) var pending = placer.place(first)
             nonisolated(unsafe) var finished = false
             writerInput.requestMediaDataWhenReady(on: queue) {
                 while !finished, writerInput.isReadyForMoreMediaData {
-                    guard let buffer = pending ?? readerOutput.copyNextSampleBuffer(), writerInput.append(buffer) else {
+                    if pending.isEmpty, let next = readerOutput.copyNextSampleBuffer() {
+                        pending = placer.place(next)
+                    }
+                    guard !pending.isEmpty, writerInput.append(pending.removeFirst()) else {
                         finished = true
                         writerInput.markAsFinished()
                         continuation.resume()
                         return
                     }
-                    pending = nil
                 }
             }
         }
@@ -184,6 +189,148 @@ enum RecordingFinalizer {
             throw FinalizeError.failed(String(localized: "не удалось перекодировать звук: \(why)"))
         }
         return url
+    }
+
+    /// Puts back the pauses that decoding takes out of the camera's sound. Our go2rtc keeps a pause in the recording
+    /// (packets the camera dropped, a reconnect) as a longer last packet before it, but a decoder gives every packet
+    /// its own length and runs the sound on, and the encoder joins whatever it gets end to end: without this the sound
+    /// after a pause would play ahead of the picture by the length of the pause.
+    struct SoundPauses {
+        /// Each pause on the decoded sound's timeline (from its start), and how long it is.
+        private(set) var left: [(at: CMTime, length: CMTime)]
+        private var origin: CMTime?   // where the decoded sound starts
+        private var inserted = CMTime.zero
+
+        /// Finds the pauses from the packet times of `track` (without decoding it): a packet longer than the usual
+        /// length by 5 ms or more is followed by a pause.
+        init(in track: AVAssetTrack, of asset: AVAsset) throws {
+            let reader = try AVAssetReader(asset: asset)
+            let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
+            output.alwaysCopiesSampleData = false
+            reader.add(output)
+            var packets: [(start: CMTime, duration: CMTime)] = []
+            if reader.startReading() {
+                while let buffer = output.copyNextSampleBuffer() {
+                    let timings = (try? buffer.sampleTimingInfos()) ?? []
+                    let count = CMSampleBufferGetNumSamples(buffer)
+                    if timings.count == 1, count > 1, timings[0].duration.isNumeric { // one timing for packets of one length
+                        for i in 0..<count {
+                            packets.append((timings[0].presentationTimeStamp + CMTimeMultiply(timings[0].duration, multiplier: Int32(i)),
+                                            timings[0].duration))
+                        }
+                    } else {
+                        packets += timings.filter { $0.duration.isNumeric }.map { ($0.presentationTimeStamp, $0.duration) }
+                    }
+                }
+            }
+            self.init(packets: packets)
+        }
+
+        /// `packets`: start and duration of every packet, in order.
+        init(packets: [(start: CMTime, duration: CMTime)]) {
+            left = []
+            // A camera sends packets of one length: the most common one.
+            var counts: [Int64: (duration: CMTime, count: Int)] = [:]
+            for packet in packets {
+                let key = Int64((packet.duration.seconds * 1_000_000).rounded())
+                counts[key] = (packet.duration, (counts[key]?.count ?? 0) + 1)
+            }
+            guard let usual = counts.values.max(by: { $0.count < $1.count })?.duration, let first = packets.first?.start else {
+                return
+            }
+            var paused = CMTime.zero
+            for packet in packets where packet.duration - usual >= CMTime(value: 5, timescale: 1000) {
+                let length = packet.duration - usual
+                left.append((at: packet.start + usual - first - paused, length: length))
+                paused = paused + length
+            }
+        }
+
+        /// `buffer` (the decoded sound, in order) as it goes to the encoder: split where a pause falls inside it, with
+        /// silence for the pause, and moved later by the pauses so far.
+        mutating func place(_ buffer: CMSampleBuffer) -> [CMSampleBuffer] {
+            let origin = self.origin ?? CMSampleBufferGetPresentationTimeStamp(buffer)
+            self.origin = origin
+            guard let rate = Self.sampleRate(of: buffer) else { return [buffer] }
+            var placed: [CMSampleBuffer] = []
+            var rest = buffer
+            while let pause = left.first {
+                let frames = CMSampleBufferGetNumSamples(rest)
+                let split = Int(((pause.at - (CMSampleBufferGetPresentationTimeStamp(rest) - origin)).seconds * rate).rounded())
+                if split >= frames { break } // the pause comes after this buffer
+                var tail = rest
+                if split > 0, let head = Self.slice(rest, 0..<split), let after = Self.slice(rest, split..<frames) {
+                    placed.append(moved(head))
+                    tail = after
+                }
+                placed += Self.silence(like: rest, at: origin + pause.at + inserted, length: pause.length)
+                inserted = inserted + pause.length
+                left.removeFirst()
+                rest = tail
+            }
+            placed.append(moved(rest))
+            return placed
+        }
+
+        private func moved(_ buffer: CMSampleBuffer) -> CMSampleBuffer {
+            guard inserted > .zero, var timings = try? buffer.sampleTimingInfos() else { return buffer }
+            for i in timings.indices { timings[i].presentationTimeStamp = timings[i].presentationTimeStamp + inserted }
+            var copy: CMSampleBuffer?
+            guard CMSampleBufferCreateCopyWithNewTiming(allocator: kCFAllocatorDefault, sampleBuffer: buffer,
+                                                        sampleTimingEntryCount: timings.count, sampleTimingArray: timings,
+                                                        sampleBufferOut: &copy) == noErr, let copy else { return buffer }
+            return copy
+        }
+
+        private static func sampleRate(of buffer: CMSampleBuffer) -> Double? {
+            guard let format = CMSampleBufferGetFormatDescription(buffer),
+                  let rate = CMAudioFormatDescriptionGetStreamBasicDescription(format)?.pointee.mSampleRate, rate > 0 else {
+                return nil
+            }
+            return rate
+        }
+
+        private static func slice(_ buffer: CMSampleBuffer, _ range: Range<Int>) -> CMSampleBuffer? {
+            var piece: CMSampleBuffer?
+            guard CMSampleBufferCopySampleBufferForRange(allocator: kCFAllocatorDefault, sampleBuffer: buffer,
+                                                         sampleRange: CFRange(location: range.lowerBound, length: range.count),
+                                                         sampleBufferOut: &piece) == noErr else { return nil }
+            return piece
+        }
+
+        /// Silent buffers in the format of `buffer` (linear PCM) from `at` for `length`, in pieces of up to 1 s.
+        private static func silence(like buffer: CMSampleBuffer, at: CMTime, length: CMTime) -> [CMSampleBuffer] {
+            guard let format = CMSampleBufferGetFormatDescription(buffer),
+                  let stream = CMAudioFormatDescriptionGetStreamBasicDescription(format)?.pointee,
+                  stream.mSampleRate > 0, stream.mBytesPerFrame > 0 else { return [] }
+            let rate = CMTimeScale(stream.mSampleRate)
+            var frames = Int((length.seconds * stream.mSampleRate).rounded())
+            var at = at
+            var pieces: [CMSampleBuffer] = []
+            while frames > 0 {
+                let count = min(frames, Int(rate))
+                let bytes = count * Int(stream.mBytesPerFrame)
+                var block: CMBlockBuffer?
+                var piece: CMSampleBuffer?
+                guard CMBlockBufferCreateWithMemoryBlock(allocator: kCFAllocatorDefault, memoryBlock: nil, blockLength: bytes,
+                                                         blockAllocator: kCFAllocatorDefault, customBlockSource: nil,
+                                                         offsetToData: 0, dataLength: bytes,
+                                                         flags: kCMBlockBufferAssureMemoryNowFlag,
+                                                         blockBufferOut: &block) == kCMBlockBufferNoErr,
+                      let block,
+                      CMBlockBufferFillDataBytes(with: 0, blockBuffer: block, offsetIntoDestination: 0,
+                                                 dataLength: bytes) == kCMBlockBufferNoErr,
+                      CMAudioSampleBufferCreateReadyWithPacketDescriptions(allocator: kCFAllocatorDefault, dataBuffer: block,
+                                                                           formatDescription: format, sampleCount: count,
+                                                                           presentationTimeStamp: at, packetDescriptions: nil,
+                                                                           sampleBufferOut: &piece) == noErr,
+                      let piece else { break }
+                pieces.append(piece)
+                frames -= count
+                at = at + CMTime(value: CMTimeValue(count), timescale: rate)
+            }
+            return pieces
+        }
     }
 
     /// Fills `[0, end)` with a looped silent clip.
