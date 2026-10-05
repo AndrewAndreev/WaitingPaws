@@ -88,3 +88,34 @@ func TestTimingTellsHeldUpDeliveryFromMissingFrames(t *testing.T) {
 		t.Fatalf("delivery spread %d ms: want about 150 − 67", spread)
 	}
 }
+
+func TestHeldUpWhileAPacketIsMissing(t *testing.T) {
+	c := newDataChannel(2048, 1000)
+	_, _ = c.PushSeq(0, message(0, 10))
+	if held := c.heldUp(); held != 0 {
+		t.Fatalf("nothing missing: held %v", held)
+	}
+	_, _ = c.PushSeq(2, message(2, 10)) // 1 is missing
+	time.Sleep(30 * time.Millisecond)
+	if held := c.heldUp(); held < 25*time.Millisecond {
+		t.Fatalf("waiting for packet 1: held %v", held)
+	}
+	_, _ = c.PushSeq(1, message(1, 10))
+	if held := c.heldUp(); held != 0 {
+		t.Fatalf("the gap is filled: held %v", held)
+	}
+}
+
+func TestStrugglingCameraIsAskedForTCPForAnHour(t *testing.T) {
+	if strugglingOverUDP("10.0.0.9") {
+		t.Fatal("no trouble yet")
+	}
+	udpTrouble.Store("10.0.0.9", time.Now())
+	if !strugglingOverUDP("10.0.0.9") {
+		t.Fatal("just struggled")
+	}
+	udpTrouble.Store("10.0.0.9", time.Now().Add(-61*time.Minute))
+	if strugglingOverUDP("10.0.0.9") {
+		t.Fatal("an hour later UDP is tried again")
+	}
+}

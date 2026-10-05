@@ -8,6 +8,15 @@ import Foundation
 /// only accepts AAC sound in MP4; Telegram sends a video without an audio track as a GIF. So the video
 /// is remuxed in place without re-encoding, the sound is converted to AAC, and a silent AAC track is
 /// added when the camera gave no sound at all.
+/// One part of a recording: the file and when it was requested (`AppModel` starts a new part each time the camera
+/// stream breaks off and comes back).
+struct RecordingSegment: Equatable {
+    let url: URL
+    let startedAt: Date
+    /// Written by the time the part ended; 0 while it is being written.
+    var bytes: Int64 = 0
+}
+
 enum RecordingFinalizer {
     enum FinalizeError: LocalizedError {
         case noVideo
@@ -79,6 +88,62 @@ enum RecordingFinalizer {
         try await export(session, to: output)
         _ = try FileManager.default.replaceItemAt(url, withItemAt: output)
         return true
+    }
+
+    /// Joins the parts of a recording the camera broke off into `output`, each at its own time since `startedAt`:
+    /// the time the camera was away stays in the video as an empty stretch, so the training log (and the history's
+    /// «jump to the exit») still lines up with the picture. Each part is finalized first (AAC sound, not fragmented);
+    /// the parts other than `output` are deleted afterwards. `output` may be one of the parts, or an empty file.
+    static func join(_ segments: [RecordingSegment], startedAt: Date, into output: URL) async throws {
+        let composition = AVMutableComposition()
+        guard let video = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
+              let audio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+            throw FinalizeError.failed(String(localized: "не удалось склеить запись"))
+        }
+        var assets: [AVURLAsset] = [] // a track does not retain its asset
+        var placed = 0
+        for segment in segments {
+            try await finalize(segment.url)
+            let asset = AVURLAsset(url: segment.url)
+            assets.append(asset)
+            guard let track = try await asset.loadTracks(withMediaType: .video).first else { continue }
+            let range = try await track.load(.timeRange)
+            let wanted = CMTime(seconds: max(0, segment.startedAt.timeIntervalSince(startedAt)), preferredTimescale: 600)
+            let at = max(video.timeRange.end, wanted)
+            if at > video.timeRange.end {
+                video.insertEmptyTimeRange(CMTimeRange(start: video.timeRange.end, end: at))
+            }
+            try video.insertTimeRange(range, of: track, at: at)
+            if placed == 0 { video.preferredTransform = try await track.load(.preferredTransform) }
+            if let sound = try await asset.loadTracks(withMediaType: .audio).first {
+                let soundRange = try await sound.load(.timeRange)
+                let soundAt = max(audio.timeRange.end, at + (soundRange.start - range.start))
+                if soundAt > audio.timeRange.end {
+                    audio.insertEmptyTimeRange(CMTimeRange(start: audio.timeRange.end, end: soundAt))
+                }
+                try audio.insertTimeRange(soundRange, of: sound, at: soundAt)
+            }
+            placed += 1
+        }
+        guard placed > 0 else { throw FinalizeError.noVideo }
+
+        guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough) else {
+            throw FinalizeError.failed(String(localized: "экспорт недоступен"))
+        }
+        let joined = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("mp4")
+        session.shouldOptimizeForNetworkUse = true
+        try await export(session, to: joined)
+        if FileManager.default.fileExists(atPath: output.path) {
+            _ = try FileManager.default.replaceItemAt(output, withItemAt: joined)
+        } else {
+            try FileManager.default.moveItem(at: joined, to: output)
+        }
+        for segment in segments where segment.url.standardizedFileURL != output.standardizedFileURL {
+            try? FileManager.default.removeItem(at: segment.url)
+        }
+        withExtendedLifetime(assets) {}
     }
 
     /// `export(to:as:)` where the system has it (iOS 18, macOS 15), the old completion-style export before.

@@ -161,6 +161,8 @@ extension PerformanceMonitor.Sample {
     /// units on every number. Until the network part is known (the first seconds) only the buffer is shown.
     var videoDelayText: String? {
         guard let playerDelay else { return nil }
+        // A long freeze (the camera is away): its length says more than a sum of big numbers.
+        if playerDelay >= 10 { return String(localized: "Нет новых кадров \(Int(playerDelay)) с") }
         let format: (Double) -> String = { $0.formatted(.number.precision(.fractionLength(1))) }
         guard let networkDelay, let videoDelay else {
             return String(localized: "Задержка ≥ \(format(playerDelay)) с: только буфер плеера")

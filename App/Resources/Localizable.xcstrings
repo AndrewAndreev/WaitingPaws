@@ -692,9 +692,6 @@
         }
       }
     },
-    "18:29:13" : {
-      "shouldTranslate" : false
-    },
     "CPU %lld %%" : {
       "shouldTranslate" : false
     },
@@ -6686,6 +6683,22 @@
         }
       }
     },
+    "не удалось склеить запись" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "couldn’t join the recording"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не удалось склеить запись"
+          }
+        }
+      }
+    },
     "Не удалось сменить качество: %@" : {
       "localizations" : {
         "en" : {
@@ -6890,6 +6903,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет новых кадров — ждём камеру"
+          }
+        }
+      }
+    },
+    "Нет новых кадров %lld с" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No new frames for %lld s"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет новых кадров %lld с"
           }
         }
       }

@@ -51,6 +51,13 @@ final class AppModel {
     private(set) var currentXiaomiSource: String?
 
     private var currentRecordingURL: URL?
+    /// The recording in progress in parts: the first is `currentRecordingURL`; a new part starts whenever the camera
+    /// stream broke off (go2rtc lost the camera) and came back. Joined into the first file when the recording stops.
+    private var recordingSegments: [RecordingSegment] = []
+    /// The camera stream broke off mid-recording: the recording goes on in a new part as soon as it is back.
+    private(set) var recordingResuming = false
+    @ObservationIgnored private var resumeTask: Task<Void, Never>?
+    @ObservationIgnored private var lastRequestedPart = 0
     private var tickTask: Task<Void, Never>?
     private var awakeActivity: NSObjectProtocol?
     #if os(iOS)
@@ -97,6 +104,9 @@ final class AppModel {
         if CommandLine.arguments.contains("--demo-camera-modes") { cameraModes.loadDemo() }
         #endif
         performance.startHangLogging()
+        recorder.onEnded = { [weak self] reason in
+            MainActor.assumeIsolated { self?.recordingStreamEnded(reason) }
+        }
         if settings.showPerformance || CommandLine.arguments.contains("--perf") { performance.start() }
         #if os(iOS)
         KeyboardPrewarmer.prewarm(after: 2)
@@ -315,7 +325,7 @@ final class AppModel {
         }
         #endif
         // A recording that broke off earlier must not end up attached to this session.
-        if !recorder.isRecording { currentRecordingURL = nil }
+        if !isRecordingLocally { currentRecordingURL = nil }
         let session = TrainingSession(plan: plan)
         session.autoFinishAfterLastBreak = settings.autoFinishAfterLastBreak
         self.session = session
@@ -404,7 +414,7 @@ final class AppModel {
             errorMessage = String(localized: "Камера не настроена")
             return
         }
-        guard !recorder.isRecording else { return }
+        guard !isRecordingLocally else { return }
         let plan = session?.plan ?? TrainingPlan(title: String(localized: "Запись"))
         let fileURL = store.newRecordingURL(for: plan)
         do {
@@ -412,6 +422,7 @@ final class AppModel {
                                authorization: client.server.authorizationHeader,
                                to: fileURL)
             currentRecordingURL = fileURL
+            recordingSegments = [RecordingSegment(url: fileURL, startedAt: recorder.startedAt ?? Date())]
             session?.noteRecording(started: true, fileName: fileURL.lastPathComponent)
             if session == nil {
                 // A recording without a training replaces whatever summary card was shown.
@@ -432,36 +443,117 @@ final class AppModel {
             return
         }
         #endif
-        guard recorder.isRecording || currentRecordingURL != nil else { return }
+        let wasRecording = isRecordingLocally
+        resumeTask?.cancel()
+        resumeTask = nil
+        recordingResuming = false
+        guard wasRecording || currentRecordingURL != nil else { return }
         // A session keeps the screen awake on its own; a recording without one releases it here.
         defer { if session == nil { keepAwake(false) } }
-        let wasRecording = recorder.isRecording
-        if wasRecording {
+        if recorder.isRecording {
             recorder.stop()
+            noteSegmentEnded()
+        }
+        let startedAt = recordingSegments.first?.startedAt ?? recorder.startedAt ?? Date()
+        // Parts that got nothing (the camera was still away) are dropped; the first file stays as the name.
+        let filled = recordingSegments.filter { $0.bytes > 0 }
+        for part in recordingSegments.dropFirst() where part.bytes == 0 { try? FileManager.default.removeItem(at: part.url) }
+        let parts = filled.filter { $0.url != currentRecordingURL }.map(\.url)
+        recordingSegments = []
+        if wasRecording {
             session?.noteRecording(started: false)
-            print("[rec] stopped \(currentRecordingURL?.lastPathComponent ?? "?") bytes=\(recorder.bytesWritten) error=\(recorder.lastError ?? "none")")
+            print("[rec] stopped \(currentRecordingURL?.lastPathComponent ?? "?") parts=\(filled.count) error=\(recorder.lastError ?? "none")")
         }
         // Nothing arrived (stopped right away, or the stream never delivered): drop the empty file quietly.
-        if wasRecording, recorder.bytesWritten == 0, let url = currentRecordingURL {
+        if wasRecording, filled.isEmpty, let url = currentRecordingURL {
             try? FileManager.default.removeItem(at: url)
             currentRecordingURL = nil
             return
         }
         if deleteFile, let url = currentRecordingURL {
             try? FileManager.default.removeItem(at: url)
+            for part in parts { try? FileManager.default.removeItem(at: part) }
             currentRecordingURL = nil
         } else if wasRecording, let url = currentRecordingURL {
-            if settings.saveToPhotos {
-                saveToPhotos(url)
-            } else {
-                Task { await finalizeRecording(url) }
+            let needsJoin = filled.count > 1 || filled.first?.url != url
+            Task {
+                if needsJoin { await joinRecording(url, segments: filled, startedAt: startedAt) }
+                if settings.saveToPhotos {
+                    saveToPhotos(url)
+                } else {
+                    await finalizeRecording(url)
+                }
             }
             if session == nil {
                 // Without a training nothing else will claim the file: it becomes a standalone recording.
                 currentRecordingURL = nil
-                lastClip = RecordingClip(url: url, date: recorder.startedAt ?? Date())
+                lastClip = RecordingClip(url: url, date: startedAt)
                 reloadClips()
             }
+        }
+    }
+
+    /// Recording here (not on a linked Mac): writing, or waiting for the camera to come back.
+    private var isRecordingLocally: Bool { recorder.isRecording || recordingResuming }
+
+    /// When the recording in progress here started (its first part).
+    private var localRecordingStartedAt: Date? { recordingSegments.first?.startedAt ?? recorder.startedAt }
+
+    private func noteSegmentEnded() {
+        guard let last = recordingSegments.indices.last else { return }
+        recordingSegments[last].bytes = recorder.bytesWritten
+    }
+
+    /// The recording's stream ended without a stop: go2rtc lost the camera (it reconnects by itself) or refused the
+    /// stream. The recording goes on in a new part as soon as the stream is back, instead of silently ending here.
+    private func recordingStreamEnded(_ reason: String?) {
+        guard let main = currentRecordingURL, !recordingSegments.isEmpty else { return }
+        noteSegmentEnded()
+        // A try that got nothing (the camera still away) is not a part, and not worth a line in the log each time.
+        if let last = recordingSegments.last, last.bytes == 0, last.url != main {
+            try? FileManager.default.removeItem(at: last.url)
+            recordingSegments.removeLast()
+        } else {
+            print("[rec] the camera stream broke off (\(reason ?? "ended")): going on when the camera is back")
+        }
+        recordingResuming = true
+        resumeTask?.cancel()
+        resumeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            self?.startNextRecordingPart()
+        }
+    }
+
+    private func startNextRecordingPart() {
+        guard recordingResuming, let main = currentRecordingURL, let client, !settings.streamName.isEmpty else { return }
+        let number = recordingSegments.count + 1
+        let url = store.recordingsDirectory
+            .appendingPathComponent(".parts", isDirectory: true)
+            .appendingPathComponent("\(main.deletingPathExtension().lastPathComponent)-part\(number).mp4")
+        do {
+            try recorder.start(url: client.mp4URL(stream: settings.streamName),
+                               authorization: client.server.authorizationHeader, to: url)
+            recordingSegments.append(RecordingSegment(url: url, startedAt: recorder.startedAt ?? Date()))
+            recordingResuming = false
+            if number != lastRequestedPart { print("[rec] waiting for the camera to write part \(number)") }
+            lastRequestedPart = number
+        } catch {
+            print("[rec] part \(number) failed: \(error.localizedDescription)")
+            recordingStreamEnded(error.localizedDescription)
+        }
+    }
+
+    /// Puts the parts of a recording the camera broke off back into its first file (see `RecordingFinalizer.join`).
+    private func joinRecording(_ url: URL, segments: [RecordingSegment], startedAt: Date) async {
+        let name = url.lastPathComponent
+        finalizingFileNames.insert(name)
+        defer { finalizingFileNames.remove(name) }
+        do {
+            try await RecordingFinalizer.join(segments, startedAt: startedAt, into: url)
+            print("[rec] joined \(segments.count) parts into \(name)")
+        } catch {
+            print("[rec] joining \(name) failed: \(error.localizedDescription)")
         }
     }
 
@@ -739,14 +831,14 @@ final class AppModel {
     /// camera), so a recording gets the usual ~30 s of grace and is then closed cleanly; it goes on when the
     /// app is back. The training itself keeps time by the clock and catches up on return.
     func didEnterBackground() {
-        guard recorder.isRecording, !isLinkedToMac, backgroundTask == .invalid else { return }
+        guard isRecordingLocally, !isLinkedToMac, backgroundTask == .invalid else { return }
         backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Recording") { [weak self] in
             MainActor.assumeIsolated { self?.cutRecordingForBackground() }
         }
     }
 
     private func cutRecordingForBackground() {
-        if recorder.isRecording {
+        if isRecordingLocally {
             recordingCutByBackground = true
             stopRecording(deleteFile: false)
             print("[rec] stopped: the app stayed in the background")
@@ -865,7 +957,7 @@ extension AppModel {
         #if DEBUG
         if Self.demoRecordingSince != nil { return true }
         #endif
-        return recorder.isRecording
+        return isRecordingLocally
     }
 
     #if DEBUG
@@ -882,7 +974,7 @@ extension AppModel {
         #if os(iOS)
         if syncClient.isConnected { return syncClient.state?.recordingSince }
         #endif
-        return recorder.startedAt
+        return localRecordingStartedAt
     }
 
     func recordingDuration(at now: Date) -> TimeInterval {
@@ -892,7 +984,7 @@ extension AppModel {
         #if os(iOS)
         if syncClient.isConnected { return syncClient.state?.recordingSince.map { now.timeIntervalSince($0) } ?? 0 }
         #endif
-        return recorder.duration(at: now)
+        return localRecordingStartedAt.map { now.timeIntervalSince($0) } ?? 0
     }
 
     func setUpSync() {
@@ -900,7 +992,7 @@ extension AppModel {
         #if os(macOS)
         syncHost.stateProvider = { [unowned self] in
             SyncState(session: session?.snapshot,
-                      recordingSince: recorder.isRecording ? recorder.startedAt : nil,
+                      recordingSince: isRecordingLocally ? localRecordingStartedAt : nil,
                       cameraReady: settings.isConfigured && (settings.connectionMode == .external || embedded.status.isRunning),
                       cameraTitle: settings.cameraDisplayName,
                       streamName: settings.streamName,
@@ -924,7 +1016,7 @@ extension AppModel {
         if settings.shareWithIPhone { syncHost.start() }
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }
-        syncClient.canAutoConnect = { [unowned self] in session == nil && !recorder.isRecording }
+        syncClient.canAutoConnect = { [unowned self] in session == nil && !isRecordingLocally }
         syncClient.startBrowsing()
         #if DEBUG
         // `--demo-share-plan`: once linked, «paste» the sample schedule here (it should appear on the Mac).
@@ -989,7 +1081,7 @@ extension AppModel {
         case .abandonSession:
             abandonSession()
         case .startRecording:
-            if !recorder.isRecording { startRecording() }
+            if !isRecordingLocally { startRecording() }
         case .stopRecording:
             stopRecording(deleteFile: false)
         }

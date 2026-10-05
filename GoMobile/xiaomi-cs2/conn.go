@@ -10,6 +10,9 @@
 //     doesn't offer it connects with its own choice instead of failing. The C302 picks TCP by itself, and there a
 //     packet lost on Wi-Fi held the whole stream for 1–1.5 s until TCP resent it; over UDP CS2 makes up for a loss in
 //     a few ms (same camera, same minutes: longest pause 0.2–0.45 s on UDP, 1.2–1.45 s on TCP). The log says which;
+//   - a camera that struggles over UDP (a missing packet holds the video for 3 s: on a slow link the camera resends
+//     before our acknowledgements arrive, a third of the traffic is resends, and it ends in a stall) is reconnected
+//     over TCP, which paces itself to the link, and asked for TCP for an hour (`transport=udp` in the source keeps UDP);
 //   - every 30 s the log gets the video's timing when it was uneven (and once, 30 s after connecting, in any case):
 //     frames, bitrate, the longest pause between frames with the camera's own time for that pause (a pause in
 //     arrival only = delivery held up; in camera time too = frames never sent), the spread of delivery against the
@@ -31,6 +34,10 @@ import (
 
 func Dial(host, transport string) (*Conn, error) {
 	started := time.Now()
+	if transport == "" && strugglingOverUDP(host) {
+		logf("cs2: %s struggled over UDP lately, asking for TCP", host)
+		transport = "tcp"
+	}
 	conn, err := handshake(host, transport)
 	if err != nil {
 		return nil, err
@@ -41,6 +48,7 @@ func Dial(host, transport string) (*Conn, error) {
 	c := &Conn{
 		Conn:  conn,
 		isTCP: isTCP,
+		host:  host,
 		channels: [4]*dataChannel{
 			newDataChannel(0, 100), nil, newDataChannel(2048, 1000), nil,
 		},
@@ -49,6 +57,7 @@ func Dial(host, transport string) (*Conn, error) {
 	c.channels[2].timing = true
 	go c.worker()
 	go c.report()
+	go c.watch()
 	logf("cs2: connected to %s over %s in %d ms", conn.RemoteAddr(), c.transport(), time.Since(started).Milliseconds())
 	return c, nil
 }
@@ -62,6 +71,38 @@ func (c *Conn) transport() string {
 		return "TCP"
 	}
 	return "UDP"
+}
+
+// Cameras that struggled over UDP, by host: asked for TCP for an hour (Waiting Paws).
+var udpTrouble sync.Map
+
+func strugglingOverUDP(host string) bool {
+	at, ok := udpTrouble.Load(host)
+	return ok && time.Since(at.(time.Time)) < time.Hour
+}
+
+// watch drops a UDP connection whose video a missing packet has held up for 3 s (Waiting Paws): go2rtc reconnects at
+// once, and the camera is asked for TCP from then on.
+func (c *Conn) watch() {
+	if c.isTCP {
+		return
+	}
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-c.done:
+			return
+		case <-ticker.C:
+			if held := c.channels[2].heldUp(); held >= 3*time.Second {
+				udpTrouble.Store(c.host, time.Now())
+				logf("cs2: UDP to %s is struggling (a missing packet has held the video for %.1f s), reconnecting over TCP",
+					c.host, held.Seconds())
+				_ = c.Conn.Close()
+				return
+			}
+		}
+	}
 }
 
 // report logs the media channel's timing every 30 s (Waiting Paws): when a pause between frames could freeze a
@@ -103,6 +144,7 @@ func (c *Conn) report() {
 type Conn struct {
 	net.Conn
 	isTCP bool
+	host  string
 
 	err    error
 	seqCh0 uint16
@@ -514,7 +556,7 @@ type dataChannel struct {
 
 	statsMu   sync.Mutex
 	stats     channelStats
-	waitStart time.Time // when the first packet after a missing one arrived
+	waitStart time.Time // when the first packet after a missing one arrived (under statsMu: `watch` reads it)
 
 	timing      bool      // the media channel: note every video frame's arrival
 	lastFrame   time.Time // arrival of the previous video frame
@@ -568,6 +610,16 @@ func (c *dataChannel) count(update func(s *channelStats)) {
 	c.statsMu.Lock()
 	update(&c.stats)
 	c.statsMu.Unlock()
+}
+
+// heldUp is how long the video has been waiting for a missing packet right now.
+func (c *dataChannel) heldUp() time.Duration {
+	c.statsMu.Lock()
+	defer c.statsMu.Unlock()
+	if c.waitStart.IsZero() {
+		return 0
+	}
+	return time.Since(c.waitStart)
 }
 
 func (c *dataChannel) takeStats() channelStats {
@@ -636,11 +688,11 @@ func (c *dataChannel) PushSeq(seq uint16, data []byte) (int, error) {
 				return -1, nil // couldn't save seq
 			}
 			c.pushBuf[seq] = bytes.Clone(data)
-			if c.waitStart.IsZero() {
-				c.waitStart = time.Now()
-			}
 			waiting := len(c.pushBuf)
 			c.count(func(s *channelStats) {
+				if c.waitStart.IsZero() {
+					c.waitStart = time.Now()
+				}
 				s.outOfOrder++
 				s.maxWaiting = max(s.maxWaiting, waiting)
 			})
@@ -654,11 +706,12 @@ func (c *dataChannel) PushSeq(seq uint16, data []byte) (int, error) {
 		return 0, nil
 	}
 
-	if !c.waitStart.IsZero() {
-		wait := time.Since(c.waitStart)
-		c.waitStart = time.Time{}
-		c.count(func(s *channelStats) { s.longestWait = max(s.longestWait, wait) })
-	}
+	c.count(func(s *channelStats) {
+		if !c.waitStart.IsZero() {
+			s.longestWait = max(s.longestWait, time.Since(c.waitStart))
+			c.waitStart = time.Time{}
+		}
+	})
 
 	for i := 1; ; i++ {
 		if err := c.Push(data); err != nil {

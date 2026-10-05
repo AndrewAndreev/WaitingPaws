@@ -11,6 +11,9 @@ public final class StreamRecorder: NSObject, URLSessionDataDelegate {
     public private(set) var lastError: String?
     /// Bytes written so far. Not observed: it changes many times per second.
     public var bytesWritten: Int64 { bytesLock.withLock { bytesCount } }
+    /// Called on the main thread when the stream ends without `stop()`: go2rtc lost the camera, or the server
+    /// refused the stream (the reason, if any, is the argument; the file stays as written).
+    @ObservationIgnored public var onEnded: ((String?) -> Void)?
 
     @ObservationIgnored private var bytesCount: Int64 = 0
     @ObservationIgnored private let bytesLock = NSLock()
@@ -107,12 +110,15 @@ public final class StreamRecorder: NSObject, URLSessionDataDelegate {
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         DispatchQueue.main.async {
+            // A task of an earlier `start` (stopped, then started again) must not end the current one.
+            guard task === self.task else { return }
             if let error, !self.stoppedByUser, (error as NSError).code != NSURLErrorCancelled {
                 self.lastError = error.localizedDescription
             }
             self.closeFile()
             self.task = nil
             self.isRecording = false
+            if !self.stoppedByUser { self.onEnded?(self.lastError) }
         }
     }
 }
