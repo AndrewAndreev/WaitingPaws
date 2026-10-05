@@ -311,13 +311,20 @@ public final class Go2RTCClient: Sendable {
         }
     }
 
-    /// Cameras of the given account, as ready-to-use `xiaomi://` sources.
+    /// Cameras of the given account, as ready-to-use `xiaomi://` sources. Asks `/api/xiaomi/cameras` (a Waiting
+    /// Paws addition that also lists homes shared with the account), another go2rtc answers 404 there and is
+    /// asked `/api/xiaomi` (own and one-by-one shared devices only).
     public func xiaomiCameras(accountID: String, region: XiaomiRegion) async throws -> [Go2RTCSource] {
+        let query = ["id": accountID, "region": region.rawValue]
         let data: Data
         do {
-            data = try await request("GET", path: "api/xiaomi", query: ["id": accountID, "region": region.rawValue])
+            data = try await request("GET", path: "api/xiaomi/cameras", query: query)
         } catch Go2RTCError.http(let status, _) where status == 404 {
-            throw Go2RTCError.noSources
+            do {
+                data = try await request("GET", path: "api/xiaomi", query: query)
+            } catch Go2RTCError.http(let status, _) where status == 404 {
+                throw Go2RTCError.noSources
+            }
         }
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let sources = object["sources"] as? [[String: Any]] else {

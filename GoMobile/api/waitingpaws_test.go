@@ -41,6 +41,7 @@ func TestWaitingPawsGuardAndAuth(t *testing.T) {
 		{"lan config", "GET", "/api/config", "waitingpaws", "old", lan, nil, 403},
 		{"lan xiaomi accounts", "GET", "/api/xiaomi", "waitingpaws", "old", lan, nil, 403},
 		{"lan xiaomi logout", "POST", "/api/xiaomi/logout", "waitingpaws", "old", lan, nil, 403},
+		{"lan xiaomi cameras", "GET", "/api/xiaomi/cameras", "waitingpaws", "old", lan, nil, 403},
 		{"lan camera modes", "POST", "/api/xiaomi/miot", "waitingpaws", "old", lan, nil, 200},
 		{"lan stream change", "PUT", "/api/streams", "waitingpaws", "old", lan, nil, 403},
 		{"lan streams", "GET", "/api/streams", "waitingpaws", "old", lan, nil, 200},

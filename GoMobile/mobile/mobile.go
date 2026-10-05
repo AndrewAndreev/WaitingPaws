@@ -65,6 +65,7 @@ func Start(configPath string, overrides string) error {
 		xiaomi.Init()     // Mi Home cameras + /api/xiaomi login
 		xiaomi.InitMiot()   // /api/xiaomi/miot: camera settings via Mi Cloud (Waiting Paws addition)
 		xiaomi.InitLogout() // /api/xiaomi/logout: forget a Mi Home account (Waiting Paws addition)
+		xiaomi.InitCameras() // /api/xiaomi/cameras: cameras of own and shared homes (Waiting Paws addition)
 
 		started = true
 	})

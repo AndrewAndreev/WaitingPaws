@@ -64,6 +64,7 @@ func guard(next http.Handler) http.Handler {
 		if !isLoopback(r.RemoteAddr) {
 			switch {
 			case path == "/api/config", path == "/api/log", path == "/api/xiaomi", path == "/api/xiaomi/logout",
+				path == "/api/xiaomi/cameras",
 				path == "/api/streams" && r.Method != "GET":
 				http.Error(w, "local only", http.StatusForbidden)
 				return

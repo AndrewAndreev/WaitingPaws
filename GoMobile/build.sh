@@ -23,8 +23,8 @@ fi
 mkdir -p "$SRC/mobile"
 cp "$HERE"/mobile/*.go "$SRC/mobile/"
 # Additions to go2rtc's own packages: camera settings via Mi Cloud (/api/xiaomi/miot), forgetting an
-# account (/api/xiaomi/logout), the API guard, runtime LAN credentials and re-listening after iOS
-# suspension (internal/api/waitingpaws.go).
+# account (/api/xiaomi/logout), cameras of shared homes (/api/xiaomi/cameras), the API guard, runtime LAN
+# credentials and re-listening after iOS suspension (internal/api/waitingpaws.go).
 cp "$HERE"/xiaomi/*.go "$SRC/internal/xiaomi/"
 cp "$HERE"/api/*.go "$SRC/internal/api/"
 
