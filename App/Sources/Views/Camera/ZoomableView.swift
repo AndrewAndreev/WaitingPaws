@@ -13,7 +13,7 @@ final class ZoomState {
     var viewport: CGSize = .zero
 
     static let maxScale: CGFloat = 5
-    /// One ⌘= / ⌘− step and the smart-magnify (two-finger double tap) target.
+    /// One ⌘= / ⌘− step and the double tap / double click target.
     static let step: CGFloat = 1.5
     static let smartScale: CGFloat = 2.5
 
@@ -41,6 +41,12 @@ final class ZoomState {
         offset = .zero
         baseScale = 1
         baseOffset = .zero
+    }
+
+    /// Double tap / double click: in to `smartScale` at that point, or back to 1×.
+    func toggle(at anchor: CGPoint) {
+        if isZoomed { reset() } else { zoom(to: Self.smartScale, anchor: anchor) }
+        settle()
     }
 
     /// After a gesture: a hair above 1× is 1×.
@@ -90,17 +96,23 @@ final class ZoomState {
     }
 }
 
-/// Zoomable camera picture. iPhone: pinch, drag when zoomed, double tap to reset. Mac: trackpad pinch
-/// around the pointer, two-finger double tap, drag or two-finger scroll to pan, ⌘/⌥ + wheel for a mouse,
-/// double click to reset. The content itself gets no events, so this works over a WKWebView.
+/// Zoomable camera picture. iPhone: pinch, drag when zoomed, double tap to zoom in there and again back to 1×.
+/// Mac: trackpad pinch around the pointer, drag or two-finger scroll to pan, ⌘/⌥ + wheel for a mouse, double click
+/// or two-finger double tap to zoom in there and again back to 1×. The content itself gets no events, so this
+/// works over a WKWebView.
 struct ZoomableView<Content: View>: View {
     private let external: ZoomState?
+    private let contentZooms: Bool
     private let content: Content
     @State private var own = ZoomState()
 
     /// `zoom`: pass one to drive the zoom from elsewhere (menu commands); otherwise the view keeps its own.
-    init(zoom: ZoomState? = nil, @ViewBuilder content: () -> Content) {
+    /// `contentZooms`: the content is not scaled here but gets the `ZoomState` in its environment and shows the
+    /// zoom itself — the Mac's web player: WebKit pushes the page of a WKWebView down when its scaled-up frame
+    /// runs under the window's toolbar, so the picture there zooms inside the page instead.
+    init(zoom: ZoomState? = nil, contentZooms: Bool = false, @ViewBuilder content: () -> Content) {
         external = zoom
+        self.contentZooms = contentZooms
         self.content = content()
     }
 
@@ -111,9 +123,10 @@ struct ZoomableView<Content: View>: View {
                 content
                     .allowsHitTesting(false)
                     // Always the same modifier chain: an `if` here would change the view identity and recreate the web view.
-                    .scaleEffect(zoom.scale)
-                    .offset(zoom.offset)
+                    .scaleEffect(contentZooms ? 1 : zoom.scale)
+                    .offset(contentZooms ? .zero : zoom.offset)
                     .frame(width: geometry.size.width, height: geometry.size.height)
+                    .environment(contentZooms ? zoom : nil)
 
                 ZoomInput(zoom: zoom)
 
@@ -137,7 +150,7 @@ struct ZoomableView<Content: View>: View {
 }
 
 #if os(iOS)
-/// Pinch around the fingers, drag when zoomed, double tap to reset.
+/// Pinch around the fingers, drag when zoomed, double tap to zoom in there / back to 1×.
 private struct ZoomInput: View {
     let zoom: ZoomState
 
@@ -152,9 +165,10 @@ private struct ZoomInput: View {
                         .onChanged { zoom.drag($0.translation) }
                         .onEnded { _ in zoom.settle() })
             )
-            .onTapGesture(count: 2) {
-                withAnimation(.spring(response: 0.3)) { zoom.reset() }
-            }
+            // Simultaneous: when zoomed, the drag above starts on touch down and would swallow the taps.
+            .simultaneousGesture(SpatialTapGesture(count: 2).onEnded { tap in
+                withAnimation(.spring(response: 0.3)) { zoom.toggle(at: tap.location) }
+            })
     }
 }
 #else
@@ -193,9 +207,7 @@ final class ZoomInputView: NSView {
     /// Two-finger double tap, as in Safari and Preview.
     override func smartMagnify(with event: NSEvent) {
         guard let zoom else { return super.smartMagnify(with: event) }
-        withAnimation(.spring(response: 0.3)) {
-            if zoom.isZoomed { zoom.reset() } else { zoom.zoom(to: ZoomState.smartScale, anchor: point(event)) }
-        }
+        withAnimation(.spring(response: 0.3)) { zoom.toggle(at: point(event)) }
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -217,7 +229,7 @@ final class ZoomInputView: NSView {
     override func mouseDown(with event: NSEvent) {
         guard let zoom else { return super.mouseDown(with: event) }
         if event.clickCount == 2 {
-            withAnimation(.spring(response: 0.3)) { zoom.reset() }
+            withAnimation(.spring(response: 0.3)) { zoom.toggle(at: point(event)) }
             return
         }
         dragging = zoom.isZoomed
