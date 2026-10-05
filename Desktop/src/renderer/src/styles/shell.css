@@ -1,0 +1,241 @@
+/* Window shell: title bar (drag region + system caption buttons drawn by Windows), navigation rail, pages. */
+
+.app {
+  display: grid;
+  grid-template-rows: var(--titlebar-height) 1fr;
+  grid-template-columns: var(--rail-width) 1fr;
+  grid-template-areas:
+    'titlebar titlebar'
+    'rail page';
+  height: 100%;
+  background: var(--bg-chrome);
+}
+.app--no-rail {
+  grid-template-columns: 0 1fr;
+}
+/* Windows 11: Mica shows through the chrome (title bar and rail); pages stay opaque. */
+html.mica,
+html.mica body {
+  background: transparent;
+}
+html.mica .app {
+  background: transparent;
+}
+
+.titlebar {
+  grid-area: titlebar;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-left: var(--space-3);
+  /* Leave room for the system caption buttons (Window Controls Overlay). */
+  padding-right: calc(100vw - env(titlebar-area-width, 100vw) - env(titlebar-area-x, 0px) + var(--space-2));
+  -webkit-app-region: drag;
+  app-region: drag;
+  min-width: 0;
+  position: relative;
+  z-index: 10;
+}
+.titlebar button,
+.titlebar a,
+.titlebar [role='button'],
+.titlebar .no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+.titlebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: calc(var(--rail-width) - var(--space-3));
+  flex: none;
+}
+.titlebar__logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  flex: none;
+}
+.titlebar__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: var(--text-caption);
+}
+.titlebar__title strong {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.titlebar__title span {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.window-inactive .titlebar__title,
+.window-inactive .titlebar__brand {
+  opacity: 0.55;
+}
+.titlebar__commands {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+}
+.titlebar__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border-default);
+  margin: 0 var(--space-1);
+}
+/* Title bar command buttons: compact, label beside the icon. */
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 260px;
+}
+.tb-btn:hover {
+  background: var(--bg-hover);
+}
+.tb-btn:active {
+  background: var(--bg-pressed);
+}
+.tb-btn[data-state='open'] {
+  background: var(--bg-pressed);
+}
+.tb-btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.tb-btn svg {
+  flex: none;
+  color: var(--text-secondary);
+}
+.tb-btn--rec {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+.tb-btn--rec:hover {
+  background: color-mix(in srgb, var(--danger) 24%, transparent);
+}
+.tb-btn--rec svg {
+  color: var(--danger);
+}
+.tb-btn--link {
+  color: var(--info);
+}
+.tb-btn--link svg {
+  color: var(--info);
+}
+
+.rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) 0 var(--space-3);
+}
+.rail__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 64px;
+  height: 54px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.rail__item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.rail__item[aria-current='page'] {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.rail__item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 16px;
+  bottom: 16px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.rail__item[aria-current='page'] svg {
+  color: var(--accent-text);
+}
+.rail__badge {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 2px var(--bg-chrome);
+}
+.rail__spacer {
+  flex: 1;
+}
+
+.page {
+  grid-area: page;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-app);
+  border-top-left-radius: var(--radius-lg);
+  border-top: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-subtle);
+}
+.app--no-rail .page {
+  border-radius: 0;
+  border-left: none;
+}
+.page--scroll {
+  overflow: auto;
+}
+.page__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-3) var(--space-6);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

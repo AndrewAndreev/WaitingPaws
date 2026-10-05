@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "src/renderer/src/**/*",
+    "src/core/**/*",
+    "src/shared/**/*",
+    "src/preload/*.d.ts"
+  ],
+  "compilerOptions": {
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "jsx": "react-jsx",
+    "types": [],
+    "tsBuildInfoFile": "./node_modules/.tmp/web.tsbuildinfo"
+  },
+  "exclude": [
+    "src/core/node/**"
+  ]
+}

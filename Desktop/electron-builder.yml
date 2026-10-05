@@ -1,0 +1,54 @@
+# Windows release of Waiting Paws: `npm run dist` → dist/WaitingPaws-<version>-Setup.exe (installer) and
+# dist/WaitingPaws-<version>-win-x64.zip (portable). go2rtc.exe must be built first (`npm run go2rtc`).
+appId: su.comrade.waitingpaws
+productName: Waiting Paws
+copyright: © 2026 Andrew Andreev
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - "!out/**/*.map"
+extraResources:
+  - from: resources/bin
+    to: bin
+    filter: ["go2rtc.exe"]
+  - from: ../App/Resources/Legal
+    to: legal
+  - from: build/ThirdPartyNotices-desktop.txt
+    to: legal/ThirdPartyNotices-desktop.txt
+  - from: resources/icon.png
+    to: icon.png
+asar: true
+electronLanguages: [en-US, ru]
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: zip
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: WaitingPaws-${version}-win-${arch}.${ext}
+  # No code-signing certificate: Windows SmartScreen shows "Windows protected your PC" on the first launch.
+  signAndEditExecutable: true
+nsis:
+  oneClick: false
+  perMachine: true
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Waiting Paws
+  uninstallDisplayName: Waiting Paws
+  artifactName: WaitingPaws-${version}-Setup.${ext}
+  include: build/installer.nsh
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+publish:
+  provider: github
+  owner: AndrewAndreev
+  repo: WaitingPaws
+  releaseType: draft

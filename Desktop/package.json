@@ -1,0 +1,41 @@
+{
+  "name": "waiting-paws",
+  "productName": "Waiting Paws",
+  "version": "1.0.0",
+  "description": "Short-absence training for dogs: trainer's schedule, timers, live camera and recording.",
+  "author": "Andrew Andreev <andrew@comrade.su>",
+  "homepage": "https://github.com/AndrewAndreev/WaitingPaws",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "go2rtc": "node scripts/build-go2rtc.mjs",
+    "icons": "electron scripts/make-icons.cjs",
+    "notices": "node scripts/notices.mjs",
+    "dist": "npm run notices && electron-vite build && electron-builder --win --x64 --publish never",
+    "dist:dir": "npm run notices && electron-vite build && electron-builder --win --x64 --dir --publish never"
+  },
+  "devDependencies": {
+    "@fluentui/react-icons": "^2.0.343",
+    "@types/node": "^24.19.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "mediabunny": "^1.61.3",
+    "radix-ui": "^1.6.7",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "5.9",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11",
+    "zustand": "^5.0.15"
+  }
+}

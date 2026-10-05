@@ -7,6 +7,10 @@
 Одна запись в App Store для iPhone и Mac (Universal Purchase): у обоих таргетов bundle id `su.comrade.waitingpaws`.
 Языки — английский (базовый: на всех языках устройства, кроме русского) и русский.
 
+Версия для **Windows** — Electron-приложение в `Desktop/` (тот же сценарий, тот же go2rtc с нашими патчами, история в
+том же формате, iPhone подключается к нему как к Mac; интерфейс — веб-код, который можно поднять и в браузере).
+Сборка, установщик и релизы — в [Desktop/README.md](Desktop/README.md).
+
 ## Как это работает
 
 ```
@@ -151,7 +155,8 @@ App/Sources                      — общий SwiftUI-код для обеих
   Views/History, Views/Settings
   Views/Camera/CameraStreamView  — WKWebView с плеером go2rtc
   Go2RTC/EmbeddedGo2RTC.swift    — запуск встроенного go2rtc (конфиг, статус)
-GoMobile/                        — Go-обёртка go2rtc и build.sh для сборки xcframework
+GoMobile/                        — Go-обёртка go2rtc и build.sh для сборки xcframework (desktop/ — go2rtc.exe для Windows)
+Desktop/                         — версия для Windows (Electron + React, ядро портировано на TypeScript)
 Frameworks/Go2RTC.xcframework    — результат сборки (не в git, собирается скриптом)
 Packages/WaitingPawsCore         — Swift Package без UI, с тестами
   Parser/PlanParser.swift        — разбор текста расписания
