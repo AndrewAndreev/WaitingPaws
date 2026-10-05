@@ -15,7 +15,7 @@ import { create } from 'zustand'
 import type { Go2RTCClient } from '@core/go2rtcClient'
 import { createPlayer } from '../player/CameraPlayer'
 import { useStore } from '../store'
-import { Camera, PREVIEW_PREFIX, isPreviewStream, type CatalogCamera } from './catalog'
+import { Camera, PREVIEW_PREFIX, isPreviewStream, type CatalogCamera, type CatalogData } from './catalog'
 
 export type StillState =
   | { kind: 'loading' }
@@ -95,6 +95,14 @@ export function useStill(client: Go2RTCClient | null, source: StillSource | null
 export function requestStill(client: Go2RTCClient, source: StillSource, force = false): void {
   if (source.kind === 'stream') requestStreamStill(client, source.name, force)
   else requestPreview(client, source.camera, force)
+}
+
+/// A force refresh also takes new stills (a camera may have come online).
+export function refreshStills(client: Go2RTCClient, data: CatalogData): void {
+  for (const stream of data.streams) requestStill(client, { kind: 'stream', name: stream.name }, true)
+  for (const camera of data.accounts.flatMap((account) => account.cameras)) {
+    if (camera.streamName === null) requestStill(client, { kind: 'camera', camera }, true)
+  }
 }
 
 function requestStreamStill(client: Go2RTCClient, stream: string, force: boolean): void {
@@ -362,25 +370,34 @@ export function grabFrame(baseURL: string, stream: string, signal: AbortSignal):
     if (signal.aborted) return resolve(null)
     const player = createPlayer()
     let done = false
-    const finish = (still: StillState | null) => {
+    const finish = (still: StillState | null, note: string | null) => {
       if (done) return
       done = true
       signal.removeEventListener('abort', onAbort)
       player.dispose()
       player.remove()
+      if (note) window.wp.log(`[setup] still ${stream}: ${note}`)
       resolve(still)
     }
-    const onAbort = () => finish(null)
+    const video = () => player.video as HTMLVideoElement | undefined
+    const onAbort = () => {
+      // Out of time: a frame that arrived without playback starting still counts.
+      const element = video()
+      const timedOut = (signal.reason as DOMException | undefined)?.name === 'TimeoutError'
+      if (timedOut && element && element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && element.videoWidth) {
+        finish(drawFrame(element), `${element.videoWidth}x${element.videoHeight} (before playback)`)
+      } else finish(null, timedOut ? 'no picture in time' : null)
+    }
     signal.addEventListener('abort', onAbort, { once: true })
 
     const capture = () => {
-      const video = player.video as HTMLVideoElement | undefined
-      if (!video || !video.videoWidth) return finish(null)
-      const take = () => finish(drawFrame(video))
+      const element = video()
+      if (!element || !element.videoWidth) return finish(null, 'no video size')
+      const take = () => finish(drawFrame(element), `${element.videoWidth}x${element.videoHeight}`)
       // Wait for the frame to be really presented: `playing` can come a moment before it is drawable.
-      if ('requestVideoFrameCallback' in video) {
+      if ('requestVideoFrameCallback' in element) {
         const fallback = window.setTimeout(take, 500)
-        video.requestVideoFrameCallback(() => {
+        element.requestVideoFrameCallback(() => {
           window.clearTimeout(fallback)
           take()
         })
@@ -393,7 +410,7 @@ export function grabFrame(baseURL: string, stream: string, signal: AbortSignal):
       phase: (phase) => {
         if (phase.kind === 'playing') capture()
         // go2rtc could not reach the camera (video-rtc.js would keep retrying).
-        else if (phase.kind === 'failed') finish(null)
+        else if (phase.kind === 'failed') finish(null, `failed (${phase.reason})`)
       },
       delay: () => undefined,
       videoSize: () => undefined,

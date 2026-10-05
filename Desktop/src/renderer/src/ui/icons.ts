@@ -73,6 +73,20 @@ export {
   VideoClip20Regular as ClipIcon,
   VideoSecurity20Regular as SecurityCameraIcon,
   Navigation20Regular as MenuIcon,
+  ArrowMaximize20Regular as RestoreIcon,
+} from '@fluentui/react-icons'
+
+// History page.
+export {
+  ArrowDown20Regular as SortDescendingIcon,
+  ArrowUndo20Filled as FalseStartFilledIcon,
+  ArrowUp20Regular as SortAscendingIcon,
+  CheckmarkCircle20Filled as DoneCircleIcon,
+  DataArea20Regular as ProgressChartIcon,
+  DocumentCopy20Regular as CopyFileIcon,
+  PanelRight20Filled as InspectorFilledIcon,
+  PanelRight20Regular as InspectorIcon,
+  SearchInfo20Regular as NoResultsIcon,
 } from '@fluentui/react-icons'
 
 // Settings page.
@@ -104,4 +118,19 @@ export {
   PersonKey20Regular as SignInIcon,
   ShieldCheckmark20Regular as CaptchaIcon,
   VideoAdd20Regular as VideoAddIcon,
+} from '@fluentui/react-icons'
+
+// Schedule review and the plan timeline.
+export {
+  ArrowBidirectionalLeftRight20Regular as ResizeIcon,
+  ArrowDown20Regular as MoveDownIcon,
+  ArrowUndo20Regular as RevertIcon,
+  ArrowUp20Regular as MoveUpIcon,
+  Bookmark20Filled as RuleIcon,
+  ChevronUpDown20Regular as ChevronUpDownIcon,
+  CopyAdd20Regular as DuplicateIcon,
+  DocumentText20Regular as SourceTextIcon,
+  FlagCheckered20Regular as FinishLineIcon,
+  Pause20Filled as BreakFilledIcon,
+  Warning20Filled as WarningFilledIcon,
 } from '@fluentui/react-icons'

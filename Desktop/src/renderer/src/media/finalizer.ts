@@ -92,7 +92,7 @@ export async function writeRecording(io: MediaIO, parts: RecordingPart[], output
       const videoSource = new EncodedVideoPacketSource(codec)
       output.addVideoTrack(videoSource, { rotation: first.video.rotation })
       const channels = Math.min(2, Math.max(1, ...inputs.map((item) => item.audio?.numberOfChannels ?? 1)))
-      const audioSource = new AudioSampleSource({ codec: 'aac', bitrate: channels === 2 ? 128_000 : 64_000 })
+      const audioSource = new AudioSampleSource({ codec: 'aac', bitrate: await aacBitrate(channels) })
       output.addAudioTrack(audioSource)
       await output.start()
 
@@ -146,6 +146,21 @@ export async function writeRecording(io: MediaIO, parts: RecordingPart[], output
   } finally {
     for (const item of inputs) item.input.dispose()
   }
+}
+
+/// A bitrate the platform's AAC encoder takes: Windows (Media Foundation) only accepts 96, 128, 160 and 192 kbit/s,
+/// other encoders take any; the lowest that works is plenty for a camera's microphone.
+async function aacBitrate(channels: number): Promise<number> {
+  const candidates = channels === 2 ? [128_000, 96_000, 160_000, 192_000] : [96_000, 64_000, 128_000]
+  for (const bitrate of candidates) {
+    try {
+      const support = await AudioEncoder.isConfigSupported({ codec: 'mp4a.40.2', sampleRate: OUTPUT_RATE, numberOfChannels: channels, bitrate })
+      if (support.supported) return bitrate
+    } catch {
+      // Try the next one.
+    }
+  }
+  return candidates[0]
 }
 
 /// Resamples the decoded sound to 48 kHz, places it on the output timeline and fills every gap with silence.

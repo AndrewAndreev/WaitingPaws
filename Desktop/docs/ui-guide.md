@@ -59,7 +59,9 @@ picker, Xiaomi sign-in) go through `new Go2RTCClient(server, { fetch: bridgeFetc
 ## Keyboard
 
 Space next step, Backspace false start, Ctrl+Enter start, Ctrl+Shift+V paste schedule, Ctrl+Shift+R repeat last,
-Ctrl+R record, Ctrl+E finish, Ctrl+1 / Ctrl+H / Ctrl+, pages, F11 full screen. Shortcuts appear in tooltips
+Ctrl+R record, Ctrl+E finish, Ctrl+1 / Ctrl+H / Ctrl+, pages, F11 full screen. Plan timeline: Ctrl+= / Ctrl+− / Ctrl+0
+zoom. Review dialog: Ctrl+N add, Ctrl+D duplicate, Del delete, Alt+↑/↓ move. History: Ctrl+F search, Ctrl+Shift+C
+copy the log, Ctrl+Alt+I inspector, Delete, Space play/pause, Enter play. Shortcuts appear in tooltips
 ("Записать видео (Ctrl+R)") and in buttons via `shortcut`.
 
 ## Checking your work

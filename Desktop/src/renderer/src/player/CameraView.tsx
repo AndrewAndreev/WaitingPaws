@@ -19,6 +19,8 @@ export interface CameraViewProps {
   zoomable?: boolean
   onVideoSize?: (width: number, height: number) => void
   onDelay?: (buffer: number, network: number | null) => void
+  /// What the player is doing (connecting, playing, failed…), for callers with their own status line.
+  onPhase?: (phase: PlayerPhase) => void
   children?: ReactNode
 }
 
@@ -31,12 +33,12 @@ function socketURL(baseURL: string, stream: string): string {
 
 /// Live view of a go2rtc stream with what is going on over it while there is no picture yet (or it froze), instead
 /// of a black screen. Wheel or Ctrl+wheel zooms around the cursor, dragging pans, double-click resets.
-export function CameraView({ baseURL, stream, mode, muted, fill = false, reloadToken = 0, showStatus = true, zoomable = false, onVideoSize, onDelay, children }: CameraViewProps) {
+export function CameraView({ baseURL, stream, mode, muted, fill = false, reloadToken = 0, showStatus = true, zoomable = false, onVideoSize, onDelay, onPhase, children }: CameraViewProps) {
   const host = useRef<HTMLDivElement>(null)
   const player = useRef<WaitingPawsPlayer | null>(null)
   const [phase, setPhase] = useState<PlayerPhase>({ kind: 'connecting' })
-  const callbacks = useRef({ onVideoSize, onDelay })
-  callbacks.current = { onVideoSize, onDelay }
+  const callbacks = useRef({ onVideoSize, onDelay, onPhase })
+  callbacks.current = { onVideoSize, onDelay, onPhase }
   const zoom = useZoom(host, zoomable)
 
   // One player per server/stream/mode/reload: changing any of them reconnects.
@@ -45,7 +47,10 @@ export function CameraView({ baseURL, stream, mode, muted, fill = false, reloadT
     element.muted = muted
     element.fit = fill ? 'cover' : 'contain'
     element.events = {
-      phase: (next) => setPhase(next),
+      phase: (next) => {
+        setPhase(next)
+        callbacks.current.onPhase?.(next)
+      },
       delay: (buffer, network) => callbacks.current.onDelay?.(buffer, network),
       videoSize: (width, height) => callbacks.current.onVideoSize?.(width, height),
       log: (text) => window.wp.log(`[player] ${new Date().toLocaleTimeString('en-GB', { hour12: false })} ${text}`),

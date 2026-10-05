@@ -3,13 +3,14 @@ import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { SessionLogFormatter, ExitResult, type TrainingRecord } from '@core/sessionLog'
 import type { RecordingClip } from '@shared/api'
-import { call, toast, ui, useApp, useStore } from '../store'
+import { call, callStrict, toast, ui, useApp, useStore } from '../store'
 import { formatTime } from '../model'
 import { CheckIcon, ClipIcon, CopyIcon, ErrorIcon, FolderIcon, HistoryIcon, PhoneIcon } from '../ui/icons'
 import { Button, Dialog } from '../ui/kit'
 import { PlanReviewDialog } from '../plan/PlanReviewDialog'
 import { CameraPickerDialog } from '../onboarding/CameraPickerDialog'
 import { XiaomiSignInDialog } from '../onboarding/XiaomiSignInDialog'
+import { ServerSetupDialog } from '../onboarding/ServerSetupDialog'
 import { formatBytes } from '../format'
 
 /// Dialogs that can open over any page: finishing, errors, the summary after a training, a saved clip, an iPhone
@@ -21,6 +22,7 @@ export function GlobalDialogs() {
   const reviewingPlan = useStore((store) => store.reviewingPlan)
   const showCameraPicker = useStore((store) => store.showCameraPicker)
   const showXiaomiSignIn = useStore((store) => store.showXiaomiSignIn)
+  const showServerSetup = useStore((store) => store.showServerSetup)
   const request = app.sync.pairingRequests[0]
   return (
     <>
@@ -98,6 +100,7 @@ export function GlobalDialogs() {
       {reviewingPlan && app.pendingPlan && !app.session && <PlanReviewDialog />}
       {showCameraPicker && <CameraPickerDialog onClose={() => ui.set({ showCameraPicker: false })} />}
       {showXiaomiSignIn && <XiaomiSignInDialog onClose={() => ui.set({ showXiaomiSignIn: false })} />}
+      {showServerSetup && <ServerSetupDialog onClose={() => ui.set({ showServerSetup: false })} />}
     </>
   )
 }
@@ -294,7 +297,10 @@ function ClipSavedDialog({ clip }: { clip: RecordingClip }) {
           icon={<CopyIcon />}
           disabled={finalizing}
           onClick={() => {
-            void call('shell.copyFile', clip.fileName).then(() => toast({ title: t('Видео скопировано — вставьте его в мессенджер или папку'), kind: 'success' }))
+            callStrict('shell.copyFile', clip.fileName).then(
+              () => toast({ title: t('Видео скопировано — вставьте его в мессенджер или папку'), kind: 'success' }),
+              (error: Error) => toast({ title: error.message, kind: 'danger' }),
+            )
           }}
         >
           {t('Копировать файл')}

@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "test/**/*",
+    "src/core/**/*",
+    "src/shared/**/*",
+    "src/renderer/src/**/*",
+    "src/main/**/*",
+    "src/preload/*.d.ts"
+  ],
+  "compilerOptions": {
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "jsx": "react-jsx",
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "tsBuildInfoFile": "./node_modules/.tmp/test.tsbuildinfo"
+  }
+}

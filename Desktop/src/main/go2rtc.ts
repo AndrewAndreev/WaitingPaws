@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
-import { dirname } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { clock, write } from './log'
 
 /// Runs the bundled go2rtc (built from `GoMobile/` by `scripts/build-go2rtc.mjs`) as a child process and
@@ -38,6 +38,8 @@ export class EmbeddedGo2RTC {
   private listeners = new Set<(status: Go2RTCStatus) => void>()
   private stopping = false
   private restarts = 0
+  /// Someone else's go2rtc answered on our port.
+  private foreign = false
 
   constructor(
     private readonly binary: string,
@@ -132,8 +134,20 @@ export class EmbeddedGo2RTC {
       this.setStatus({ kind: 'failed', message: error.message })
     })
 
+    this.foreign = false
     const version = await this.waitUntilReachable()
     if (this.child !== child) return
+    if (version === null && this.foreign && this.restarts < 3) {
+      // The port was taken between our check and go2rtc's bind: start again on the next free pair.
+      write(`[go2rtc] port ${this.apiPort} answered by another go2rtc, trying the next one`)
+      this.restarts += 1
+      this.stopping = true
+      child.kill()
+      this.child = null
+      this.setStatus({ kind: 'idle' })
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      return this.start(lanPassword)
+    }
     if (version !== null) {
       this.restarts = 0
       this.setStatus({ kind: 'running', version: version.split('+')[0] || version })
@@ -181,11 +195,17 @@ export class EmbeddedGo2RTC {
     })
   }
 
+  /// The version of OUR go2rtc on the port: another go2rtc that got the port first (a second copy of the app started at
+  /// the same moment, the user's own go2rtc) answers too, but with another config file.
   private async version(): Promise<string | null> {
     try {
       const response = await fetch(`${this.baseURL}api`, { signal: AbortSignal.timeout(1500) })
       if (!response.ok) return null
-      const body = (await response.json()) as { version?: string }
+      const body = (await response.json()) as { version?: string; config_path?: string }
+      if (body.config_path && resolve(body.config_path).toLowerCase() !== resolve(this.configPath).toLowerCase()) {
+        this.foreign = true
+        return null
+      }
       return body.version ?? ''
     } catch {
       return null

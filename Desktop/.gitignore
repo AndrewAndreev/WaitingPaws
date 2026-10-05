@@ -5,3 +5,4 @@ resources/bin/
 build/go2rtc/
 *.log
 out-*/
+dist-web/

@@ -188,11 +188,15 @@ export function hostText(baseURL: string): string {
   }
 }
 
-/// A message for the user from whatever was thrown.
+/// A message for the user from whatever was thrown (without the IPC wrapping of errors the backend made).
 export function errorText(error: unknown): string {
-  if (error instanceof Go2RTCError) return error.errorDescription
-  if (error instanceof Error) return error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
-  return String(error)
+  const text = error instanceof Go2RTCError ? error.errorDescription : error instanceof Error ? error.message : String(error)
+  return text.replace(/^Error invoking remote method '[^']+': /, '').replace(/^(TypeError|Error): /, '')
+}
+
+/// The request did not reach the server (refused, timed out, not allowed), as opposed to an answer it gave.
+export function isUnreachable(error: unknown): boolean {
+  return error instanceof Go2RTCError && error.kind === 'network'
 }
 
 // MARK: - The server the setup screens talk to
@@ -253,7 +257,10 @@ export async function loadCatalog(client: Go2RTCClient, region: XiaomiRegion, ac
   )
   const all = await streamsTask
   // Preview streams of a closed or crashed preview: not the user's, removed quietly.
-  removeLeftoverPreviews(client, all.map((stream) => stream.name))
+  removeLeftoverPreviews(
+    client,
+    all.map((stream) => stream.name),
+  )
   const streams = all.filter((stream) => !isPreviewStream(stream.name))
   const accounts = loaded.map((item) => ({
     ...item,
@@ -352,7 +359,10 @@ export function useCatalog(setup: SetupServer, options: { account?: string | nul
     } catch (error) {
       if (current !== generation.current) return null
       setData(emptyData)
-      setPhase({ kind: 'failed', message: errorText(error) })
+      setPhase({
+        kind: 'failed',
+        message: isUnreachable(error) ? `${t('%@ не отвечает', hostText(client.server.baseURL))} (${errorText(error)})` : errorText(error),
+      })
       return null
     } finally {
       if (current === generation.current) setRefreshing(false)
@@ -384,13 +394,13 @@ export async function prepareChoice(choice: Choice, client: Go2RTCClient): Promi
     // One connection to the camera at a time: a preview still running gives way first.
     await cancelPreview(client, camera)
     const taken = new Set((await client.streams()).map((stream) => stream.name))
-    const fresh = uniqueStreamName(Go2RTCClient.streamName(camera.name), taken)
+    const fresh = uniqueStreamName(Go2RTCClient.streamName(camera.source.name), taken)
     await client.addStream(fresh, camera.source.url)
     adoptPreview(client, camera, fresh)
-    window.wp.log(`[setup] added stream ${fresh} for ${camera.name}`)
+    window.wp.log(`[setup] added stream ${fresh} for ${camera.source.name}`)
     name = fresh
   }
-  return { streamName: name, cameraTitle: camera.name, xiaomiAccountID: camera.accountID, xiaomiRegion: camera.region }
+  return { streamName: name, cameraTitle: camera.source.name, xiaomiAccountID: camera.accountID, xiaomiRegion: camera.region }
 }
 
 /// "gostinaya", or "gostinaya-2" when another source already uses that name.

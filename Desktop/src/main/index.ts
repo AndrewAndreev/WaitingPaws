@@ -9,6 +9,7 @@ import { handleMediaScheme, registerMediaScheme } from './media-protocol'
 import { AppBackend } from './backend'
 import { MediaFinalizer } from './finalizer'
 import type { ThemePreference } from '@shared/settings'
+import packageInfo from '../../package.json'
 
 /// Waiting Paws for Windows: one window (training, history and settings are pages of it), the bundled go2rtc as a
 /// child process, recordings finalized in a hidden window. See README «Windows».
@@ -26,22 +27,23 @@ if (!app.requestSingleInstanceLock() && !isUIPreview && !argValue('data-dir')) {
 }
 
 let mainWindow: BrowserWindow | null = null
+let miniWindow: BrowserWindow | null = null
 let backend: AppBackend | null = null
 
 /// Windows 11 22H2+ (build 22621) draws Mica behind the window; earlier systems get a solid background.
 const supportsMica =
   process.platform === 'win32' && Number(release().split('.')[2] ?? 0) >= 22621 && !process.argv.some((arg) => arg.startsWith('--capture='))
 
-function load(window: BrowserWindow, page: 'index' | 'media'): Promise<void> {
+function load(window: BrowserWindow, page: 'index' | 'media', hash?: string): Promise<void> {
   const devServer = process.env.ELECTRON_RENDERER_URL
-  if (!app.isPackaged && devServer) return window.loadURL(`${devServer}/${page}.html`)
-  return window.loadFile(join(__dirname, `../renderer/${page}.html`))
+  if (!app.isPackaged && devServer) return window.loadURL(`${devServer}/${page}.html${hash ? '#' + hash : ''}`)
+  return window.loadFile(join(__dirname, `../renderer/${page}.html`), hash ? { hash } : undefined)
 }
 
 async function start(): Promise<void> {
   await app.whenReady()
   startLog(paths.logsDirectory)
-  log(`[app] Waiting Paws ${app.getVersion()} on ${process.platform} ${release()} (Electron ${process.versions.electron})`)
+  log(`[app] Waiting Paws ${packageInfo.version} on ${process.platform} ${release()} (Electron ${process.versions.electron})`)
   Menu.setApplicationMenu(null)
 
   const settings = new SettingsStore(paths.settingsFile)
@@ -59,11 +61,21 @@ async function start(): Promise<void> {
     join(__dirname, '../preload/media.js'),
   )
   backend = new AppBackend(settings, finalizer)
-  backend.onState((state) => mainWindow?.webContents.send('wp:state', state))
+  backend.onState((state) => {
+    mainWindow?.webContents.send('wp:state', state)
+    if (miniWindow && !miniWindow.isDestroyed()) {
+      miniWindow.webContents.send('wp:state', state)
+      // The strip only makes sense while something runs.
+      if (!state.session && state.recording.since === null && !state.recording.resuming) hideMiniPanel()
+    }
+  })
 
   installNetworkRules(backend)
 
-  ipcMain.handle('wp:call', (_event, method: string, args: unknown[]) => backend!.call(method, args))
+  ipcMain.handle('wp:call', (_event, method: string, args: unknown[]) => {
+    if (method === 'window.restore') return restoreMainWindow()
+    return backend!.call(method, args)
+  })
   ipcMain.on('wp:subscribe', (event) => event.sender.send('wp:state', backend!.state()))
   ipcMain.on('wp:log', (_event, line: string) => log(line))
 
@@ -179,7 +191,17 @@ function createWindow(): void {
   window.on('close', () => saveWindowState(window))
   window.on('closed', () => {
     mainWindow = null
+    hideMiniPanel()
+    // The hidden media window would keep `window-all-closed` from firing: closing the main window quits.
+    app.quit()
   })
+  // Minimized during a training or a recording: the compact strip floats over other windows.
+  window.on('minimize', () => {
+    const state = backend?.state()
+    if (state && (state.session || state.recording.since !== null || state.recording.resuming)) showMiniPanel()
+  })
+  window.on('restore', () => hideMiniPanel())
+  window.on('show', () => hideMiniPanel())
   // Links open in the browser, never inside the app.
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/.test(url)) void shell.openExternal(url)
@@ -220,6 +242,8 @@ function runDebugArguments(window: BrowserWindow): void {
     if (width && height) window.setSize(width, height)
   }
   if (script) setTimeout(() => void window.webContents.executeJavaScript(script).catch((error) => log(`[debug] eval: ${error}`)), 1500)
+  // `--demo-minimize`: minimize shortly after launch (checks the compact strip without clicks).
+  if (process.argv.includes('--demo-minimize')) setTimeout(() => window.minimize(), 2500)
   if (!capture) return
   setTimeout(async () => {
     try {
@@ -231,6 +255,52 @@ function runDebugArguments(window: BrowserWindow): void {
     }
     if (process.argv.includes('--quit-after-capture')) app.quit()
   }, Number(argValue('capture-delay') ?? 4000))
+}
+
+function restoreMainWindow(): void {
+  hideMiniPanel()
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+/// The Mac app's minimized panel: a capsule at the bottom of the screen with the timer, the next step and «restore».
+function showMiniPanel(): void {
+  if (miniWindow && !miniWindow.isDestroyed()) return
+  const area = screen.getDisplayMatching(mainWindow?.getBounds() ?? screen.getPrimaryDisplay().bounds).workArea
+  const width = 700
+  const height = 72
+  const window = new BrowserWindow({
+    x: Math.round(area.x + (area.width - width) / 2),
+    y: area.y + area.height - height - 24,
+    width,
+    height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    maximizable: false,
+    minimizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    title: 'Waiting Paws',
+    backgroundColor: '#00000000',
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true, backgroundThrottling: false },
+  })
+  window.setAlwaysOnTop(true, 'floating')
+  miniWindow = window
+  window.once('ready-to-show', () => window.showInactive())
+  window.on('closed', () => {
+    if (miniWindow === window) miniWindow = null
+  })
+  void load(window, 'index', 'mini')
+}
+
+function hideMiniPanel(): void {
+  if (miniWindow && !miniWindow.isDestroyed()) miniWindow.destroy()
+  miniWindow = null
 }
 
 /// The app's own requests to go2rtc: no browser Origin (go2rtc's guard refuses foreign origins, which protects it

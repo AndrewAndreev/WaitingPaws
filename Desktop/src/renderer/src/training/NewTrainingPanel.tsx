@@ -140,7 +140,7 @@ function LastPlan() {
       <div className="row">
         <span className="h3 grow ellipsis">{plan.title}</span>
         <Button size="sm" icon={<RepeatIcon />} shortcut="Ctrl+Shift+R" onClick={() => void repeatLast()}>
-          {t('Повторить')}
+          {t('Повторить прошлое')}
         </Button>
       </div>
       <ExitChips plan={plan} />

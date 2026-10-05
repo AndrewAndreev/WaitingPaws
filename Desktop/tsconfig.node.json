@@ -1,9 +1,22 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["electron.vite.config.ts", "vitest.config.ts", "src/main/**/*", "src/preload/**/*", "src/core/**/*", "src/shared/**/*", "test/**/*"],
+  "include": [
+    "electron.vite.config.ts",
+    "vitest.config.ts",
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/core/**/*",
+    "src/shared/**/*",
+    "vite.web.config.ts"
+  ],
   "compilerOptions": {
-    "lib": ["ES2023"],
-    "types": ["node", "electron-vite/node"],
+    "lib": [
+      "ES2023"
+    ],
+    "types": [
+      "node",
+      "electron-vite/node"
+    ],
     "tsBuildInfoFile": "./node_modules/.tmp/node.tsbuildinfo"
   }
 }

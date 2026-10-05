@@ -10,7 +10,7 @@ export const MEDIA_SCHEME = 'wp-media'
 
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
-    { scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, bypassCSP: true } },
+    { scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, bypassCSP: true, corsEnabled: true } },
   ])
 }
 
@@ -56,6 +56,7 @@ export function handleMediaScheme(roots: () => Record<string, string>): void {
       return new Response(stream, {
         status: 206,
         headers: {
+          'Access-Control-Allow-Origin': '*',
           'Content-Type': type,
           'Content-Length': String(end - start + 1),
           'Content-Range': `bytes ${start}-${end}/${size}`,
@@ -67,7 +68,7 @@ export function handleMediaScheme(roots: () => Record<string, string>): void {
     const stream = Readable.toWeb(createReadStream(path)) as ReadableStream
     return new Response(stream, {
       status: 200,
-      headers: { 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache' },
+      headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache' },
     })
   })
 }

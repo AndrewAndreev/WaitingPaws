@@ -1,11 +1,341 @@
+import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { t } from '@shared/i18n'
+import { DurationText } from '@core/durationText'
+import { TrainingPlan } from '@core/models'
+import { PlanParser } from '@core/planParser'
 import { startPending } from '../actions'
-import { ui } from '../store'
-import { Button, Dialog } from '../ui/kit'
+import { isConfigured } from '../model'
+import { call, ui, useApp } from '../store'
+import { CalendarIcon, ChevronDownIcon, PlayFilledIcon, RuleIcon, SuccessFilledIcon, WarningFilledIcon } from '../ui/icons'
+import { Button, Checkbox, Dialog, Tooltip } from '../ui/kit'
+import { DurationPopover } from './DurationEditor'
+import { PlanExitTable, type ExitTableCommands } from './PlanExitTable'
+import { PlanMiniBar } from './PlanMiniBar'
+import { PlanSourcePane } from './PlanSourcePane'
+import {
+  PlanFormat,
+  addExit,
+  dateFromInput,
+  dateInputValue,
+  deleteExits,
+  duplicateExits,
+  ownBreaks,
+  resetOwnBreaks,
+  selectedIndices,
+  setDefaultBreak,
+  shiftExits,
+} from './planEdit'
+import { PlanLine, classifyLines, exitLines, type PlanTextLine } from './planText'
+import { flushPendingPlan, usePendingPlan } from './usePendingPlan'
+import '../styles/plan.css'
 
-/// «Расписание разобрано» — placeholder until the full editor lands.
+/// «Расписание разобрано» — the dialog over the training page right after a paste (port of `MacPlanReviewSheet`):
+/// the trainer's text on the left as a read-only source view (recognised lines marked in the gutter), the parsed
+/// exits as an editable table on the right, the summary and the start in the footer. Selecting a row highlights
+/// its lines in the text; clicking an exit line selects its row. Every edit goes straight to the waiting plan.
 export function PlanReviewDialog() {
+  const { plan, setPlan } = usePendingPlan()
+  const [rawSelection, setSelection] = useState<string[]>([])
+  const [sourceWidth, setSourceWidth] = useState<number | null>(null)
+  const splitRef = useRef<HTMLDivElement>(null)
+  const rawText = plan?.rawText ?? ''
+  const lines = useMemo(() => classifyLines(rawText), [rawText])
+  if (!plan) return null
+
+  const lineOfExit = exitLines(plan, lines)
+  const ids = new Set(plan.exits.map((exit) => exit.id))
+  const selection = rawSelection.filter((id) => ids.has(id))
+  const valid = TrainingPlan.isValid(plan)
+  const hasSource = lines.some((line) => line.kind.kind !== 'blank')
+  const rule = lines.find((line) => line.kind.kind === 'rule')
+
+  const done = () => ui.set({ reviewingPlan: false })
+  const start = async () => {
+    if (!valid) return
+    await flushPendingPlan(plan)
+    await startPending()
+  }
+
+  const commands: ExitTableCommands = {
+    add: (after = selection) => {
+      const edit = addExit(plan, after)
+      setPlan(edit.plan)
+      setSelection(edit.selection)
+    },
+    duplicate: (from = selection) => {
+      const edit = duplicateExits(plan, from)
+      if (!edit) return
+      setPlan(edit.plan)
+      setSelection(edit.selection)
+    },
+    remove: (from = selection) => {
+      const edit = deleteExits(plan, from)
+      if (!edit) return
+      setPlan(edit.plan)
+      setSelection(edit.selection)
+    },
+    shift: (delta) => {
+      const next = shiftExits(plan, selection, delta)
+      if (next) setPlan(next)
+    },
+  }
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    const typing = target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+    const ctrl = event.ctrlKey || event.metaKey
+    const key = event.key.toLowerCase()
+    const handled = () => {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    if (ctrl && !event.shiftKey && !event.altKey) {
+      if (key === 'enter') {
+        handled()
+        return void start()
+      }
+      if (key === 'n') {
+        handled()
+        return commands.add()
+      }
+      if (key === 'd') {
+        handled()
+        return commands.duplicate()
+      }
+      if (key === 'a' && !typing) {
+        handled()
+        return setSelection(plan.exits.map((exit) => exit.id))
+      }
+    }
+    if (typing || ctrl || event.shiftKey || target.closest('.popover, [role="menu"]')) return
+    if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      handled()
+      return commands.shift(event.key === 'ArrowUp' ? -1 : 1)
+    }
+    if (event.altKey) return
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (!selection.length) return
+      handled()
+      return commands.remove()
+    }
+    if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && target.closest('.plan-table__body')) {
+      handled()
+      const indices = selectedIndices(plan, selection)
+      const from = indices.length ? (event.key === 'ArrowUp' ? indices[0] : indices[indices.length - 1]) : -1
+      const next = Math.min(plan.exits.length - 1, Math.max(0, event.key === 'ArrowUp' ? from - 1 : from + 1))
+      setSelection([plan.exits[next].id])
+    }
+  }
+
+  const onSplitterDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    const pane = (event.currentTarget.previousElementSibling as HTMLElement | null)?.getBoundingClientRect().width ?? 400
+    const total = splitRef.current?.getBoundingClientRect().width ?? 1200
+    const startX = event.clientX
+    const move = (moveEvent: PointerEvent) => {
+      const max = Math.max(280, Math.min(620, total - 600))
+      setSourceWidth(Math.round(Math.min(max, Math.max(280, pane + moveEvent.clientX - startX))))
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      document.body.classList.remove('is-resizing-columns')
+    }
+    document.body.classList.add('is-resizing-columns')
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   return (
-    <Dialog open onOpenChange={(open) => !open && ui.set({ reviewingPlan: false })} title={t('Расписание разобрано')} footer={<Button variant="primary" onClick={() => void startPending()}>{t('Начать тренировку')}</Button>} />
+    <Dialog
+      open
+      onOpenChange={(open) => !open && done()}
+      icon={
+        valid ? (
+          <SuccessFilledIcon className="plan-review__icon" style={{ color: 'var(--success)' }} />
+        ) : (
+          <WarningFilledIcon className="plan-review__icon" style={{ color: 'var(--warning)' }} />
+        )
+      }
+      title={valid ? t('Расписание разобрано') : t('В расписании нет выходов')}
+      description={<span className="plan-review__summary-text">{summary(plan, lines)}</span>}
+      width={1440}
+      height={1000}
+      bodyClassName="plan-review"
+      footer={<Footer plan={plan} valid={valid} onStart={() => void start()} onDone={done} />}
+    >
+      <div className="plan-review__split" ref={splitRef} onKeyDown={onKeyDown}>
+        {hasSource && (
+          <>
+            <PlanSourcePane lines={lines} plan={plan} lineOfExit={lineOfExit} selection={selection} onSelect={(id) => setSelection([id])} width={sourceWidth} />
+            <div className="plan-splitter" role="separator" aria-orientation="vertical" onPointerDown={onSplitterDown} />
+          </>
+        )}
+        <section className="plan-editor">
+          <PlanForm plan={plan} setPlan={setPlan} />
+          <PlanExitTable plan={plan} setPlan={setPlan} selection={selection} setSelection={setSelection} lineOfExit={hasSource ? lineOfExit : null} commands={commands} />
+          {rule && <RuleView line={rule} />}
+        </section>
+      </div>
+    </Dialog>
+  )
+}
+
+/// «9 выходов, 2 перерыва, правило фальстарта и 3 заметки. Проверьте…».
+function summary(plan: TrainingPlan, lines: PlanTextLine[]): string {
+  if (plan.rawText === '') {
+    return t('%@. Проверьте длительности и перерывы перед стартом.', PlanFormat.exits(plan.exits.length))
+  }
+  const parts = [PlanFormat.exits(lines.filter(PlanLine.isExit).length)]
+  const breaks = lines.filter(PlanLine.isBreak).length
+  if (breaks > 0) parts.push(PlanFormat.breaks(breaks))
+  if (lines.some((line) => line.kind.kind === 'rule')) parts.push(t('правило фальстарта'))
+  const notes = lines.filter((line) => line.kind.kind === 'note').length
+  if (notes > 0) parts.push(PlanFormat.notes(notes))
+  return t('%@. Проверьте и поправьте, если что-то прочитано не так.', PlanFormat.capitalizedFirst(PlanFormat.list(parts)))
+}
+
+// MARK: - Title, date, trainers, the common break
+
+function PlanForm({ plan, setPlan }: { plan: TrainingPlan; setPlan: (next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) => void }) {
+  const own = ownBreaks(plan)
+  const resetHelp = own.length
+    ? t('Убрать свои перерывы: %@', own.map((exit) => t('после %lld-го — %@', exit.number, DurationText.short(exit.breakAfter ?? 0))).join(', '))
+    : t('У всех выходов общий перерыв')
+  return (
+    <div className="plan-form">
+      <label className="plan-form__label" htmlFor="plan-title">
+        {t('Название:')}
+      </label>
+      <input id="plan-title" className="input" value={plan.title} placeholder={t('Тренировка')} onChange={(event) => setPlan((current) => ({ ...current, title: event.target.value }))} />
+      <label className="plan-form__label" htmlFor="plan-date">
+        {t('Дата:')}
+      </label>
+      <DateField id="plan-date" value={plan.date} onChange={(date) => setPlan((current) => ({ ...current, date }))} />
+      <label className="plan-form__label" htmlFor="plan-trainers">
+        {t('Тренеры:')}
+      </label>
+      <input id="plan-trainers" className="input" value={plan.trainers} placeholder={t('Кто тренирует')} onChange={(event) => setPlan((current) => ({ ...current, trainers: event.target.value }))} />
+      <span className="plan-form__label">{t('Перерыв:')}</span>
+      <div className="row plan-form__breaks">
+        <DurationPopover
+          value={plan.defaultBreak}
+          onChange={(value) => {
+            if (value !== null) setPlan((current) => setDefaultBreak(current, value))
+          }}
+          title={t('Перерыв между выходами')}
+          presets={PlanFormat.breakPresets}
+          tint="break"
+          tooltip={t('Перерыв между выходами — у всех, кроме выходов со своим перерывом')}
+        >
+          <button type="button" className="btn plan-form__break tabular">
+            {DurationText.short(plan.defaultBreak)}
+            <ChevronDownIcon className="plan-form__chevron" />
+          </button>
+        </DurationPopover>
+        <Tooltip content={resetHelp}>
+          <span className="plan-form__reset">
+            <Button disabled={!own.length} onClick={() => setPlan(resetOwnBreaks)}>
+              {t('Сделать везде %@', DurationText.short(plan.defaultBreak))}
+            </Button>
+          </span>
+        </Tooltip>
+      </div>
+    </div>
+  )
+}
+
+/// The schedule's date in the app's format («04.10.2026»); the system date picker opens on click.
+function DateField({ id, value, onChange }: { id: string; value: number | null; onChange: (date: number) => void }) {
+  const input = useRef<HTMLInputElement>(null)
+  return (
+    <div className="plan-form__date">
+      <input
+        ref={input}
+        type="date"
+        className="plan-form__date-input"
+        tabIndex={-1}
+        aria-hidden
+        value={dateInputValue(value)}
+        onChange={(event) => {
+          const date = dateFromInput(event.target.value)
+          if (date !== null) onChange(date)
+        }}
+      />
+      <button
+        id={id}
+        type="button"
+        className="btn plan-form__date-button tabular"
+        onClick={() => {
+          try {
+            input.current?.showPicker()
+          } catch {
+            input.current?.focus()
+          }
+        }}
+      >
+        <span className="grow" style={{ textAlign: 'left' }}>
+          {TrainingPlan.formatDate(value ?? Date.now())}
+        </span>
+        <CalendarIcon />
+      </button>
+    </div>
+  )
+}
+
+// MARK: - False start rule
+
+function RuleView({ line }: { line: PlanTextLine }) {
+  return (
+    <div className="plan-rule">
+      <RuleIcon className="plan-rule__icon" />
+      <div className="col" style={{ gap: 2, minWidth: 0 }}>
+        <div className="row" style={{ gap: 6 }}>
+          <span className="plan-rule__title">{t('Правило фальстарта')}</span>
+          <span className="faint plan-rule__line">{t('строка %lld', line.id)}</span>
+        </div>
+        <div className="plan-rule__body selectable">{PlanFormat.ruleBody(PlanParser.stripDecorations(line.text))}</div>
+      </div>
+    </div>
+  )
+}
+
+// MARK: - Footer
+
+function Footer({ plan, valid, onStart, onDone }: { plan: TrainingPlan; valid: boolean; onStart: () => void; onDone: () => void }) {
+  const app = useApp()
+  return (
+    <>
+      <div className="plan-summary">
+        <div className="plan-summary__line tabular">
+          <span className="plan-summary__main">
+            {PlanFormat.exits(plan.exits.length)} · {PlanFormat.approx(TrainingPlan.estimatedDuration(plan))}
+          </span>
+          {valid && (
+            <span className="muted ellipsis">
+              {t('за дверью %@, перерывы %@', DurationText.short(PlanFormat.exitsTotal(plan)), DurationText.short(PlanFormat.breaksTotal(plan)))}
+            </span>
+          )}
+        </div>
+        <PlanMiniBar plan={plan} />
+      </div>
+      <span className="spacer" />
+      {isConfigured(app.settings) && (
+        <Tooltip content={t('Включить запись с камеры вместе с тренировкой')}>
+          <span className="plan-summary__record">
+            <Checkbox checked={app.settings.autoRecord} onChange={(autoRecord) => void call('settings.update', { autoRecord })}>
+              {t('Записывать видео')}
+            </Checkbox>
+          </span>
+        </Tooltip>
+      )}
+      <Button variant="primary" icon={<PlayFilledIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
+        {t('Начать тренировку')}
+      </Button>
+      <Tooltip content={t('Оставить расписание на пульте и поправить его на таймлайне · Esc')}>
+        <Button onClick={onDone}>{t('Готово')}</Button>
+      </Tooltip>
+    </>
   )
 }

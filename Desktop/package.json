@@ -12,13 +12,15 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "go2rtc": "node scripts/build-go2rtc.mjs",
     "icons": "electron scripts/make-icons.cjs",
     "notices": "node scripts/notices.mjs",
     "dist": "npm run notices && electron-vite build && electron-builder --win --x64 --publish never",
-    "dist:dir": "npm run notices && electron-vite build && electron-builder --win --x64 --dir --publish never"
+    "dist:dir": "npm run notices && electron-vite build && electron-builder --win --x64 --dir --publish never",
+    "web": "vite --config vite.web.config.ts",
+    "build:web": "vite build --config vite.web.config.ts"
   },
   "devDependencies": {
     "@fluentui/react-icons": "^2.0.343",

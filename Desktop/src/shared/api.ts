@@ -76,6 +76,8 @@ export interface AppState {
     pairedDevices: { id: string; name: string }[]
     pairingRequests: PairingRequest[]
     error: string | null
+    /// The name iPhones see (Bonjour, `welcome.hostName`).
+    hostName?: string
   }
   errorMessage: string | null
   /// Paths for "Show in Explorer" texts.
@@ -136,7 +138,7 @@ export interface BackendMethods {
   'sync.setEnabled'(enabled: boolean): void
   'sync.respond'(requestId: string, allow: boolean): void
   'sync.forget'(deviceId: string): void
-  'shell.showItem'(kind: 'recordings' | 'sessions' | 'logs' | 'documents' | 'recording' | 'log', name?: string): void
+  'shell.showItem'(kind: 'recordings' | 'sessions' | 'logs' | 'documents' | 'recording' | 'log' | 'go2rtcConfig', name?: string): void
   'shell.openExternal'(url: string): void
   'shell.openFile'(fileName: string): void
   /// Windows: «Разрешить взаимодействие с приложением через брандмауэр».
@@ -149,6 +151,8 @@ export interface BackendMethods {
   'app.diagnostics'(): Json
   'app.openLogFile'(): void
   'recordings.size'(): { files: number; bytes: number }
+  /// Brings the main window back (from the compact strip).
+  'window.restore'(): void
 }
 
 export type MethodName = keyof BackendMethods

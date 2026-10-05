@@ -1,0 +1,5 @@
+{
+  "Камера и компьютер должны быть в одной сети Wi‑Fi": "The camera and the computer must be on the same Wi‑Fi network",
+  "Нужна версия 1.9.11 или новее с модулем xiaomi. Пароль сервера хранится в зашифрованном виде на этом компьютере.": "Requires version 1.9.11 or later with the xiaomi module. The server password is stored encrypted on this computer.",
+  "Пароль уходит только встроенному go2rtc, Waiting Paws его не хранит. Токен входа go2rtc держит у себя, на этом компьютере.": "The password goes only to the built-in go2rtc; Waiting Paws doesn’t store it. go2rtc keeps the sign-in token on this computer."
+}

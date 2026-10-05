@@ -204,7 +204,23 @@ export function Dialog({ open, onOpenChange, title, description, icon, width = 4
     <RDialog.Root open={open} onOpenChange={onOpenChange}>
       <RDialog.Portal>
         <RDialog.Overlay className="dialog-scrim" />
-        <RDialog.Content className="dialog" style={{ width, height }} aria-describedby={description ? undefined : undefined}>
+        <RDialog.Content
+          className="dialog"
+          style={{ width, height }}
+          aria-describedby={description ? undefined : undefined}
+          // Focus goes to what the dialog asked for (`autoFocus`), else to the dialog itself — not to the ✕, which
+          // Radix would pick as the first focusable element and draw with a focus ring.
+          onOpenAutoFocus={(event) => {
+            const content = event.currentTarget as HTMLElement
+            event.preventDefault()
+            requestAnimationFrame(() => {
+              if (content.contains(document.activeElement) && !document.activeElement?.classList.contains('dialog__close')) return
+              const wanted = content.querySelector<HTMLElement>('[data-autofocus], .dialog__footer .btn--primary')
+              ;(wanted ?? content).focus({ preventScroll: true })
+            })
+          }}
+          tabIndex={-1}
+        >
           {bare ? (
             <>
               <RDialog.Title className="visually-hidden" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>

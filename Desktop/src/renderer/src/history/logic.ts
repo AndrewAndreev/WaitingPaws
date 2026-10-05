@@ -239,6 +239,38 @@ export function neighbourAfterRemoval(visible: readonly HistoryRow[], removedKey
   return rest.length ? rest[Math.min(index, rest.length - 1)] : null
 }
 
+// MARK: - Columns
+
+export interface ColumnSpec<K extends string = string> {
+  key: K
+  /// Fixed width, px.
+  width?: number
+  /// Minimum width of a flexible column, px.
+  min?: number
+  /// Share of the remaining width.
+  flex?: number
+  /// 0 always stays; higher numbers are hidden first when the table is narrow.
+  priority: number
+}
+
+/// The columns that fit `width` (dropping the least important ones first), in their order.
+export function fitColumns<C extends ColumnSpec>(columns: readonly C[], width: number): C[] {
+  let visible = [...columns]
+  const need = (list: readonly C[]) => list.reduce((sum, column) => sum + (column.width ?? column.min ?? 0), 0)
+  while (need(visible) > width) {
+    const candidates = visible.filter((column) => column.priority > 0)
+    if (!candidates.length) break
+    const drop = candidates.reduce((a, b) => (b.priority >= a.priority ? b : a))
+    visible = visible.filter((column) => column !== drop)
+  }
+  return visible
+}
+
+/// CSS `grid-template-columns` for the visible columns.
+export function gridTemplate(columns: readonly ColumnSpec[]): string {
+  return columns.map((column) => (column.width ? `${column.width}px` : `minmax(${column.min ?? 0}px, ${column.flex ?? 1}fr)`)).join(' ')
+}
+
 // MARK: - Progress (figures and chart)
 
 export const PERIOD_DAYS: Record<Period, number | null> = { fourWeeks: 28, threeMonths: 91, all: null }

@@ -239,3 +239,143 @@ html.mica .app {
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* ---------- Compact strip while the window is minimized (index.html#mini) ---------- */
+html.mini,
+html.mini body,
+html.mini #root {
+  background: transparent;
+  overflow: hidden;
+}
+.mini {
+  position: fixed;
+  inset: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px 0 12px;
+  border-radius: 999px;
+  background: rgba(28, 26, 27, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 13px;
+  user-select: none;
+}
+.mini button {
+  -webkit-app-region: no-drag;
+}
+.mini__paw {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ffb8cc;
+  color: #1a1424;
+  flex: none;
+}
+.mini__rec {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ff6b6b;
+  font-weight: 600;
+  flex: none;
+}
+.mini__sep {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.14);
+  flex: none;
+}
+.mini__ring {
+  --tint: #ffb8cc;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  background:
+    radial-gradient(closest-side, rgb(28, 26, 27) 78%, transparent 80% 100%),
+    conic-gradient(var(--tint) var(--progress), rgba(255, 255, 255, 0.14) 0);
+  flex: none;
+}
+.mini .tint-outside {
+  --tint: #ffb8cc;
+}
+.mini .tint-break {
+  --tint: #8cbfff;
+}
+.mini .tint-over {
+  --tint: #ffb84d;
+}
+.mini .tint-done {
+  --tint: #6ee7a0;
+}
+.mini__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  line-height: 16px;
+}
+.mini__text strong {
+  font-size: 13px;
+}
+.mini__text span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.mini__timer {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--tint);
+  min-width: 70px;
+  text-align: right;
+  flex: none;
+}
+.mini__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: none;
+}
+.mini__btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.mini__btn--primary {
+  background: #ffb8cc;
+  border-color: transparent;
+  color: #2b0b16;
+}
+.mini__btn--primary:hover {
+  background: #ffc7d6;
+}
+.mini__btn--done {
+  background: #6ee7a0;
+  color: #08240f;
+}
+.mini__btn--stop {
+  background: #ff6b6b;
+  border-color: transparent;
+}
+.mini__btn--round {
+  width: 36px;
+  padding: 0;
+  justify-content: center;
+}

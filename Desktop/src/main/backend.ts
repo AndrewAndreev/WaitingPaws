@@ -20,6 +20,7 @@ import { clock, currentLogFile, write as log } from './log'
 import { argValue, paths, isUIPreview } from './paths'
 import { demoHistory, demoPlan, demoReplay } from './demo'
 import { legalText } from './legal'
+import packageInfo from '../../package.json'
 
 /// One part of a recording: the file and when it was requested (a new part starts each time the camera stream
 /// breaks off and comes back).
@@ -130,6 +131,15 @@ export class AppBackend {
       if (phase === 'away') session.markBehindDoor()
       this.startTicking()
     }
+    // `--debug-join=<out.mp4>|<part.mp4>@<seconds>|…`: the recording finalizer on given files (checks without a camera
+    // outage); the result is logged.
+    const join = argValue('debug-join')
+    if (join) {
+      const [output, ...parts] = join.split('|')
+      void this.finalizer
+        .write(parts.map((part) => ({ path: part.split('@')[0], offset: Number(part.split('@')[1] ?? 0) })), output)
+        .then(() => log(`[debug] joined into ${output}`), (error: Error) => log(`[debug] join failed: ${error.message}`))
+    }
     this.emit()
   }
 
@@ -171,7 +181,8 @@ export class AppBackend {
     const server = this.server()
     return {
       ready: this.ready,
-      version: app.getVersion(),
+      // From package.json at build time: right in development builds started from another folder too.
+      version: packageInfo.version,
       platform: process.platform,
       systemLocale: app.getSystemLocale(),
       settings,
@@ -193,7 +204,7 @@ export class AppBackend {
       finalizing: [...this.finalizing],
       camera: { xiaomiQuality: this.xiaomiQuality, xiaomiSource: this.xiaomiSource, videoSize: this.videoSize, playerGeneration: this.playerGeneration },
       cameraModes: this.cameraModes.view(),
-      sync: this.sync.view(),
+      sync: { ...this.sync.view(), hostName: this.sync.name },
       errorMessage: this.errorMessage,
       paths: {
         documents: paths.documentsRoot,
@@ -455,6 +466,12 @@ export class AppBackend {
       await this.reloadClips()
       this.emit()
     })
+    // Quitting waits for it (see shutdown).
+    if (needsJoin) {
+      const key = `join:${basename(main)}`
+      this.finalizeTasks.set(key, task)
+      void task.finally(() => this.finalizeTasks.delete(key))
+    }
     if (!this.session) {
       // Without a training nothing else will claim the file: it becomes a standalone recording.
       this.currentRecordingPath = null
@@ -702,9 +719,11 @@ export class AppBackend {
     if (!/^https?:$/.test(target.protocol)) throw new Error('only http(s)')
     const server = this.server()
     const sameServer = server ? new URL(server.baseURL).host === target.host : false
-    if (!sameServer && !isLocalHost(target.hostname)) throw new Error('only local go2rtc servers')
+    // Another host only for go2rtc's API (checking a server the user is typing in): local addresses, or `/api`.
+    if (!sameServer && !isLocalHost(target.hostname) && !/\/api(\/|$)/.test(target.pathname)) throw new Error('only go2rtc servers')
     const headers = { ...(request.headers ?? {}) }
-    if (sameServer && server && Go2RTCServer.hasCredentials(server) && !headers.Authorization) {
+    const hasAuthorization = Object.keys(headers).some((name) => name.toLowerCase() === 'authorization')
+    if (sameServer && server && Go2RTCServer.hasCredentials(server) && !hasAuthorization) {
       headers.Authorization = Go2RTCServer.authorizationHeader(server) ?? ''
     }
     const response = await fetch(target, {
@@ -963,10 +982,12 @@ export class AppBackend {
         : kind === 'documents' ? paths.documentsRoot
         : kind === 'recording' && name ? join(this.store.recordingsDirectory, basename(name))
         : kind === 'log' && name ? this.store.logPathFor(this.history.find((record) => record.id === name))
+        : kind === 'go2rtcConfig' ? paths.go2rtcConfig
         : null
       if (!target) return
-      mkdirSync(kind === 'recording' || kind === 'log' ? this.store.recordingsDirectory : target, { recursive: true })
-      if (kind === 'recording' || kind === 'log') shell.showItemInFolder(target)
+      const isFile = kind === 'recording' || kind === 'log' || kind === 'go2rtcConfig'
+      if (!isFile) mkdirSync(target, { recursive: true })
+      if (isFile) shell.showItemInFolder(target)
       else void shell.openPath(target)
     },
     'shell.openExternal': (url: string) => {
@@ -1058,7 +1079,7 @@ async function copyFileToClipboard(path: string): Promise<void> {
   const header = Buffer.alloc(20)
   header.writeUInt32LE(20, 0) // pFiles
   header.writeUInt32LE(1, 16) // fWide
-  const data = Buffer.concat([header, Buffer.from(path + '  ', 'utf16le')])
+  const data = Buffer.concat([header, Buffer.from(path + '\0\0', 'utf16le')])
   const format = 'electron application/osclipboard;format="CF_HDROP"'
   try {
     await clipboard.write([new ClipboardItem({ [format]: new Blob([data]) })])
