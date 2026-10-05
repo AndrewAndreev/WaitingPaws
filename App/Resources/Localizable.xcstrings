@@ -64,6 +64,22 @@
         }
       }
     },
+    "«%@» рядом" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” Is Nearby"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» рядом"
+          }
+        }
+      }
+    },
     "«%@», %@, %@." : {
       "shouldTranslate" : false
     },
@@ -813,18 +829,18 @@
         }
       }
     },
-    "go2rtc должен быть собран с поддержкой xiaomi (версия 1.9.11 и новее). Если камера уже добавлена в go2rtc, шаг с Xiaomi можно пропустить." : {
+    "go2rtc должен быть собран с поддержкой xiaomi (версия 1.9.11 и новее). Если камера уже добавлена в go2rtc, вход в Xiaomi не нужен." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "go2rtc must be built with xiaomi support (version 1.9.11 or later). If the camera is already added to go2rtc, you can skip the Xiaomi step."
+            "value" : "go2rtc must be built with the xiaomi module (version 1.9.11 or later). If the camera is already in go2rtc, you don’t need to sign in to Xiaomi."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "go2rtc должен быть собран с поддержкой xiaomi (версия 1.9.11 и новее). Если камера уже добавлена в go2rtc, шаг с Xiaomi можно пропустить."
+            "value" : "go2rtc должен быть собран с поддержкой xiaomi (версия 1.9.11 и новее). Если камера уже добавлена в go2rtc, вход в Xiaomi не нужен."
           }
         }
       }
@@ -982,6 +998,22 @@
     "iPhone" : {
       "shouldTranslate" : false
     },
+    "iPhone будет показывать тренировку и камеру с %@, когда она там появится." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone will show the training and the camera from this %@ once a camera is set up there."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone будет показывать тренировку и камеру с %@, когда она там появится."
+          }
+        }
+      }
+    },
     "iPhone в той же сети найдёт этот Mac, покажет его камеру и сможет вести тренировку. Видео для iPhone станет доступно после перезапуска приложения." : {
       "localizations" : {
         "en" : {
@@ -1030,6 +1062,22 @@
         }
       }
     },
+    "iPhone покажет камеру и станет пультом для этой тренировки, входить в Xiaomi не нужно." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone will show the camera and become a remote for this training. No need to sign in to Xiaomi."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone покажет камеру и станет пультом для этой тренировки, входить в Xiaomi не нужно."
+          }
+        }
+      }
+    },
     "Mac виден приложению Waiting Paws на iPhone в той же Wi‑Fi сети." : {
       "localizations" : {
         "en" : {
@@ -1046,7 +1094,7 @@
         }
       }
     },
-    "Mi Home" : {
+    "Mi Home · ID %@" : {
       "shouldTranslate" : false
     },
     "name@example.com или +7…" : {
@@ -1083,6 +1131,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "REC · начнётся со стартом"
+          }
+        }
+      }
+    },
+    "RTSP и ONVIF — через ваш go2rtc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RTSP and ONVIF — through your go2rtc"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RTSP и ONVIF — через ваш go2rtc"
           }
         }
       }
@@ -1224,8 +1288,40 @@
         }
       }
     },
-    "Xiaomi" : {
+    "x7K2" : {
       "shouldTranslate" : false
+    },
+    "Xiaomi отправил SMS на %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xiaomi sent a text message to %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xiaomi отправил SMS на %@"
+          }
+        }
+      }
+    },
+    "Xiaomi отправил код на %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xiaomi sent a code to %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xiaomi отправил код на %@"
+          }
+        }
+      }
     },
     "Xiaomi отправил код на %@." : {
       "localizations" : {
@@ -1243,18 +1339,18 @@
         }
       }
     },
-    "Xiaomi отправил код на %@. Введите его ниже." : {
+    "Xiaomi отправил код по SMS или на почту" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xiaomi sent a code to %@. Enter it below."
+            "value" : "Xiaomi sent a code by text message or e-mail"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xiaomi отправил код на %@. Введите его ниже."
+            "value" : "Xiaomi отправил код по SMS или на почту"
           }
         }
       }
@@ -1291,6 +1387,22 @@
         }
       }
     },
+    "Xiaomi просит подтвердить, что вы не робот" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xiaomi wants to make sure you’re not a robot"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xiaomi просит подтвердить, что вы не робот"
+          }
+        }
+      }
+    },
     "Авто" : {
       "localizations" : {
         "en" : {
@@ -1319,6 +1431,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Адрес"
+          }
+        }
+      }
+    },
+    "Адрес из настроек камеры или видеорегистратора." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The address from the camera’s or recorder’s settings."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адрес из настроек камеры или видеорегистратора."
           }
         }
       }
@@ -1739,22 +1867,6 @@
         }
       }
     },
-    "ваш контакт" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "your phone or email"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ваш контакт"
-          }
-        }
-      }
-    },
     "Введите код" : {
       "localizations" : {
         "en" : {
@@ -1767,22 +1879,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Введите код"
-          }
-        }
-      }
-    },
-    "Введите символы с картинки" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter the characters from the image"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Введите символы с картинки"
           }
         }
       }
@@ -2267,18 +2363,18 @@
         }
       }
     },
-    "Войти в Mi Home" : {
+    "Войти в Xiaomi" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign In to Mi Home"
+            "value" : "Sign In to Xiaomi"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Войти в Mi Home"
+            "value" : "Войти в Xiaomi"
           }
         }
       }
@@ -2523,6 +2619,22 @@
         }
       }
     },
+    "Вставьте сообщение: выходы и перерывы пойдут по таймеру" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste the message: exits and breaks run on timers"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставьте сообщение: выходы и перерывы пойдут по таймеру"
+          }
+        }
+      }
+    },
     "Встроенный go2rtc" : {
       "localizations" : {
         "en" : {
@@ -2667,18 +2779,18 @@
         }
       }
     },
-    "Вход выполняет go2rtc, приложение пароль не сохраняет. После входа go2rtc получит список камер Mi Home." : {
+    "Вход выполнен · Mi Home ID %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "go2rtc does the sign-in; the app doesn’t store your password. After signing in, go2rtc gets the list of your Mi Home cameras."
+            "value" : "Signed in · Mi Home ID %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вход выполняет go2rtc, приложение пароль не сохраняет. После входа go2rtc получит список камер Mi Home."
+            "value" : "Вход выполнен · Mi Home ID %@"
           }
         }
       }
@@ -2699,22 +2811,6 @@
         }
       }
     },
-    "Вход прошёл, но сервер не вернул аккаунт" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Signed in, but the server returned no account"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вход прошёл, но сервер не вернул аккаунт"
-          }
-        }
-      }
-    },
     "Входим…" : {
       "localizations" : {
         "en" : {
@@ -2727,22 +2823,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Входим…"
-          }
-        }
-      }
-    },
-    "Выберите аккаунт из списка выше" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose an account from the list above"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Выберите аккаунт из списка выше"
           }
         }
       }
@@ -3291,6 +3371,22 @@
         }
       }
     },
+    "Выходы, фальстарты и видео одной кнопкой" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exits, false starts and video in one tap"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выходы, фальстарты и видео одной кнопкой"
+          }
+        }
+      }
+    },
     "Выше · ⌥⌘↑" : {
       "localizations" : {
         "en" : {
@@ -3463,22 +3559,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "График: дольше всего за дверью по тренировкам"
-          }
-        }
-      }
-    },
-    "Далее: аккаунт Xiaomi" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next: Xiaomi Account"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Далее: аккаунт Xiaomi"
           }
         }
       }
@@ -3707,22 +3787,6 @@
         }
       }
     },
-    "Добавить другой аккаунт" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Another Account"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Добавить другой аккаунт"
-          }
-        }
-      }
-    },
     "Добавить заметку" : {
       "localizations" : {
         "en" : {
@@ -3767,6 +3831,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить камеры ещё одного аккаунта Xiaomi"
+          }
+        }
+      }
+    },
+    "Добавить поток RTSP / ONVIF" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add an RTSP / ONVIF Stream"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить поток RTSP / ONVIF"
           }
         }
       }
@@ -3963,22 +4043,6 @@
         }
       }
     },
-    "Другие потоки" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Other Streams"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Другие потоки"
-          }
-        }
-      }
-    },
     "Другие потоки go2rtc" : {
       "localizations" : {
         "en" : {
@@ -3991,6 +4055,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Другие потоки go2rtc"
+          }
+        }
+      }
+    },
+    "Другие способы" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other Options"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другие способы"
           }
         }
       }
@@ -4023,6 +4103,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Другое расписание"
+          }
+        }
+      }
+    },
+    "Другой аккаунт" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another Account"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другой аккаунт"
           }
         }
       }
@@ -4103,6 +4199,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Европа"
+          }
+        }
+      }
+    },
+    "Её картинка будет на экране тренировки. Другую камеру можно выбрать позже в настройках." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Its picture will be on the training screen. You can pick another camera later in Settings."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Её картинка будет на экране тренировки. Другую камеру можно выбрать позже в настройках."
+          }
+        }
+      }
+    },
+    "Если нужен" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If needed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если нужен"
           }
         }
       }
@@ -5115,6 +5243,22 @@
         }
       }
     },
+    "Изменить логин" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change Username"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить логин"
+          }
+        }
+      }
+    },
     "Изменить…" : {
       "localizations" : {
         "en" : {
@@ -5451,6 +5595,22 @@
         }
       }
     },
+    "Какая камера смотрит на дверь?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which Camera Faces the Door?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Какая камера смотрит на дверь?"
+          }
+        }
+      }
+    },
     "Камер не найдено" : {
       "localizations" : {
         "en" : {
@@ -5723,6 +5883,38 @@
         }
       }
     },
+    "Камера покажет собаку, пока вы за дверью, и запишет тренировку для тренера." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A camera shows your dog while you’re outside and records the training for the trainer."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера покажет собаку, пока вы за дверью, и запишет тренировку для тренера."
+          }
+        }
+      }
+    },
+    "Камера с Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera from a Mac"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера с Mac"
+          }
+        }
+      }
+    },
     "Камера, запись и лог — на %@" : {
       "localizations" : {
         "en" : {
@@ -5767,6 +5959,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Камера, качество и режим съёмки"
+          }
+        }
+      }
+    },
+    "Камера, которая уже есть на вашем сервере" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A camera that’s already on your server"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера, которая уже есть на вашем сервере"
           }
         }
       }
@@ -5931,18 +6139,18 @@
         }
       }
     },
-    "Код" : {
+    "Код из «Сообщений» появится над клавиатурой" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Code"
+            "value" : "The code from Messages appears above the keyboard"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Код"
+            "value" : "Код из «Сообщений» появится над клавиатурой"
           }
         }
       }
@@ -6235,6 +6443,22 @@
         }
       }
     },
+    "На «%@» идёт тренировка" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Training Is Running on “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На «%@» идёт тренировка"
+          }
+        }
+      }
+    },
     "На «%@» появился запрос от «%@» — нажмите «Разрешить». Это нужно один раз для этого iPhone." : {
       "localizations" : {
         "en" : {
@@ -6283,6 +6507,22 @@
         }
       }
     },
+    "На %@ один раз появится запрос «Разрешить»" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The %@ will ask you to Allow once"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На %@ один раз появится запрос «Разрешить»"
+          }
+        }
+      }
+    },
     "На Mac подключение отклонили" : {
       "localizations" : {
         "en" : {
@@ -6295,6 +6535,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На Mac подключение отклонили"
+          }
+        }
+      }
+    },
+    "На нём уже подключена камера «%@». iPhone покажет её и тренировку с %@, входить в Xiaomi не нужно." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It already has the camera “%1$@”. iPhone will show it and the training from the %2$@. No need to sign in to Xiaomi."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На нём уже подключена камера «%@». iPhone покажет её и тренировку с %@, входить в Xiaomi не нужно."
+          }
+        }
+      }
+    },
+    "На них уже подключена камера: iPhone покажет её и тренировку, входить в Xiaomi не нужно." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They already have the camera: iPhone will show it and the training. No need to sign in to Xiaomi."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На них уже подключена камера: iPhone покажет её и тренировку, входить в Xiaomi не нужно."
           }
         }
       }
@@ -6507,22 +6779,6 @@
         }
       }
     },
-    "Начать заново" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start Over"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Начать заново"
-          }
-        }
-      }
-    },
     "Начать запись" : {
       "localizations" : {
         "en" : {
@@ -6651,22 +6907,6 @@
         }
       }
     },
-    "Не удалось добавить поток: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn’t add the stream: %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось добавить поток: %@"
-          }
-        }
-      }
-    },
     "Не удалось начать запись: %@" : {
       "localizations" : {
         "en" : {
@@ -6711,22 +6951,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "не удалось подготовить тишину"
-          }
-        }
-      }
-    },
-    "Не удалось получить камеры" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn’t Load Cameras"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось получить камеры"
           }
         }
       }
@@ -7099,6 +7323,22 @@
         }
       }
     },
+    "Нет, войти в Xiaomi на iPhone" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No, Sign In to Xiaomi on iPhone"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет, войти в Xiaomi на iPhone"
+          }
+        }
+      }
+    },
     "ни одного фальстарта" : {
       "localizations" : {
         "en" : {
@@ -7191,6 +7431,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Новая тренировка"
+          }
+        }
+      }
+    },
+    "Новый код отправлен" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new code was sent"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый код отправлен"
           }
         }
       }
@@ -7611,6 +7867,22 @@
         }
       }
     },
+    "Откройте Waiting Paws на Mac в этой же сети Wi‑Fi — он появится здесь" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Waiting Paws on a Mac on the same Wi‑Fi — it will show up here"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте Waiting Paws на Mac в этой же сети Wi‑Fi — он появится здесь"
+          }
+        }
+      }
+    },
     "Открываем видео…" : {
       "localizations" : {
         "en" : {
@@ -7771,22 +8043,6 @@
         }
       }
     },
-    "Отправить капчу" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Submit Captcha"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Отправить капчу"
-          }
-        }
-      }
-    },
     "Отправить лог" : {
       "localizations" : {
         "en" : {
@@ -7931,18 +8187,18 @@
         }
       }
     },
-    "Пароль уходит напрямую в Xiaomi и нигде не сохраняется. Видео идёт с камеры прямо на это устройство: разработчик приложения не получает ни пароль, ни видео." : {
+    "Пароль уходит только вашему серверу go2rtc, Waiting Paws его не хранит." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your password goes straight to Xiaomi and isn’t stored anywhere. Video goes from the camera directly to this device: the app’s developer never receives your password or your video."
+            "value" : "The password goes only to your go2rtc server; Waiting Paws doesn’t store it."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пароль уходит напрямую в Xiaomi и нигде не сохраняется. Видео идёт с камеры прямо на это устройство: разработчик приложения не получает ни пароль, ни видео."
+            "value" : "Пароль уходит только вашему серверу go2rtc, Waiting Paws его не хранит."
           }
         }
       }
@@ -7959,6 +8215,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пароль уходит только вашему серверу go2rtc, Waiting Paws его не хранит. Токен входа остаётся на сервере."
+          }
+        }
+      }
+    },
+    "Пароль уходит только встроенному go2rtc на этом iPhone, Waiting Paws его не хранит." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The password goes only to the built-in go2rtc on this iPhone; Waiting Paws doesn’t store it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пароль уходит только встроенному go2rtc на этом iPhone, Waiting Paws его не хранит."
           }
         }
       }
@@ -8539,6 +8811,22 @@
         }
       }
     },
+    "Подключаемся к «%@»" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключаемся к «%@»"
+          }
+        }
+      }
+    },
     "Подключаемся к камере…" : {
       "localizations" : {
         "en" : {
@@ -8699,6 +8987,22 @@
         }
       }
     },
+    "Подключить камеру" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect a Camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключить камеру"
+          }
+        }
+      }
+    },
     "Подключить камеру…" : {
       "localizations" : {
         "en" : {
@@ -8715,18 +9019,18 @@
         }
       }
     },
-    "Подождите…" : {
+    "Подключиться к %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Please Wait…"
+            "value" : "Connect to %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Подождите…"
+            "value" : "Подключиться к %@"
           }
         }
       }
@@ -8759,6 +9063,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подтвердить"
+          }
+        }
+      }
+    },
+    "Подходят rtsp://, onvif:// и http://. Камера должна быть в той же сети Wi‑Fi." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rtsp://, onvif:// and http:// work. The camera must be on the same Wi‑Fi."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подходят rtsp://, onvif:// и http://. Камера должна быть в той же сети Wi‑Fi."
           }
         }
       }
@@ -9339,6 +9659,22 @@
         }
       }
     },
+    "Поток RTSP / ONVIF" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RTSP / ONVIF Stream"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поток RTSP / ONVIF"
+          }
+        }
+      }
+    },
     "Потоки go2rtc" : {
       "localizations" : {
         "en" : {
@@ -9431,6 +9767,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пригодится, если камера не подключается или запись оборвалась."
+          }
+        }
+      }
+    },
+    "Прихожая" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hallway"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прихожая"
           }
         }
       }
@@ -9575,22 +9927,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Продолжить без камеры"
-          }
-        }
-      }
-    },
-    "Пропустить — выбрать существующий поток go2rtc" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skip — Choose an Existing go2rtc Stream"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пропустить — выбрать существующий поток go2rtc"
           }
         }
       }
@@ -9803,6 +10139,22 @@
         }
       }
     },
+    "Расписание тренера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trainer’s Schedule"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписание тренера"
+          }
+        }
+      }
+    },
     "Регион" : {
       "localizations" : {
         "en" : {
@@ -9947,6 +10299,22 @@
         }
       }
     },
+    "Рядом" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nearby"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рядом"
+          }
+        }
+      }
+    },
     "Рядом %@ с Waiting Paws" : {
       "localizations" : {
         "en" : {
@@ -9959,6 +10327,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рядом %@ с Waiting Paws"
+          }
+        }
+      }
+    },
+    "Рядом Waiting Paws на компьютерах" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws on Computers Nearby"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рядом Waiting Paws на компьютерах"
           }
         }
       }
@@ -10347,22 +10731,6 @@
         }
       }
     },
-    "Сервер go2rtc" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "go2rtc Server"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сервер go2rtc"
-          }
-        }
-      }
-    },
     "Сервер не указан" : {
       "localizations" : {
         "en" : {
@@ -10391,6 +10759,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сервер отвечает"
+          }
+        }
+      }
+    },
+    "Символы" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Characters"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Символы"
           }
         }
       }
@@ -10619,6 +11003,22 @@
         }
       }
     },
+    "Смотреть камеру «%@»" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Watch “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смотреть камеру «%@»"
+          }
+        }
+      }
+    },
     "Сначала выберите камеру." : {
       "localizations" : {
         "en" : {
@@ -10631,6 +11031,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сначала выберите камеру."
+          }
+        }
+      }
+    },
+    "Собака видна, пока вы за дверью" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See your dog while you’re outside"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Собака видна, пока вы за дверью"
           }
         }
       }
@@ -10763,6 +11179,22 @@
         }
       }
     },
+    "Спокойные выходы из дома: по расписанию тренера и с собакой на экране" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calm exits from home: on the trainer’s schedule, with your dog on screen"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спокойные выходы из дома: по расписанию тренера и с собакой на экране"
+          }
+        }
+      }
+    },
     "старт" : {
       "localizations" : {
         "en" : {
@@ -10891,18 +11323,18 @@
         }
       }
     },
-    "Таймер, расписание и лог работают и без камеры. Камеру можно подключить позже в настройках." : {
+    "Таймер, расписание и лог. Камеру можно добавить позже" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The timer, schedule, and log work without a camera too. You can connect a camera later in Settings."
+            "value" : "Timer, schedule and log. You can add a camera later"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Таймер, расписание и лог работают и без камеры. Камеру можно подключить позже в настройках."
+            "value" : "Таймер, расписание и лог. Камеру можно добавить позже"
           }
         }
       }
@@ -10971,22 +11403,6 @@
         }
       }
     },
-    "Телефон, e-mail или Mi ID" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Phone, email, or Mi ID"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Телефон, e-mail или Mi ID"
-          }
-        }
-      }
-    },
     "Только видео" : {
       "localizations" : {
         "en" : {
@@ -11031,6 +11447,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Только запись"
+          }
+        }
+      }
+    },
+    "Тот же логин и пароль, что в приложении Mi Home. Камеры появятся сразу после входа." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The same username and password as in the Mi Home app. Your cameras appear right after you sign in."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тот же логин и пароль, что в приложении Mi Home. Камеры появятся сразу после входа."
           }
         }
       }
@@ -11179,22 +11611,6 @@
         }
       }
     },
-    "Тренировки коротких выходов из дома: расписание тренера, таймеры выходов и перерывов, лог для тренера. Камера Mi Home или любой поток go2rtc показывает собаку, пока вы за дверью." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Training for short exits from home: the trainer’s schedule, exit and break timers, a log for the trainer. A Mi Home camera or any go2rtc stream shows your dog while you’re outside."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тренировки коротких выходов из дома: расписание тренера, таймеры выходов и перерывов, лог для тренера. Камера Mi Home или любой поток go2rtc показывает собаку, пока вы за дверью."
-          }
-        }
-      }
-    },
     "Тренировок пока нет" : {
       "localizations" : {
         "en" : {
@@ -11255,22 +11671,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "У всех выходов общий перерыв"
-          }
-        }
-      }
-    },
-    "У меня свой сервер go2rtc" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I Have My Own go2rtc Server"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "У меня свой сервер go2rtc"
           }
         }
       }
@@ -11751,6 +12151,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Уже авторизованы на сервере"
+          }
+        }
+      }
+    },
+    "Уже вошли на этом iPhone" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already Signed In on This iPhone"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уже вошли на этом iPhone"
           }
         }
       }

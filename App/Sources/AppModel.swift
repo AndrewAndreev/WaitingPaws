@@ -88,6 +88,8 @@ final class AppModel {
         }
         // `--demo-hosts`: several computers with Waiting Paws nearby (the choice on the main screen and in Settings).
         if args.contains("--demo-hosts") { syncClient.demoHosts() }
+        // `--demo-host`: one Mac nearby, never joined (the «рядом» card on the first-launch welcome screen).
+        if args.contains("--demo-host") { syncClient.demoHosts(single: true) }
         #endif
         #if os(macOS)
         // `--demo-plan`: a parsed schedule waiting on the «Пульт» (no paste needed); `--demo-review` also opens its sheet.

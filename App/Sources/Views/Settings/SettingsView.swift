@@ -155,14 +155,9 @@ struct SettingsView: View {
                 }
             }
             .sheet(isPresented: $showXiaomi) {
-                NavigationStack {
-                    XiaomiLoginView(onDone: { _ in
-                        showXiaomi = false
-                        showCameraPicker = true
-                    })
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("Отмена") { showXiaomi = false } }
-                    }
+                XiaomiSignInSheet { _ in
+                    showXiaomi = false
+                    showCameraPicker = true
                 }
                 .environment(model)
                 .sheetFrame(width: 520, height: 620)
@@ -182,8 +177,7 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showCameraPicker) {
                 NavigationStack {
-                    CameraPickerView(accountID: settings.xiaomiAccountID.isEmpty ? nil : settings.xiaomiAccountID,
-                                     region: settings.xiaomiRegion) { _ in
+                    CameraPickerView(showsClose: true) { _ in
                         showCameraPicker = false
                     }
                 }

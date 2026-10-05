@@ -19,7 +19,8 @@
 
 * **Встроенный режим (по умолчанию).** [go2rtc](https://github.com/AlexxIT/go2rtc) 1.9.14 собран в
   `Frameworks/Go2RTC.xcframework` (gomobile) и запускается внутри приложения на `127.0.0.1:11984`.
-  Отдельный сервер не нужен: при первом запуске сразу логин в аккаунт Xiaomi и выбор камеры.
+  Отдельный сервер не нужен: при первом запуске экран приветствия с «Войти в Xiaomi» (лист: логин, пароль,
+  регион, затем код) и выбор камеры; «Другие способы» — Mac с Waiting Paws в сети, свой сервер, без камеры.
   Камера должна быть в той же Wi-Fi сети, видео и запись идут, пока приложение открыто.
 * **Свой сервер** — опция в настройках («Подключение → Свой сервер go2rtc»), нужна версия **1.9.11+**
   с модулем `xiaomi`. Подходит, если нужен просмотр не из дома или постоянная запись.
@@ -164,7 +165,7 @@ App/Sources                      — общий SwiftUI-код для обеих
   AppSettings.swift              — настройки (UserDefaults + Keychain для пароля go2rtc)
   Views/Session                  — главный экран: камера + HUD
   Views/Plan                     — ввод и редактор расписания
-  Views/Onboarding               — сервер → Xiaomi → камера
+  Views/Onboarding               — приветствие → вход в Xiaomi → камера (iPhone; на Mac — Mac/Onboarding)
   Views/History, Views/Settings
   Views/Camera/CameraStreamView  — WKWebView с плеером go2rtc
   Go2RTC/EmbeddedGo2RTC.swift    — запуск встроенного go2rtc (конфиг, статус)

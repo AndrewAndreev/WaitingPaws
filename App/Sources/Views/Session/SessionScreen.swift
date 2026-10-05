@@ -77,7 +77,7 @@ struct SessionScreen: View {
         }
         .onAppear {
             #if DEBUG
-            // `--demo-screen plan|camera|settings|history` opens a sheet right away (UI checks without tapping).
+            // `--demo-screen plan|camera|camera-setup|settings|history` opens a sheet right away (UI checks without tapping).
             if let index = CommandLine.arguments.firstIndex(of: "--demo-screen"), index + 1 < CommandLine.arguments.count {
                 switch CommandLine.arguments[index + 1] {
                 case "plan": showPlanInput = true
@@ -86,6 +86,7 @@ struct SessionScreen: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) { showPlanInput = false }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) { showPlanInput = true }
                 case "camera": showCameraPicker = true
+                case "camera-setup": showCameraSetup = true
                 case "settings", "settings-sync": showSettings = true
                 case "history", "history-last": showHistory = true
                 default: break
@@ -126,8 +127,7 @@ struct SessionScreen: View {
         }
         .sheet(isPresented: $showCameraPicker) {
             NavigationStack {
-                CameraPickerView(accountID: model.settings.xiaomiAccountID.isEmpty ? nil : model.settings.xiaomiAccountID,
-                                 region: model.settings.xiaomiRegion) { _ in
+                CameraPickerView(showsClose: true) { _ in
                     showCameraPicker = false
                 }
             }

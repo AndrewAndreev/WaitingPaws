@@ -3,6 +3,7 @@
 //   Design/app-icon/AppIcon-ios.svg     full-bleed square (iOS masks it itself)
 //   Design/app-icon/AppIcon-macos.svg   824 px rounded rect with shadow on a 1024 canvas (macOS icon grid)
 //   App/Resources/Assets.xcassets/AppIcon.appiconset/*.png + Contents.json
+//   App/Resources/Assets.xcassets/AppIconImage.imageset (the iOS icon for the setup screens)
 // Usage: node app-icon.js   (needs rsvg-convert and ImageMagick)
 const fs = require('fs');
 const path = require('path');
@@ -46,6 +47,12 @@ const render = (svgFile, size, out) => execFileSync('rsvg-convert', ['-w', Strin
 // iOS: App Store rejects icons with an alpha channel
 render(path.join(srcDir, 'AppIcon-ios.svg'), 1024, 'AppIcon-ios-1024.png');
 execFileSync('magick', [path.join(setDir, 'AppIcon-ios-1024.png'), '-background', bg, '-alpha', 'remove', '-alpha', 'off', '-strip', '-define', 'png:exclude-chunks=date,time', path.join(setDir, 'AppIcon-ios-1024.png')]);
+
+// The same picture as an image for the iPhone welcome and sign-in screens (an app icon set can't be shown in the UI).
+const imageDir = path.join(project, 'App/Resources/Assets.xcassets/AppIconImage.imageset');
+fs.mkdirSync(imageDir, { recursive: true });
+fs.copyFileSync(path.join(setDir, 'AppIcon-ios-1024.png'), path.join(imageDir, 'AppIcon.png'));
+fs.writeFileSync(path.join(imageDir, 'Contents.json'), JSON.stringify({ images: [{ filename: 'AppIcon.png', idiom: 'universal' }], info: { author: 'xcode', version: 1 } }, null, 2) + '\n');
 
 const images = [{ filename: 'AppIcon-ios-1024.png', idiom: 'universal', platform: 'ios', size: '1024x1024' }];
 for (const pt of [16, 32, 128, 256, 512]) for (const scale of [1, 2]) {

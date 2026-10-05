@@ -370,7 +370,8 @@ final class SyncClient {
 
     /// `--demo-hosts`: three computers nearby (two Macs, one of them training, and a PC), the first one joined before.
     /// Nothing listens there: joining fails after a moment.
-    func demoHosts() {
+    /// `--demo-host`: only the first of them, never joined before (the single «рядом» card at first launch).
+    func demoHosts(single: Bool = false) {
         let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: 9)
         hosts = [
             DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "MacBook Pro — Андрей", cameraTitle: "Прихожая",
@@ -385,6 +386,10 @@ final class SyncClient {
                                   lastConnected: Date().addingTimeInterval(-86_400)),
                        PairedHost(id: "demo-mini", name: "Mac mini", platform: "mac", model: "Mac mini",
                                   lastConnected: Date().addingTimeInterval(-20 * 86_400))]
+        if single {
+            hosts = Array(hosts.prefix(1))
+            pairedHosts = []
+        }
     }
     #endif
 

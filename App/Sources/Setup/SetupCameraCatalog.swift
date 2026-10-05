@@ -1,8 +1,11 @@
-#if os(macOS)
-import AppKit
 import AVFoundation
 import SwiftUI
 import WaitingPawsCore
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 /// What go2rtc already knows: signed-in Mi Home accounts with their cameras and the registered streams.
 /// Shared by the welcome window and the camera picker; choosing a camera registers its stream and saves it.
@@ -305,7 +308,7 @@ final class SetupStillStore {
 
     enum State: Equatable {
         case loading
-        case loaded(NSImage, CGSize)
+        case loaded(PlatformImage, CGSize)
         case failed
     }
 
@@ -528,7 +531,7 @@ private final class SetupPreviewSlots {
 enum SetupFrameGrabber {
     /// Made once and only read afterwards.
     struct Still: @unchecked Sendable {
-        let image: NSImage
+        let image: PlatformImage
         let pixelSize: CGSize
     }
 
@@ -562,8 +565,14 @@ enum SetupFrameGrabber {
         let request = request(client.snapshotURL(stream: stream), server: client.server, timeout: 10)
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200,
-              let image = NSImage(data: data), let rep = image.representations.first else { return nil }
+              let image = PlatformImage(data: data) else { return nil }
+        #if os(macOS)
+        guard let rep = image.representations.first else { return nil }
         return Still(image: image, pixelSize: CGSize(width: rep.pixelsWide, height: rep.pixelsHigh))
+        #else
+        guard let cgImage = image.cgImage else { return nil }
+        return Still(image: image, pixelSize: CGSize(width: cgImage.width, height: cgImage.height))
+        #endif
     }
 
     private static func mp4Keyframe(client: Go2RTCClient, stream: String) async -> Still? {
@@ -638,7 +647,21 @@ enum SetupFrameGrabber {
            let natural = try? await track.load(.naturalSize), natural.width > 0 {
             size = CGSize(width: abs(natural.width), height: abs(natural.height))
         }
+        #if os(macOS)
         return Still(image: NSImage(cgImage: image, size: .zero), pixelSize: size)
+        #else
+        return Still(image: UIImage(cgImage: image), pixelSize: size)
+        #endif
+    }
+}
+
+extension Image {
+    init(platformImage: PlatformImage) {
+        #if os(macOS)
+        self.init(nsImage: platformImage)
+        #else
+        self.init(uiImage: platformImage)
+        #endif
     }
 }
 
@@ -669,7 +692,7 @@ struct SetupStill: View {
                 .font(.system(size: max(11, width * 0.1), weight: .medium))
                 .foregroundStyle(.white.opacity(0.35))
             if case .loaded(let image, _) = state {
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fill)
@@ -686,4 +709,3 @@ struct SetupStill: View {
         }
     }
 }
-#endif
