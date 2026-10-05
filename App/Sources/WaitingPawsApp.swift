@@ -113,7 +113,8 @@ struct DebugWindowOpener: ViewModifier {
             if CommandLine.arguments.contains("--demo-pairing"), !Self.pairingShown {
                 Self.pairingShown = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    MacPairingPrompt.present(SyncHost.PairingRequest(id: UUID(), deviceName: "iPhone Андрея"), host: model.syncHost)
+                    let iPhone = SyncDevice(id: "demo", name: "iPhone Тани", kind: .iphone, model: "iPhone 16")
+                    MacPairingPrompt.present(SyncHost.PairingRequest(id: UUID(), device: iPhone), host: model.syncHost)
                 }
             }
             let configured = (model.settings.isConfigured || WaitingPawsApp.previewConfigured)

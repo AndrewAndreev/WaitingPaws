@@ -56,7 +56,7 @@ struct MacCameraArea: View {
         } else if model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
             CameraPlaceholder(text: embeddedStatusText)
         } else if let server = model.settings.server, !model.settings.streamName.isEmpty {
-            ZoomableView(zoom: ui.cameraZoom) {
+            ZoomableView(zoom: ui.cameraZoom, contentZooms: true) {
                 CameraStreamView(server: server,
                                  stream: model.settings.streamName,
                                  mode: model.settings.playerMode,

@@ -680,20 +680,31 @@ private struct SettingsIPhonePane: View {
             }
         }
         Section {
+            LabeledContent {
+                TextField("Имя этого Mac", text: $settings.deviceName, prompt: Text(SyncIdentity.systemName))
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 240)
+            } label: {
+                Text("Имя этого Mac")
+                Text("Под этим именем \(SyncIdentity.model) виден на iPhone.")
+            }
+        }
+        Section {
             if host.pairedDevices.isEmpty {
                 Text("Пока ни один iPhone не подключался.")
                     .foregroundStyle(.secondary)
             }
-            ForEach(host.pairedDevices) { device in
-                let online = host.connectedDevices.contains(device.name)
+            ForEach(host.pairedDevices) { paired in
+                let online = host.isConnected(paired)
                 LabeledContent {
-                    Button("Забыть") { host.forget(device) }
+                    Button("Забыть") { host.forget(paired) }
                 } label: {
                     Label {
-                        Text(device.name)
-                        Text(online ? "Подключён сейчас" : "Подключение разрешено")
+                        Text(paired.name)
+                        Text(detail(paired, online: online))
                     } icon: {
-                        Image(systemName: "iphone")
+                        Image(systemName: paired.device.symbolName)
                             .foregroundStyle(online ? MacPalette.green : .secondary)
                     }
                 }
@@ -705,6 +716,20 @@ private struct SettingsIPhonePane: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    /// "iPhone 16 · Подключён сейчас": the model tells two iPhones apart (iOS names them all "iPhone").
+    private func detail(_ paired: SyncHost.PairedDevice, online: Bool) -> String {
+        var parts: [String] = []
+        if let model = paired.device.distinctModel { parts.append(model) }
+        if online {
+            parts.append(String(localized: "Подключён сейчас"))
+        } else if let lastSeen = paired.lastSeen {
+            parts.append(String(localized: "Последний раз \(lastSeen.formatted(.relative(presentation: .named)))"))
+        } else {
+            parts.append(String(localized: "Подключение разрешено"))
+        }
+        return parts.joined(separator: " · ")
     }
 }
 

@@ -7,7 +7,9 @@ import WaitingPawsCore
 /// coloured icons and search, grouped panes on the right, back / forward in the toolbar.
 struct MacSettingsView: View {
     @Environment(AppModel.self) private var model
-    @State private var pane: MacSettingsPane? = .camera
+    /// DEBUG `--demo-settings-pane iPhone` opens on that pane.
+    @State private var pane: MacSettingsPane? = SetupDemo.argument(after: "--demo-settings-pane")
+        .flatMap(MacSettingsPane.init(rawValue:)) ?? .camera
     @State private var back: [MacSettingsPane] = []
     @State private var forward: [MacSettingsPane] = []
     @State private var navigating = false

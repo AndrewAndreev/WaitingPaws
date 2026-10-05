@@ -7,13 +7,14 @@ import WaitingPawsCore
 /// Mac side of the iPhone link: advertises `_waitingpaws._tcp` over Bonjour, lets an iPhone join after
 /// the user allows it once (a pairing secret is remembered per device, see `SyncCrypto`), pushes the session
 /// state on every change and applies the iPhone's button presses. The Mac stays the owner of the session
-/// and the recording. Everything after the key exchange is encrypted.
+/// and the recording. Everything after the key exchange is encrypted. Devices are told apart by their id
+/// (`SyncHello.deviceID`), never by name: iOS calls every iPhone just "iPhone".
 @MainActor
 @Observable
 final class SyncHost {
     struct PairingRequest: Identifiable, Equatable {
         let id: UUID
-        let deviceName: String
+        let device: SyncDevice
     }
 
     struct PairedDevice: Codable, Identifiable, Equatable {
@@ -22,12 +23,21 @@ final class SyncHost {
         var name: String
         /// The pairing secret (named `token` since protocol v1, whose tokens keep working as secrets).
         var token: String
+        /// From the device's last hello (nil for pairings made before these were sent).
+        var platform: String?
+        var model: String?
+        var lastSeen: Date?
+
+        var device: SyncDevice {
+            SyncDevice(id: deviceID, name: name, kind: platform.map { SyncPlatform(rawValue: $0) } ?? .iphone,
+                       model: model ?? "")
+        }
     }
 
     /// An iPhone waiting for "Разрешить" on this Mac.
     var pairingRequest: PairingRequest?
-    /// Names of the iPhones connected right now.
-    private(set) var connectedDevices: [String] = []
+    /// The iPhones connected right now (one entry per device), sorted by name.
+    private(set) var connectedDevices: [SyncDevice] = []
     private(set) var pairedDevices: [PairedDevice] = []
     private(set) var isRunning = false
     private(set) var lastError: String?
@@ -44,8 +54,28 @@ final class SyncHost {
     @ObservationIgnored var onPairingCancelled: ((PairingRequest) -> Void)?
     /// An iPhone was forgotten: the go2rtc password it knew must change (then `refreshAccess()`).
     @ObservationIgnored var onDeviceForgotten: (() -> Void)?
+    /// This Mac's name for the iPhones (Settings, or the computer name), read on every tick: a new one is advertised
+    /// and sent to the connected iPhones once it settles (`hostName`).
+    @ObservationIgnored var nameProvider: () -> String = { SyncIdentity.systemName }
 
-    let hostName = Host.current().localizedName ?? "Mac"
+    /// The name advertised and sent to the iPhones. A new one from Settings is taken once it stops changing for a
+    /// moment: typing it would otherwise re-register the Bonjour service on every key.
+    private(set) var hostName: String = SyncIdentity.systemName
+    @ObservationIgnored private var nameCandidate: (name: String, since: Date)?
+
+    private func settleName() {
+        let name = nameProvider()
+        guard name != hostName else { nameCandidate = nil; return }
+        if nameCandidate?.name != name { nameCandidate = (name, Date()) }
+        if let candidate = nameCandidate, Date().timeIntervalSince(candidate.since) >= 1.5 || lastInfo == nil {
+            hostName = name
+            nameCandidate = nil
+        }
+    }
+
+    func isConnected(_ device: PairedDevice) -> Bool {
+        connectedDevices.contains { $0.id == device.deviceID }
+    }
 
     struct SyncWelcomeAccess {
         var port: Int
@@ -86,7 +116,15 @@ final class SyncHost {
         }
         #if DEBUG
         // `--demo-iphone`: a connected iPhone in the toolbar and Settings (nothing listens).
-        if CommandLine.arguments.contains("--demo-iphone") { connectedDevices = ["iPhone"] }
+        if CommandLine.arguments.contains("--demo-iphone") {
+            connectedDevices = [SyncDevice(id: "demo-iphone", name: "iPhone Тани", kind: .iphone, model: "iPhone 16")]
+            if !pairedDevices.contains(where: { $0.deviceID == "demo-iphone" }) {
+                pairedDevices = [PairedDevice(deviceID: "demo-iphone", name: "iPhone Тани", token: "", platform: "iphone",
+                                              model: "iPhone 16", lastSeen: Date()),
+                                 PairedDevice(deviceID: "demo-iphone-2", name: "iPhone 15 Pro", token: "", platform: "iphone",
+                                              model: "iPhone 15 Pro", lastSeen: Date().addingTimeInterval(-3 * 86_400))]
+            }
+        }
         #endif
     }
 
@@ -111,6 +149,7 @@ final class SyncHost {
     /// restarted, and after a few failures it keeps accepting direct connections without advertising.
     private func startListener() {
         guard listener == nil, wanted else { return }
+        settleName()
         let advertise = bonjourFailures < 3 && !AppModel.isSyncTest
         do {
             let parameters = SyncChannel.parameters()
@@ -248,7 +287,7 @@ final class SyncHost {
             client.hello = hello
             client.handshake = handshake
             clients[id] = client
-            print("[sync] hello from \(hello.deviceName)")
+            print("[sync] hello from \(hello.deviceName) (\(hello.device.modelTitle), \(hello.deviceID.prefix(8)))")
             client.channel.send(.challenge(macPublic))
         case .proof(let proof):
             guard let hello = client.hello, let handshake = client.handshake, !client.approved,
@@ -267,7 +306,7 @@ final class SyncHost {
                 if autoAccept {
                     approve(id)
                 } else {
-                    let request = PairingRequest(id: id, deviceName: hello.deviceName)
+                    let request = PairingRequest(id: id, device: hello.device)
                     pairingRequest = request
                     onPairingRequest?(request)
                 }
@@ -289,15 +328,21 @@ final class SyncHost {
 
         // A new iPhone: both sides derive the same secret from this handshake; it never crosses the network.
         let secret = client.pairingSecret ?? handshake.newPairingSecret()
-        let device = PairedDevice(deviceID: hello.deviceID, name: hello.deviceName, token: secret)
-        pairedDevices.removeAll { $0.deviceID == hello.deviceID }
-        pairedDevices.append(device)
+        let device = PairedDevice(deviceID: hello.deviceID, name: hello.deviceName, token: secret,
+                                  platform: hello.device.kind?.rawValue ?? hello.platform, model: hello.model, lastSeen: Date())
+        if let index = pairedDevices.firstIndex(where: { $0.deviceID == hello.deviceID }) {
+            pairedDevices[index] = device
+        } else {
+            pairedDevices.append(device)
+        }
         savePairings()
+        // The same iPhone came back before its old connection timed out (Wi-Fi drop): that one is gone.
+        for (other, old) in clients where other != id && old.hello?.deviceID == hello.deviceID { drop(other) }
 
         client.channel.send(.welcome(welcome()))
         if let state = stateProvider?() { client.channel.send(.state(state)) }
         updateConnected()
-        print("[sync] \(hello.deviceName) joined")
+        print("[sync] \(hello.deviceName) (\(hello.device.modelTitle)) joined")
     }
 
     private func drop(_ id: UUID) {
@@ -311,7 +356,10 @@ final class SyncHost {
     }
 
     private func updateConnected() {
-        connectedDevices = clients.values.filter(\.approved).compactMap { $0.hello?.deviceName }.sorted()
+        var seen = Set<String>()
+        connectedDevices = clients.values.filter(\.approved).compactMap { $0.hello?.device }
+            .filter { seen.insert($0.id).inserted }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     // MARK: - Broadcast
@@ -319,10 +367,16 @@ final class SyncHost {
     /// Sends the state to every approved iPhone when it changed, and refreshes the Bonjour TXT record.
     func broadcastIfChanged() {
         guard let state = stateProvider?() else { return }
+        settleName()
         let info = currentInfo(state)
-        if info != lastInfo, let listener, listener.service != nil {
+        if info != lastInfo {
+            let renamed = lastInfo.map { $0.name != info.name } ?? false
             lastInfo = info
-            listener.service = NWListener.Service(name: hostName, type: SyncProtocol.serviceType, txtRecord: Self.txtRecord(info))
+            if let listener, listener.service != nil {
+                listener.service = NWListener.Service(name: info.name, type: SyncProtocol.serviceType, txtRecord: Self.txtRecord(info))
+            }
+            // The welcome carries the name the iPhones show.
+            if renamed { refreshAccess() }
         }
         guard clients.values.contains(where: \.approved) else { return }
         let data = try? SyncProtocol.encoder().encode(state)
@@ -344,7 +398,8 @@ final class SyncHost {
             }
         }
         return SyncHostInfo(name: hostName, cameraTitle: state?.cameraTitle ?? "", cameraReady: state?.cameraReady ?? false,
-                            sessionRunning: state?.session != nil, currentExit: exit)
+                            sessionRunning: state?.session != nil, currentExit: exit, id: SyncIdentity.deviceID,
+                            platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model)
     }
 
     private static func txtRecord(_ info: SyncHostInfo) -> NWTXTRecord {
@@ -353,15 +408,16 @@ final class SyncHost {
 
     private func savePairings() {
         if let data = try? JSONEncoder().encode(pairedDevices) {
-            // A sync check in a preview copy must not add the simulator to the user's iPhones.
-            if !AppModel.isSyncTest { UserDefaults.standard.set(data, forKey: Self.pairingsKey) }
+            // A sync check or a demo in a preview copy must not change the user's iPhones.
+            if !AppModel.isUIPreview { UserDefaults.standard.set(data, forKey: Self.pairingsKey) }
         }
     }
 
     private func welcome() -> SyncWelcome {
         let access = accessProvider?() ?? SyncWelcomeAccess(port: EmbeddedGo2RTC.apiPort, username: "", password: "")
         return SyncWelcome(hostName: hostName, go2rtcPort: access.port, username: access.username,
-                           password: access.password, addresses: Self.ipv4Addresses())
+                           password: access.password, addresses: Self.ipv4Addresses(), hostID: SyncIdentity.deviceID,
+                           platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model)
     }
 
     /// LAN IPv4 addresses of this Mac (Wi-Fi / Ethernet), for the iPhone's go2rtc URL.

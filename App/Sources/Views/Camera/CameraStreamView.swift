@@ -30,6 +30,8 @@ struct CameraStreamView: View {
     var onDelay: ((Double, Double?) -> Void)? = nil
 
     @State private var phase: PlayerPhase = .connecting
+    /// Set inside `ZoomableView(contentZooms: true)`: the page zooms the picture itself.
+    @Environment(ZoomState.self) private var zoom: ZoomState?
 
     init(server: Go2RTCServer, stream: String, mode: PlayerMode, audioEnabled: Bool, fill: Bool = false,
          reloadToken: Int = 0, showsStatus: Bool = true, onVideoSize: ((CGSize) -> Void)? = nil,
@@ -48,7 +50,7 @@ struct CameraStreamView: View {
     var body: some View {
         CameraWebView(server: server, stream: stream, mode: mode, audioEnabled: audioEnabled, fill: fill,
                       reloadToken: reloadToken, onVideoSize: onVideoSize, onDelay: onDelay,
-                      onPhase: { phase = $0 })
+                      onPhase: { phase = $0 }, zoomScale: zoom?.scale ?? 1, zoomOffset: zoom?.offset ?? .zero)
             .overlay {
                 if showsStatus { CameraStatusOverlay(phase: phase) }
             }
@@ -152,6 +154,9 @@ struct CameraWebView {
     var onDelay: ((Double, Double?) -> Void)? = nil
     /// Called when the player's phase changes ("state …" messages).
     var onPhase: ((PlayerPhase) -> Void)? = nil
+    /// The picture's zoom (`ZoomState`), applied inside the page: scaled around the centre, then shifted by the offset.
+    var zoomScale: CGFloat = 1
+    var zoomOffset: CGSize = .zero
 
     private var client: Go2RTCClient { Go2RTCClient(server: server) }
 
@@ -168,7 +173,12 @@ struct CameraWebView {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <style>
           html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
-          video-rtc { display: block; width: 100%; height: 100%; }
+          /* The app's zoom (`zoomStyle`): the same as SwiftUI's scaleEffect + offset; a glide for animated changes. */
+          video-rtc {
+            display: block; width: 100%; height: 100%;
+            transform: translate(var(--zoom-x, 0px), var(--zoom-y, 0px)) scale(var(--zoom, 1));
+            transition: transform var(--zoom-time, 0s) cubic-bezier(0.2, 0.9, 0.3, 1);
+          }
           video-rtc video { width: 100%; height: 100%; object-fit: \(fit); background: #000; }
         </style>
         </head><body>
@@ -450,6 +460,20 @@ struct CameraWebView {
         webView.evaluateJavaScript("window.playerMuted = \(muted); if (window.player && window.player.video) { window.player.video.muted = \(muted); }")
     }
 
+    /// The page's zoom variables (see `video-rtc` in `html()`).
+    static func zoomStyle(scale: CGFloat, offset: CGSize) -> String {
+        String(format: "--zoom: %.4f; --zoom-x: %.2fpx; --zoom-y: %.2fpx", scale, offset.width, offset.height)
+    }
+
+    /// Moves the picture to `zoomScale`/`zoomOffset`; gliding there when the change came inside `withAnimation`.
+    /// A page that (re)loads gets the current zoom in `Coordinator.webView(_:didFinish:)`.
+    private func applyZoom(to webView: WKWebView, coordinator: Coordinator, animated: Bool) {
+        let style = Self.zoomStyle(scale: zoomScale, offset: zoomOffset)
+        guard coordinator.zoomStyle != style else { return }
+        coordinator.zoomStyle = style
+        webView.evaluateJavaScript("document.documentElement.style.cssText = '\(style); --zoom-time: \(animated ? 0.35 : 0)s'")
+    }
+
     /// Forwards player events from JavaScript into the app log; "playing 1920x1080" / "size …" also report the resolution.
     /// "delay 1.25 0.40" (buffer, network) goes to `onDelay` only (every second, not for the log); "state …" to `onPhase`.
     final class LogHandler: NSObject, WKScriptMessageHandler {
@@ -513,9 +537,11 @@ struct CameraWebView {
         var loadedKey: String?
         var server: Go2RTCServer?
         var audioEnabled = false
+        var zoomStyle = CameraWebView.zoomStyle(scale: 1, offset: .zero)
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.isHidden = false
+            webView.evaluateJavaScript("document.documentElement.style.cssText = '\(zoomStyle)'")
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -547,6 +573,7 @@ extension CameraWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         load(into: webView, coordinator: context.coordinator)
+        applyZoom(to: webView, coordinator: context.coordinator, animated: context.transaction.animation != nil)
     }
 }
 #else
@@ -562,6 +589,7 @@ extension CameraWebView: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         load(into: webView, coordinator: context.coordinator)
+        applyZoom(to: webView, coordinator: context.coordinator, animated: context.transaction.animation != nil)
     }
 }
 #endif

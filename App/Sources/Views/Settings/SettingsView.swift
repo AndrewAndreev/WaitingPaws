@@ -14,6 +14,7 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var settings = model.settings
         NavigationStack {
+            ScrollViewReader { proxy in
             Form {
                 Section {
                     Picker("Режим", selection: $settings.connectionMode) {
@@ -139,6 +140,14 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            #if DEBUG && os(iOS)
+            // `--demo-screen settings-sync`: opens scrolled to «Синхронизация» (UI checks without scrolling).
+            .onAppear {
+                guard CommandLine.arguments.contains("settings-sync") else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { proxy.scrollTo("sync", anchor: .top) }
+            }
+            #endif
+            }
             .navigationTitle("Настройки")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -146,14 +155,9 @@ struct SettingsView: View {
                 }
             }
             .sheet(isPresented: $showXiaomi) {
-                NavigationStack {
-                    XiaomiLoginView(onDone: { _ in
-                        showXiaomi = false
-                        showCameraPicker = true
-                    })
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("Отмена") { showXiaomi = false } }
-                    }
+                XiaomiSignInSheet { _ in
+                    showXiaomi = false
+                    showCameraPicker = true
                 }
                 .environment(model)
                 .sheetFrame(width: 520, height: 620)
@@ -173,8 +177,7 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showCameraPicker) {
                 NavigationStack {
-                    CameraPickerView(accountID: settings.xiaomiAccountID.isEmpty ? nil : settings.xiaomiAccountID,
-                                     region: settings.xiaomiRegion) { _ in
+                    CameraPickerView(showsClose: true) { _ in
                         showCameraPicker = false
                     }
                 }
@@ -195,33 +198,85 @@ struct SettingsView: View {
     }
 
     #if os(iOS)
-    /// The way to a Mac that is always there (the «Рядом Mac» card on the main screen can be closed or pushed out).
+    /// The way to a computer that is always there (the «Рядом Mac» card on the main screen can be closed or pushed
+    /// out): which one to sync with, this iPhone's name for them, and the ones joined before (to forget).
+    @ViewBuilder
     private var macSection: some View {
+        @Bindable var settings = model.settings
         let client = model.syncClient
-        return Section {
+        Section {
+            LabeledContent("Имя этого \(SyncIdentity.platform.title)") {
+                TextField(SyncIdentity.systemName, text: $settings.deviceName)
+                    .multilineTextAlignment(.trailing)
+                    .submitLabel(.done)
+            }
+            .id("sync")
             switch client.status {
-            case .connected(let name):
-                LabeledContent("Синхронизировано с", value: name)
+            case .connected(let host):
+                hostLabel(host, detail: String(localized: "Синхронизировано"))
                 Button("Отключить синхронизацию", role: .destructive) { client.disconnect() }
-            case .connecting(let name), .waitingApproval(let name):
-                LabeledContent("Подключаемся к", value: name)
+            case .connecting(let host), .waitingApproval(let host):
+                hostLabel(host, detail: String(localized: "Подключаемся…"))
             case .idle, .failed:
                 if case .failed(let message) = client.status {
                     Text(message).foregroundStyle(.orange)
                 }
-                if client.macs.isEmpty {
+                if client.hosts.isEmpty {
                     Text("В этой сети нет Mac с открытым Waiting Paws").foregroundStyle(.secondary)
                 }
-                ForEach(client.macs) { mac in
-                    Button("Синхронизировать с «\(mac.info.name)»") { client.connect(to: mac) }
-                        .disabled(model.session != nil || mac.info.version != SyncProtocol.version)
+            }
+            ForEach(client.hosts.filter { $0.id != client.host?.id }) { host in
+                Button {
+                    client.connect(to: host)
+                } label: {
+                    hostLabel(host.device, detail: HostText.detail(host, paired: client.isPaired(host.device)))
                 }
+                .tint(.primary)
+                .disabled(model.session != nil || !host.isCompatible || client.isBusy)
             }
         } header: {
-            Text("Mac")
+            Text("Синхронизация")
         } footer: {
-            Text("Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К Mac, с которым уже работал, iPhone подключается сам.")
+            Text("Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К последнему Mac, с которым работал, iPhone подключается сам. Имя выше видно на Mac при подключении.")
         }
+        if !client.pairedHosts.isEmpty {
+            Section {
+                ForEach(client.pairedHosts.sorted { $0.lastConnected > $1.lastConnected }) { paired in
+                    LabeledContent {
+                        Button("Забыть", role: .destructive) { client.forget(paired.id) }
+                            .buttonStyle(.borderless)
+                    } label: {
+                        hostLabel(paired.device, detail: pairedDetail(paired))
+                    }
+                }
+            } header: {
+                Text("Подключались раньше")
+            } footer: {
+                Text("После «Забыть» для синхронизации с этим компьютером снова понадобится «Разрешить» на нём.")
+            }
+        }
+    }
+
+    private func hostLabel(_ host: SyncDevice, detail: String) -> some View {
+        Label {
+            Text(host.name)
+            if !detail.isEmpty { Text(detail) }
+        } icon: {
+            Image(systemName: host.symbolName)
+        }
+    }
+
+    private func pairedDetail(_ paired: SyncClient.PairedHost) -> String {
+        var parts: [String] = []
+        if let model = paired.device.distinctModel { parts.append(model) }
+        if model.syncClient.host?.id == paired.id, model.syncClient.isConnected {
+            parts.append(String(localized: "подключён сейчас"))
+        } else if model.syncClient.isNearby(paired.id) {
+            parts.append(String(localized: "рядом"))
+        } else {
+            parts.append(String(localized: "последний раз \(paired.lastConnected.formatted(.relative(presentation: .named)))"))
+        }
+        return parts.joined(separator: " · ")
     }
     #endif
 
