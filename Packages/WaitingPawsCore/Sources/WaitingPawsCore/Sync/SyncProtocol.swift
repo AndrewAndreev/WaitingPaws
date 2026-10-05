@@ -2,7 +2,9 @@ import Foundation
 
 /// iPhone ↔ Mac link. The Mac owns the session, the camera (embedded go2rtc) and the recording; an iPhone
 /// on the same network finds it over Bonjour, asks to join (the Mac user allows it once), then shows the
-/// Mac's camera and a mirror of its session and sends button presses back.
+/// Mac's camera and a mirror of its session and sends button presses back. Several Macs and iPhones can share
+/// a network (and later Windows PCs as hosts): each side tells who it is (`SyncDevice`: id, name, kind, model),
+/// and pairings are bound to the ids.
 ///
 /// Transport: WebSocket over TCP (Network.framework on both ends), one JSON `SyncMessage` per text frame.
 /// From the key exchange on, the frames are encrypted (`SyncCrypto`).
@@ -24,6 +26,12 @@ public enum SyncProtocol {
         public static let session = "session"
         /// Current exit number while a training runs.
         public static let exit = "exit"
+        /// The host's stable id (`SyncDevice.id`); hosts before it are known by their name only.
+        public static let id = "id"
+        /// `SyncPlatform` raw value ("mac", "windows"); missing = a Mac.
+        public static let platform = "os"
+        /// "MacBook Air", "Mac mini".
+        public static let model = "model"
     }
 
     public static func encoder() -> JSONEncoder {
@@ -41,21 +49,31 @@ public enum SyncProtocol {
 
 /// What a Mac advertises before anyone connects (from the Bonjour TXT record).
 public struct SyncHostInfo: Equatable, Hashable {
+    /// The Bonjour service name: the host's name, made unique on the network by Bonjour ("MacBook Pro (2)").
     public var name: String
     public var version: Int
     public var cameraTitle: String
     public var cameraReady: Bool
     public var sessionRunning: Bool
     public var currentExit: Int?
+    /// nil for hosts that don't send one yet (they are told apart by name).
+    public var id: String?
+    /// `SyncPlatform` raw value; nil = a Mac (the only host before the field existed).
+    public var platform: String?
+    public var model: String
 
     public init(name: String, version: Int = SyncProtocol.version, cameraTitle: String = "", cameraReady: Bool = false,
-                sessionRunning: Bool = false, currentExit: Int? = nil) {
+                sessionRunning: Bool = false, currentExit: Int? = nil, id: String? = nil, platform: String? = nil,
+                model: String = "") {
         self.name = name
         self.version = version
         self.cameraTitle = cameraTitle
         self.cameraReady = cameraReady
         self.sessionRunning = sessionRunning
         self.currentExit = currentExit
+        self.id = id
+        self.platform = platform
+        self.model = model
     }
 
     public init(name: String, txt: [String: String]) {
@@ -64,7 +82,10 @@ public struct SyncHostInfo: Equatable, Hashable {
                   cameraTitle: txt[SyncProtocol.TXT.camera] ?? "",
                   cameraReady: txt[SyncProtocol.TXT.ready] == "1",
                   sessionRunning: txt[SyncProtocol.TXT.session] == "1",
-                  currentExit: Int(txt[SyncProtocol.TXT.exit] ?? ""))
+                  currentExit: Int(txt[SyncProtocol.TXT.exit] ?? ""),
+                  id: txt[SyncProtocol.TXT.id].flatMap { $0.isEmpty ? nil : $0 },
+                  platform: txt[SyncProtocol.TXT.platform],
+                  model: txt[SyncProtocol.TXT.model] ?? "")
     }
 
     public var txt: [String: String] {
@@ -73,7 +94,16 @@ public struct SyncHostInfo: Equatable, Hashable {
                    SyncProtocol.TXT.ready: cameraReady ? "1" : "0",
                    SyncProtocol.TXT.session: sessionRunning ? "1" : "0"]
         if let currentExit { txt[SyncProtocol.TXT.exit] = "\(currentExit)" }
+        if let id { txt[SyncProtocol.TXT.id] = id }
+        if let platform { txt[SyncProtocol.TXT.platform] = platform }
+        if !model.isEmpty { txt[SyncProtocol.TXT.model] = model }
         return txt
+    }
+
+    /// The host as the UI shows it. Without an id the name stands in for it ("name:" keeps the two apart).
+    public var device: SyncDevice {
+        SyncDevice(id: id ?? "name:" + name, name: name,
+                   kind: platform.map { SyncPlatform(rawValue: $0) } ?? .mac, model: model)
     }
 }
 
@@ -83,12 +113,24 @@ public struct SyncHello: Codable, Equatable {
     public var deviceName: String
     public var publicKey: Data
     public var protocolVersion: Int
+    /// `SyncPlatform` raw value; nil from builds before it (always an iPhone then).
+    public var platform: String?
+    /// "iPhone 16 Pro": iOS gives apps only "iPhone" as the device name, so the model is what tells two apart.
+    public var model: String?
 
-    public init(deviceID: String, deviceName: String, publicKey: Data, protocolVersion: Int = SyncProtocol.version) {
+    public init(deviceID: String, deviceName: String, publicKey: Data, protocolVersion: Int = SyncProtocol.version,
+                platform: String? = nil, model: String? = nil) {
         self.deviceID = deviceID
         self.deviceName = deviceName
         self.publicKey = publicKey
         self.protocolVersion = protocolVersion
+        self.platform = platform
+        self.model = model
+    }
+
+    public var device: SyncDevice {
+        SyncDevice(id: deviceID, name: deviceName, kind: platform.map { SyncPlatform(rawValue: $0) } ?? .iphone,
+                   model: model ?? "")
     }
 }
 
@@ -101,13 +143,21 @@ public struct SyncWelcome: Codable, Equatable {
     public var password: String
     /// The Mac's IPv4 addresses, in case the connection's own address is not usable for HTTP.
     public var addresses: [String]
+    /// Who the host is (as in its TXT record, but sealed); nil from builds before these fields.
+    public var hostID: String?
+    public var platform: String?
+    public var model: String?
 
-    public init(hostName: String, go2rtcPort: Int, username: String, password: String, addresses: [String]) {
+    public init(hostName: String, go2rtcPort: Int, username: String, password: String, addresses: [String],
+                hostID: String? = nil, platform: String? = nil, model: String? = nil) {
         self.hostName = hostName
         self.go2rtcPort = go2rtcPort
         self.username = username
         self.password = password
         self.addresses = addresses
+        self.hostID = hostID
+        self.platform = platform
+        self.model = model
     }
 }
 

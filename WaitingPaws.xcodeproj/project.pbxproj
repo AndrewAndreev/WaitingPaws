@@ -24,6 +24,7 @@
 		1CDF1781E48F963F97F7C8FD /* AboutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB09408266FBD3CE9B6B8826 /* AboutViews.swift */; };
 		1FE577D1926CC3C43CDC4417 /* WaitingPawsCore in Frameworks */ = {isa = PBXBuildFile; productRef = B4F844F9CD08AA8BC56C790D /* WaitingPawsCore */; };
 		208F37B20D6D8061D7CEDC6C /* MacHistoryProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AF487EFFE6D2FB22AA400BB /* MacHistoryProgress.swift */; };
+		20E8EDD765F0753142D9040E /* SyncIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5E56CC601BE031A3D48DF0 /* SyncIdentity.swift */; };
 		21288095E2A1499040A448BD /* CameraPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB15E742A63332D0305C49E /* CameraPickerView.swift */; };
 		23BB2E63F7C12FBF534E7AA1 /* KeyboardPrewarmer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5D87597A0F52F2D42B6E6F /* KeyboardPrewarmer.swift */; };
 		25DEE27E7DA565261F9B9A46 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */; };
@@ -82,6 +83,7 @@
 		763399D65BA031D177BED44F /* ZoomableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6961CED894D4487A9C9977 /* ZoomableView.swift */; };
 		792907206B28D4D6A58F99D0 /* SetupServerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */; };
 		7AE4B75A5F0B841DA37CA766 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */; };
+		7DAE02536A3B4738ECA07D06 /* SyncIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5E56CC601BE031A3D48DF0 /* SyncIdentity.swift */; };
 		7F5CA5C97017F6F9E02F9A21 /* PlanInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */; };
 		80A7DF3FFDD448ED63301DF0 /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
 		827E5E6B41B910A1D067202B /* SetupXiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED967B787875E075AB3B309 /* SetupXiaomiSignInSheet.swift */; };
@@ -208,6 +210,7 @@
 		8ED967B787875E075AB3B309 /* SetupXiaomiSignInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupXiaomiSignInSheet.swift; sourceTree = "<group>"; };
 		98694143DBF7C1033313F1E6 /* SyncChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncChannel.swift; sourceTree = "<group>"; };
 		9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
+		9D5E56CC601BE031A3D48DF0 /* SyncIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncIdentity.swift; sourceTree = "<group>"; };
 		9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSummarySheet.swift; sourceTree = "<group>"; };
 		A07E8A420FED84FE8A782BFB /* LogMirror.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMirror.swift; sourceTree = "<group>"; };
 		A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUIState.swift; sourceTree = "<group>"; };
@@ -497,6 +500,7 @@
 				98694143DBF7C1033313F1E6 /* SyncChannel.swift */,
 				AC3612DF5625E044251C2ABF /* SyncClient.swift */,
 				CA209D43CA8963E3C71A7B14 /* SyncHost.swift */,
+				9D5E56CC601BE031A3D48DF0 /* SyncIdentity.swift */,
 			);
 			path = Sync;
 			sourceTree = "<group>";
@@ -735,6 +739,7 @@
 				B909F3E973BE793BCA0619EE /* SyncChannel.swift in Sources */,
 				80A7DF3FFDD448ED63301DF0 /* SyncClient.swift in Sources */,
 				F044697D60DFE32737B4DA27 /* SyncHost.swift in Sources */,
+				7DAE02536A3B4738ECA07D06 /* SyncIdentity.swift in Sources */,
 				1195428CB49F8D9B997EF706 /* Theme.swift in Sources */,
 				D0F0581E479A071794513BA0 /* TimerRing.swift in Sources */,
 				CD446916425199904EA7EED1 /* WaitingPawsApp.swift in Sources */,
@@ -808,6 +813,7 @@
 				729C4E6F362987B7E34AFFBD /* SyncChannel.swift in Sources */,
 				9D6CA3836B21203254FCA69B /* SyncClient.swift in Sources */,
 				61C282CC287EA600A07E5C31 /* SyncHost.swift in Sources */,
+				20E8EDD765F0753142D9040E /* SyncIdentity.swift in Sources */,
 				C804316A04BEBB357E0E132E /* Theme.swift in Sources */,
 				312542C67DA22BF708B936FB /* TimerRing.swift in Sources */,
 				5F41A4B2A6D07C968B890BCB /* WaitingPawsApp.swift in Sources */,

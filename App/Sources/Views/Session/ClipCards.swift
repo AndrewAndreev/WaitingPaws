@@ -19,9 +19,9 @@ struct ClipRecordingOverlay: View {
                         .fixedSize()
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(model.isLinkedToMac ? "Запись на Mac" : "Запись без тренировки")
+                    Text(model.isLinkedToMac ? "Запись на \(model.linkedHostKind)" : "Запись без тренировки")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    Text(model.isLinkedToMac ? "Видео сохранится на Mac" : "Видео появится в истории")
+                    Text(model.isLinkedToMac ? "Видео сохранится на \(model.linkedHostKind)" : "Видео появится в истории")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(.white.opacity(0.6))
                 }

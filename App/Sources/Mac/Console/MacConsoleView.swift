@@ -195,14 +195,17 @@ struct MacConsoleView: View {
             .help(model.settings.audioEnabled ? "Выключить звук камеры в приложении (запись всегда со звуком)"
                                               : "Включить звук камеры в приложении (запись всегда со звуком)")
         }
-        if !model.syncHost.connectedDevices.isEmpty {
+        if let first = model.syncHost.connectedDevices.first {
+            let devices = model.syncHost.connectedDevices
             ToolbarSpacer(.fixed)
             ToolbarItem {
-                Label(model.syncHost.connectedDevices.joined(separator: ", "), systemImage: "iphone")
+                Label(devices.map(\.name).joined(separator: ", "), systemImage: first.symbolName)
                     .foregroundStyle(MacPalette.blue)
                     .padding(.horizontal, ToolbarLook.padding + 6)
                     .labelStyle(.titleAndIcon)
-                    .help("iPhone видит камеру и ведёт эту тренировку")
+                    .help(devices.count == 1
+                          ? String(localized: "\(first.modelTitle) «\(first.name)» видит камеру и ведёт эту тренировку")
+                          : String(localized: "Камеру видят и ведут тренировку: \(devices.map(\.name).joined(separator: ", "))"))
             }
         }
         ToolbarSpacer(.fixed)

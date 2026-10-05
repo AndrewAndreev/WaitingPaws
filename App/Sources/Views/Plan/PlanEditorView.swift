@@ -129,7 +129,7 @@ struct PlanEditorView: View {
             VStack(spacing: 10) {
                 if model.isLinkedToMac {
                     // Recording follows the Mac's setting there.
-                    Label("Это расписание уже и на Mac — начать можно там или здесь.", systemImage: "laptopcomputer.and.iphone")
+                    Label("Это расписание уже и на \(model.linkedHostKind) — начать можно там или здесь.", systemImage: "laptopcomputer.and.iphone")
                         .font(.system(.footnote, design: .rounded))
                         .foregroundStyle(Theme.info)
                         .frame(maxWidth: .infinity, alignment: .leading)

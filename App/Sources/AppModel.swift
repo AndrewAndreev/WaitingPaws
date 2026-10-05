@@ -86,6 +86,8 @@ final class AppModel {
                                 stopAfter: args.contains("--demo-mac-recording-ends") ? 3 : nil,
                                 pendingPlan: args.contains("--demo-mac-pending") ? PlanParser.parse(DemoData.planText) : nil)
         }
+        // `--demo-hosts`: several computers with Waiting Paws nearby (the choice on the main screen and in Settings).
+        if args.contains("--demo-hosts") { syncClient.demoHosts() }
         #endif
         #if os(macOS)
         // `--demo-plan`: a parsed schedule waiting on the «Пульт» (no paste needed); `--demo-review` also opens its sheet.
@@ -898,6 +900,15 @@ extension AppModel {
         #endif
     }
 
+    /// What the linked host is called in the texts: "Mac", "ПК" («Запись на ПК»).
+    var linkedHostKind: String {
+        #if os(iOS)
+        return syncClient.host?.kindTitle ?? "Mac"
+        #else
+        return "Mac"
+        #endif
+    }
+
     /// go2rtc the camera view and the recorder talk to: the linked Mac's, or our own.
     var activeServer: Go2RTCServer? {
         #if os(iOS)
@@ -915,7 +926,7 @@ extension AppModel {
 
     var activeCameraName: String {
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.cameraTitle ?? String(localized: "Камера Mac") }
+        if syncClient.isConnected { return syncClient.state?.cameraTitle ?? String(localized: "Камера \(linkedHostKind)") }
         #endif
         return settings.cameraDisplayName
     }
@@ -1013,9 +1024,11 @@ extension AppModel {
             embedded.setLANPassword(settings.rotateLanPassword())
             syncHost.refreshAccess()
         }
+        syncHost.nameProvider = { [unowned self] in settings.linkName }
         if settings.shareWithIPhone { syncHost.start() }
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }
+        syncClient.nameProvider = { [unowned self] in settings.linkName }
         syncClient.canAutoConnect = { [unowned self] in session == nil && !isRecordingLocally }
         syncClient.startBrowsing()
         #if DEBUG
@@ -1100,10 +1113,11 @@ extension AppModel {
             }
             return
         }
-        let macName = syncClient.hostName ?? "Mac"
+        let hostName = syncClient.host?.name ?? linkedHostKind
+        let kind = linkedHostKind
         if previous == nil {
-            linkNotice = LinkNotice(title: String(localized: "Синхронизировано с «\(macName)»"),
-                                    detail: String(localized: "Тренировка, запись и лог — на Mac, шаги общие."))
+            linkNotice = LinkNotice(title: String(localized: "Синхронизировано с «\(hostName)»"),
+                                    detail: String(localized: "Тренировка, запись и лог — на \(kind), шаги общие."))
         }
         // Recording without a training on the Mac: same full-screen view here, the screen stays on.
         if state.session == nil {
@@ -1113,8 +1127,8 @@ extension AppModel {
                 keepAwake(true)
             } else if state.recordingSince == nil, previous?.recordingSince != nil, previous?.session == nil {
                 keepAwake(false)
-                linkNotice = LinkNotice(title: String(localized: "Видео сохранено на Mac"),
-                                        detail: String(localized: "Оно в истории на «\(macName)»."))
+                linkNotice = LinkNotice(title: String(localized: "Видео сохранено на \(kind)"),
+                                        detail: String(localized: "Оно в истории на «\(hostName)»."))
             }
         }
         if let snapshot = state.session {

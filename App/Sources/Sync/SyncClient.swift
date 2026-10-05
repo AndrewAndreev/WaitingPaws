@@ -2,55 +2,89 @@
 import Foundation
 import Network
 import Observation
-import UIKit
 import WaitingPawsCore
 
-/// iPhone side of the link: finds Macs running Waiting Paws on the local network, joins one (the Mac
-/// user allows it once), then exposes the Mac's go2rtc for the camera view and mirrors its session.
+/// iPhone side of the link: finds computers running Waiting Paws on the local network (Macs; Windows PCs once
+/// the port exists), joins the one the user picks (its user allows it once), then exposes its go2rtc for the
+/// camera view and mirrors its session. Hosts are told apart by their id (`SyncDevice`), so two Macs with the
+/// same name, or a renamed one, keep their own pairing.
 @MainActor
 @Observable
 final class SyncClient {
-    struct DiscoveredMac: Identifiable, Equatable {
-        var id: String { info.name }
+    struct DiscoveredHost: Identifiable, Equatable {
+        var id: String { device.id }
         let endpoint: NWEndpoint
         let info: SyncHostInfo
+        var device: SyncDevice { info.device }
+        var isCompatible: Bool { info.version == SyncProtocol.version }
+    }
+
+    /// A host this iPhone has joined (its pairing secret is in the keychain): listed with «Забыть» also when away.
+    struct PairedHost: Codable, Identifiable, Equatable {
+        let id: String
+        var name: String
+        var platform: String?
+        var model: String
+        var lastConnected: Date
+
+        var device: SyncDevice {
+            SyncDevice(id: id, name: name, kind: platform.map { SyncPlatform(rawValue: $0) } ?? .mac, model: model)
+        }
     }
 
     enum Status: Equatable {
         case idle
-        case connecting(String)
-        /// The Mac shows "Разрешить / Отклонить".
-        case waitingApproval(String)
-        case connected(String)
+        case connecting(SyncDevice)
+        /// The host shows "Разрешить / Отклонить".
+        case waitingApproval(SyncDevice)
+        case connected(SyncDevice)
         case failed(String)
     }
 
-    private(set) var macs: [DiscoveredMac] = []
+    /// Everything advertising Waiting Paws nearby, by name.
+    private(set) var hosts: [DiscoveredHost] = []
+    private(set) var pairedHosts: [PairedHost] = []
     private(set) var status: Status = .idle
     private(set) var state: SyncState?
-    /// The Mac's go2rtc (LAN address + Basic auth) once connected.
+    /// The host's go2rtc (LAN address + Basic auth) once connected.
     private(set) var server: Go2RTCServer?
-    private(set) var hostName: String?
 
-    /// Called with every state from the Mac, and with nil when the link goes away.
+    /// Called with every state from the host, and with nil when the link goes away.
     @ObservationIgnored var onState: ((SyncState?) -> Void)?
+    /// This iPhone's name for the hosts (Settings, or the model).
+    @ObservationIgnored var nameProvider: () -> String = { SyncIdentity.systemName }
 
     @ObservationIgnored private var browser: NWBrowser?
     @ObservationIgnored private var channel: SyncChannel?
     /// This connection's key exchange (see `SyncCrypto`).
     @ObservationIgnored private var privateKey = SyncCrypto.newKey()
     @ObservationIgnored private var handshake: SyncCrypto.Handshake?
-    /// No valid pairing secret on this connection: the Mac asked for «Разрешить», a new secret comes with welcome.
+    /// No valid pairing secret on this connection: the host asked for «Разрешить», a new secret comes with welcome.
     @ObservationIgnored private var freshPairing = false
-    /// Reconnect to this Mac whenever it shows up, also after a relaunch of either app (set after a successful
+    /// Where the secret offered on this connection came from (an older key is moved under the host's id once it works).
+    @ObservationIgnored private var offeredSecretKey: String?
+    /// Reconnect to this host whenever it shows up, also after a relaunch of either app (set after a successful
     /// connection, cleared by «Отключить синхронизацию» and by a rejection).
-    @ObservationIgnored private var autoReconnectName: String? = UserDefaults.standard.string(forKey: SyncClient.autoConnectKey) {
-        didSet { UserDefaults.standard.set(autoReconnectName, forKey: Self.autoConnectKey) }
+    @ObservationIgnored private var autoReconnectID: String? = UserDefaults.standard.string(forKey: SyncClient.autoConnectKey) {
+        didSet { UserDefaults.standard.set(autoReconnectID, forKey: Self.autoConnectKey) }
     }
-    private static let autoConnectKey = "sync.autoConnectMac"
-    /// Whether joining a Mac on our own is fine right now: not while this iPhone runs its own training or recording.
+    /// Builds before host ids remembered the Mac by name; used until that Mac is joined again.
+    @ObservationIgnored private var legacyAutoReconnectName: String? = UserDefaults.standard.string(forKey: SyncClient.legacyAutoConnectKey) {
+        didSet { UserDefaults.standard.set(legacyAutoReconnectName, forKey: Self.legacyAutoConnectKey) }
+    }
+    private static let autoConnectKey = "sync.autoConnectHost"
+    private static let legacyAutoConnectKey = "sync.autoConnectMac"
+    private static let pairedHostsKey = "sync.pairedHosts"
+    /// Whether joining a host on our own is fine right now: not while this iPhone runs its own training or recording.
     @ObservationIgnored var canAutoConnect: () -> Bool = { true }
-    @ObservationIgnored private var loggedMacs: [String] = []
+    @ObservationIgnored private var loggedHosts: [String] = []
+
+    init() {
+        if let data = UserDefaults.standard.data(forKey: Self.pairedHostsKey),
+           let hosts = try? JSONDecoder().decode([PairedHost].self, from: data) {
+            pairedHosts = hosts
+        }
+    }
 
     var isConnected: Bool {
         if case .connected = status { return true }
@@ -64,16 +98,39 @@ final class SyncClient {
         }
     }
 
-    /// Macs with a camera ready, the one with a running training first.
-    var bestMac: DiscoveredMac? {
-        macs.filter { $0.info.version == SyncProtocol.version }
-            .sorted { ($0.info.sessionRunning ? 0 : 1, $0.info.cameraReady ? 0 : 1) < ($1.info.sessionRunning ? 0 : 1, $1.info.cameraReady ? 0 : 1) }
-            .first
+    /// The host linked, or being linked to.
+    var host: SyncDevice? {
+        switch status {
+        case .connecting(let device), .waitingApproval(let device), .connected(let device): return device
+        case .idle, .failed: return nil
+        }
     }
 
-    /// A Mac this iPhone has joined before (a pairing secret is stored for it).
-    func isPaired(_ mac: DiscoveredMac) -> Bool {
-        KeychainStore.get(Self.tokenKey(mac.info.name)) != nil
+    /// Hosts this build can join, the likely choice first: the one this iPhone reconnects to, one with a training
+    /// running, one joined before, one with its camera ready.
+    var compatibleHosts: [DiscoveredHost] {
+        hosts.filter(\.isCompatible).sorted { rank($0) < rank($1) }
+    }
+
+    var preferredHost: DiscoveredHost? { compatibleHosts.first }
+
+    private func rank(_ host: DiscoveredHost) -> (Int, Int, Int, Int, String) {
+        (isAutoReconnectTarget(host) ? 0 : 1, host.info.sessionRunning ? 0 : 1, isPaired(host.device) ? 0 : 1,
+         host.info.cameraReady ? 0 : 1, host.device.name)
+    }
+
+    /// A host this iPhone has joined before (a pairing secret is stored for it).
+    func isPaired(_ host: SyncDevice) -> Bool {
+        pairedHosts.contains { $0.id == host.id } || secret(for: host) != nil
+    }
+
+    func isNearby(_ hostID: String) -> Bool {
+        hosts.contains { $0.id == hostID }
+    }
+
+    private func isAutoReconnectTarget(_ host: DiscoveredHost) -> Bool {
+        if let autoReconnectID { return host.id == autoReconnectID }
+        return legacyAutoReconnectName != nil && host.device.name == legacyAutoReconnectName
     }
 
     // MARK: - Discovery
@@ -86,7 +143,7 @@ final class SyncClient {
             let parts = CommandLine.arguments[index + 1].split(separator: ":")
             if parts.count == 2, let port = NWEndpoint.Port(String(parts[1])) {
                 let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(String(parts[0])), port: port)
-                connect(to: DiscoveredMac(endpoint: endpoint, info: SyncHostInfo(name: "Mac (debug)")))
+                connect(to: DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "Mac (debug)")))
             }
         }
         #endif
@@ -120,121 +177,156 @@ final class SyncClient {
         }
     }
 
-    /// Joins the Mac this iPhone was linked to, if it is around and nothing here is in the way.
+    /// Joins the host this iPhone was linked to, if it is around and nothing here is in the way.
     func autoConnectIfPossible() {
-        guard channel == nil, let name = autoReconnectName, canAutoConnect(),
-              let mac = macs.first(where: { $0.info.name == name }) else { return }
-        print("[sync] reconnecting to \(name)")
-        connect(to: mac)
+        guard channel == nil, autoReconnectID != nil || legacyAutoReconnectName != nil, canAutoConnect(),
+              let host = hosts.first(where: isAutoReconnectTarget) else { return }
+        print("[sync] reconnecting to \(host.device.name)")
+        connect(to: host)
     }
 
     private func update(_ results: Set<NWBrowser.Result>) {
-        macs = results.compactMap { result in
+        hosts = results.compactMap { result in
             guard case .service(let name, _, _, _) = result.endpoint else { return nil }
             var txt: [String: String] = [:]
             if case .bonjour(let record) = result.metadata { txt = record.dictionary }
-            return DiscoveredMac(endpoint: result.endpoint, info: SyncHostInfo(name: name, txt: txt))
+            return DiscoveredHost(endpoint: result.endpoint, info: SyncHostInfo(name: name, txt: txt))
         }
-        .sorted { $0.info.name < $1.info.name }
-        let names = macs.map { mac in
-            mac.info.name + (isPaired(mac) ? " (paired)" : "") + (mac.info.version == SyncProtocol.version ? "" : " (v\(mac.info.version))")
+        .sorted { $0.device.name.localizedStandardCompare($1.device.name) == .orderedAscending }
+        let names = hosts.map { host in
+            var line = "\(host.device.name) [\(host.device.modelTitle), \(host.id.prefix(13))]"
+            if isPaired(host.device) { line += " (paired)" }
+            if !host.isCompatible { line += " (v\(host.info.version))" }
+            return line
         }
-        if names != loggedMacs {
-            loggedMacs = names
-            print("[sync] Macs nearby: \(names.isEmpty ? "none" : names.joined(separator: ", "))")
+        if names != loggedHosts {
+            loggedHosts = names
+            print("[sync] hosts nearby: \(names.isEmpty ? "none" : names.joined(separator: ", "))")
         }
         autoConnectIfPossible()
         #if DEBUG
-        // `--sync-auto-connect`: join the first Mac found (UI checks in the simulator without taps).
-        if channel == nil, status == .idle, CommandLine.arguments.contains("--sync-auto-connect"), let mac = bestMac {
-            connect(to: mac)
+        // `--sync-auto-connect`: join the first host found (UI checks in the simulator without taps).
+        if channel == nil, status == .idle, CommandLine.arguments.contains("--sync-auto-connect"), let host = preferredHost {
+            connect(to: host)
         }
         #endif
     }
 
     // MARK: - Connection
 
-    func connect(to mac: DiscoveredMac) {
+    func connect(to host: DiscoveredHost) {
         channel?.cancel()
-        let channel = SyncChannel(connection: NWConnection(to: mac.endpoint, using: SyncChannel.parameters()))
+        // Switching from another host: its state and camera go away first (the new one greets like a fresh link).
+        if isConnected { reset(to: .idle) }
+        let channel = SyncChannel(connection: NWConnection(to: host.endpoint, using: SyncChannel.parameters()))
         self.channel = channel
         privateKey = SyncCrypto.newKey()
         handshake = nil
         freshPairing = false
-        status = .connecting(mac.info.name)
+        offeredSecretKey = nil
+        status = .connecting(host.device)
+        let kind = host.device.kindTitle
         channel.onStateChange = { [weak self, weak channel] state in
             guard let self, let channel, channel === self.channel else { return }
             switch state {
             case .ready:
-                channel.send(.hello(SyncHello(deviceID: Self.deviceID, deviceName: UIDevice.current.name,
-                                              publicKey: self.privateKey.publicKey.rawRepresentation)))
+                channel.send(.hello(SyncHello(deviceID: SyncIdentity.deviceID, deviceName: self.nameProvider(),
+                                              publicKey: self.privateKey.publicKey.rawRepresentation,
+                                              platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model)))
             case .failed(let error):
-                self.lost(String(localized: "Нет связи с Mac: \(error.localizedDescription)"))
+                self.lost(String(localized: "Нет связи с \(kind): \(error.localizedDescription)"))
             case .cancelled:
-                if self.isConnected || self.isBusy { self.lost(String(localized: "Mac отключился")) }
+                if self.isConnected || self.isBusy { self.lost(String(localized: "\(kind) отключился")) }
             default:
                 break
             }
         }
         channel.onMessage = { [weak self, weak channel] message in
             guard let self, let channel, channel === self.channel else { return }
-            self.handle(message, macName: mac.info.name, channel: channel)
+            self.handle(message, from: host, channel: channel)
         }
         channel.start()
     }
 
     /// "Отключиться": stop mirroring and don't reconnect on our own.
     func disconnect() {
-        autoReconnectName = nil
+        autoReconnectID = nil
+        legacyAutoReconnectName = nil
         channel?.cancel()
         channel = nil
         reset(to: .idle)
+    }
+
+    /// «Забыть»: drop the pairing secret, so joining this host again needs «Разрешить» there.
+    func forget(_ hostID: String) {
+        if host?.id == hostID { disconnect() }
+        KeychainStore.set("", for: Self.secretKey(hostID))
+        if let name = pairedHosts.first(where: { $0.id == hostID })?.name { KeychainStore.set("", for: Self.legacySecretKey(name)) }
+        pairedHosts.removeAll { $0.id == hostID }
+        savePairedHosts()
+        if autoReconnectID == hostID { autoReconnectID = nil }
+        print("[sync] forgot host \(hostID.prefix(13))")
     }
 
     func send(_ command: SyncCommand) {
         channel?.send(.command(command))
     }
 
-    private func handle(_ message: SyncMessage, macName: String, channel: SyncChannel) {
+    private func handle(_ message: SyncMessage, from host: DiscoveredHost, channel: SyncChannel) {
         switch message {
-        case .challenge(let macKey):
+        case .challenge(let hostKey):
             guard handshake == nil else { return }
             let phoneKey = privateKey.publicKey.rawRepresentation
-            guard let handshake = try? SyncCrypto.Handshake(privateKey: privateKey, peerKey: macKey, phoneKey: phoneKey,
-                                                            macKey: macKey, deviceID: Self.deviceID) else {
-                lost(String(localized: "Нет связи с Mac"))
+            guard let handshake = try? SyncCrypto.Handshake(privateKey: privateKey, peerKey: hostKey, phoneKey: phoneKey,
+                                                            macKey: hostKey, deviceID: SyncIdentity.deviceID) else {
+                lost(String(localized: "Нет связи с \(host.device.kindTitle)"))
                 return
             }
             self.handshake = handshake
-            let secret = KeychainStore.get(Self.tokenKey(macName))
-            freshPairing = secret == nil
-            channel.cipher = handshake.cipher(isMac: false, pairingSecret: secret)
-            channel.send(.proof(secret.map { handshake.proof(pairingSecret: $0) }))
+            let stored = storedSecret(for: host.device)
+            offeredSecretKey = stored?.key
+            freshPairing = stored == nil
+            channel.cipher = handshake.cipher(isMac: false, pairingSecret: stored?.secret)
+            channel.send(.proof(stored.map { handshake.proof(pairingSecret: $0.secret) }))
         case .pending:
-            // The Mac did not recognise us (new iPhone, or forgotten there): keys without the old secret.
+            // The host did not recognise us (new iPhone, or forgotten there): keys without the old secret.
             if let handshake, !freshPairing {
                 freshPairing = true
                 channel.cipher = handshake.cipher(isMac: false, pairingSecret: nil)
             }
-            status = .waitingApproval(macName)
+            status = .waitingApproval(host.device)
         case .rejected(let reason):
-            autoReconnectName = nil
+            autoReconnectID = nil
+            legacyAutoReconnectName = nil
             self.channel?.cancel()
             self.channel = nil
             reset(to: .failed(reason))
         case .welcome(let welcome):
+            // A host found by name only (an older build, or `--sync-host`) gets its id from the sealed welcome.
+            let id = host.device.id.hasPrefix("name:") ? welcome.hostID ?? host.device.id : host.device.id
+            let device = SyncDevice(id: id, name: welcome.hostName,
+                                    kind: welcome.platform.map { SyncPlatform(rawValue: $0) } ?? host.device.kind,
+                                    model: welcome.model ?? host.device.model)
             if freshPairing, let handshake {
-                KeychainStore.set(handshake.newPairingSecret(), for: Self.tokenKey(macName))
+                KeychainStore.set(handshake.newPairingSecret(), for: Self.secretKey(id))
                 freshPairing = false
+                offeredSecretKey = Self.secretKey(id)
+            } else if let old = offeredSecretKey, old != Self.secretKey(id), let secret = KeychainStore.get(old) {
+                // The host accepted a secret kept by its name (before ids): it is this host's, keep it by id.
+                KeychainStore.set(secret, for: Self.secretKey(id))
+                KeychainStore.set("", for: old)
+                offeredSecretKey = Self.secretKey(id)
+                print("[sync] pairing with \(device.name) moved to its id")
             }
+            remember(device)
             let address = channel.remoteIPv4 ?? welcome.addresses.first ?? "127.0.0.1"
             server = URL(string: "http://\(address):\(welcome.go2rtcPort)/").map {
                 Go2RTCServer(baseURL: $0, username: welcome.username, password: welcome.password)
             }
-            hostName = welcome.hostName
-            autoReconnectName = macName
-            status = .connected(welcome.hostName)
-            print("[sync] joined \(welcome.hostName), go2rtc at \(address):\(welcome.go2rtcPort)")
+            autoReconnectID = id
+            legacyAutoReconnectName = nil
+            status = .connected(device)
+            print("[sync] joined \(device.name) (\(device.modelTitle)), go2rtc at \(address):\(welcome.go2rtcPort)")
         case .state(let state):
             self.state = state
             onState?(state)
@@ -246,13 +338,13 @@ final class SyncClient {
     private func lost(_ message: String) {
         channel?.cancel()
         channel = nil
-        reset(to: autoReconnectName == nil ? .failed(message) : .idle)
-        // The Mac may come back (app relaunched, Wi-Fi blip): `update` reconnects when it is seen again.
-        if let name = autoReconnectName, let mac = macs.first(where: { $0.info.name == name }) {
+        reset(to: autoReconnectID == nil ? .failed(message) : .idle)
+        // The host may come back (app relaunched, Wi-Fi blip): `update` reconnects when it is seen again.
+        if let id = autoReconnectID, let host = hosts.first(where: { $0.id == id }) {
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(2))
-                guard let self, self.channel == nil, self.autoReconnectName == name else { return }
-                self.connect(to: mac)
+                guard let self, self.channel == nil, self.autoReconnectID == id else { return }
+                self.connect(to: host)
             }
         }
     }
@@ -261,8 +353,7 @@ final class SyncClient {
     /// `--demo-mac-link` / `--demo-mac-recording`: look linked to a Mac without any network (UI checks).
     /// `stopAfter`: the Mac then stops the recording.
     func demoLink(recording: Bool, stopAfter: Double? = nil, pendingPlan: TrainingPlan? = nil) {
-        hostName = "MacBook Pro"
-        status = .connected("MacBook Pro")
+        status = .connected(SyncDevice(id: "demo-mac", name: "MacBook Pro", kind: .mac, model: "MacBook Pro"))
         var state = SyncState(session: nil, recordingSince: recording ? Date().addingTimeInterval(-83) : nil,
                               cameraReady: true, cameraTitle: "Xiaomi Smart Camera C200", streamName: "", lastRecord: nil,
                               pendingPlan: pendingPlan)
@@ -276,26 +367,68 @@ final class SyncClient {
             self?.onState?(state)
         }
     }
+
+    /// `--demo-hosts`: three computers nearby (two Macs, one of them training, and a PC), the first one joined before.
+    /// Nothing listens there: joining fails after a moment.
+    func demoHosts() {
+        let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: 9)
+        hosts = [
+            DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "MacBook Pro — Андрей", cameraTitle: "Прихожая",
+                                                                 cameraReady: true, id: "demo-mbp", platform: "mac",
+                                                                 model: "MacBook Pro")),
+            DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "MacBook Air — Татьяна", cameraTitle: "Xiaomi C200",
+                                                                 cameraReady: true, sessionRunning: true, currentExit: 3,
+                                                                 id: "demo-mba", platform: "mac", model: "MacBook Air")),
+            DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "DESKTOP-7QK", id: "demo-pc", platform: "windows")),
+        ]
+        pairedHosts = [PairedHost(id: "demo-mbp", name: "MacBook Pro — Андрей", platform: "mac", model: "MacBook Pro",
+                                  lastConnected: Date().addingTimeInterval(-86_400)),
+                       PairedHost(id: "demo-mini", name: "Mac mini", platform: "mac", model: "Mac mini",
+                                  lastConnected: Date().addingTimeInterval(-20 * 86_400))]
+    }
     #endif
 
     private func reset(to status: Status) {
         self.status = status
         state = nil
         server = nil
-        hostName = nil
         onState?(nil)
     }
 
-    // MARK: - Identity
+    // MARK: - Pairings
 
-    private static func tokenKey(_ macName: String) -> String { "sync.token." + macName }
+    /// Secrets are kept by host id; builds before ids kept them by the Mac's name ("sync.token.<name>").
+    private static func secretKey(_ hostID: String) -> String {
+        hostID.hasPrefix("name:") ? legacySecretKey(String(hostID.dropFirst(5))) : "sync.token.id." + hostID
+    }
 
-    private static var deviceID: String {
-        let key = "sync.deviceID"
-        if let id = UserDefaults.standard.string(forKey: key) { return id }
-        let id = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
-        UserDefaults.standard.set(id, forKey: key)
-        return id
+    private static func legacySecretKey(_ name: String) -> String { "sync.token." + name }
+
+    /// The secret to prove an earlier pairing with: by the host's id, else one kept by its name before ids.
+    private func storedSecret(for host: SyncDevice) -> (key: String, secret: String)? {
+        for key in [Self.secretKey(host.id), Self.legacySecretKey(host.name)] {
+            if let secret = KeychainStore.get(key) { return (key, secret) }
+        }
+        return nil
+    }
+
+    private func secret(for host: SyncDevice) -> String? { storedSecret(for: host)?.secret }
+
+    private func remember(_ host: SyncDevice) {
+        let paired = PairedHost(id: host.id, name: host.name, platform: host.kind?.rawValue, model: host.model,
+                                lastConnected: Date())
+        if let index = pairedHosts.firstIndex(where: { $0.id == host.id }) {
+            pairedHosts[index] = paired
+        } else {
+            pairedHosts.append(paired)
+        }
+        savePairedHosts()
+    }
+
+    private func savePairedHosts() {
+        // A sync check or a demo in a preview copy must not change the user's list.
+        guard !AppModel.isUIPreview else { return }
+        if let data = try? JSONEncoder().encode(pairedHosts) { UserDefaults.standard.set(data, forKey: Self.pairedHostsKey) }
     }
 }
 #endif

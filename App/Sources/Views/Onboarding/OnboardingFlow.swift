@@ -48,9 +48,9 @@ struct OnboardingFlow: View {
                     .padding(.bottom, 8)
             }
         }
-        .onChange(of: model.syncClient.bestMac, initial: true) { _, mac in
-            if onClose == nil, let mac, model.syncClient.status == .idle, model.syncClient.isPaired(mac) {
-                model.syncClient.connect(to: mac)
+        .onChange(of: model.syncClient.preferredHost, initial: true) { _, host in
+            if onClose == nil, let host, model.syncClient.status == .idle, model.syncClient.isPaired(host.device) {
+                model.syncClient.connect(to: host)
             }
         }
         #endif

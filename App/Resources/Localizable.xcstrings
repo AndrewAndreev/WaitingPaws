@@ -48,6 +48,22 @@
     "«%@»" : {
       "shouldTranslate" : false
     },
+    "«%@» видит камеру и ведёт эту тренировку" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” sees the camera and runs this training"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» видит камеру и ведёт эту тренировку"
+          }
+        }
+      }
+    },
     "«%@», %@, %@." : {
       "shouldTranslate" : false
     },
@@ -271,6 +287,22 @@
         }
       }
     },
+    "%@ «%@» видит камеру и ведёт эту тренировку" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ “%2$@” sees the camera and runs this training"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ «%@» видит камеру и ведёт эту тренировку"
+          }
+        }
+      }
+    },
     "%@ (кодеки: %@)" : {
       "localizations" : {
         "en" : {
@@ -401,6 +433,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ не отвечает"
+          }
+        }
+      }
+    },
+    "%@ отключился" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The %@ disconnected"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ отключился"
+          }
+        }
+      }
+    },
+    "%@ просит доступ к «%@». Он увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ is asking for access to “%2$@”. It will see this Mac's camera and can run the training: buttons, recording, log. The recording and log are saved on the Mac. The permission is remembered; you can revoke it in Settings."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ просит доступ к «%@». Он увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках."
           }
         }
       }
@@ -692,6 +756,9 @@
         }
       }
     },
+    "18:29:13" : {
+      "shouldTranslate" : false
+    },
     "CPU %lld %%" : {
       "shouldTranslate" : false
     },
@@ -963,41 +1030,6 @@
         }
       }
     },
-    "iPhone видит камеру и ведёт эту тренировку" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "An iPhone sees the camera and is running this training"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone видит камеру и ведёт эту тренировку"
-          }
-        }
-      }
-    },
-    "iPhone увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The iPhone will see this Mac’s camera and can run the training: buttons, recording, log. The recording and log are saved on the Mac. The permission is remembered; you can revoke it in Settings."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках."
-          }
-        }
-      }
-    },
-    "Mac" : {
-      "shouldTranslate" : false
-    },
     "Mac виден приложению Waiting Paws на iPhone в той же Wi‑Fi сети." : {
       "localizations" : {
         "en" : {
@@ -1010,22 +1042,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mac виден приложению Waiting Paws на iPhone в той же Wi‑Fi сети."
-          }
-        }
-      }
-    },
-    "Mac отключился" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The Mac disconnected"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mac отключился"
           }
         }
       }
@@ -2059,34 +2075,34 @@
         }
       }
     },
-    "Видео сохранено на Mac" : {
+    "Видео сохранено на %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Video saved on the Mac"
+            "value" : "Video saved on the %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видео сохранено на Mac"
+            "value" : "Видео сохранено на %@"
           }
         }
       }
     },
-    "Видео сохранится на Mac" : {
+    "Видео сохранится на %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The video will be saved on the Mac"
+            "value" : "The video will be saved on the %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видео сохранится на Mac"
+            "value" : "Видео сохранится на %@"
           }
         }
       }
@@ -2619,18 +2635,18 @@
         }
       }
     },
-    "вход в Xiaomi уже выполнен на Mac" : {
+    "вход в Xiaomi уже выполнен на %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "already signed in to Xiaomi on the Mac"
+            "value" : "already signed in to Xiaomi on the %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "вход в Xiaomi уже выполнен на Mac"
+            "value" : "вход в Xiaomi уже выполнен на %@"
           }
         }
       }
@@ -3915,6 +3931,22 @@
         }
       }
     },
+    "другая версия Waiting Paws" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "another Waiting Paws version"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "другая версия Waiting Paws"
+          }
+        }
+      }
+    },
     "Другая картинка" : {
       "localizations" : {
         "en" : {
@@ -4619,18 +4651,18 @@
         }
       }
     },
-    "Запись на Mac" : {
+    "Запись на %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recording on the Mac"
+            "value" : "Recording on the %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запись на Mac"
+            "value" : "Запись на %@"
           }
         }
       }
@@ -4939,18 +4971,18 @@
         }
       }
     },
-    "и на Mac" : {
+    "и на %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "also on Mac"
+            "value" : "also on %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "и на Mac"
+            "value" : "и на %@"
           }
         }
       }
@@ -4999,6 +5031,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "идёт тренировка"
+          }
+        }
+      }
+    },
+    "идёт тренировка, выход %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "training, exit %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "идёт тренировка, выход %lld"
           }
         }
       }
@@ -5143,6 +5191,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Имена на «%@» заняты Waiting Paws"
+          }
+        }
+      }
+    },
+    "Имя этого %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This %@'s Name"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя этого %@"
+          }
+        }
+      }
+    },
+    "Имя этого Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Mac's Name"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя этого Mac"
           }
         }
       }
@@ -5467,22 +5547,6 @@
         }
       }
     },
-    "Камера Mac" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mac Camera"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Камера Mac"
-          }
-        }
-      }
-    },
     "Камера Mi Home" : {
       "localizations" : {
         "en" : {
@@ -5659,34 +5723,34 @@
         }
       }
     },
-    "Камера, запись и лог — на Mac" : {
+    "Камера, запись и лог — на %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Camera, recording, and log are on the Mac"
+            "value" : "Camera, recording, and log are on the %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Камера, запись и лог — на Mac"
+            "value" : "Камера, запись и лог — на %@"
           }
         }
       }
     },
-    "Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К Mac, с которым уже работал, iPhone подключается сам." : {
+    "Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К последнему Mac, с которым работал, iPhone подключается сам. Имя выше видно на Mac при подключении." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The camera, recording and log stay on the Mac while the iPhone runs the training from behind the door. The iPhone reconnects by itself to a Mac it has worked with."
+            "value" : "The camera, recording and log stay on the Mac, while the iPhone runs the training from behind the door. The iPhone reconnects by itself to the last Mac it worked with. The Mac sees the name above when the iPhone connects."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К Mac, с которым уже работал, iPhone подключается сам."
+            "value" : "Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К последнему Mac, с которым работал, iPhone подключается сам. Имя выше видно на Mac при подключении."
           }
         }
       }
@@ -5707,18 +5771,34 @@
         }
       }
     },
-    "Камеру и качество выбирают на Mac" : {
+    "Камеру видят и ведут тренировку: %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Camera and quality are chosen on the Mac"
+            "value" : "Seeing the camera and running the training: %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Камеру и качество выбирают на Mac"
+            "value" : "Камеру видят и ведут тренировку: %@"
+          }
+        }
+      }
+    },
+    "Камеру и качество выбирают на %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera and quality are chosen on the %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камеру и качество выбирают на %@"
           }
         }
       }
@@ -6155,50 +6235,50 @@
         }
       }
     },
-    "На «%@» появился запрос — нажмите «Разрешить». Это нужно один раз для этого iPhone." : {
+    "На «%@» появился запрос от «%@» — нажмите «Разрешить». Это нужно один раз для этого iPhone." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A request appeared on “%@” — click “Allow”. This is needed only once for this iPhone."
+            "value" : "“%1$@” is showing a request from “%2$@” — click Allow. This is needed once for this iPhone."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "На «%@» появился запрос — нажмите «Разрешить». Это нужно один раз для этого iPhone."
+            "value" : "На «%@» появился запрос от «%@» — нажмите «Разрешить». Это нужно один раз для этого iPhone."
           }
         }
       }
     },
-    "На Mac идёт тренировка" : {
+    "На %@ идёт тренировка" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Training in progress on the Mac"
+            "value" : "Training in progress on the %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "На Mac идёт тренировка"
+            "value" : "На %@ идёт тренировка"
           }
         }
       }
     },
-    "На Mac не выбрана камера" : {
+    "На %@ не выбрана камера" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No camera selected on the Mac"
+            "value" : "No camera selected on the %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "На Mac не выбрана камера"
+            "value" : "На %@ не выбрана камера"
           }
         }
       }
@@ -6971,6 +7051,38 @@
         }
       }
     },
+    "Нет связи с %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No connection to the %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет связи с %@"
+          }
+        }
+      }
+    },
+    "Нет связи с %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No connection to the %1$@: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет связи с %@: %@"
+          }
+        }
+      }
+    },
     "Нет связи с go2rtc" : {
       "localizations" : {
         "en" : {
@@ -6983,38 +7095,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет связи с go2rtc"
-          }
-        }
-      }
-    },
-    "Нет связи с Mac" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No connection to the Mac"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Нет связи с Mac"
-          }
-        }
-      }
-    },
-    "Нет связи с Mac: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No connection to the Mac: %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Нет связи с Mac: %@"
           }
         }
       }
@@ -7947,6 +8027,22 @@
         }
       }
     },
+    "Переключиться на" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch To"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переключиться на"
+          }
+        }
+      }
+    },
     "Переподключить" : {
       "localizations" : {
         "en" : {
@@ -8411,6 +8507,22 @@
         }
       }
     },
+    "Под этим именем %@ виден на iPhone." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhones see this %@ under this name."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Под этим именем %@ виден на iPhone."
+          }
+        }
+      }
+    },
     "Поделиться" : {
       "localizations" : {
         "en" : {
@@ -8427,22 +8539,6 @@
         }
       }
     },
-    "Подключаемся к" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connecting to"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Подключаемся к"
-          }
-        }
-      }
-    },
     "Подключаемся к камере…" : {
       "localizations" : {
         "en" : {
@@ -8455,6 +8551,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключаемся к камере…"
+          }
+        }
+      }
+    },
+    "Подключаемся…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключаемся…"
+          }
+        }
+      }
+    },
+    "Подключались раньше" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected Before"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключались раньше"
+          }
+        }
+      }
+    },
+    "подключён сейчас" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "connected now"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "подключён сейчас"
           }
         }
       }
@@ -8587,18 +8731,18 @@
         }
       }
     },
-    "Подтвердите на Mac" : {
+    "Подтвердите на %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Confirm on the Mac"
+            "value" : "Confirm on the %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Подтвердите на Mac"
+            "value" : "Подтвердите на %@"
           }
         }
       }
@@ -8955,6 +9099,22 @@
         }
       }
     },
+    "После «Забыть» для синхронизации с этим компьютером снова понадобится «Разрешить» на нём." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After Forget, syncing with that computer needs Allow on it again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После «Забыть» для синхронизации с этим компьютером снова понадобится «Разрешить» на нём."
+          }
+        }
+      }
+    },
     "после %lld — %@" : {
       "localizations" : {
         "en" : {
@@ -9111,6 +9271,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Последний перерыв"
+          }
+        }
+      }
+    },
+    "последний раз %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "last connected %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "последний раз %@"
+          }
+        }
+      }
+    },
+    "Последний раз %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last connected %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последний раз %@"
           }
         }
       }
@@ -9739,18 +9931,34 @@
         }
       }
     },
-    "Рядом Mac с Waiting Paws" : {
+    "рядом" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mac with Waiting Paws Nearby"
+            "value" : "nearby"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Рядом Mac с Waiting Paws"
+            "value" : "рядом"
+          }
+        }
+      }
+    },
+    "Рядом %@ с Waiting Paws" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ with Waiting Paws Nearby"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рядом %@ с Waiting Paws"
           }
         }
       }
@@ -10219,18 +10427,34 @@
         }
       }
     },
-    "Синхронизировано с" : {
+    "Синхронизация" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Synced with"
+            "value" : "Sync"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Синхронизировано с"
+            "value" : "Синхронизация"
+          }
+        }
+      }
+    },
+    "Синхронизировано" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synced"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синхронизировано"
           }
         }
       }
@@ -10267,34 +10491,50 @@
         }
       }
     },
-    "Синхронизировать тренировку с Mac" : {
+    "Синхронизировать с…" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sync Training with Mac"
+            "value" : "Sync With…"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Синхронизировать тренировку с Mac"
+            "value" : "Синхронизировать с…"
           }
         }
       }
     },
-    "Синхронизируем с Mac" : {
+    "Синхронизировать тренировку с %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Syncing with Mac"
+            "value" : "Sync Training with %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Синхронизируем с Mac"
+            "value" : "Синхронизировать тренировку с %@"
+          }
+        }
+      }
+    },
+    "Синхронизируем с %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Syncing with %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синхронизируем с %@"
           }
         }
       }
@@ -10875,6 +11115,22 @@
         }
       }
     },
+    "тренировка идёт" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "training in progress"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "тренировка идёт"
+          }
+        }
+      }
+    },
     "Тренировка синхронизирована с «%@»" : {
       "localizations" : {
         "en" : {
@@ -10891,18 +11147,18 @@
         }
       }
     },
-    "Тренировка, запись и лог — на Mac, шаги общие." : {
+    "Тренировка, запись и лог — на %@, шаги общие." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Training, recording and log stay on the Mac; the steps are shared."
+            "value" : "Training, recording and log stay on the %@; the steps are shared."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тренировка, запись и лог — на Mac, шаги общие."
+            "value" : "Тренировка, запись и лог — на %@, шаги общие."
           }
         }
       }
@@ -11515,6 +11771,22 @@
         }
       }
     },
+    "уже подключались" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "connected before"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "уже подключались"
+          }
+        }
+      }
+    },
     "Укажите адрес своего go2rtc: «Свой сервер go2rtc…» слева." : {
       "localizations" : {
         "en" : {
@@ -11899,18 +12171,18 @@
         }
       }
     },
-    "Это расписание уже и на Mac — начать можно там или здесь." : {
+    "Это расписание уже и на %@ — начать можно там или здесь." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This schedule is on the Mac too — start it there or here."
+            "value" : "This schedule is on the %@ too — start it there or here."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Это расписание уже и на Mac — начать можно там или здесь."
+            "value" : "Это расписание уже и на %@ — начать можно там или здесь."
           }
         }
       }
