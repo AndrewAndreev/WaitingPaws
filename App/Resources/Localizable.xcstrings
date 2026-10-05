@@ -4443,6 +4443,22 @@
         }
       }
     },
+    "Записи — в этом же качестве" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recordings use this quality too"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записи — в этом же качестве"
+          }
+        }
+      }
+    },
     "Записывать видео" : {
       "localizations" : {
         "en" : {
@@ -6071,6 +6087,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На Mac подключение отклонили"
+          }
+        }
+      }
+    },
+    "На экране и в записи." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On screen and in recordings."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На экране и в записи."
           }
         }
       }

@@ -126,9 +126,13 @@ public struct SyncState: Codable, Equatable {
     /// The camera's `xiaomi://` source, for its settings on the iPhone (the Mac's go2rtc config, which also
     /// holds the Xiaomi tokens, is closed to the LAN).
     public var cameraSource: String?
+    /// Changes whenever the Mac's players had to reconnect (quality change): the iPhone's player reconnects too,
+    /// or the old stream keeps a second connection to the camera open.
+    public var streamRevision: Int?
 
     public init(session: TrainingSession.Snapshot?, recordingSince: Date?, cameraReady: Bool, cameraTitle: String,
-                streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil, cameraSource: String? = nil) {
+                streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil, cameraSource: String? = nil,
+                streamRevision: Int? = nil) {
         self.session = session
         self.recordingSince = recordingSince
         self.cameraReady = cameraReady
@@ -137,6 +141,7 @@ public struct SyncState: Codable, Equatable {
         self.lastRecord = lastRecord
         self.pendingPlan = pendingPlan
         self.cameraSource = cameraSource
+        self.streamRevision = streamRevision
     }
 }
 

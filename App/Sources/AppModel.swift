@@ -63,6 +63,7 @@ final class AppModel {
         reloadHistory()
         startEmbeddedIfNeeded()
         setUpSync()
+        startStreamDiagnostics()
         #if DEBUG
         // `--demo-history`: sample trainings in the history list (in memory, nothing is written).
         if CommandLine.arguments.contains("--demo-history") { history = DemoData.history() }
@@ -251,6 +252,41 @@ final class AppModel {
         let lanPassword: String? = nil
         #endif
         Task { await embedded.start(lanPassword: lanPassword) }
+    }
+
+    /// Every 10 s: frames go2rtc dropped because a viewer (the player, the recording, a linked iPhone) fell behind.
+    /// A dropped frame freezes that viewer until the next keyframe, so this line explains most freezes.
+    private func startStreamDiagnostics() {
+        guard !Self.isUIPreview else { return }
+        Task { [weak self] in
+            var last: [String: Int] = [:]
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(10))
+                guard let self else { return }
+                guard self.settings.connectionMode == .embedded, self.embedded.status.isRunning,
+                      !self.settings.streamName.isEmpty, let client = self.client,
+                      let data = try? await client.streamInfo(name: self.settings.streamName) else { continue }
+                let drops = Self.viewerDrops(data)
+                for (viewer, total) in drops.sorted(by: { $0.key < $1.key }) where total > (last[viewer] ?? 0) {
+                    print("[go2rtc] \(Date().formatted(.dateTime.hour().minute().second())) \(viewer) fell behind: "
+                          + "\(total - (last[viewer] ?? 0)) frames dropped in 10 s")
+                }
+                last = drops
+            }
+        }
+    }
+
+    /// Dropped frames per viewer ("mse ws 192.168.1.20:5123") from `GET /api/streams?src=`.
+    nonisolated static func viewerDrops(_ data: Data) -> [String: Int] {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let consumers = object["consumers"] as? [[String: Any]] else { return [:] }
+        var result: [String: Int] = [:]
+        for consumer in consumers {
+            let name = ["format_name", "protocol", "remote_addr"].compactMap { consumer[$0] as? String }.joined(separator: " ")
+            let drops = (consumer["senders"] as? [[String: Any]] ?? []).reduce(0) { $0 + ($1["drops"] as? Int ?? 0) }
+            result[name.isEmpty ? "viewer" : name, default: 0] += drops
+        }
+        return result
     }
 
     /// Waits (up to ~8 s) until the embedded server answers; returns immediately for an external server.
@@ -527,7 +563,9 @@ final class AppModel {
         }
     }
 
-    /// Re-registers the stream with `subtype=<quality>`; the player reconnects on the next reload.
+    /// Re-registers the stream with `subtype=<quality>`: the one quality of the picture and of the recordings.
+    /// go2rtc then creates a new stream and the old one, with its own camera connection, lives until its viewers
+    /// leave, so every player reconnects (also a linked iPhone's, through `SyncState.streamRevision`).
     func setXiaomiQuality(_ quality: XiaomiQuality) async {
         guard let client else { return }
         guard let source = await xiaomiSource(client: client), var components = URLComponents(string: source) else {
@@ -542,6 +580,8 @@ final class AppModel {
             try await client.addStream(name: settings.streamName, source: updated)
             xiaomiQuality = quality
             currentXiaomiSource = updated
+            videoSize = nil
+            playerGeneration += 1
             print("[camera] quality \(quality.rawValue): \(updated)")
         } catch {
             errorMessage = String(localized: "Не удалось сменить качество: \(error.localizedDescription)")
@@ -763,6 +803,14 @@ extension AppModel {
     }
 
     /// MSE works through the Mac's API port alone (WebRTC would need its UDP ports open on the LAN).
+    /// Bumped whenever the players must reconnect: ours, or the linked Mac's (its quality changed).
+    var activePlayerGeneration: Int {
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.state?.streamRevision ?? 0 }
+        #endif
+        return playerGeneration
+    }
+
     var activePlayerMode: PlayerMode {
         isLinkedToMac ? .mse : settings.playerMode
     }
@@ -832,7 +880,8 @@ extension AppModel {
                       streamName: settings.streamName,
                       lastRecord: lastRecord,
                       pendingPlan: session == nil ? pendingPlan : nil,
-                      cameraSource: currentXiaomiSource)
+                      cameraSource: currentXiaomiSource,
+                      streamRevision: playerGeneration)
         }
         syncHost.commandHandler = { [unowned self] command in applyRemote(command) }
         syncHost.accessProvider = { [unowned self] in

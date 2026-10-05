@@ -77,7 +77,7 @@ struct SessionScreen: View {
         }
         .onAppear {
             #if DEBUG
-            // `--demo-screen plan|camera` opens a sheet right away (UI checks without tapping).
+            // `--demo-screen plan|camera|settings|history` opens a sheet right away (UI checks without tapping).
             if let index = CommandLine.arguments.firstIndex(of: "--demo-screen"), index + 1 < CommandLine.arguments.count {
                 switch CommandLine.arguments[index + 1] {
                 case "plan": showPlanInput = true
@@ -86,6 +86,7 @@ struct SessionScreen: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) { showPlanInput = false }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) { showPlanInput = true }
                 case "camera": showCameraPicker = true
+                case "settings": showSettings = true
                 case "history", "history-last": showHistory = true
                 default: break
                 }
@@ -208,7 +209,7 @@ struct SessionScreen: View {
                              stream: model.activeStreamName,
                              mode: model.activePlayerMode,
                              audioEnabled: model.settings.audioEnabled,
-                             reloadToken: reloadToken + model.playerGeneration,
+                             reloadToken: reloadToken + model.activePlayerGeneration,
                              onVideoSize: { size in model.videoSize = size })
         } else {
             CameraPlaceholder(text: model.isLinkedToMac ? String(localized: "На Mac не выбрана камера") : String(localized: "Камера не выбрана"))
@@ -368,13 +369,11 @@ private struct CameraMenu: View {
                     Picker("Качество", selection: Binding(
                         get: { quality },
                         set: { newValue in
-                            Task {
-                                await model.setXiaomiQuality(newValue)
-                                onReconnect()
-                            }
+                            Task { await model.setXiaomiQuality(newValue) }
                         })) {
                         ForEach(AppModel.XiaomiQuality.allCases) { q in Text(q.title).tag(q) }
                     }
+                    Text("Записи — в этом же качестве")
                     if let size = model.videoSize {
                         Divider()
                         Button("Сейчас \(Int(size.width))×\(Int(size.height))", systemImage: "info.circle") {}

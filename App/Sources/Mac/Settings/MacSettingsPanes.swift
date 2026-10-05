@@ -159,6 +159,8 @@ private struct SettingsCameraPane: View {
                     Text("Сначала выберите камеру.")
                 } else if !qualityAvailable(camera) {
                     Text("Меняется только у камер Mi Home.")
+                } else {
+                    Text("На экране и в записи.")
                 }
             }
             LabeledContent("Сейчас") {
@@ -301,8 +303,6 @@ private struct SettingsCameraPane: View {
             switchingQuality = true
             Task {
                 await model.setXiaomiQuality(new)
-                model.videoSize = nil
-                reloadToken += 1
                 switchingQuality = false
             }
         }
@@ -460,7 +460,7 @@ private struct SettingsCameraCard: View {
                 .aspectRatio(contentMode: .fill)
         } else if isPlaying, let server = model.settings.server {
             CameraStreamView(server: server, stream: camera.streamName, mode: model.settings.playerMode,
-                             audioEnabled: false, fill: true, reloadToken: reloadToken) { size in
+                             audioEnabled: false, fill: true, reloadToken: reloadToken + model.playerGeneration) { size in
                 liveSize = size
                 model.videoSize = size
             }

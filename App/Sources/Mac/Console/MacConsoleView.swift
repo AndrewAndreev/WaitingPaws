@@ -268,13 +268,11 @@ private struct CameraToolbarMenu: View {
                 Picker("Качество", selection: Binding(
                     get: { quality },
                     set: { newValue in
-                        Task {
-                            await model.setXiaomiQuality(newValue)
-                            onReconnect()
-                        }
+                        Task { await model.setXiaomiQuality(newValue) }
                     })) {
                     ForEach(AppModel.XiaomiQuality.allCases) { Text($0.title).tag($0) }
                 }
+                Text("Записи — в этом же качестве")
                 if let size = model.videoSize {
                     Text("Сейчас \(Int(size.width))×\(Int(size.height))")
                 }

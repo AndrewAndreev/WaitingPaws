@@ -29,18 +29,16 @@ cp "$HERE"/xiaomi/*.go "$SRC/internal/xiaomi/"
 cp "$HERE"/api/*.go "$SRC/internal/api/"
 
 # Local patches for the in-app build (see README):
-# 1. Xiaomi CS2 media queue: 100 frames die after ~2 s of consumer stall (WebKit throttling, Wi-Fi roaming);
-#    keep ~20 s instead.
-# 2. Drop the "cs2: unknown msg" stdout spam.
-CS2="$SRC/pkg/xiaomi/miss/cs2/conn.go"
-sed -i '' 's/newDataChannel(250, 100)/newDataChannel(250, 1000)/' "$CS2"
-#    The command queue (10 entries) is only read during the handshake; unsolicited camera messages
-#    overflow it minutes later and kill the whole connection. Enlarge it and drop on overflow instead.
-sed -i '' 's/newDataChannel(0, 10)/newDataChannel(0, 100)/' "$CS2"
-sed -i '' 's|return fmt.Errorf("pop buffer is full")|// Waiting Paws patch: drop the packet instead of failing the connection|' "$CS2"
-grep -q "pop buffer is full" "$CS2" && { echo "cs2 overflow patch failed"; exit 1; }
-sed -i '' 's|fmt.Printf("%s: unknown msg: %x\\n", "cs2", buf\[:n\])|_ = n // unknown msg, ignored|' "$CS2"
-grep -q "newDataChannel(250, 1000)" "$CS2" || { echo "cs2 patch failed"; exit 1; }
+# 1-2. Xiaomi CS2 transport: our copy of pkg/xiaomi/miss/cs2/conn.go (bigger UDP and reorder buffers, a full command
+#      queue drops instead of killing the connection, no "unknown msg" spam, stats in the log). It is a copy of
+#      v1.9.14: compare with upstream before changing GO2RTC_VERSION.
+[ "$GO2RTC_VERSION" = "v1.9.14" ] || { echo "GoMobile/xiaomi-cs2/conn.go is based on v1.9.14: port it to $GO2RTC_VERSION first"; exit 1; }
+cp "$HERE"/xiaomi-cs2/*.go "$SRC/pkg/xiaomi/miss/cs2/"
+# 2b. Each viewer (MSE player, recording, linked iPhone) gets a queue of 64 frames (~3 s at 20 fps); a viewer that
+#     falls behind for longer loses frames and freezes until the next keyframe. 256 frames ride out such hiccups.
+TRACK="$SRC/pkg/core/track.go"
+sed -i '' 's|bufSize = 64$|bufSize = 256 // Waiting Paws: 64 upstream|' "$TRACK"
+grep -q 'bufSize = 256 // Waiting Paws' "$TRACK" || { echo "sender buffer patch failed"; exit 1; }
 # 3. HEVC in MP4: go2rtc writes the `hev1` sample entry, Apple (AVFoundation, Photos, Safari) only plays `hvc1`.
 #    The hvcC box with parameter sets is written anyway, so renaming the atom is enough.
 ISO="$SRC/pkg/iso"

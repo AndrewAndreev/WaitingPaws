@@ -203,6 +203,11 @@ public final class Go2RTCClient: Sendable {
         return result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    /// `GET /api/streams?src=<name>`: the stream's producers and consumers as go2rtc reports them (diagnostics).
+    public func streamInfo(name: String) async throws -> Data {
+        try await request("GET", path: "api/streams", query: ["src": name])
+    }
+
     public func addStream(name: String, source: String) async throws {
         _ = try await request("PUT", path: "api/streams", query: ["name": name, "src": source])
     }
