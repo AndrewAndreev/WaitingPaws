@@ -65,7 +65,7 @@ final class EmbeddedGo2RTC {
     /// Inline config merged on top of the file at every launch: loopback only, RTSP server off.
     /// With `lanPassword` the API also listens on the LAN; go2rtc skips auth for loopback requests
     /// (`local_auth: false`), so the app itself keeps talking to 127.0.0.1 without credentials.
-    static func overrides(lanPassword: String?) -> String {
+    nonisolated static func overrides(lanPassword: String?) -> String {
         let api: String
         if let lanPassword {
             api = #"{"listen":":\#(apiPort)","username":"\#(lanUsername)","password":"\#(lanPassword)"}"#
@@ -86,25 +86,26 @@ final class EmbeddedGo2RTC {
         status = .starting
 
         #if canImport(Go2RTC)
-        // go2rtc only logs a failed bind, so pick ports nobody holds before starting it.
-        if !MobileIsRunning() {
-            guard let ports = Self.freePorts(lan: lanPassword != nil) else {
-                status = .failed(String(localized: "Порты \(Self.preferredAPIPort)–\(Self.preferredAPIPort + 29) заняты другими программами — go2rtc негде запустить."))
-                return
-            }
-            Self.apiPort = ports.api
-            Self.webrtcPort = ports.webrtc
-            if ports.api != Self.preferredAPIPort {
-                print("[go2rtc] port \(Self.preferredAPIPort) is taken (Waiting Paws in the simulator?), using \(ports.api)")
-            }
-        }
         let configURL = Self.configURL
-        let overrides = Self.overrides(lanPassword: lanPassword)
         lanEnabled = lanPassword != nil
+        // Everything that calls into Go runs here, off the main thread: the first call waits for the Go runtime
+        // to come up, which took 2–4 s on an iPhone run from Xcode (the UI stood still until go2rtc started).
         let task = Task.detached(priority: .userInitiated) { () throws -> String in
+            // go2rtc only logs a failed bind, so pick ports nobody holds before starting it.
+            if !MobileIsRunning() {
+                guard let ports = Self.freePorts(lan: lanPassword != nil) else {
+                    throw NSError(domain: "go2rtc", code: 2, userInfo: [NSLocalizedDescriptionKey: String(
+                        localized: "Порты \(Self.preferredAPIPort)–\(Self.preferredAPIPort + 29) заняты другими программами — go2rtc негде запустить.")])
+                }
+                Self.apiPort = ports.api
+                Self.webrtcPort = ports.webrtc
+                if ports.api != Self.preferredAPIPort {
+                    print("[go2rtc] port \(Self.preferredAPIPort) is taken (Waiting Paws in the simulator?), using \(ports.api)")
+                }
+            }
             try Self.ensureConfig(at: configURL)
             var error: NSError?
-            if !MobileStart(configURL.path, overrides, &error) {
+            if !MobileStart(configURL.path, Self.overrides(lanPassword: lanPassword), &error) {
                 throw error ?? NSError(domain: "go2rtc", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "go2rtc не запустился")])
             }
             return MobileVersion().components(separatedBy: "+").first ?? MobileVersion()

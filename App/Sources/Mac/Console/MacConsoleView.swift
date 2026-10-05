@@ -270,7 +270,7 @@ private struct CameraToolbarMenu: View {
                     set: { newValue in
                         Task { await model.setXiaomiQuality(newValue) }
                     })) {
-                    ForEach(AppModel.XiaomiQuality.allCases) { Text($0.title).tag($0) }
+                    ForEach(AppModel.XiaomiQuality.allCases) { Text(model.qualityTitle($0)).tag($0) }
                 }
                 Text("Записи — в этом же качестве")
                 if let size = model.videoSize {

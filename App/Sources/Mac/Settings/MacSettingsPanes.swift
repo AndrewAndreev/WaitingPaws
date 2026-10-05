@@ -147,7 +147,7 @@ private struct SettingsCameraPane: View {
         Section {
             LabeledContent {
                 Picker("Качество", selection: quality(camera)) {
-                    ForEach(AppModel.XiaomiQuality.allCases) { Text($0.title).tag($0) }
+                    ForEach(AppModel.XiaomiQuality.allCases) { Text(model.qualityTitle($0, source: source)).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()

@@ -59,6 +59,7 @@ final class AppSettings {
         static let shareWithIPhone = "shareWithIPhone"
         static let lanPassword = "go2rtc.lanPassword"
         static let withoutCamera = "withoutCamera"
+        static let qualityResolutions = "qualityResolutions"
     }
 
     var connectionMode: ConnectionMode { didSet { Self.defaults.set(connectionMode.rawValue, forKey: Key.connectionMode) } }
@@ -84,6 +85,11 @@ final class AppSettings {
     var shareWithIPhone: Bool { didSet { Self.defaults.set(shareWithIPhone, forKey: Key.shareWithIPhone) } }
     /// The user chose «Продолжить без камеры»: timer, schedule and log only, the camera can be added later.
     var withoutCamera: Bool { didSet { Self.defaults.set(withoutCamera, forKey: Key.withoutCamera) } }
+    /// What each quality level of a Mi Home camera really sent ("848x480"), by the camera's `did` and `subtype`:
+    /// levels mean different things on different models (on the C302 SD and HD are both 480p).
+    var qualityResolutions: [String: [String: String]] {
+        didSet { Self.defaults.set(qualityResolutions, forKey: Key.qualityResolutions) }
+    }
 
     /// Password of the embedded go2rtc for LAN clients (linked iPhones); generated once.
     /// Kept in the app's own (sandboxed) defaults, not the keychain: it only guards the video on the home
@@ -125,6 +131,7 @@ final class AppSettings {
         lastPlanText = d.string(forKey: Key.lastPlanText) ?? ""
         shareWithIPhone = d.object(forKey: Key.shareWithIPhone) as? Bool ?? true
         withoutCamera = d.bool(forKey: Key.withoutCamera)
+        qualityResolutions = d.dictionary(forKey: Key.qualityResolutions) as? [String: [String: String]] ?? [:]
     }
 
     var server: Go2RTCServer? {

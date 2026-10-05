@@ -532,7 +532,32 @@ final class AppModel {
     /// Current `subtype` of the selected stream's xiaomi:// source, if it is a Xiaomi camera.
     private(set) var xiaomiQuality: XiaomiQuality?
     /// Resolution the player actually receives (reported by the web player), for the quality menu.
-    var videoSize: CGSize?
+    var videoSize: CGSize? { didSet { rememberQualityResolution() } }
+
+    /// «HD · 480p» once the camera (`source`, by default the one on screen) has been seen at that level,
+    /// else «HD». «Авто» has no fixed resolution.
+    func qualityTitle(_ quality: XiaomiQuality, source: String? = nil) -> String {
+        guard quality != .auto, let did = (source ?? currentXiaomiSource).flatMap({ Self.query("did", in: $0) }),
+              let seen = settings.qualityResolutions[did]?[quality.rawValue],
+              let height = seen.split(separator: "x").last.flatMap({ Int($0) }) else { return quality.title }
+        return "\(quality.title) · \(height)p"
+    }
+
+    /// Remembers what the current level gave. Only for an explicit `subtype`: without one go2rtc picks
+    /// a level by model (3 on the C200/C300), which is not necessarily the «HD» shown then.
+    private func rememberQualityResolution() {
+        guard let size = videoSize, size.width > 0, size.height > 0, let quality = xiaomiQuality, quality != .auto,
+              let source = currentXiaomiSource, Self.query("subtype", in: source) == quality.rawValue,
+              let did = Self.query("did", in: source) else { return }
+        let seen = "\(Int(size.width))x\(Int(size.height))"
+        if settings.qualityResolutions[did]?[quality.rawValue] != seen {
+            settings.qualityResolutions[did, default: [:]][quality.rawValue] = seen
+        }
+    }
+
+    private static func query(_ name: String, in source: String) -> String? {
+        URLComponents(string: source)?.queryItems?.first { $0.name == name }?.value
+    }
 
     /// The selected stream's `xiaomi://` source. While the camera is live, `/api/streams` describes the
     /// running connection without the source URL, so the config file is read instead.
@@ -739,6 +764,7 @@ final class AppModel {
     func didBecomeActive() async {
         endBackgroundTask()
         if await embedded.recoverIfNeeded() { playerGeneration += 1 }
+        syncClient.autoConnectIfPossible()
         guard recordingCutByBackground else { return }
         recordingCutByBackground = false
         startRecording()
@@ -898,6 +924,7 @@ extension AppModel {
         if settings.shareWithIPhone { syncHost.start() }
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }
+        syncClient.canAutoConnect = { [unowned self] in session == nil && !recorder.isRecording }
         syncClient.startBrowsing()
         #if DEBUG
         // `--demo-share-plan`: once linked, «paste» the sample schedule here (it should appear on the Mac).

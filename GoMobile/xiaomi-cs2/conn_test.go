@@ -5,6 +5,7 @@ package cs2
 import (
 	"encoding/binary"
 	"testing"
+	"time"
 )
 
 // message frames one media message the way the camera does: a 4-byte size, then the bytes.
@@ -55,5 +56,35 @@ func TestFullReorderBufferRefusesInsteadOfGrowing(t *testing.T) {
 	}
 	if s := c.takeStats(); s.refused != 1 {
 		t.Fatalf("refused not counted: %+v", s)
+	}
+}
+
+// frame is one media message with a miss header: codec at 4–7, capture time (ms) at 16–23, then the payload.
+func frame(codec uint32, ts uint64) []byte {
+	msg := make([]byte, hdrSize+100)
+	binary.LittleEndian.PutUint32(msg[4:], codec)
+	binary.LittleEndian.PutUint64(msg[16:], ts)
+	out := binary.BigEndian.AppendUint32(nil, uint32(len(msg)))
+	return append(out, msg...)
+}
+
+func TestTimingTellsHeldUpDeliveryFromMissingFrames(t *testing.T) {
+	c := newDataChannel(0, 100)
+	c.timing = true
+	// Frames 66 ms apart on the camera; the third one is held up for ~150 ms on the way. Audio doesn't count.
+	_ = c.Push(frame(5, 1_000))
+	_ = c.Push(frame(5, 1_066))
+	_ = c.Push(frame(1032, 1_070))
+	time.Sleep(150 * time.Millisecond)
+	_ = c.Push(frame(5, 1_133))
+	s := c.takeStats()
+	if s.frames != 3 {
+		t.Fatalf("video frames: got %d, want 3", s.frames)
+	}
+	if s.longestPause < 140*time.Millisecond || s.pauseCameraMs != 67 {
+		t.Fatalf("pause %v (camera %d ms): want ~150 ms of 67 ms camera time", s.longestPause, s.pauseCameraMs)
+	}
+	if spread := s.maxOffset - s.minOffset; spread < 70 || spread > 200 {
+		t.Fatalf("delivery spread %d ms: want about 150 − 67", spread)
 	}
 }

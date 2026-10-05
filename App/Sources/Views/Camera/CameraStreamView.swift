@@ -59,6 +59,9 @@ struct CameraStreamView {
           // What the player went through; a summary goes to the app log every 30 s when something happened.
           const stats = {
             stalls: 0, stalledMs: 0, stallStart: 0, jumps: 0, errors: 0, bytes: 0, lastData: 0, maxGapMs: 0, lag: 0,
+            // A new stream: its init segment comes first and the video only from the next keyframe (up to a whole GOP,
+            // ~3 s on the C302, later). That wait is not a hiccup and must not grow the cushion.
+            restart() { this.lastData = 0; },
             chunk(size) {
               const now = performance.now();
               if (this.lastData) {
@@ -196,8 +199,10 @@ struct CameraStreamView {
                   report('trace t=' + v.currentTime.toFixed(2) + ' rate=' + v.playbackRate + ' paused=' + v.paused
                     + ' state=' + v.readyState + ' cushion=' + jitter.target.toFixed(1) + ' buffered' + ranges);
                 }, 1000);
+                stats.restart();
+                let init = true;
                 this.ondata = data => {
-                  stats.chunk(data.byteLength);
+                  if (init) { init = false; stats.bytes += data.byteLength; } else stats.chunk(data.byteLength);
                   if (sb.updating || queue.length) queue.push(data); else append(data);
                 };
               };

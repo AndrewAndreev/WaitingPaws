@@ -362,6 +362,14 @@ private struct CameraMenu: View {
                 Text("Камеру и качество выбирают на Mac")
             } else {
                 Button("Выбрать камеру…", systemImage: "video.badge.plus", action: onPickCamera)
+                #if os(iOS)
+                // Always here, unlike the «Рядом Mac» card (closed, or pushed out by a summary).
+                if model.session == nil, let mac = model.syncClient.bestMac {
+                    Button("Синхронизировать с «\(mac.info.name)»", systemImage: "laptopcomputer") {
+                        model.syncClient.connect(to: mac)
+                    }
+                }
+                #endif
             }
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
             if !model.isLinkedToMac, let quality = model.xiaomiQuality {
@@ -371,7 +379,7 @@ private struct CameraMenu: View {
                         set: { newValue in
                             Task { await model.setXiaomiQuality(newValue) }
                         })) {
-                        ForEach(AppModel.XiaomiQuality.allCases) { q in Text(q.title).tag(q) }
+                        ForEach(AppModel.XiaomiQuality.allCases) { q in Text(model.qualityTitle(q)).tag(q) }
                     }
                     Text("Записи — в этом же качестве")
                     if let size = model.videoSize {

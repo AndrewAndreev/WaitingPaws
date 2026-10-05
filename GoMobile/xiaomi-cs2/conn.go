@@ -6,7 +6,14 @@
 //     while one packet is missing the rest are still acknowledged, so the camera doesn't resend them too;
 //   - the command channel holds 100 messages and a full queue drops a message instead of killing the connection;
 //   - "cs2: unknown msg" is not printed;
-//   - every 10 s the media channel's trouble (out of order, refused, duplicates, the longest wait) goes to the log.
+//   - UDP is preferred unless the source says `transport=tcp`, and the transport is a preference: a camera that
+//     doesn't offer it connects with its own choice instead of failing. The C302 picks TCP by itself, and there a
+//     packet lost on Wi-Fi held the whole stream for 1–1.5 s until TCP resent it; over UDP CS2 makes up for a loss in
+//     a few ms (same camera, same minutes: longest pause 0.2–0.45 s on UDP, 1.2–1.45 s on TCP). The log says which;
+//   - every 30 s the log gets the video's timing when it was uneven (and once, 30 s after connecting, in any case):
+//     frames, bitrate, the longest pause between frames with the camera's own time for that pause (a pause in
+//     arrival only = delivery held up; in camera time too = frames never sent), the spread of delivery against the
+//     camera's clock (the cushion a player needs) and, over UDP, the resend counters.
 package cs2
 
 import (
@@ -23,6 +30,7 @@ import (
 )
 
 func Dial(host, transport string) (*Conn, error) {
+	started := time.Now()
 	conn, err := handshake(host, transport)
 	if err != nil {
 		return nil, err
@@ -38,28 +46,56 @@ func Dial(host, transport string) (*Conn, error) {
 		},
 		done: make(chan struct{}),
 	}
+	c.channels[2].timing = true
 	go c.worker()
 	go c.report()
+	logf("cs2: connected to %s over %s in %d ms", conn.RemoteAddr(), c.transport(), time.Since(started).Milliseconds())
 	return c, nil
 }
 
-// report logs the media channel's counters every 10 s when something went wrong (Waiting Paws).
+func logf(format string, args ...any) {
+	_, _ = fmt.Fprintf(os.Stderr, "%s "+format+"\n", append([]any{time.Now().Format("15:04:05")}, args...)...)
+}
+
+func (c *Conn) transport() string {
+	if c.isTCP {
+		return "TCP"
+	}
+	return "UDP"
+}
+
+// report logs the media channel's timing every 30 s (Waiting Paws): when a pause between frames could freeze a
+// player, a missing packet held the stream up or a buffer overflowed, and once after connecting as a baseline.
 func (c *Conn) report() {
-	ticker := time.NewTicker(10 * time.Second)
+	const window = 30 * time.Second
+	ticker := time.NewTicker(window)
 	defer ticker.Stop()
+	first := true
 	for {
 		select {
 		case <-c.done:
 			return
 		case <-ticker.C:
 			s := c.channels[2].takeStats()
-			if s.outOfOrder == 0 && s.refused == 0 && s.duplicates == 0 && s.dropped == 0 {
+			// Over UDP a few resends every second are normal (the C302: ~5/s, each made up for in a few ms).
+			trouble := s.refused > 0 || s.dropped > 0 || s.longestWait >= 300*time.Millisecond
+			if !first && !trouble && s.longestPause < 700*time.Millisecond {
 				continue
 			}
-			_, _ = fmt.Fprintf(os.Stderr, "%s cs2: 10s: packets %d, out of order %d, refused %d, resent duplicates %d, "+
-				"dropped %d, longest wait for a missing packet %d ms, most waiting %d\n",
-				time.Now().Format("15:04:05"), s.packets, s.outOfOrder, s.refused, s.duplicates, s.dropped,
-				s.longestWait.Milliseconds(), s.maxWaiting)
+			first = false
+			line := fmt.Sprintf("cs2: 30s over %s: %d video frames (%.1f fps), %d kbit/s, longest pause %d ms "+
+				"(camera time %d ms), delivery spread %d ms", c.transport(), s.frames, float64(s.frames)/window.Seconds(),
+				s.videoBytes*8/int(window.Milliseconds()), s.longestPause.Milliseconds(), s.pauseCameraMs,
+				s.maxOffset-s.minOffset)
+			if !c.isTCP {
+				line += fmt.Sprintf("; packets %d, out of order %d, refused %d, resent duplicates %d, "+
+					"longest wait for a missing packet %d ms, most waiting %d",
+					s.packets, s.outOfOrder, s.refused, s.duplicates, s.longestWait.Milliseconds(), s.maxWaiting)
+			}
+			if s.dropped > 0 {
+				line += fmt.Sprintf("; dropped %d (queue full)", s.dropped)
+			}
+			logf("%s", line)
 		}
 	}
 }
@@ -111,26 +147,38 @@ func handshake(host, transport string) (net.Conn, error) {
 		return nil, err
 	}
 
-	var msgUDP, msgTCP byte
-
-	if transport == "" || transport == "udp" {
-		msgUDP = msgP2PRdyUDP
+	// Waiting Paws: `transport` (UDP by default) is a preference, not a requirement. The camera answers with the
+	// transport it likes (the C302: TCP); when another one was asked for, it gets a moment to offer that too,
+	// otherwise its choice stands instead of failing the connection.
+	if transport == "" {
+		transport = "udp"
 	}
-	if transport == "" || transport == "tcp" {
-		msgTCP = msgP2PRdyTCP
-	}
-
-	res, err = conn.(*udpConn).WriteUntil(res, func(res []byte) bool {
-		return res[1] == msgUDP || res[1] == msgTCP
+	punch := res
+	res, err = conn.(*udpConn).WriteUntil(punch, func(res []byte) bool {
+		return res[1] == msgP2PRdyUDP || res[1] == msgP2PRdyTCP
 	})
 	if err != nil {
 		_ = conn.Close()
 		return nil, err
 	}
 
+	want := map[string]byte{"udp": msgP2PRdyUDP, "tcp": msgP2PRdyTCP}[transport]
+	if want != 0 && res[1] != want {
+		_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
+		if other, err := conn.(*udpConn).WriteUntil(punch, func(res []byte) bool { return res[1] == want }); err == nil {
+			res = other
+		} else {
+			offered := "UDP"
+			if res[1] == msgP2PRdyTCP {
+				offered = "TCP"
+			}
+			logf("cs2: %s asked for, the camera offers only %s", transport, offered)
+		}
+	}
+
 	_ = conn.SetDeadline(time.Time{})
 
-	if res[1] == msgTCP {
+	if res[1] == msgP2PRdyTCP {
 		_ = conn.Close()
 		//host := fmt.Sprintf("%d.%d.%d.%d:%d", b[31], b[30], b[29], b[28], uint16(b[27])<<8|uint16(b[26]))
 		return newTCPConn(conn.RemoteAddr().String())
@@ -467,11 +515,53 @@ type dataChannel struct {
 	statsMu   sync.Mutex
 	stats     channelStats
 	waitStart time.Time // when the first packet after a missing one arrived
+
+	timing      bool      // the media channel: note every video frame's arrival
+	lastFrame   time.Time // arrival of the previous video frame
+	lastFrameTS int64     // its capture time on the camera's clock, ms
 }
 
 type channelStats struct {
 	packets, outOfOrder, refused, duplicates, dropped, maxWaiting int
-	longestWait                                                    time.Duration
+	longestWait                                                   time.Duration
+
+	frames, videoBytes   int
+	longestPause         time.Duration // between two video frames arriving
+	pauseCameraMs        int64         // the same two frames apart on the camera's clock
+	minOffset, maxOffset int64         // arrival minus capture time, ms
+}
+
+// observe notes a video frame's arrival against the camera's clock (Waiting Paws). The miss header in front of every
+// media message carries the codec at bytes 4–7 and the capture time in ms at 16–23 (not on the Dafang and the
+// Loock V2, which go2rtc special-cases: their spread is meaningless).
+func (c *dataChannel) observe(msg []byte) {
+	if len(msg) < hdrSize {
+		return
+	}
+	if codec := binary.LittleEndian.Uint32(msg[4:]); codec != 4 && codec != 5 { // H.264, H.265
+		return
+	}
+	now := time.Now()
+	ts := int64(binary.LittleEndian.Uint64(msg[16:]))
+	offset := now.UnixMilli() - ts
+
+	c.statsMu.Lock()
+	defer c.statsMu.Unlock()
+	s := &c.stats
+	s.frames++
+	s.videoBytes += len(msg)
+	if !c.lastFrame.IsZero() {
+		if pause := now.Sub(c.lastFrame); pause > s.longestPause {
+			s.longestPause = pause
+			s.pauseCameraMs = ts - c.lastFrameTS
+		}
+	}
+	c.lastFrame, c.lastFrameTS = now, ts
+	if s.frames == 1 {
+		s.minOffset, s.maxOffset = offset, offset
+	} else {
+		s.minOffset, s.maxOffset = min(s.minOffset, offset), max(s.maxOffset, offset)
+	}
 }
 
 func (c *dataChannel) count(update func(s *channelStats)) {
@@ -501,6 +591,9 @@ func (c *dataChannel) Push(b []byte) error {
 			break
 		}
 
+		if c.timing {
+			c.observe(c.waitData[:c.waitSize])
+		}
 		select {
 		case c.popBuf <- c.waitData[:c.waitSize]:
 		default:

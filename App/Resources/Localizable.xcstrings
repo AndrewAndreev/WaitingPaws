@@ -676,9 +676,6 @@
         }
       }
     },
-    "18:29:13" : {
-      "shouldTranslate" : false
-    },
     "CPU %lld %%" : {
       "shouldTranslate" : false
     },
@@ -1013,6 +1010,9 @@
           }
         }
       }
+    },
+    "Mac" : {
+      "shouldTranslate" : false
     },
     "Mac виден приложению Waiting Paws на iPhone в той же Wi‑Fi сети." : {
       "localizations" : {
@@ -1687,6 +1687,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В этой сборке нет встроенного go2rtc. Укажите свой сервер."
+          }
+        }
+      }
+    },
+    "В этой сети нет Mac с открытым Waiting Paws" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Mac with Waiting Paws open on this network"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этой сети нет Mac с открытым Waiting Paws"
           }
         }
       }
@@ -5563,6 +5579,22 @@
         }
       }
     },
+    "Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К Mac, с которым уже работал, iPhone подключается сам." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The camera, recording and log stay on the Mac while the iPhone runs the training from behind the door. The iPhone reconnects by itself to a Mac it has worked with."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К Mac, с которым уже работал, iPhone подключается сам."
+          }
+        }
+      }
+    },
     "Камера, качество и режим съёмки" : {
       "localizations" : {
         "en" : {
@@ -8219,6 +8251,22 @@
         }
       }
     },
+    "Подключаемся к" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключаемся к"
+          }
+        }
+      }
+    },
     "Подключён сейчас" : {
       "localizations" : {
         "en" : {
@@ -9979,6 +10027,22 @@
         }
       }
     },
+    "Синхронизировано с" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synced with"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синхронизировано с"
+          }
+        }
+      }
+    },
     "Синхронизировано с «%@»" : {
       "localizations" : {
         "en" : {
@@ -9991,6 +10055,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Синхронизировано с «%@»"
+          }
+        }
+      }
+    },
+    "Синхронизировать с «%@»" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync with “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синхронизировать с «%@»"
           }
         }
       }

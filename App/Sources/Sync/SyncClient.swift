@@ -42,8 +42,15 @@ final class SyncClient {
     @ObservationIgnored private var handshake: SyncCrypto.Handshake?
     /// No valid pairing secret on this connection: the Mac asked for «Разрешить», a new secret comes with welcome.
     @ObservationIgnored private var freshPairing = false
-    /// Reconnect to this Mac when it shows up again (set after a successful connection, cleared by "Отключиться").
-    @ObservationIgnored private var autoReconnectName: String?
+    /// Reconnect to this Mac whenever it shows up, also after a relaunch of either app (set after a successful
+    /// connection, cleared by «Отключить синхронизацию» and by a rejection).
+    @ObservationIgnored private var autoReconnectName: String? = UserDefaults.standard.string(forKey: SyncClient.autoConnectKey) {
+        didSet { UserDefaults.standard.set(autoReconnectName, forKey: Self.autoConnectKey) }
+    }
+    private static let autoConnectKey = "sync.autoConnectMac"
+    /// Whether joining a Mac on our own is fine right now: not while this iPhone runs its own training or recording.
+    @ObservationIgnored var canAutoConnect: () -> Bool = { true }
+    @ObservationIgnored private var loggedMacs: [String] = []
 
     var isConnected: Bool {
         if case .connected = status { return true }
@@ -87,11 +94,38 @@ final class SyncClient {
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             MainActor.assumeIsolated { self?.update(results) }
         }
-        browser.stateUpdateHandler = { state in
-            if case .failed(let error) = state { print("[sync] browse failed: \(error)") }
+        browser.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .failed(let error):
+                // E.g. -65569 DefunctConnection after the app was suspended: a failed browser never finds anything
+                // again, so start a new one.
+                print("[sync] browse failed: \(error), restarting")
+                MainActor.assumeIsolated { self?.restartBrowsing() }
+            case .waiting(let error):
+                print("[sync] browse waiting: \(error)")
+            default:
+                break
+            }
         }
         browser.start(queue: .main)
         self.browser = browser
+    }
+
+    private func restartBrowsing() {
+        browser?.cancel()
+        browser = nil
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            self?.startBrowsing()
+        }
+    }
+
+    /// Joins the Mac this iPhone was linked to, if it is around and nothing here is in the way.
+    func autoConnectIfPossible() {
+        guard channel == nil, let name = autoReconnectName, canAutoConnect(),
+              let mac = macs.first(where: { $0.info.name == name }) else { return }
+        print("[sync] reconnecting to \(name)")
+        connect(to: mac)
     }
 
     private func update(_ results: Set<NWBrowser.Result>) {
@@ -102,9 +136,14 @@ final class SyncClient {
             return DiscoveredMac(endpoint: result.endpoint, info: SyncHostInfo(name: name, txt: txt))
         }
         .sorted { $0.info.name < $1.info.name }
-        if channel == nil, let name = autoReconnectName, let mac = macs.first(where: { $0.info.name == name }) {
-            connect(to: mac)
+        let names = macs.map { mac in
+            mac.info.name + (isPaired(mac) ? " (paired)" : "") + (mac.info.version == SyncProtocol.version ? "" : " (v\(mac.info.version))")
         }
+        if names != loggedMacs {
+            loggedMacs = names
+            print("[sync] Macs nearby: \(names.isEmpty ? "none" : names.joined(separator: ", "))")
+        }
+        autoConnectIfPossible()
         #if DEBUG
         // `--sync-auto-connect`: join the first Mac found (UI checks in the simulator without taps).
         if channel == nil, status == .idle, CommandLine.arguments.contains("--sync-auto-connect"), let mac = bestMac {

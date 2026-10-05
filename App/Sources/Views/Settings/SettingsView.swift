@@ -86,6 +86,10 @@ struct SettingsView: View {
                     Toggle("Сохранять видео в Фото", isOn: $settings.saveToPhotos)
                 }
 
+                #if os(iOS)
+                macSection
+                #endif
+
                 #if os(macOS)
                 Section {
                     Toggle("Разрешить подключение с iPhone", isOn: $settings.shareWithIPhone)
@@ -189,6 +193,37 @@ struct SettingsView: View {
         case .unavailable: return String(localized: "фреймворк не собран")
         }
     }
+
+    #if os(iOS)
+    /// The way to a Mac that is always there (the «Рядом Mac» card on the main screen can be closed or pushed out).
+    private var macSection: some View {
+        let client = model.syncClient
+        return Section {
+            switch client.status {
+            case .connected(let name):
+                LabeledContent("Синхронизировано с", value: name)
+                Button("Отключить синхронизацию", role: .destructive) { client.disconnect() }
+            case .connecting(let name), .waitingApproval(let name):
+                LabeledContent("Подключаемся к", value: name)
+            case .idle, .failed:
+                if case .failed(let message) = client.status {
+                    Text(message).foregroundStyle(.orange)
+                }
+                if client.macs.isEmpty {
+                    Text("В этой сети нет Mac с открытым Waiting Paws").foregroundStyle(.secondary)
+                }
+                ForEach(client.macs) { mac in
+                    Button("Синхронизировать с «\(mac.info.name)»") { client.connect(to: mac) }
+                        .disabled(model.session != nil || mac.info.version != SyncProtocol.version)
+                }
+            }
+        } header: {
+            Text("Mac")
+        } footer: {
+            Text("Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К Mac, с которым уже работал, iPhone подключается сам.")
+        }
+    }
+    #endif
 
     private func check() async {
         guard let client = model.client else {
