@@ -137,15 +137,15 @@ function LastPlan() {
         <span className="spacer" />
         {plan.date !== null && <span className="faint" style={{ fontSize: 12 }}>{formatShortDate(plan.date)}</span>}
       </div>
+      <span className="h3 ellipsis">{plan.title}</span>
+      <ExitChips plan={plan} />
+      <span className="faint" style={{ fontSize: 12 }}>
+        {t('%lld вых. · ≈ %@ · перерывы %@', plan.exits.length, DurationText.short(Math.round(TrainingPlan.estimatedDuration(plan) / 60) * 60), DurationText.short(plan.defaultBreak))}
+      </span>
       <div className="row">
-        <span className="h3 grow ellipsis">{plan.title}</span>
         <Button size="sm" icon={<RepeatIcon />} shortcut="Ctrl+Shift+R" onClick={() => void repeatLast()}>
           {t('Повторить прошлое')}
         </Button>
-      </div>
-      <ExitChips plan={plan} />
-      <div className="faint" style={{ fontSize: 12 }}>
-        {t('%lld вых. · ≈ %@ · перерывы %@', plan.exits.length, DurationText.short(Math.round(TrainingPlan.estimatedDuration(plan) / 60) * 60), DurationText.short(plan.defaultBreak))}
       </div>
     </div>
   )
