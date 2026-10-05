@@ -1,0 +1,195 @@
+/*
+ * Waiting Paws design tokens for Windows and the Web.
+ *
+ * Neutral, cross-platform chrome in the spirit of Fluent 2 / Windows 11 (VS Code, Teams, Discord, Linear):
+ * a custom title bar with the system caption buttons, a left navigation rail instead of separate windows,
+ * in-window dialogs instead of sheets, 4/8 px radii, 32 px controls, Segoe UI Variable with web fallbacks.
+ * Brand: the light-pink accent of the Mac/iPhone apps, used for actions and "outside", blue for breaks.
+ */
+
+:root {
+  color-scheme: dark;
+  --font-text: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Roboto', sans-serif;
+  --font-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
+
+  /* Type ramp (Fluent 2: caption 12, body 14, subtitle 20, title 28, display 68). */
+  --text-caption: 12px;
+  --text-small: 13px;
+  --text-body: 14px;
+  --text-body-strong: 14px;
+  --text-subtitle: 18px;
+  --text-title: 24px;
+  --text-hero: 40px;
+
+  /* 4 px grid. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --control-height: 32px;
+  --control-height-lg: 40px;
+  --titlebar-height: 48px;
+  --rail-width: 72px;
+
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --ease: cubic-bezier(0.33, 0, 0.1, 1);
+
+  /* Brand colors (shared with Theme.swift). */
+  --brand: #ffb8cc;
+  --brand-strong: #ff9fbb;
+  --danger: #ff6b6b;
+  --warning: #ffb84d;
+  --info: #8cbfff;
+  --success: #6ee7a0;
+
+  /* Dark theme (default). */
+  --bg-app: #1f1d1e;
+  --bg-chrome: #181617;
+  --bg-chrome-translucent: rgba(24, 22, 23, 0.72);
+  --bg-surface: #262425;
+  --bg-surface-2: #2d2b2c;
+  --bg-surface-3: #373435;
+  --bg-sunken: #151314;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-pressed: rgba(255, 255, 255, 0.1);
+  --bg-selected: rgba(255, 184, 204, 0.12);
+  --bg-control: rgba(255, 255, 255, 0.06);
+  --bg-control-hover: rgba(255, 255, 255, 0.09);
+  --bg-control-pressed: rgba(255, 255, 255, 0.04);
+  --bg-input: rgba(255, 255, 255, 0.05);
+  --bg-scrim: rgba(0, 0, 0, 0.55);
+  --bg-tooltip: #3a3a42;
+
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-default: rgba(255, 255, 255, 0.11);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --border-focus: #ffb8cc;
+
+  --text-primary: rgba(255, 255, 255, 0.94);
+  --text-secondary: rgba(255, 255, 255, 0.66);
+  --text-tertiary: rgba(255, 255, 255, 0.44);
+  --text-disabled: rgba(255, 255, 255, 0.3);
+  --text-on-accent: #2a0d17;
+
+  --accent: var(--brand);
+  --accent-hover: #ffc7d6;
+  --accent-pressed: #f5a3ba;
+  --accent-text: #ffb8cc;
+  --accent-subtle: rgba(255, 184, 204, 0.14);
+
+  --phase-outside: var(--brand);
+  --phase-break: var(--info);
+  --phase-leaving: #b4b4c0;
+  --phase-over: var(--warning);
+  --phase-done: var(--success);
+
+  --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Light theme: system preference unless the user picked dark explicitly, or picked light. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --bg-app: #f3f2f2;
+    --bg-chrome: #eceaea;
+    --bg-chrome-translucent: rgba(236, 236, 240, 0.78);
+    --bg-surface: #ffffff;
+    --bg-surface-2: #f9f8f8;
+    --bg-surface-3: #efeded;
+    --bg-sunken: #e7e5e5;
+    --bg-hover: rgba(0, 0, 0, 0.045);
+    --bg-pressed: rgba(0, 0, 0, 0.08);
+    --bg-selected: rgba(180, 35, 90, 0.08);
+    --bg-control: #ffffff;
+    --bg-control-hover: #f8f8fa;
+    --bg-control-pressed: #f1f1f4;
+    --bg-input: #ffffff;
+    --bg-scrim: rgba(20, 20, 25, 0.35);
+    --bg-tooltip: #2b2b30;
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-default: rgba(0, 0, 0, 0.12);
+    --border-strong: rgba(0, 0, 0, 0.24);
+    --border-focus: #b4235a;
+    --text-primary: rgba(0, 0, 0, 0.9);
+    --text-secondary: rgba(0, 0, 0, 0.62);
+    --text-tertiary: rgba(0, 0, 0, 0.45);
+    --text-disabled: rgba(0, 0, 0, 0.3);
+    --text-on-accent: #2b0b16;
+    --accent: #ffb8cc;
+    --accent-hover: #ffa8c0;
+    --accent-pressed: #f598b2;
+    --accent-text: #b4235a;
+    --accent-subtle: rgba(180, 35, 90, 0.1);
+    --phase-outside: #b4235a;
+    --phase-break: #1f6fd1;
+    --phase-leaving: #6b6b78;
+    --phase-over: #9a5b00;
+    --phase-done: #1f7a45;
+    --success: #1f7a45;
+    --warning: #9a5b00;
+    --danger: #c42b2b;
+    --info: #1f6fd1;
+    --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg-app: #f3f2f2;
+  --bg-chrome: #eceaea;
+  --bg-chrome-translucent: rgba(236, 236, 240, 0.78);
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f9f8f8;
+  --bg-surface-3: #efeded;
+  --bg-sunken: #e7e5e5;
+  --bg-hover: rgba(0, 0, 0, 0.045);
+  --bg-pressed: rgba(0, 0, 0, 0.08);
+  --bg-selected: rgba(180, 35, 90, 0.08);
+  --bg-control: #ffffff;
+  --bg-control-hover: #f8f8fa;
+  --bg-control-pressed: #f1f1f4;
+  --bg-input: #ffffff;
+  --bg-scrim: rgba(20, 20, 25, 0.35);
+  --bg-tooltip: #2b2b30;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.24);
+  --border-focus: #b4235a;
+  --text-primary: rgba(0, 0, 0, 0.9);
+  --text-secondary: rgba(0, 0, 0, 0.62);
+  --text-tertiary: rgba(0, 0, 0, 0.45);
+  --text-disabled: rgba(0, 0, 0, 0.3);
+  --text-on-accent: #2b0b16;
+  --accent: #ffb8cc;
+  --accent-hover: #ffa8c0;
+  --accent-pressed: #f598b2;
+  --accent-text: #b4235a;
+  --accent-subtle: rgba(180, 35, 90, 0.1);
+  --phase-outside: #b4235a;
+  --phase-break: #1f6fd1;
+  --phase-leaving: #6b6b78;
+  --phase-over: #9a5b00;
+  --phase-done: #1f7a45;
+  --success: #1f7a45;
+  --warning: #9a5b00;
+  --danger: #c42b2b;
+  --info: #1f6fd1;
+  --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.06);
+}

@@ -1,0 +1,97 @@
+# Waiting Paws for Windows (Electron)
+
+The Windows version of Waiting Paws: the same training flow as the Mac app — the trainer's schedule, timers for
+exits and breaks, live camera, recording and the log — in one Electron window. The UI is web code that talks to its
+backend only through `window.wp` (`src/shared/api.ts`), so the same UI can run in a browser next to a small server.
+
+```
+┌──────────────────────────────────────────────────────────┐   P2P (LAN)   ┌──────────────┐
+│ Waiting Paws.exe (Electron)                               │ ────────────▶ │ Xiaomi camera│
+│  UI (React, renderer) ◀─ MSE/WebRTC ─ go2rtc.exe (child)  │               │   (Mi Home)  │
+│  backend (main): sessions, recording, files, iPhone link  │               └──────────────┘
+│  media window: recordings → MP4 + AAC (WebCodecs)         │ ◀── iPhone app (same protocol as the Mac)
+└──────────────────────────────────────────────────────────┘
+```
+
+* **go2rtc** is the same patched 1.9.14 the iOS/macOS apps embed (`GoMobile/`), built as `go2rtc.exe` by
+  `scripts/build-go2rtc.mjs` (the `GoMobile/build.sh` patches as exact string replacements) with
+  `GoMobile/desktop/main.go`. It runs as a child process on `127.0.0.1:11984` (next free pair if taken), exits with
+  the app (`-parent-pid`), restarts after a crash; its output goes to the app log.
+* **Live view**: go2rtc's `video-rtc.js` runs right in the window (`src/renderer/src/player/`), with the Mac app's
+  jitter-buffered MSE path, phases for the status overlay and the delay figures. The main process strips the browser
+  `Origin` from requests to go2rtc (its guard refuses foreign origins — that protects it from web pages, not from us)
+  and adds Basic auth for a user's server.
+* **Recording**: `GET /api/stream.mp4` into `Documents\Waiting Paws\Recordings`, in parts when the camera drops out.
+  Afterwards a hidden window turns it into a regular MP4 with **mediabunny + WebCodecs**: video copied as is, the
+  camera's Opus/FLAC/PCM sound → AAC 48 kHz with silence for pauses, a silent track when the camera gave no sound,
+  parts joined at their real time (the port of the Mac's `RecordingFinalizer`, no ffmpeg needed).
+* **History** is the Mac/iPhone format (`Documents\Waiting Paws\Sessions\*.json|txt`): a history folder copied from
+  a Mac opens here and back.
+* **iPhone link**: the computer advertises itself over Bonjour exactly like the Mac (`_waitingpaws._tcp`, WebSocket,
+  X25519 + ChaChaPoly), so the existing iPhone app pairs with it as with a Mac. Off by default (Settings → iPhone):
+  opening go2rtc to the LAN makes Windows Firewall ask.
+* **Settings** `%APPDATA%\Waiting Paws\settings.json` (the server password encrypted with DPAPI via safeStorage),
+  go2rtc config with Mi Home tokens `%APPDATA%\Waiting Paws\go2rtc\go2rtc.yaml`, logs `%APPDATA%\Waiting Paws\Logs`
+  (last 5 runs, passwords and tokens masked).
+
+## Layout
+
+```
+src/core       TypeScript port of Packages/WaitingPawsCore (parser, engine, log, store, go2rtc client, camera
+               modes, sync protocol; node/syncCrypto.ts for the main process) — tests in test/
+src/shared     UI ↔ backend contract, settings, i18n (Russian keys, English from Tools/strings/en.json + strings/*.json)
+src/main       backend: go2rtc process, recorder, finalizer bridge, storage, camera modes, sync/ (iPhone host)
+src/preload    window.wp (and the media window's file access)
+src/renderer   React UI: training/, history/, settings/, onboarding/, plan/, player/, media/ (finalizer)
+scripts        build-go2rtc.mjs, make-icons.cjs, notices.mjs
+build          installer icon and NSIS hooks (firewall rules), generated notices
+docs/ui-guide.md  design rules of the Windows/Web UI
+```
+
+## Build
+
+Requirements: Node 22+ (24 LTS used), Go 1.24+, git.
+
+```bash
+cd Desktop
+npm ci
+npm run go2rtc          # resources/bin/go2rtc.exe (clones go2rtc v1.9.14 into build/go2rtc, patches, builds)
+npm test                # core, sync host and UI logic tests
+npm run dev             # development (hot reload)
+npm run dist            # dist/WaitingPaws-<version>-Setup.exe and dist/WaitingPaws-<version>-win-x64.zip
+```
+
+`npm run icons` re-renders the icon from `Design/app-icon/AppIcon-ios.svg`; `npm run notices` refreshes the
+third-party notices (run by `dist`).
+
+Releases: push a `windows-v<version>` tag; `.github/workflows/windows.yml` builds on `windows-latest` and attaches
+the installer and the zip to that tag's release (a draft when it creates it).
+
+## Installer
+
+`WaitingPaws-<version>-Setup.exe` installs for all users (one UAC prompt) and adds two Windows Firewall rules for
+private networks: `go2rtc.exe` (Xiaomi cameras answer over UDP) and `Waiting Paws.exe` (the iPhone link). Without
+them Windows asks on first use — and a "Cancel" there leaves Block rules that silently break the camera; the
+installer removes those for its own programs. The uninstaller removes the rules; history and settings stay.
+
+The zip is portable: unpack and run `Waiting Paws.exe` (firewall prompts appear on first use; answer "Allow" for
+private networks).
+
+The build is not code-signed: the first launch shows SmartScreen ("Windows protected your PC" → More info → Run
+anyway).
+
+## Checks without a camera
+
+```bash
+npx electron . --data-dir=%TEMP%\wp-check --demo-history --demo-plan
+npx electron . --data-dir=%TEMP%\wp-check --demo-session --demo-exits-done=3 --demo-phase=away
+npx electron . --data-dir=%TEMP%\wp-check --capture=shot.png --quit-after-capture --eval="__wpUI.set({route:'history'})"
+```
+
+`--data-dir` keeps settings, history, go2rtc config and logs in that folder. Keyboard: Space next step, Backspace
+false start, Ctrl+Enter start, Ctrl+Shift+V paste schedule, Ctrl+R record, Ctrl+E finish, Ctrl+H history, Ctrl+,
+settings, F11 full screen, F12 developer tools.
+
+Opened in a plain browser (`npm run dev`, then the dev server URL) the UI runs on an in-page backend
+(`src/renderer/src/platform/browserBackend.ts`): schedule, timers, log and history work, without a camera — the
+starting point of a web version.

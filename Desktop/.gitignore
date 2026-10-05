@@ -1,0 +1,8 @@
+node_modules/
+out/
+dist/
+resources/bin/
+build/go2rtc/
+*.log
+out-*/
+dist-web/

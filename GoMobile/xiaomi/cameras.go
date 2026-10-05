@@ -83,7 +83,8 @@ func listDevices(user, region string) ([]*cloudDevice, error) {
 	dids, err := homeDeviceIDs(user, region)
 	if err != nil {
 		// Without the homes the account's own devices are still worth showing.
-		app.GetLogger("xiaomi").Warn().Err(err).Msg("[xiaomi] homes")
+		log := app.GetLogger("xiaomi") // a value: Warn() needs an addressable logger
+		log.Warn().Err(err).Msg("[xiaomi] homes")
 		return devices, nil
 	}
 
@@ -104,7 +105,8 @@ func listDevices(user, region string) ([]*cloudDevice, error) {
 		n := min(len(missing), 150)
 		more, err := deviceListPage(user, region, missing[:n])
 		if err != nil {
-			app.GetLogger("xiaomi").Warn().Err(err).Msg("[xiaomi] shared home devices")
+			log := app.GetLogger("xiaomi")
+			log.Warn().Err(err).Msg("[xiaomi] shared home devices")
 			break
 		}
 		devices = append(devices, more...)

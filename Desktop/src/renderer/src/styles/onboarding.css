@@ -1,0 +1,789 @@
+/* First launch (welcome page), camera picker, Xiaomi sign-in, own go2rtc server. */
+
+/* ---------- Welcome page ---------- */
+
+.welcome {
+  display: grid;
+  grid-template-columns: minmax(380px, 5fr) 7fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.welcome__identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-6) var(--space-8) var(--space-4);
+}
+.welcome__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+  max-width: 100%;
+}
+.welcome__logo {
+  width: 88px;
+  height: 88px;
+  border-radius: 20px;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.28),
+    0 0 0 1px var(--border-subtle);
+}
+.welcome__name {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 38px;
+  font-weight: 700;
+}
+.welcome__version {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+}
+.welcome__hero .setup-status {
+  margin-top: var(--space-3);
+  justify-content: center;
+}
+
+.welcome__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  max-width: 380px;
+  margin: var(--space-6) 0 auto;
+}
+.welcome-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease);
+}
+.welcome-action:hover {
+  background: var(--bg-surface-2);
+}
+.welcome-action:active {
+  background: var(--bg-surface-3);
+}
+.welcome-action__icon {
+  display: inline-flex;
+  color: var(--accent-text);
+  flex: none;
+}
+.welcome-action__icon svg {
+  width: 24px;
+  height: 24px;
+}
+.welcome-action__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.welcome-action__title {
+  font-weight: 600;
+}
+.welcome-action__subtitle {
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+.welcome-action__chevron {
+  flex: none;
+  color: var(--text-tertiary);
+}
+.welcome__note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-4);
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.welcome__note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.welcome__found {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+}
+.welcome__found-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4) var(--space-1) var(--space-6);
+}
+.welcome__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--space-4) var(--space-4);
+}
+.welcome__list:focus-visible {
+  outline: none;
+}
+.welcome__list:focus-visible .source-row[aria-selected='true'] {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+.welcome__section + .welcome__section {
+  margin-top: var(--space-4);
+}
+.welcome__section-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) 6px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.welcome__section-header .faint {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.welcome__account-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0 var(--space-2) var(--space-2);
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--warning);
+}
+.welcome__account-error svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.welcome__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 64px;
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+}
+.welcome__footer .btn--primary {
+  min-width: 120px;
+}
+.welcome__error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--danger);
+  font-size: var(--text-small);
+}
+.welcome__error svg {
+  flex: none;
+}
+.welcome__progress {
+  font-size: var(--text-small);
+}
+.welcome__empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-8);
+  text-align: center;
+  min-height: 0;
+}
+.welcome__empty-icon {
+  display: inline-flex;
+  margin-bottom: var(--space-1);
+  color: var(--text-tertiary);
+}
+.welcome__empty-icon svg {
+  width: 40px;
+  height: 40px;
+}
+.welcome__empty-text {
+  max-width: 360px;
+}
+.welcome__empty-action {
+  margin-top: var(--space-3);
+}
+
+/* A camera or stream in the welcome list. */
+.source-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 6px var(--space-3) 6px 6px;
+  border-radius: var(--radius-md);
+  cursor: default;
+}
+.source-row:hover {
+  background: var(--bg-hover);
+}
+.source-row[aria-selected='true'] {
+  background: var(--bg-selected);
+}
+.source-row[aria-selected='true']::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 18px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.source-row__still {
+  width: 96px;
+  flex: none;
+}
+.source-row__title {
+  font-weight: 600;
+}
+.source-row__detail {
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+.source-row__detail.mono {
+  font-size: 11.5px;
+}
+.source-row--offline .source-row__title {
+  color: var(--text-secondary);
+}
+.still-dot-space {
+  width: 8px;
+  flex: none;
+}
+
+/* ---------- go2rtc status line ---------- */
+
+.setup-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+.setup-status .spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+}
+.setup-status svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.setup-status__warning {
+  color: var(--warning);
+}
+.setup-status__icon {
+  color: var(--text-tertiary);
+}
+.setup-status__action {
+  flex: none;
+  font-size: var(--text-caption);
+}
+
+/* ---------- Stills ---------- */
+
+.still {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: linear-gradient(180deg, #3b393a, #1f1d1e);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.still__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: fade-in var(--duration-normal) var(--ease);
+}
+.still__glyph {
+  color: rgba(255, 255, 255, 0.38);
+}
+.still--failed .still__image {
+  filter: grayscale(1);
+}
+
+/* ---------- «Камеры Mi Home» sign-in card ---------- */
+
+.mihome-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.mihome-card--card {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-2);
+}
+.mihome-card--row {
+  padding: 6px var(--space-3) 6px 6px;
+}
+.mihome-card__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+}
+.mihome-card--row .mihome-card__icon {
+  width: 96px;
+  height: 54px;
+  border-radius: var(--radius-sm);
+}
+.mihome-card__title {
+  font-weight: 600;
+}
+.mihome-card__text {
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* ---------- Camera picker ---------- */
+
+.dialog__body.picker {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--space-3);
+}
+.picker__sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.picker__section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  margin-bottom: var(--space-3);
+}
+.picker__section-detail {
+  font-size: var(--text-small);
+}
+.picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4) var(--space-4);
+}
+.picker__note {
+  font-size: var(--text-small);
+}
+.picker__account-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--text-small);
+  color: var(--warning);
+}
+.picker__account-error svg {
+  flex: none;
+}
+.picker__empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  text-align: center;
+  padding: var(--space-6);
+}
+.picker__empty-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-1);
+}
+.picker__footer-status {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  font-size: var(--text-small);
+}
+.picker__error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--danger);
+}
+.picker__error svg {
+  flex: none;
+}
+
+/* A camera or stream tile in the picker. */
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.tile:focus-visible {
+  outline: none;
+}
+.tile__still {
+  width: 100%;
+  margin-bottom: 6px;
+  border-radius: var(--radius-lg);
+  transition: box-shadow var(--duration-fast) var(--ease);
+}
+.tile:hover .tile__still {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 0 2px var(--border-strong);
+}
+.tile[aria-pressed='true'] .tile__still {
+  box-shadow:
+    0 0 0 2px var(--bg-surface),
+    0 0 0 4px var(--border-focus);
+}
+.tile:focus-visible:not([aria-pressed='true']) .tile__still {
+  box-shadow:
+    0 0 0 2px var(--bg-surface),
+    0 0 0 4px var(--text-secondary);
+}
+.tile--offline .tile__title {
+  color: var(--text-secondary);
+}
+.tile__title {
+  padding: 0 2px;
+  font-weight: 600;
+}
+.tile__subtitle {
+  padding: 0 2px;
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+.tile__subtitle.mono {
+  font-size: 11.5px;
+}
+.tile__chip {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.58);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.tile__chip .dot {
+  width: 6px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.5);
+}
+.tile__chip .dot--live {
+  background: #6ee7a0;
+}
+.tile__chip .spinner {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+}
+.tile__check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  color: var(--border-focus);
+  background: radial-gradient(circle, #fff 45%, transparent 50%);
+}
+
+/* «Добавить поток…» flyout. */
+.add-stream {
+  width: 360px;
+}
+
+/* ---------- Xiaomi sign-in ---------- */
+
+.signin__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.signin__server {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+}
+.signin__note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+.signin__note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary);
+}
+.signin__busy {
+  font-size: var(--text-small);
+  padding-left: var(--space-1);
+}
+.signin__account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-2);
+}
+.signin__account-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  color: var(--text-tertiary);
+}
+.signin__account-region {
+  font-size: var(--text-caption);
+  line-height: 16px;
+}
+.signin__resend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+}
+.signin__resend .btn--link {
+  font-size: var(--text-small);
+}
+.signin__captcha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-2);
+}
+.signin__captcha-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+.signin__captcha-title svg {
+  flex: none;
+  color: var(--info);
+}
+.signin__captcha-row {
+  gap: var(--space-3);
+}
+.signin__captcha-image {
+  display: grid;
+  place-items: center;
+  width: 210px;
+  height: 64px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+.signin__captcha-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Six boxes, one per digit; a transparent input on top takes the typing. */
+.code-field {
+  position: relative;
+  align-self: center;
+  padding: var(--space-2) 0;
+}
+.code-field__boxes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.code-field__cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.code-field__box {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 48px;
+  border: 1px solid var(--border-default);
+  border-bottom-color: var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+}
+.code-field__box--current {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.code-field__dash {
+  color: var(--text-tertiary);
+}
+.code-field__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.01;
+  border: none;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: 1px;
+  cursor: text;
+}
+.code-field--disabled {
+  opacity: 0.5;
+}
+
+/* ---------- Own server ---------- */
+
+.server-setup {
+  gap: var(--space-4);
+}
+.server-setup__pair {
+  display: flex;
+  gap: var(--space-3);
+}
+.server-setup__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  font-size: var(--text-small);
+}
+.server-setup__ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+}
+.server-setup__failed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--danger);
+}
+.server-setup__ok svg,
+.server-setup__failed svg {
+  flex: none;
+}
+
+/* ---------- Shared ---------- */
+
+.setup-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--danger);
+}
+.setup-error svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 1180px) {
+  .welcome {
+    grid-template-columns: 400px 1fr;
+  }
+  .welcome__identity {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+}
+.welcome__found-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.picker__content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.picker__content:focus,
+.picker__content:focus-visible {
+  outline: none;
+}
+.dialog__footer .btn.picker__refresh {
+  min-width: 32px;
+}

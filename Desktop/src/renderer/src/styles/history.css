@@ -1,0 +1,840 @@
+/* ---------- History page: command bar, progress, table, inspector ---------- */
+
+.history {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'bar'
+    'main';
+  height: 100%;
+  container: history / inline-size;
+}
+.history--inspector {
+  grid-template-columns: minmax(0, 1fr) var(--inspector-width, 360px);
+  grid-template-areas:
+    'bar bar'
+    'main inspector';
+}
+
+/* Command bar (Explorer-like): filter, search, what is there, actions. */
+.hbar {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 52px;
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  min-width: 0;
+}
+.hbar__summary {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+.hbar__chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: -2px;
+  color: var(--text-secondary);
+}
+.hbar__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border-default);
+  margin: 0 var(--space-1);
+  flex: none;
+}
+.hbar .btn {
+  flex: none;
+}
+.hbar .segmented {
+  flex: none;
+}
+.hbar .segmented button {
+  white-space: nowrap;
+}
+@container history (max-width: 1180px) {
+  .hbar__summary {
+    display: none;
+  }
+}
+@container history (max-width: 1040px) {
+  .hbar .btn:has(.hbar__label) {
+    width: var(--control-height);
+    padding: 0;
+    gap: 0;
+  }
+  .hbar__label {
+    display: none;
+  }
+}
+
+.hsearch {
+  position: relative;
+  flex: 0 1 240px;
+  min-width: 150px;
+}
+.hsearch .input {
+  width: 100%;
+  padding-left: 32px;
+  padding-right: 30px;
+}
+.hsearch .input::-webkit-search-cancel-button {
+  display: none;
+}
+.hsearch__icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.hsearch__clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.hsearch__clear:hover {
+  background: var(--bg-hover);
+}
+.hsearch__clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+.history__main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.history__empty {
+  height: 100%;
+}
+.history__empty-text {
+  max-width: 480px;
+}
+.history__noprogress {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ---------- Progress: figures + «Дольше всего за дверью» ---------- */
+
+.hprogress {
+  flex: none;
+  display: flex;
+  gap: 28px;
+  height: 260px;
+  padding: var(--space-4) var(--space-5) var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+  min-width: 0;
+}
+@media (max-height: 760px) {
+  .hprogress {
+    height: 224px;
+    padding-top: var(--space-3);
+    gap: var(--space-6);
+  }
+  .hprogress__figures {
+    gap: var(--space-2);
+  }
+  .hfigure__title {
+    line-height: 18px;
+  }
+}
+.hprogress__figures {
+  flex: none;
+  width: 164px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.hfigure__title {
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+.hfigure__value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.hfigure__note {
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-height: 760px) {
+  .hfigure__value {
+    font-size: 22px;
+    line-height: 26px;
+  }
+}
+.hprogress__chart {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  container: hchart / inline-size;
+}
+.hprogress__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 28px;
+  min-width: 0;
+}
+.hprogress__legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+@container hchart (max-width: 600px) {
+  .hprogress__legend {
+    display: none;
+  }
+}
+.hprogress__period {
+  gap: 4px;
+}
+.hprogress__period svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+}
+.hlegend-line {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--phase-outside);
+}
+.hlegend-dash {
+  width: 14px;
+  height: 0;
+  border-top: 1.5px dashed var(--text-tertiary);
+}
+.hlegend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.hchart {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.hchart__svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible;
+}
+.hchart__grid {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.hchart__axis {
+  fill: var(--text-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.hchart__plan {
+  fill: none;
+  stroke: var(--text-tertiary);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+}
+.hchart__line {
+  fill: none;
+  stroke: var(--phase-outside);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.hchart__rule {
+  stroke: var(--phase-outside);
+  stroke-opacity: 0.4;
+  stroke-width: 1;
+}
+.hchart__crosshair {
+  stroke: var(--text-tertiary);
+  stroke-opacity: 0.6;
+  stroke-width: 1;
+}
+.hchart__point {
+  fill: var(--phase-outside);
+  stroke: var(--bg-app);
+  stroke-width: 2;
+  transition: r var(--duration-fast) var(--ease);
+}
+.hchart__point--false {
+  fill: var(--warning);
+}
+.hchart__label {
+  position: absolute;
+  transform: translateX(-50%);
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--phase-outside) 45%, transparent);
+  background: var(--bg-surface-2);
+  box-shadow: var(--shadow-card);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------- Table ---------- */
+
+.htable {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 var(--space-3) var(--space-3);
+}
+.htable:focus-visible {
+  outline: none;
+}
+.hrow {
+  display: grid;
+  grid-template-columns: var(--hcols);
+  align-items: center;
+  height: 36px;
+  border-radius: var(--radius-sm);
+}
+/* Hairlines between rows, none around the hovered or selected one. */
+:where(.hrow:not(.hrow--header) + .hrow) {
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+.hrow:not(.hrow--header):hover,
+.hrow:not(.hrow--header):hover + .hrow,
+.hrow.hrow--selected,
+.hrow.hrow--selected + .hrow {
+  box-shadow: none;
+}
+.hrow:not(.hrow--header):hover {
+  background: var(--bg-hover);
+}
+.hrow--selected,
+.hrow--selected:not(.hrow--header):hover {
+  background: var(--bg-selected);
+}
+.htable:focus-visible .hrow.hrow--selected {
+  box-shadow: inset 0 0 0 1px var(--border-focus);
+}
+.hrow--header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 calc(-1 * var(--space-3));
+  padding: 0 var(--space-3);
+  border-radius: 0;
+  background: var(--bg-app);
+  box-shadow: inset 0 -1px 0 var(--border-subtle);
+}
+.hcell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.hcell--end {
+  justify-content: flex-end;
+  text-align: right;
+}
+.hcell--header {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  gap: 4px;
+}
+.hcell--header:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.hcell--sorted {
+  color: var(--text-primary);
+}
+.hsort {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--text-secondary);
+}
+.hrow--clip .hcell {
+  color: var(--text-secondary);
+}
+.hdash {
+  color: var(--text-tertiary);
+}
+.hfalse {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--warning);
+}
+.hfalse svg {
+  width: 16px;
+  height: 16px;
+}
+.hlongest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+.hlongest__value {
+  min-width: 38px;
+  text-align: right;
+  flex: none;
+}
+.hlongest__track {
+  flex: 1 1 auto;
+  max-width: 56px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--bg-surface-3);
+  overflow: hidden;
+}
+.hlongest__bar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--phase-outside);
+}
+.hvideo-glyph {
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+.hvideo-glyph svg {
+  width: 16px;
+  height: 16px;
+}
+.hvideo-preparing {
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+.hvideo-preparing .spinner {
+  width: 12px;
+  height: 12px;
+}
+.htable__empty {
+  min-height: calc(100% - 48px);
+}
+
+/* Small 16:9 frame at the start of a row. */
+.hthumb {
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-3);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  color: var(--text-tertiary);
+  overflow: hidden;
+}
+.hthumb svg {
+  width: 14px;
+  height: 14px;
+}
+.hthumb .hthumb__paw {
+  color: color-mix(in srgb, var(--accent-text) 85%, transparent);
+}
+.hthumb img,
+.hthumb__host,
+.hthumb__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  animation: fade-in var(--duration-normal) var(--ease);
+}
+
+/* ---------- Inspector ---------- */
+
+.history__inspector {
+  grid-area: inspector;
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+.hinspector__scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.hsplitter {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+.hsplitter:hover,
+.hsplitter:active {
+  background: linear-gradient(to right, transparent 2px, var(--accent) 2px, var(--accent) 4px, transparent 4px);
+}
+.hinspector__empty {
+  height: 100%;
+}
+.hinspector__top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.hinspector__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hinspector__title {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.hinspector__footer {
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.hplayer {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border-subtle);
+}
+.hplayer__video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #000;
+}
+.hplayer__status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: var(--text-small);
+  pointer-events: none;
+  animation: fade-in var(--duration-normal) var(--ease);
+}
+.hnovideo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 14px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+}
+.hnovideo svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+}
+
+/* The exits along the recording. */
+.hstrip {
+  position: relative;
+  user-select: none;
+}
+.hstrip__markers {
+  position: relative;
+  height: 16px;
+}
+.hstrip__marker {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  min-width: 14px;
+  height: 16px;
+  padding: 0 2px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.hstrip__marker:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.hstrip__marker:not(:disabled):hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.hstrip__marker--false {
+  top: 1px;
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--warning);
+  color: var(--bg-surface);
+}
+.hstrip__marker--false:not(:disabled):hover {
+  background: var(--warning);
+  filter: brightness(1.1);
+}
+.hstrip__marker--false svg {
+  width: 9px;
+  height: 9px;
+}
+.hstrip__track {
+  position: relative;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  touch-action: none;
+}
+.hstrip__track--seekable {
+  cursor: pointer;
+}
+.hstrip__rail {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-surface-3);
+  overflow: hidden;
+}
+.hstrip__seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.hstrip__seg--walk {
+  background: color-mix(in srgb, var(--phase-outside) 40%, transparent);
+}
+.hstrip__seg--away {
+  background: var(--phase-outside);
+}
+.hstrip__seg--falseStart {
+  background: var(--warning);
+}
+.hstrip__seg--rest {
+  background: color-mix(in srgb, var(--info) 35%, transparent);
+}
+.hstrip__playhead {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--text-primary);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.hstrip__ticks {
+  position: relative;
+  height: 14px;
+}
+.hstrip__tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Collapsible sections. */
+.hsection {
+  border-top: 1px solid var(--border-subtle);
+}
+.hsection__header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-4);
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.hsection__header:hover {
+  background: var(--bg-hover);
+}
+.hsection__chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  color: var(--text-tertiary);
+  transition: transform var(--duration-fast) var(--ease);
+}
+.hsection__chevron--collapsed {
+  transform: rotate(-90deg);
+}
+.hsection__body {
+  padding: 2px var(--space-4) var(--space-4);
+}
+
+.hfacts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px var(--space-3);
+  margin: 0;
+}
+.hfacts dt {
+  color: var(--text-secondary);
+}
+.hfacts dd {
+  margin: 0;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+.hfacts__file {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Planned vs actual per attempt. */
+.hlog {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+.hlog__row {
+  display: grid;
+  grid-template-columns: 30px 42px 46px 16px 50px 42px minmax(10px, 1fr);
+  gap: 6px;
+  align-items: center;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+}
+.hlog__row--header {
+  height: 24px;
+  margin-bottom: 2px;
+  border-radius: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  box-shadow: inset 0 -1px 0 var(--border-subtle);
+}
+.hlog__num {
+  text-align: right;
+}
+.hlog__actual {
+  font-weight: 600;
+}
+.hlog__actual--false,
+.hlog__off {
+  color: var(--warning);
+}
+.hlog__status {
+  display: inline-flex;
+  color: var(--success);
+}
+.hlog__status--false {
+  color: var(--warning);
+}
+.hlog__status svg {
+  width: 14px;
+  height: 14px;
+}
+.hlog__jump {
+  justify-self: end;
+  display: inline-flex;
+  opacity: 0;
+  color: var(--text-secondary);
+}
+.hlog__jump svg {
+  width: 10px;
+  height: 10px;
+}
+.hlog__row--jump {
+  cursor: pointer;
+}
+.hlog__row--jump:hover {
+  background: var(--bg-hover);
+}
+.hlog__row--jump:hover .hlog__jump {
+  opacity: 1;
+}
+.hnotes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: var(--text-small);
+}
