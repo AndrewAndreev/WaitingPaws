@@ -15,7 +15,9 @@ import glob
 import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CATALOG = os.path.join(ROOT, "App/Resources/Localizable.xcstrings")
@@ -24,11 +26,15 @@ CYRILLIC = re.compile(r"[А-Яа-яЁё]")
 SPECIFIER = re.compile(r"%(?:\d+\$)?(?:lld|ld|d|@|lf|f|llu|lu|u|%)")
 
 
+def stringsdata(derived_data):
+    pattern = os.path.join(derived_data, "Build/Intermediates.noindex/WaitingPaws.build/**/*.stringsdata")
+    return sorted(glob.glob(pattern, recursive=True))
+
+
 def extracted(derived_data):
     """key → sorted list of "File.swift:line" where the app's code uses it (table Localizable)."""
     keys = {}
-    pattern = os.path.join(derived_data, "Build/Intermediates.noindex/WaitingPaws.build/**/*.stringsdata")
-    for path in glob.glob(pattern, recursive=True):
+    for path in stringsdata(derived_data):
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         source = os.path.basename(data.get("source", path))
@@ -36,6 +42,27 @@ def extracted(derived_data):
             line = entry.get("location", {}).get("startingLine", 0)
             keys.setdefault(entry["key"], set()).add(f"{source}:{line}")
     return {k: sorted(v) for k, v in keys.items()}
+
+
+def sort_nested(value):
+    if isinstance(value, dict):
+        return {k: sort_nested(value[k]) for k in sorted(value)}
+    return value
+
+
+def xcode_order(keys):
+    """The order Xcode writes catalog keys in (Foundation's localizedStandardCompare)."""
+    script = ("import Foundation\n"
+              "let keys = try! JSONDecoder().decode([String].self, from: FileHandle.standardInput.readDataToEndOfFile())\n"
+              "let sorted = keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }\n"
+              "FileHandle.standardOutput.write(try! JSONEncoder().encode(sorted))\n")
+    with tempfile.NamedTemporaryFile("w", suffix=".swift", delete=False) as f:
+        f.write(script)
+    try:
+        result = subprocess.run(["swift", f.name], input=json.dumps(keys).encode(), capture_output=True, check=True)
+    finally:
+        os.unlink(f.name)
+    return json.loads(result.stdout)
 
 
 def check_specifiers(key, value):
@@ -84,9 +111,11 @@ def main():
         strings[key] = item
 
     catalog = {"sourceLanguage": "en", "strings": strings, "version": "1.0"}
+    # Xcode's own layout (keys in localizedStandardCompare order, "key" : value, no final newline), so saving the
+    # catalog in Xcode or its build-time sync changes nothing.
+    catalog["strings"] = {key: sort_nested(strings[key]) for key in xcode_order(list(strings))}
     with open(CATALOG, "w", encoding="utf-8") as f:
-        json.dump(catalog, f, ensure_ascii=False, indent=2, sort_keys=True)
-        f.write("\n")
+        json.dump(catalog, f, ensure_ascii=False, indent=2, separators=(",", " : "))
 
     unused = sorted(set(translations) - set(keys))
     print(f"{len(keys)} keys, {len(missing)} without English, {len(unused)} translations no longer used")

@@ -16,9 +16,15 @@ WINLIST=/tmp/wp-winlist
 [[ -x $WINLIST ]] || swiftc -O Tools/winlist.swift -o $WINLIST
 EXTRA=()
 if [[ -n "$DEMO_CAMERA" ]]; then
-  CONTAINER_TMP=~/Library/Containers/su.comrade.waitingpaws/Data/tmp
-  mkdir -p $CONTAINER_TMP && cp Tools/demo-camera.jpg $CONTAINER_TMP/demo-camera.jpg
-  EXTRA=(--demo-camera=$CONTAINER_TMP/demo-camera.jpg)
+  # A sandboxed (signed) build reads only its own container; an unsigned one must not touch that container:
+  # it belongs to the signed app, and macOS would stop the copy with an "access data from other apps" prompt.
+  if codesign -d --entitlements - "$BUNDLE" 2>/dev/null | grep -q app-sandbox; then
+    PICTURE_DIR=~/Library/Containers/su.comrade.waitingpaws/Data/tmp
+  else
+    PICTURE_DIR=/tmp/wp-ui-shot
+  fi
+  mkdir -p $PICTURE_DIR && cp Tools/demo-camera.jpg $PICTURE_DIR/demo-camera.jpg
+  EXTRA=(--demo-camera=$PICTURE_DIR/demo-camera.jpg)
 fi
 pkill -f "$BUNDLE/Contents/MacOS/WaitingPaws" 2>/dev/null && sleep 1 || true
 open -n -g --stdout /tmp/wp-ui-shot.log --stderr /tmp/wp-ui-shot.log "$BUNDLE" --args -ApplePersistenceIgnoreState YES --ui-preview "${EXTRA[@]}" "$@"

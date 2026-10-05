@@ -39,6 +39,13 @@ final class EnglishTests: XCTestCase {
         XCTAssertEqual(plan.notes, ["All breaks 2 minutes", "Stay calm at the door."])
     }
 
+    func testDottedDatesAreDayFirstInEnglishToo() {
+        let plan = PlanParser.parse("Sunday training - Anna - 04.10.2026\nExit 1 - 5 seconds")
+        let parts = Calendar(identifier: .gregorian).dateComponents([.day, .month], from: plan.date!)
+        XCTAssertEqual(parts.day, 4)
+        XCTAssertEqual(parts.month, 10)
+    }
+
     func testRussianScheduleStillParsesInEnglishUI() {
         let plan = PlanParser.parse("Тренировка\nВсе перерывы 3 минуты\n1 выход - 5 секунд\n2 выход - 1 минута ИЛИ до вставания")
         XCTAssertEqual(plan.exits.map(\.duration), [5, 60])

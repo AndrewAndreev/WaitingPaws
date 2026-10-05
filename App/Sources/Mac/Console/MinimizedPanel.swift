@@ -131,7 +131,7 @@ private struct MinimizedStrip: View {
                     }
                     if let session = model.session {
                         let live = LiveSessionModel(session: session, now: context.date,
-                                                    recordingSince: model.isRecordingNow ? model.recorder.startedAt : nil)
+                                                    recordingSince: model.isRecordingNow ? model.recordingStartedAt : nil)
                         Divider().frame(height: 22)
                         ZStack {
                             ProgressRing(value: live.progress, tint: live.tint, lineWidth: 3)

@@ -1,60 +1,76 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "CFBundleDisplayName": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Waiting Paws"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "CFBundleName": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Waiting Paws"
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "NSLocalNetworkUsageDescription": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Waiting Paws connects to your camera and to Waiting Paws on your other devices over the local network."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Waiting Paws подключается к камере и к Waiting Paws на других ваших устройствах по локальной сети."
+    "NSHumanReadableCopyright" : {
+      "comment" : "Copyright (human-readable)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "© 2026 Andrew Andreev"
           }
         }
       }
     },
-    "NSPhotoLibraryAddUsageDescription": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Waiting Paws saves training videos to your Photos library."
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "Privacy - Local Network Usage Description",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws connects to your camera and to Waiting Paws on your other devices over the local network."
           }
         },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Waiting Paws сохраняет видео тренировок в «Фото»."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws подключается к камере и к Waiting Paws на других ваших устройствах по локальной сети."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "comment" : "Privacy - Photo Library Additions Usage Description",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws saves training videos to your Photos library."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws сохраняет видео тренировок в «Фото»."
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

@@ -5,8 +5,33 @@ import WaitingPawsCore
 
 /// Sample data for UI checks without a camera or a real history (DEBUG launch arguments only).
 enum DemoData {
-    /// A realistic trainer's message (9 exits, own break after exit 6, notes, false-start rule).
-    static let planText = """
+    /// A realistic trainer's message (9 exits, own break after exit 6, notes, false-start rule), in the app's
+    /// language (screenshots for both App Store languages).
+    static var planText: String { CoreLanguage.current == .ru ? planTextRU : planTextEN }
+
+    static let planTextEN = """
+    🐶 Sunday training - Anna/Mark - 04.10.2026
+
+    ➡️ The second person leaves the apartment at least 30-40 minutes before the training, without the dog noticing
+    ➡️ 30-60 minutes before: turn on music, unlock the door from inside, close the windows
+    ➡️ During breaks sit at the table and work
+    ➡️ All breaks 2 minutes
+
+    Exit 1 - 10 seconds
+    Exit 2 - 30 seconds
+    Exit 3 - 15 seconds
+    Exit 4 - 1 minute
+    Exit 5 - 45 seconds
+    Exit 6 - 2 minutes OR until the dog stands up
+    Break 5 minutes
+    Exit 7 - 30 seconds
+    Exit 8 - 3 minutes OR until the dog stands up
+    Exit 9 - 1 minute
+
+    🔖 False start: if she walks to the door during a long exit, or you heard sounds she will react to, come back right away and after a normal break go for the long exit again
+    """
+
+    static let planTextRU = """
     🐹 Тренировка на воскресенье - Таня/Андрей - 04.10.2026
 
     ➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода
@@ -55,6 +80,11 @@ enum DemoData {
     ]
 
     private static let weekdays = ["на воскресенье", "на понедельник", "на вторник", "на среду", "на четверг", "на пятницу", "на субботу"]
+    private static let weekdaysEN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+    private static func trainersEN(_ ru: String) -> String {
+        ru.replacingOccurrences(of: "Таня", with: "Anna").replacingOccurrences(of: "Андрей", with: "Mark")
+    }
 
     /// Eleven finished trainings over four weeks, newest first; time behind the door grows from 0:05 to 2:30.
     static func history() -> [TrainingRecord] {
@@ -66,7 +96,9 @@ enum DemoData {
         return days.reversed().map { start, trainers, exits, falseStartAt in
             let date = formatter.date(from: start)!
             let weekday = calendar.component(.weekday, from: date) - 1
-            let plan = TrainingPlan(title: "Тренировка \(weekdays[weekday])", trainers: trainers, date: date,
+            let english = CoreLanguage.current == .en
+            let plan = TrainingPlan(title: english ? "\(weekdaysEN[weekday]) training" : "Тренировка \(weekdays[weekday])",
+                                    trainers: english ? trainersEN(trainers) : trainers, date: date,
                                     exits: exits.enumerated().map { PlannedExit(number: $0.offset + 1, duration: $0.element) })
             let clock = Clock(date)
             let session = TrainingSession(plan: plan, clock: { clock.now })

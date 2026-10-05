@@ -12,7 +12,8 @@ One app record, bundle id `su.comrade.waitingpaws`, platforms iOS and macOS (Uni
 - Export compliance: `ITSAppUsesNonExemptEncryption = NO` in Info.plist. The app uses only standard encryption
   (TLS/HTTPS to Xiaomi, WebRTC DTLS/SRTP, ChaCha20-Poly1305 and Curve25519 from CryptoKit for the iPhone ↔ Mac link)
   in a free, mass-market consumer app.
-- iPad: not supported in 1.0 (iPhone app runs on iPad in compatibility mode). Screenshots: iPhone 6.9" and Mac.
+- iPad: not supported in 1.0 (iPhone app runs on iPad in compatibility mode). Screenshots: iPhone 6.9" and Mac,
+  ready in `docs/screenshots/app-store/en` and `.../ru` (regenerate with `Tools/screenshots/make.sh`).
 - iPhone apps on Apple silicon Macs: not needed (native Mac app under the same record).
 
 ## English

@@ -13,6 +13,7 @@ struct WaitingPawsApp: App {
         // «Пульт»: camera, readout, the session timeline.
         Window("Waiting Paws", id: "main") {
             MacMainWindow()
+                .debugRetinaWindow()
                 .environment(model)
                 .environment(ui)
                 .environment(\.locale, Self.locale)
@@ -29,6 +30,7 @@ struct WaitingPawsApp: App {
         // First launch: sign in to Xiaomi or pick a go2rtc stream (Xcode-style welcome window).
         Window("Добро пожаловать в Waiting Paws", id: "welcome") {
             MacWelcomeView()
+                .debugRetinaWindow()
                 .environment(model)
                 .environment(ui)
                 .environment(\.locale, Self.locale)
@@ -43,6 +45,7 @@ struct WaitingPawsApp: App {
 
         Window("История", id: "history") {
             MacHistoryWindow()
+                .debugRetinaWindow()
                 .environment(model)
                 .environment(ui)
                 .environment(\.locale, Self.locale)
@@ -56,6 +59,7 @@ struct WaitingPawsApp: App {
 
         Settings {
             MacSettingsView()
+                .debugRetinaWindow()
                 .environment(model)
                 .environment(ui)
                 .environment(\.locale, Self.locale)
@@ -127,4 +131,39 @@ struct DebugWindowOpener: ViewModifier {
         }
     }
 }
+#endif
+
+#if os(macOS)
+extension View {
+    /// DEBUG `--retina`: the window moves to a Retina screen, so screenshots are 2× even when the Mac's main
+    /// display is an external 1× monitor (Tools/screenshots). Nothing in Release.
+    func debugRetinaWindow() -> some View {
+        #if DEBUG
+        background(DebugRetinaProbe())
+        #else
+        self
+        #endif
+    }
+}
+
+#if DEBUG
+private struct DebugRetinaProbe: NSViewRepresentable {
+    final class Probe: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard CommandLine.arguments.contains("--retina"), let window else { return }
+            // After SwiftUI has placed the window.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                guard let screen = NSScreen.screens.first(where: { $0.backingScaleFactor >= 2 }),
+                      window.screen != screen else { return }
+                let area = screen.visibleFrame
+                window.setFrameOrigin(NSPoint(x: area.midX - window.frame.width / 2, y: area.midY - window.frame.height / 2))
+            }
+        }
+    }
+
+    func makeNSView(context: Context) -> Probe { Probe() }
+    func updateNSView(_ view: Probe, context: Context) {}
+}
+#endif
 #endif

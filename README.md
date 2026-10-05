@@ -188,9 +188,6 @@ Design/app-icon                  — исходники иконки прило�
 Схемы `WaitingPaws-iOS` и `WaitingPaws-macOS`. Команда разработчика задана в `project.yml`
 (`DEVELOPMENT_TEAM`); для своей сборки поменяйте её там.
 
-Mac-приложение раньше называлось `su.comrade.waitingpaws.mac`: история, записи, вход в Xiaomi и настройки остались
-в старом контейнере. Перенос: запустить новую сборку один раз, закрыть её и выполнить `Tools/migrate-mac-container.sh`.
-
 ### Локализация
 
 Тексты в коде — русские, они же ключи `App/Resources/Localizable.xcstrings` (английский — базовый язык,
@@ -218,6 +215,10 @@ Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает ката�
   `Tools/legal_html.py` пишет `docs/privacy.html` для URL политики в App Store Connect.
 * `docs/` — страницы поддержки и политики (GitHub Pages из папки `/docs`), `docs/app-store/` — заметки для App Review
   и черновик метаданных.
+* `docs/screenshots/app-store/<en|ru>/` — скриншоты для App Store (iPhone 6.9″ 1320×2868, Mac 2880×1800),
+  `docs/screenshots/showcase/` — картинки с рамками устройств и подписями. Пересъёмка: `Tools/screenshots/make.sh`
+  (отдельный симулятор «WP Screens», фоновые копии Mac-приложения с `--retina`, только DEBUG-демо-данные;
+  `make.sh compose` пересобирает картинки из уже снятых кадров).
 
 Тесты ядра:
 

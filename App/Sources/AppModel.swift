@@ -122,6 +122,12 @@ final class AppModel {
                     self?.finishSession()
                 }
             }
+            // `--demo-exits-done <n>`: the first n exits were done over the last minutes, with walks to the door,
+            // time outside and breaks as planned (screenshots with a realistic timeline).
+            if let index = CommandLine.arguments.firstIndex(of: "--demo-exits-done"), index + 1 < CommandLine.arguments.count,
+               let done = Int(CommandLine.arguments[index + 1]), let current = session {
+                session = Self.demoReplay(current.plan, exitsDone: done)
+            }
             // `--demo-phase leaving|away|break|finish` fast-forwards the demo session to that phase.
             if let index = CommandLine.arguments.firstIndex(of: "--demo-phase"), index + 1 < CommandLine.arguments.count {
                 let phase = CommandLine.arguments[index + 1]
@@ -135,13 +141,51 @@ final class AppModel {
     }
 
     #if DEBUG
-    static let demoPlanText = """
-    🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
-    ➡️ Все перерывы 2 минуты
-    1 выход - 5 секунд
-    2 выход - 10 секунд
-    3 выход - 30 секунд ИЛИ до вставания
-    """
+    private final class DemoClock: @unchecked Sendable { var offset: TimeInterval = 0 }
+
+    /// A session of `plan` whose first `exitsDone` exits happened in the past at a realistic pace; it is now
+    /// in the break after the last of them.
+    private static func demoReplay(_ plan: TrainingPlan, exitsDone: Int) -> TrainingSession {
+        let clock = DemoClock()
+        let done = min(exitsDone, plan.exits.count)
+        // `--demo-break-left <seconds>`: how much of the last break is still ahead (4 s by default).
+        let args = CommandLine.arguments
+        let early = args.firstIndex(of: "--demo-break-left").flatMap { $0 + 1 < args.count ? TimeInterval(args[$0 + 1]) : nil } ?? 4
+        let walk: TimeInterval = 6, linger: TimeInterval = 3
+        // The replay ends `early` seconds before the last break is over, which is now: from then on the session's
+        // clock is the real one, like the views' (TimelineView) that count the time left.
+        let total = (0..<done).reduce(0) { $0 + walk + plan.exits[$1].duration + linger + plan.breakAfter(exitAt: $1) }
+        clock.offset = -(total - early)
+        let session = TrainingSession(plan: plan, clock: { Date().addingTimeInterval(clock.offset) })
+        if args.contains("--demo-recording") { session.noteRecording(started: true, fileName: "demo.mp4") }
+        for index in 0..<done {
+            session.startExit(); clock.offset += walk
+            session.markBehindDoor(); clock.offset += plan.exits[index].duration + linger
+            session.endExit(); clock.offset += plan.breakAfter(exitAt: index)
+        }
+        clock.offset = 0
+        return session
+    }
+
+    static var demoPlanText: String {
+        CoreLanguage.current == .ru ? """
+        🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
+        ➡️ Все перерывы 2 минуты
+        1 выход - 15 секунд
+        2 выход - 30 секунд
+        3 выход - 1 минута
+        4 выход - 45 секунд
+        5 выход - 2 минуты ИЛИ до вставания
+        """ : """
+        🐶 Monday training - Anna/Mark - 05.10.2026
+        ➡️ All breaks 2 minutes
+        Exit 1 - 15 seconds
+        Exit 2 - 30 seconds
+        Exit 3 - 1 minute
+        Exit 4 - 45 seconds
+        Exit 5 - 2 minutes OR until the dog stands up
+        """
+    }
     #endif
 
     /// DEBUG `--ui-preview`: UI checks next to a running copy of the app — no embedded go2rtc, no iPhone link,
@@ -577,6 +621,13 @@ final class AppModel {
     var isRecordingClip: Bool { isRecordingNow && session == nil }
 
     func reloadHistory() {
+        #if DEBUG
+        // `--demo-history` keeps its sample trainings (screenshots); nothing real is shown or written.
+        if CommandLine.arguments.contains("--demo-history") {
+            if history.isEmpty { history = DemoData.history() }
+            return
+        }
+        #endif
         history = store.loadAll()
         reloadClips()
     }
@@ -748,6 +799,17 @@ extension AppModel {
     static let demoRecordingSince: Date? = CommandLine.arguments.contains("--demo-recording")
         ? Date().addingTimeInterval(-83) : nil
     #endif
+
+    /// When the recording on screen started: the linked Mac's on an iPhone, the DEBUG demo one in previews.
+    var recordingStartedAt: Date? {
+        #if DEBUG
+        if let since = Self.demoRecordingSince { return since }
+        #endif
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.state?.recordingSince }
+        #endif
+        return recorder.startedAt
+    }
 
     func recordingDuration(at now: Date) -> TimeInterval {
         #if DEBUG

@@ -166,9 +166,11 @@ public enum PlanParser {
               let second = Int(text[monthRange]),
               var year = Int(text[yearRange]) else { return nil }
         if year < 100 { year += 2000 }
-        // 05.10.2026 is day.month; an English schedule from the US writes 10/05/2026. A number above 12
-        // settles it, otherwise the app language's region decides.
-        let monthFirst = first <= 12 && (second > 12 || (CoreLanguage.current == .en && localeWritesMonthFirst))
+        // 05.10.2026 (dots) is always day.month; with slashes an English schedule from the US means month/day.
+        // A number above 12 settles it, otherwise the app language's region decides.
+        let slashes = text[fullRange].contains("/")
+        let monthFirst = first <= 12
+            && (second > 12 || (slashes && CoreLanguage.current == .en && localeWritesMonthFirst))
         let day = monthFirst ? second : first
         let month = monthFirst ? first : second
 

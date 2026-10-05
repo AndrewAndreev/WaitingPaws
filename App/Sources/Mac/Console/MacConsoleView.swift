@@ -145,7 +145,7 @@ struct MacConsoleView: View {
 
     private func live(_ session: TrainingSession, at now: Date) -> LiveSessionModel {
         LiveSessionModel(session: session, now: now,
-                         recordingSince: model.isRecordingNow ? model.recorder.startedAt : nil)
+                         recordingSince: model.isRecordingNow ? model.recordingStartedAt : nil)
     }
 
     private var pendingPlanBinding: Binding<TrainingPlan> {

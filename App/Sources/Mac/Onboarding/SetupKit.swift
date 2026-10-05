@@ -331,7 +331,7 @@ enum SetupDemo {
     static let accountID = "6218440137"
     static let maskedPhone = "+7 *** ***-**-42"
     static let cameraStream = "prihozhaya"
-    static let cameraName = "Прихожая"
+    static var cameraName: String { CoreLanguage.current == .ru ? "Прихожая" : "Hallway" }
     static let cameraModel = "chuangmi.camera.069a01"
     static let cameraSize = CGSize(width: 2304, height: 1296)
     static let rtspStream = "testcam"
@@ -342,6 +342,8 @@ enum SetupDemo {
     static var hasStreams: Bool { argument(after: "--demo-catalog") != "empty" }
 
     #if DEBUG
+    /// Demo names in the app's language (screenshots for both App Store languages).
+    private static func tr(_ ru: String, _ en: String) -> String { CoreLanguage.current == .ru ? ru : en }
     private static let kitchenDID = "1093845577"
     private static let nurseryDID = "1093845604"
 
@@ -356,10 +358,10 @@ enum SetupDemo {
         return [SetupCameraCatalog.Account(id: accountID, region: region, cameras: [
             camera(cameraName, did: "1093845561", model: cameraModel, ip: "192.168.1.34", stream: cameraStream),
             // Not a stream yet: a preview that came through, one still on its way, one offline (no address).
-            camera("Кухня", did: kitchenDID, model: "chuangmi.camera.039a01", ip: "192.168.1.35", stream: nil),
-            camera("Балкон", did: "1093845590", model: "isa.camera.hlc7", ip: "192.168.1.36", stream: "balkon"),
-            camera("Детская", did: nurseryDID, model: "chuangmi.camera.ipc019", ip: "192.168.1.37", stream: nil),
-            camera("Дача", did: "1093845618", model: "mijia.camera.v3", ip: "", stream: nil),
+            camera(tr("Кухня", "Kitchen"), did: kitchenDID, model: "chuangmi.camera.039a01", ip: "192.168.1.35", stream: nil),
+            camera(tr("Балкон", "Balcony"), did: "1093845590", model: "isa.camera.hlc7", ip: "192.168.1.36", stream: "balkon"),
+            camera(tr("Детская", "Nursery"), did: nurseryDID, model: "chuangmi.camera.ipc019", ip: "192.168.1.37", stream: nil),
+            camera(tr("Дача", "Cottage"), did: "1093845618", model: "mijia.camera.v3", ip: "", stream: nil),
         ], error: nil)]
     }
 
