@@ -437,6 +437,22 @@
         }
       }
     },
+    "%@. Пробуем снова…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Trying again…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Пробуем снова…"
+          }
+        }
+      }
+    },
     "%@. Проверьте длительности и перерывы перед стартом." : {
       "localizations" : {
         "en" : {
@@ -676,40 +692,11 @@
         }
       }
     },
-    "CPU %lld %%" : {
+    "18:29:13" : {
       "shouldTranslate" : false
     },
-    "CPU приложения и главного потока, память и максимальная задержка UI за секунду. Видео в WebKit считается отдельно и сюда не входит." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App and main-thread CPU, memory, and the longest UI delay per second. WebKit video is counted separately and isn’t included."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CPU приложения и главного потока, память и максимальная задержка UI за секунду. Видео в WebKit считается отдельно и сюда не входит."
-          }
-        }
-      }
-    },
-    "CPU приложения, память и задержки интерфейса. Видео в WebKit считается отдельно." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App CPU, memory and UI hangs. Video in WebKit is counted separately."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CPU приложения, память и задержки интерфейса. Видео в WebKit считается отдельно."
-          }
-        }
-      }
+    "CPU %lld %%" : {
+      "shouldTranslate" : false
     },
     "E-mail или телефон" : {
       "localizations" : {
@@ -3915,6 +3902,22 @@
         }
       }
     },
+    "Дольше обычного: камера может быть не в сети или занята другим приложением." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taking longer than usual: the camera may be offline or busy with another app."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дольше обычного: камера может быть не в сети или занята другим приложением."
+          }
+        }
+      }
+    },
     "Другая картинка" : {
       "localizations" : {
         "en" : {
@@ -4359,6 +4362,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заголовок: название, тренеры и дата"
+          }
+        }
+      }
+    },
+    "Задержка" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delay"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержка"
+          }
+        }
+      }
+    },
+    "Задержка ≈ %@ с: сеть %@ с + буфер %@ с" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delay ≈ %1$@ s: network %2$@ s + buffer %3$@ s"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержка ≈ %@ с: сеть %@ с + буфер %@ с"
+          }
+        }
+      }
+    },
+    "Задержка ≥ %@ с: только буфер плеера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delay ≥ %@ s: player buffer only"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержка ≥ %@ с: только буфер плеера"
           }
         }
       }
@@ -5483,6 +5534,22 @@
         }
       }
     },
+    "Камера на связи, ждём первый кадр…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera connected, waiting for the first frame…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера на связи, ждём первый кадр…"
+          }
+        }
+      }
+    },
     "Камера не выбрана" : {
       "localizations" : {
         "en" : {
@@ -5531,6 +5598,22 @@
         }
       }
     },
+    "Камера не отвечает" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The camera doesn’t respond"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера не отвечает"
+          }
+        }
+      }
+    },
     "Камера не подключена" : {
       "localizations" : {
         "en" : {
@@ -5543,6 +5626,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Камера не подключена"
+          }
+        }
+      }
+    },
+    "камера недоступна по сети" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the camera can’t be reached on the network"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "камера недоступна по сети"
           }
         }
       }
@@ -6155,6 +6254,22 @@
         }
       }
     },
+    "Над камерой: на сколько секунд картинка отстаёт от камеры (сеть и буфер плеера), CPU, память и подвисания интерфейса." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Over the camera: how many seconds the picture trails the camera (network and player buffer), CPU, memory and interface hangs."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Над камерой: на сколько секунд картинка отстаёт от камеры (сеть и буфер плеера), CPU, память и подвисания интерфейса."
+          }
+        }
+      }
+    },
     "Назад" : {
       "localizations" : {
         "en" : {
@@ -6759,6 +6874,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет картинки с камеры"
+          }
+        }
+      }
+    },
+    "Нет новых кадров — ждём камеру" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No new frames — waiting for the camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет новых кадров — ждём камеру"
+          }
+        }
+      }
+    },
+    "нет ответа" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no response"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "нет ответа"
           }
         }
       }
@@ -8263,6 +8410,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключаемся к"
+          }
+        }
+      }
+    },
+    "Подключаемся к камере…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to the camera…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключаемся к камере…"
           }
         }
       }
@@ -10199,6 +10362,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сначала выберите камеру."
+          }
+        }
+      }
+    },
+    "соединение отклонено" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "connection refused"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "соединение отклонено"
           }
         }
       }

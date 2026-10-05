@@ -460,7 +460,8 @@ private struct SettingsCameraCard: View {
                 .aspectRatio(contentMode: .fill)
         } else if isPlaying, let server = model.settings.server {
             CameraStreamView(server: server, stream: camera.streamName, mode: model.settings.playerMode,
-                             audioEnabled: false, fill: true, reloadToken: reloadToken + model.playerGeneration) { size in
+                             audioEnabled: false, fill: true, reloadToken: reloadToken + model.playerGeneration,
+                             showsStatus: false) { size in
                 liveSize = size
                 model.videoSize = size
             }
@@ -718,7 +719,7 @@ private struct SettingsDiagnosticsPane: View {
         Section {
             Toggle(isOn: $settings.showPerformance) {
                 Text("Показывать нагрузку")
-                Text("CPU приложения, память и задержки интерфейса. Видео в WebKit считается отдельно.")
+                Text("Над камерой: на сколько секунд картинка отстаёт от камеры (сеть и буфер плеера), CPU, память и подвисания интерфейса.")
             }
             .onChange(of: settings.showPerformance) { _, on in
                 if on { model.performance.start() } else { model.performance.stop() }
@@ -726,6 +727,10 @@ private struct SettingsDiagnosticsPane: View {
             if model.performance.isRunning {
                 LabeledContent("Сейчас", value: SettingsText.performance(model.performance.sample))
                     .monospacedDigit()
+                if let delay = model.performance.sample.videoDelayText {
+                    LabeledContent("Задержка", value: delay)
+                        .monospacedDigit()
+                }
             }
         }
         Section {

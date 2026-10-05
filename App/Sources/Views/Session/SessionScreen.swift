@@ -210,7 +210,8 @@ struct SessionScreen: View {
                              mode: model.activePlayerMode,
                              audioEnabled: model.settings.audioEnabled,
                              reloadToken: reloadToken + model.activePlayerGeneration,
-                             onVideoSize: { size in model.videoSize = size })
+                             onVideoSize: { size in model.videoSize = size },
+                             onDelay: { model.performance.notePlayerDelay(buffer: $0, network: $1) })
         } else {
             CameraPlaceholder(text: model.isLinkedToMac ? String(localized: "На Mac не выбрана камера") : String(localized: "Камера не выбрана"))
         }
@@ -436,25 +437,38 @@ private struct RecordingPill: View {
     }
 }
 
-/// Diagnostics strip; observes `PerformanceMonitor.sample` so only this view refreshes each second.
-private struct PerformanceBar: View {
+/// Diagnostics strip (iPhone: under the top bar; Mac: over the picture): the video's delay first, then the app's load.
+/// Observes `PerformanceMonitor.sample` so only this view refreshes each second.
+struct PerformanceBar: View {
     @Environment(AppModel.self) private var model
+    /// iPhone: as wide as the screen; Mac: as wide as its text, in a corner of the picture.
+    var fillsWidth = true
 
     var body: some View {
         let s = model.performance.sample
-        HStack(spacing: 10) {
-            Text(String(format: "CPU %.0f%% · main %.0f%%", s.cpuTotal, s.cpuMain))
-            Text("\(s.memoryMB, specifier: "%.0f") МБ")
-            Text("UI +\(s.maxHangMs, specifier: "%.0f") мс")
-                .foregroundStyle(s.maxHangMs > 250 ? Theme.danger : (s.maxHangMs > 80 ? Theme.warning : .white))
-            Text(pluralText(s.threads, ru: ("поток", "потока", "потоков"), en: ("thread", "threads")))
-            Spacer()
+        VStack(alignment: .leading, spacing: 3) {
+            if let delay = s.videoDelayText {
+                Text(delay)
+                    .fontWeight(.semibold)
+                    .foregroundStyle([Color.white, Theme.warning, Theme.danger][s.videoDelayLevel])
+            }
+            HStack(spacing: 10) {
+                Text(String(format: "CPU %.0f%% · main %.0f%%", s.cpuTotal, s.cpuMain))
+                Text("\(s.memoryMB, specifier: "%.0f") МБ")
+                Text("UI +\(s.maxHangMs, specifier: "%.0f") мс")
+                    .foregroundStyle(s.maxHangMs > 250 ? Theme.danger : (s.maxHangMs > 80 ? Theme.warning : .white))
+                Text(pluralText(s.threads, ru: ("поток", "потока", "потоков"), en: ("thread", "threads")))
+            }
+            .opacity(0.8)
         }
-        .font(.system(.caption2, design: .monospaced))
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .font(.system(fillsWidth ? .caption2 : .caption, design: .monospaced))
         .foregroundStyle(.white.opacity(0.85))
+        .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(Theme.panel, in: Capsule())
+        .background(Theme.panel.opacity(fillsWidth ? 1 : 0.8), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 

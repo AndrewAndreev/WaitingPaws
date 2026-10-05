@@ -2,9 +2,130 @@ import SwiftUI
 import WebKit
 import WaitingPawsCore
 
-/// Full-bleed live view of a go2rtc stream using the server's own `video-rtc.js` player
-/// (WebRTC with MSE/HLS fallbacks) inside a WKWebView.
-struct CameraStreamView {
+/// What the player is doing, for the overlay over the picture (from "state …" messages of the page).
+enum PlayerPhase: Equatable {
+    /// The page is loading, or the WebSocket and go2rtc are connecting to the camera.
+    case connecting
+    /// go2rtc has the camera (it sent the codecs); the first keyframe and the cushion are on their way.
+    case waitingForPicture
+    case playing
+    /// The picture has not moved for 2 s while it should.
+    case stalled
+    /// go2rtc could not get the camera; video-rtc.js tries again by itself.
+    case failed(String)
+}
+
+/// Full-bleed live view of a go2rtc stream, with what is going on over it while there is no picture yet (or it
+/// froze) instead of a black screen.
+struct CameraStreamView: View {
+    var server: Go2RTCServer
+    var stream: String
+    var mode: PlayerMode
+    var audioEnabled: Bool
+    var fill: Bool = false
+    var reloadToken: Int = 0
+    /// Off where the caller shows its own status (the Mac settings card).
+    var showsStatus: Bool = true
+    var onVideoSize: ((CGSize) -> Void)? = nil
+    var onDelay: ((Double, Double?) -> Void)? = nil
+
+    @State private var phase: PlayerPhase = .connecting
+
+    init(server: Go2RTCServer, stream: String, mode: PlayerMode, audioEnabled: Bool, fill: Bool = false,
+         reloadToken: Int = 0, showsStatus: Bool = true, onVideoSize: ((CGSize) -> Void)? = nil,
+         onDelay: ((Double, Double?) -> Void)? = nil) {
+        self.server = server
+        self.stream = stream
+        self.mode = mode
+        self.audioEnabled = audioEnabled
+        self.fill = fill
+        self.reloadToken = reloadToken
+        self.showsStatus = showsStatus
+        self.onVideoSize = onVideoSize
+        self.onDelay = onDelay
+    }
+
+    var body: some View {
+        CameraWebView(server: server, stream: stream, mode: mode, audioEnabled: audioEnabled, fill: fill,
+                      reloadToken: reloadToken, onVideoSize: onVideoSize, onDelay: onDelay,
+                      onPhase: { phase = $0 })
+            .overlay {
+                if showsStatus { CameraStatusOverlay(phase: phase) }
+            }
+            .onChange(of: "\(server.baseURL)|\(stream)|\(mode.rawValue)|\(reloadToken)") { phase = .connecting }
+    }
+}
+
+/// Spinner and a line of text while the camera connects, a pill over a frozen picture, the reason when go2rtc
+/// cannot reach the camera.
+struct CameraStatusOverlay: View {
+    let phase: PlayerPhase
+    /// Still connecting after 10 s.
+    @State private var slow = false
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .playing:
+                EmptyView()
+            case .stalled:
+                Label {
+                    Text("Нет новых кадров — ждём камеру")
+                } icon: {
+                    ProgressView().controlSize(.small).tint(.white)
+                }
+                .font(.system(.footnote, design: .rounded, weight: .medium))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(.black.opacity(0.6), in: Capsule())
+            case .connecting, .waitingForPicture:
+                message(title: phase == .connecting ? String(localized: "Подключаемся к камере…")
+                                                    : String(localized: "Камера на связи, ждём первый кадр…"),
+                        detail: slow ? String(localized: "Дольше обычного: камера может быть не в сети или занята другим приложением.") : nil,
+                        icon: nil)
+            case .failed(let reason):
+                message(title: String(localized: "Камера не отвечает"),
+                        detail: String(localized: "\(reason). Пробуем снова…"),
+                        icon: "video.slash")
+            }
+        }
+        .foregroundStyle(.white)
+        .allowsHitTesting(false)
+        .animation(.easeInOut(duration: 0.25), value: phase)
+        .task(id: phase) {
+            slow = false
+            guard phase == .connecting else { return }
+            try? await Task.sleep(for: .seconds(10))
+            if !Task.isCancelled { slow = true }
+        }
+    }
+
+    private func message(title: String, detail: String?, icon: String?) -> some View {
+        VStack(spacing: 10) {
+            if let icon {
+                Image(systemName: icon).font(.system(size: 30, weight: .light)).opacity(0.7)
+            } else {
+                ProgressView().tint(.white)
+            }
+            Text(title)
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+            if let detail {
+                Text(detail)
+                    .font(.system(.footnote, design: .rounded))
+                    .opacity(0.6)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 320)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.35))
+        .transition(.opacity)
+    }
+}
+
+/// The go2rtc player itself: the server's own `video-rtc.js` (WebRTC with MSE/HLS fallbacks) in a WKWebView.
+struct CameraWebView {
     var server: Go2RTCServer
     var stream: String
     var mode: PlayerMode
@@ -26,6 +147,11 @@ struct CameraStreamView {
     }
     /// Called with the decoded video size whenever playback starts or the resolution changes.
     var onVideoSize: ((CGSize) -> Void)? = nil
+    /// Called every second (MSE) with how far the picture trails the newest data and how late that data came, s
+    /// (see `delay` and `network` in the page; the second is nil until known).
+    var onDelay: ((Double, Double?) -> Void)? = nil
+    /// Called when the player's phase changes ("state …" messages).
+    var onPhase: ((PlayerPhase) -> Void)? = nil
 
     private var client: Go2RTCClient { Go2RTCClient(server: server) }
 
@@ -53,20 +179,26 @@ struct CameraStreamView {
           // DEBUG `--player-trace`: the player's clock, speed and buffer every second in the app log.
           window.playerTrace = \(Self.trace);
           const report = (text) => { try { window.webkit.messageHandlers.log.postMessage(text); } catch (e) {} };
-          // How far behind live the MSE player plays (seconds): starts at \(Self.jitterBuffer), grows up to 3.5 when data comes
-          // in bursts (a camera on weak Wi-Fi, lost packets resent), shrinks back while the stream is even.
-          const jitter = { target: \(Self.jitterBuffer), min: \(Self.jitterBuffer), max: 3.5 };
+          // The phase for the app's overlay (`PlayerPhase`): connecting → waiting → playing ⇄ stalled, or error.
+          let phase = '';
+          const setPhase = (next) => { if (next !== phase) { phase = next; report('state ' + next); } };
+          // How far behind live the MSE player plays (seconds): starts at \(Self.jitterBuffer), grows at once to cover a gap in
+          // the data (a camera on weak Wi-Fi, lost packets resent) up to 3.5, and every 10 s eases towards the longest gap
+          // of the last 30 s + 0.4. Behind a door the gaps stay around 0.8 s: the cushion then settles near 1.2 s, where
+          // the old rule (shrink only after a half-minute with no gap over 0.4 of the cushion) kept it at 1.8 for good.
+          const jitter = { target: \(Self.jitterBuffer), min: \(Self.jitterBuffer), max: 3.5, windowGapMs: 0, recent: [] };
           // What the player went through; a summary goes to the app log every 30 s when something happened.
           const stats = {
             stalls: 0, stalledMs: 0, stallStart: 0, jumps: 0, errors: 0, bytes: 0, lastData: 0, maxGapMs: 0, lag: 0,
             // A new stream: its init segment comes first and the video only from the next keyframe (up to a whole GOP,
             // ~3 s on the C302, later). That wait is not a hiccup and must not grow the cushion.
-            restart() { this.lastData = 0; },
+            restart() { this.lastData = 0; network.restart(); },
             chunk(size) {
               const now = performance.now();
               if (this.lastData) {
                 const gap = now - this.lastData;
                 this.maxGapMs = Math.max(this.maxGapMs, gap);
+                jitter.windowGapMs = Math.max(jitter.windowGapMs, gap);
                 // A gap longer than the cushion would have frozen the picture: make the cushion cover it.
                 if (gap / 1000 > jitter.target * 0.8) jitter.target = Math.min(jitter.max, gap / 1000 + 0.4);
               }
@@ -74,37 +206,74 @@ struct CameraStreamView {
               this.bytes += size;
             },
           };
+          // How much later than the fastest of the last minute the newest video arrives (s). The video's timeline is the
+          // camera's own frame times (go2rtc carries them over), so arrival minus media time only grows when something on
+          // the way holds frames up: camera → go2rtc, and on an iPhone watching through a Mac also Mac → Wi-Fi → iPhone.
+          // Not included: the camera's encoding and the base transit (~0.2–0.3 s), which no timestamp tells.
+          const network = {
+            buckets: [], lateness: -1,
+            restart() { this.buckets = []; this.lateness = -1; },
+            note(offset) {
+              const now = performance.now();
+              let last = this.buckets[this.buckets.length - 1];
+              if (!last || now - last.start >= 10000) {
+                last = { start: now, min: offset };
+                this.buckets = this.buckets.filter(b => now - b.start < 50000).concat(last);
+              }
+              last.min = Math.min(last.min, offset);
+              const late = offset - Math.min(...this.buckets.map(b => b.min));
+              this.lateness = this.lateness < 0 ? late : this.lateness + (late - this.lateness) * 0.2;
+            },
+          };
+          setInterval(() => {
+            jitter.recent = jitter.recent.concat(jitter.windowGapMs).slice(-3);
+            jitter.windowGapMs = 0;
+            const goal = Math.max(jitter.min, Math.max(...jitter.recent) / 1000 + 0.4);
+            if (jitter.target > goal) jitter.target = Math.max(goal, jitter.target - 0.3);
+          }, 10000);
           setInterval(() => {
             if (stats.stallStart) { stats.stalledMs += performance.now() - stats.stallStart; stats.stallStart = performance.now(); }
-            if (stats.stalls || stats.jumps || stats.errors || stats.maxGapMs > 1500) {
+            if (stats.stalls || stats.jumps || stats.errors || stats.maxGapMs > 1500 || stats.lag > 1.5) {
               report('stats 30s: stalls ' + stats.stalls + ', stalled ' + (stats.stalledMs / 1000).toFixed(1) + ' s, jumps ' + stats.jumps
                 + ', errors ' + stats.errors + ', max data gap ' + Math.round(stats.maxGapMs) + ' ms, lag ' + stats.lag.toFixed(2)
                 + ' s, cushion ' + jitter.target.toFixed(1) + ' s, ' + Math.round(stats.bytes * 8 / 30 / 1000) + ' kbit/s');
             }
-            // An even half-minute: give back some of the delay.
-            if (stats.maxGapMs < jitter.target * 400) jitter.target = Math.max(jitter.min, jitter.target - 0.5);
             Object.assign(stats, { stalls: 0, stalledMs: 0, jumps: 0, errors: 0, bytes: 0, maxGapMs: 0 });
           }, 30000);
 
           class Player extends VideoRTC {
             oninit() {
               super.oninit();
+              setPhase('connecting');
               this.video.muted = window.playerMuted;
               this.video.controls = false;
               this.video.style.objectFit = '\(fit)';
               let first = true;
               this.video.addEventListener('playing', () => {
                 if (first) { first = false; report('playing ' + this.video.videoWidth + 'x' + this.video.videoHeight); }
+                setPhase('playing');
               });
               // A stall is the picture not moving while it should (WebKit does not report 'waiting' for live MSE).
-              let lastTime = -1, still = 0;
+              // `delay`: how old the frame on screen is against the newest data — the time since that data came plus
+              // what is still buffered ahead. It holds while buffered video plays and grows during a freeze. The camera →
+              // here part comes from go2rtc (the camera's capture times); the app adds the two on the diagnostics panel.
+              let lastTime = -1, still = 0, delay = -1, ticks = 0;
               setInterval(() => {
                 const video = this.video;
                 if (first || video.paused) { lastTime = -1; return; }
+                const buffered = video.buffered;
+                if (stats.lastData && buffered.length) {
+                  const now = (performance.now() - stats.lastData) / 1000
+                    + Math.max(0, buffered.end(buffered.length - 1) - video.currentTime);
+                  delay = delay < 0 ? now : delay + (now - delay) * 0.3;
+                }
+                if (++ticks % 4 === 0 && delay >= 0) report('delay ' + delay.toFixed(2) + ' ' + network.lateness.toFixed(2));
                 if (video.currentTime === lastTime) {
                   still++;
                   if (still === 2 && !stats.stallStart) { stats.stalls++; stats.stallStart = performance.now(); }
+                  if (still === 8 && phase === 'playing') setPhase('stalled'); // 2 s: worth saying on screen
                 } else {
+                  if (phase === 'stalled') setPhase('playing');
                   still = 0;
                   if (stats.stallStart) { stats.stalledMs += performance.now() - stats.stallStart; stats.stallStart = 0; }
                 }
@@ -114,6 +283,13 @@ struct CameraStreamView {
               this.video.addEventListener('error', () => report('video error ' + (this.video.error ? this.video.error.code : '?')));
             }
             onwebrtc() { report('mode webrtc'); return super.onwebrtc(); }
+            // A (re)connection; and go2rtc's {"type":"error"} when it cannot get the camera (video-rtc.js retries).
+            onconnect() { setPhase('connecting'); return super.onconnect(); }
+            onopen() {
+              const modes = super.onopen();
+              this.onmessage['status'] = msg => { if (msg.type === 'error') setPhase('error ' + msg.value); };
+              return modes;
+            }
 
             // MSE with a small jitter buffer. Upstream video-rtc.js keeps the buffer nearly empty (playbackRate = buffered
             // seconds, down to 0.1×): every late chunk (a big keyframe every few seconds, a Wi-Fi hiccup) turned into a freeze
@@ -149,6 +325,7 @@ struct CameraStreamView {
 
               this.onmessage['mse'] = msg => {
                 if (msg.type !== 'mse') return;
+                setPhase('waiting');
                 this.mseCodecs = msg.value;
                 const sb = ms.addSourceBuffer(msg.value);
                 sb.mode = 'segments';
@@ -178,6 +355,7 @@ struct CameraStreamView {
                   const target = jitter.target;
                   const lag = end - video.currentTime;
                   stats.lag = lag;
+                  network.note(performance.now() / 1000 - end);
                   if (video.currentTime < start || lag > target + 3) {
                     // Far behind (a long stall, the app was in the background): back to `target` behind live.
                     video.currentTime = Math.max(start, end - target);
@@ -188,8 +366,12 @@ struct CameraStreamView {
                     if (lag >= target) { buffering = false; this.play(); }
                     return;
                   }
-                  // Small steps only: a speed change is hardly visible, a jump or a 0.1× crawl is.
-                  const next = lag > target + 1.5 ? 1.3 : lag > target + 0.5 ? 1.1 : lag < target * 0.5 ? 0.95 : 1;
+                  // Small steps only: a speed change is hardly visible, a jump or a 0.1× crawl is. Behind by more than the
+                  // cushion (after a stall, or the cushion just shrank) is caught up within seconds, not half a minute.
+                  // Slower than real time only to restore the base cushion: a grown one is filled by the late data itself
+                  // (it arrives in a burst), and when the data never comes, slowing down would only add delay — after one
+                  // 2.6 s gap that crept up from 0.8 to 2.5 s within a minute.
+                  const next = lag > target + 1 ? 1.3 : lag > target + 0.2 ? 1.15 : lag < jitter.min * 0.5 ? 0.95 : 1;
                   if (next !== rate) { rate = next; video.playbackRate = rate; }
                 });
                 if (window.playerTrace) setInterval(() => {
@@ -230,7 +412,7 @@ struct CameraStreamView {
         configuration.allowsInlineMediaPlayback = true
         configuration.allowsPictureInPictureMediaPlayback = false
         #endif
-        configuration.userContentController.add(LogHandler(onVideoSize: onVideoSize), name: "log")
+        configuration.userContentController.add(LogHandler(onVideoSize: onVideoSize, onDelay: onDelay, onPhase: onPhase), name: "log")
         // Keep feeding the player when its window is covered or not key: a throttled page stops reading the
         // WebSocket and go2rtc then drops frames for it (a freeze until the next keyframe).
         configuration.preferences.inactiveSchedulingPolicy = .none
@@ -269,8 +451,11 @@ struct CameraStreamView {
     }
 
     /// Forwards player events from JavaScript into the app log; "playing 1920x1080" / "size …" also report the resolution.
+    /// "delay 1.25 0.40" (buffer, network) goes to `onDelay` only (every second, not for the log); "state …" to `onPhase`.
     final class LogHandler: NSObject, WKScriptMessageHandler {
         let onVideoSize: ((CGSize) -> Void)?
+        let onDelay: ((Double, Double?) -> Void)?
+        let onPhase: ((PlayerPhase) -> Void)?
         static let clock: DateFormatter = {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -278,11 +463,43 @@ struct CameraStreamView {
             return formatter
         }()
 
-        init(onVideoSize: ((CGSize) -> Void)?) {
+        init(onVideoSize: ((CGSize) -> Void)?, onDelay: ((Double, Double?) -> Void)?, onPhase: ((PlayerPhase) -> Void)?) {
             self.onVideoSize = onVideoSize
+            self.onDelay = onDelay
+            self.onPhase = onPhase
+        }
+
+        /// "state error mse: streams: dial …: i/o timeout" → the last, human part of go2rtc's error chain.
+        static func phase(_ state: Substring) -> PlayerPhase? {
+            switch state {
+            case "connecting": return .connecting
+            case "waiting": return .waitingForPicture
+            case "playing": return .playing
+            case "stalled": return .stalled
+            default:
+                guard state.hasPrefix("error") else { return nil }
+                let error = state.dropFirst(5).lowercased()
+                if error.contains("timeout") { return .failed(String(localized: "нет ответа")) }
+                if error.contains("refused") { return .failed(String(localized: "соединение отклонено")) }
+                if error.contains("unreachable") || error.contains("no route") {
+                    return .failed(String(localized: "камера недоступна по сети"))
+                }
+                let reason = state.dropFirst(5).split(separator: ":").last.map { $0.trimmingCharacters(in: .whitespaces) }
+                return .failed(reason.flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "нет ответа"))
+            }
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if let text = message.body as? String, text.hasPrefix("delay ") {
+                let numbers = text.dropFirst(6).split(separator: " ").compactMap { Double($0) }
+                if let buffer = numbers.first { onDelay?(buffer, numbers.count > 1 && numbers[1] >= 0 ? numbers[1] : nil) }
+                return
+            }
+            if let text = message.body as? String, text.hasPrefix("state "), let phase = Self.phase(text.dropFirst(6)) {
+                onPhase?(phase)
+                // Only the trouble goes to the log; connecting/playing is already there as "mode …"/"playing …".
+                guard case .failed = phase else { if phase == .stalled { print("[player] \(Self.clock.string(from: Date())) stalled 2 s") }; return }
+            }
             print("[player] \(Self.clock.string(from: Date())) \(message.body)")
             guard let onVideoSize, let text = message.body as? String,
                   text.hasPrefix("playing ") || text.hasPrefix("size "),
@@ -318,7 +535,7 @@ struct CameraStreamView {
 }
 
 #if os(iOS)
-extension CameraStreamView: UIViewRepresentable {
+extension CameraWebView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -333,7 +550,7 @@ extension CameraStreamView: UIViewRepresentable {
     }
 }
 #else
-extension CameraStreamView: NSViewRepresentable {
+extension CameraWebView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> WKWebView {

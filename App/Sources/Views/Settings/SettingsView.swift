@@ -115,7 +115,7 @@ struct SettingsView: View {
                         .onChange(of: settings.showPerformance) { _, on in
                             if on { model.performance.start() } else { model.performance.stop() }
                         }
-                    Text("CPU приложения и главного потока, память и максимальная задержка UI за секунду. Видео в WebKit считается отдельно и сюда не входит.")
+                    Text("Над камерой: на сколько секунд картинка отстаёт от камеры (сеть и буфер плеера), CPU, память и подвисания интерфейса.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
 

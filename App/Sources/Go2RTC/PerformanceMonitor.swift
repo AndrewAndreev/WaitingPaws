@@ -12,6 +12,13 @@ final class PerformanceMonitor {
         var threads: Int = 0
         var memoryMB: Double = 0
         var maxHangMs: Double = 0     // worst main-thread delay in the last window
+        var networkDelay: Double?     // s, how late the newest video reaches the player vs. the best of the last minute
+                                      // (the whole way: camera → go2rtc, and through a Mac also → Wi-Fi → iPhone)
+        var playerDelay: Double?      // s, newest data → picture on screen (the web player's buffer)
+
+        /// The delay of the picture as far as it can be measured: without the camera's encoding and the base transit
+        /// (~0.2–0.3 s), which no timestamp of the C302 tells.
+        var videoDelay: Double? { playerDelay.flatMap { player in networkDelay.map { $0 + player } } }
     }
 
     private(set) var sample = Sample()
@@ -22,6 +29,12 @@ final class PerformanceMonitor {
     @ObservationIgnored private var hangLock = NSLock()
     @ObservationIgnored private var worstHang: Double = 0
     @ObservationIgnored private var mainThreadID: UInt64 = 0
+    @ObservationIgnored private var playerDelay: (buffer: Double, network: Double?, at: Date)?
+
+    /// From the player (MSE), every second while it plays.
+    func notePlayerDelay(buffer: Double, network: Double?) {
+        playerDelay = (buffer, network, Date())
+    }
 
     nonisolated static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -60,6 +73,10 @@ final class PerformanceMonitor {
         s.maxHangMs = worstHang
         worstHang = 0
         hangLock.unlock()
+        if let playerDelay, Date().timeIntervalSince(playerDelay.at) < 3 {
+            s.playerDelay = playerDelay.buffer
+            s.networkDelay = playerDelay.network
+        }
         sample = s
     }
 
@@ -136,5 +153,24 @@ final class PerformanceMonitor {
         }
         guard result == KERN_SUCCESS else { return 0 }
         return Double(info.phys_footprint) / 1_048_576
+    }
+}
+
+extension PerformanceMonitor.Sample {
+    /// «Задержка ≈ 1,6 с: сеть 0,4 с + буфер 1,2 с»: how far the picture on screen trails the camera, as a sum with
+    /// units on every number. Until the network part is known (the first seconds) only the buffer is shown.
+    var videoDelayText: String? {
+        guard let playerDelay else { return nil }
+        let format: (Double) -> String = { $0.formatted(.number.precision(.fractionLength(1))) }
+        guard let networkDelay, let videoDelay else {
+            return String(localized: "Задержка ≥ \(format(playerDelay)) с: только буфер плеера")
+        }
+        return String(localized: "Задержка ≈ \(format(videoDelay)) с: сеть \(format(networkDelay)) с + буфер \(format(playerDelay)) с")
+    }
+
+    /// Warning above 1.2 s, alarm above 2 s.
+    var videoDelayLevel: Int {
+        let delay = videoDelay ?? playerDelay ?? 0
+        return delay > 2 ? 2 : delay > 1.2 ? 1 : 0
     }
 }

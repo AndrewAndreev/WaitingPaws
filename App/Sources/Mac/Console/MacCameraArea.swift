@@ -15,6 +15,12 @@ struct MacCameraArea: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Settings → Диагностика → «Показывать нагрузку»: the video's delay and the load, over the picture.
+        .overlay(alignment: .bottomLeading) {
+            if model.performance.isRunning {
+                PerformanceBar(fillsWidth: false).padding(12).allowsHitTesting(false)
+            }
+        }
         .onChange(of: model.settings.streamName) { ui.cameraZoom.reset() }
         #if DEBUG
         // `--demo-zoom=<scale>`: the picture zoomed in (UI checks). One argument: a lone value would shift
@@ -56,7 +62,8 @@ struct MacCameraArea: View {
                                  mode: model.settings.playerMode,
                                  audioEnabled: model.settings.audioEnabled,
                                  reloadToken: reloadToken + model.playerGeneration,
-                                 onVideoSize: { size in model.videoSize = size })
+                                 onVideoSize: { size in model.videoSize = size },
+                                 onDelay: { model.performance.notePlayerDelay(buffer: $0, network: $1) })
             }
         } else {
             CameraPlaceholder(text: String(localized: "Камера не выбрана"))
