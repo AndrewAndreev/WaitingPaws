@@ -46,10 +46,11 @@ export interface SyncHostState {
 
 /// A command from a linked iPhone, in the backend's terms.
 export type SyncHostCommand =
-  | { kind: 'session'; command: 'startExit' | 'markBehindDoor' | 'endExit' | 'resetExit' | 'finish' }
+  /** `at`: when it was pressed, in this computer's time (null from older iPhones). */
+  | { kind: 'session'; command: 'startExit' | 'markBehindDoor' | 'endExit' | 'resetExit' | 'finish'; at: number | null }
   | { kind: 'startSession'; plan: TrainingPlan }
   | { kind: 'setPendingPlan'; plan: TrainingPlan | null }
-  | { kind: 'updateSessionPlan'; plan: TrainingPlan }
+  | { kind: 'updateSessionPlan'; plan: TrainingPlan; quiet: boolean; since: TrainingPlan | null }
   | { kind: 'abandonSession' }
   | { kind: 'startRecording' }
   | { kind: 'stopRecording' }
@@ -529,7 +530,7 @@ export class SyncHost {
     const state = this.currentState()
     if (state) {
       client.lastState = SyncMessage.encode({ kind: 'state', state })
-      client.channel.send({ kind: 'state', state })
+      client.channel.send({ kind: 'state', state: { ...state, sentAt: Date.now() } })
     }
     this.log(`[sync] ${hello.deviceName} (${SyncDevice.modelTitle(device)}) joined`)
     this.deps.onChange()
@@ -583,7 +584,8 @@ export class SyncHost {
         continue
       }
       client.lastState = encoded
-      client.channel.send({ kind: 'state', state })
+      // Stamped at sending (not part of the comparison): the iPhone measures the clocks' difference with it.
+      client.channel.send({ kind: 'state', state: { ...state, sentAt: Date.now() } })
     }
   }
 
@@ -633,6 +635,7 @@ export function syncState(state: SyncHostState): SyncState {
     pendingPlan: state.pendingPlan ?? null,
     cameraSource: state.cameraSource ?? null,
     streamRevision: state.streamRevision ?? null,
+    sentAt: null,
   }
 }
 
@@ -669,13 +672,13 @@ export function syncHostInfo(
 export function hostCommand(command: SyncCommand): SyncHostCommand {
   switch (command.kind) {
     case 'session':
-      return { kind: 'session', command: command.command }
+      return { kind: 'session', command: command.command, at: command.at ?? null }
     case 'startSession':
       return { kind: 'startSession', plan: command.plan }
     case 'setPendingPlan':
       return { kind: 'setPendingPlan', plan: command.plan }
     case 'updateSessionPlan':
-      return { kind: 'updateSessionPlan', plan: command.plan }
+      return { kind: 'updateSessionPlan', plan: command.plan, quiet: command.quiet ?? false, since: command.since ?? null }
     case 'abandonSession':
     case 'startRecording':
     case 'stopRecording':

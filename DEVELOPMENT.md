@@ -187,6 +187,7 @@ streams:
 `--demo-phase away|break|finish` (состояния HUD; `leaving` — шаг «к двери» старых iPhone),
 `--demo-exits-done 3` (три выхода уже прошли), `--demo-break-left 70` / `--demo-break-over 25` (сколько осталось
 от перерыва / насколько он затянулся), `--demo-edit-plan` (Mac: редактор расписания идущей тренировки),
+`--demo-plan-pill 4` (Mac: поле длительности выхода 4 на таймлайне),
 `--demo-finish-after 12` (завершить через
 12 с, проверяет запись и сохранение в Фото), `--demo-clip 10` (записать 10 с без тренировки),
 `--demo-screen plan|plan-twice|camera|history|history-last|session-plan` (открыть лист расписания,

@@ -25,9 +25,15 @@ export function DurationPopover({
   children,
   side = 'bottom',
   tooltip,
+  onOpenChange,
   ...editor
-}: DurationEditorProps & { children: ReactNode; side?: 'top' | 'bottom'; tooltip?: ReactNode }) {
-  const [open, setOpen] = useState(false)
+}: DurationEditorProps & { children: ReactNode; side?: 'top' | 'bottom'; tooltip?: ReactNode; onOpenChange?: (open: boolean) => void }) {
+  const [open, setOpenState] = useState(false)
+  // Told when it opens and closes (the live timeline applies a typed value once, on closing).
+  const setOpen = (value: boolean) => {
+    setOpenState(value)
+    onOpenChange?.(value)
+  }
   const trigger = <Popover.Trigger asChild>{children}</Popover.Trigger>
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>

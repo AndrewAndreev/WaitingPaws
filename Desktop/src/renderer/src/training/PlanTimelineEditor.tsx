@@ -173,7 +173,8 @@ export function PlanTimelineEditor() {
     setDrag(frozen)
     document.body.classList.add('is-resizing-columns')
     const move = (moveEvent: PointerEvent) => {
-      const value = Timeline.resized(frozen.startValue, moveEvent.clientX - startX, frozen.pps, frozen.edge.kind)
+      // By the second; with Shift the 5 s grid (as on the live timeline).
+      const value = Timeline.resized(frozen.startValue, moveEvent.clientX - startX, frozen.pps, frozen.edge.kind, moveEvent.shiftKey ? Timeline.snap : 1)
       setPlan((current) => (blockValue(current, frozen.edge) === value ? current : withBlockValue(current, original, frozen.edge, value)))
     }
     const up = () => {

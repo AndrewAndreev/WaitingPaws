@@ -156,17 +156,17 @@ export type SessionCommand = 'startExit' | 'markBehindDoor' | 'endExit' | 'reset
 export const SessionCommand = {
   allCases: ['startExit', 'markBehindDoor', 'endExit', 'resetExit', 'finish'] as readonly SessionCommand[],
 
-  /** Applies the command to a session owned by this device. */
-  apply(command: SessionCommand, session: TrainingSession): void {
+  /** Applies the command to a session owned by this device; `at` is when it was pressed (the owner's clock). */
+  apply(command: SessionCommand, session: TrainingSession, at: number | null = null): void {
     switch (command) {
       case 'startExit':
-        return session.startExit()
+        return session.startExit(at)
       case 'markBehindDoor':
-        return session.markBehindDoor()
+        return session.markBehindDoor(at)
       case 'endExit':
-        return session.endExit()
+        return session.endExit(at)
       case 'resetExit':
-        return session.resetExit()
+        return session.resetExit(at)
       case 'finish':
         return session.finish()
     }
@@ -193,9 +193,9 @@ export class TrainingSession {
    * call the usual actions, but they are forwarded here instead of changing this copy, and `tick` does
    * nothing. The owner applies the command and sends back a new snapshot (`restore`).
    */
-  commandHandler: ((command: SessionCommand) => void) | null = null
-  /** The same for `updatePlan` on a mirror: the edited schedule goes to the owner. */
-  planHandler: ((plan: TrainingPlan) => void) | null = null
+  commandHandler: ((command: SessionCommand, time: number) => void) | null = null
+  /** The same for `updatePlan` on a mirror: the edited schedule goes to the owner (with the same options). */
+  planHandler: ((plan: TrainingPlan, options: { quiet: boolean; changesSince: TrainingPlan | null }) => void) | null = null
 
   private state: TrainingSessionSnapshot
   private readonly clock: Clock
@@ -458,10 +458,13 @@ export class TrainingSession {
 
   // MARK: - Actions
 
+  // Every action takes `at`: when the button was pressed on another device (a linked iPhone), so the log and the
+  // timeline keep that moment however late the command arrives. See `moment`.
+
   /** "Начать выход" of an older linked iPhone: the person heads for the door (`leaving`, then `markBehindDoor`). */
-  startExit(): void {
-    if (this.commandHandler) return this.commandHandler('startExit')
-    this.batch(() => this.startExitNow(this.clock()))
+  startExit(at: number | null = null): void {
+    if (this.commandHandler) return this.commandHandler('startExit', at ?? this.clock())
+    this.batch(() => this.startExitNow(this.moment(at)))
   }
 
   private startExitNow(now: number): void {
@@ -494,10 +497,10 @@ export class TrainingSession {
    * "Вышли": the door is closed behind you, the exit's countdown starts. Ends the break (or the wait before the
    * first exit) right away.
    */
-  markBehindDoor(): void {
-    if (this.commandHandler) return this.commandHandler('markBehindDoor')
+  markBehindDoor(at: number | null = null): void {
+    if (this.commandHandler) return this.commandHandler('markBehindDoor', at ?? this.clock())
     const phase = this.state.phase
-    const now = this.clock()
+    const now = this.moment(at)
     switch (phase.kind) {
       case 'leaving':
         return this.batch(() => {
@@ -527,9 +530,9 @@ export class TrainingSession {
   }
 
   /** "Вернулись": back inside, the break begins. */
-  endExit(): void {
-    if (this.commandHandler) return this.commandHandler('endExit')
-    this.batch(() => this.finishCurrentExit(false, this.clock()))
+  endExit(at: number | null = null): void {
+    if (this.commandHandler) return this.commandHandler('endExit', at ?? this.clock())
+    this.batch(() => this.finishCurrentExit(false, this.moment(at)))
   }
 
   /**
@@ -537,10 +540,10 @@ export class TrainingSession {
    * (or before the first exit): the dog went to the door, or there were sounds on the way out, before "Вышли" —
    * the attempt counts as a false start and the break starts over.
    */
-  resetExit(): void {
-    if (this.commandHandler) return this.commandHandler('resetExit')
+  resetExit(at: number | null = null): void {
+    if (this.commandHandler) return this.commandHandler('resetExit', at ?? this.clock())
     const phase = this.state.phase
-    const now = this.clock()
+    const now = this.moment(at)
     switch (phase.kind) {
       case 'leaving':
       case 'away':
@@ -603,15 +606,20 @@ export class TrainingSession {
    * and nobody noticed before the start. The current exit counts down to its new length, the running break takes
    * its new length too, and exits added after the last one carry the training on. The log gets a note with what
    * changed. Returns false and changes nothing when the edit drops or reorders exits already done (or the current).
+   *
+   * An edit applied step by step as it goes (a drag, typing) passes `quiet` for every step and `changesSince` — the
+   * plan before the edit — with the last one: one note for it all.
    */
-  updatePlan(edited: TrainingPlan): boolean {
+  updatePlan(edited: TrainingPlan, options: { quiet?: boolean; changesSince?: TrainingPlan | null } = {}): boolean {
     if (!TrainingSession.canUpdatePlan(this.state, edited)) return false
+    const quiet = options.quiet ?? false
+    const since = options.changesSince ?? null
     if (this.planHandler) {
-      this.planHandler(edited)
+      this.planHandler(edited, { quiet, changesSince: since })
       return true
     }
     const plan = TrainingPlan.renumbered(edited)
-    const changes = TrainingPlan.changes(plan, this.state.plan)
+    const changes = quiet ? [] : TrainingPlan.changes(plan, since ?? this.state.plan)
     this.batch(() => {
       const phase = this.state.phase
       if (phase.kind === 'breakTime') {
@@ -638,7 +646,7 @@ export class TrainingSession {
 
   /** Ends the session right now (also used by the auto-finish after the last break). */
   finish(): void {
-    if (this.commandHandler) return this.commandHandler('finish')
+    if (this.commandHandler) return this.commandHandler('finish', this.clock())
     if (this.state.phase.kind === 'finished') return
     const now = this.clock()
     this.batch(() => {
@@ -782,12 +790,47 @@ export class TrainingSession {
     this.update({ results: [...results.slice(0, -1), last], currentBreakStart: null })
   }
 
+  /**
+   * When a press happened: `time` from the device it was made on, kept between the start of the current phase and
+   * now (a clock that is off, or a command for an earlier phase, never puts an event before the one it follows or in
+   * the future); without it, now.
+   */
+  private moment(time: number | null): number {
+    const now = this.clock()
+    if (time === null) return now
+    const phase = this.state.phase
+    let phaseStart: number
+    switch (phase.kind) {
+      case 'ready':
+        phaseStart = this.state.currentBreakStart ?? this.state.startedAt
+        break
+      case 'leaving':
+      case 'breakTime':
+        phaseStart = phase.since
+        break
+      case 'away':
+        phaseStart = phase.leftAt
+        break
+      case 'finished':
+        return now
+    }
+    return Math.min(now, Math.max(phaseStart, time))
+  }
+
+  /**
+   * Keeps the log in time order: a press from an iPhone may be older than a note or a recording event logged while
+   * its command was on the way.
+   */
   private log(
     kind: SessionEventKind,
     time: number,
     fields: { exitNumber?: number | null; attempt?: number | null; detail?: string | null } = {},
   ): void {
-    this.update({ events: [...this.state.events, SessionEvent.make({ time, kind, ...fields })] })
+    const events = [...this.state.events]
+    let index = events.length
+    while (index > 0 && events[index - 1].time > time) index--
+    events.splice(index, 0, SessionEvent.make({ time, kind, ...fields }))
+    this.update({ events })
   }
 
   // MARK: - JSON

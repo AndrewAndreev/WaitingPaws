@@ -17,6 +17,10 @@ enum MacPalette {
     static let orange = Color(red: 1.00, green: 0.70, blue: 0.30)
     static let green = Color(red: 0.42, green: 0.86, blue: 0.56)
     static let red = Color(red: 1.00, green: 0.33, blue: 0.33)
+    /// Breaks on the timelines: the blue of «Вернулись», dimmed so the exits stay the main thing.
+    static let breakFill = blue.opacity(0.4)
+    /// A break of its own (not the common one).
+    static let breakOwn = blue.opacity(0.55)
 
     /// Rounded digits — only for time readouts.
     static func digits(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {

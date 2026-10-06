@@ -46,6 +46,8 @@ final class SyncClient {
     private(set) var pairedHosts: [PairedHost] = []
     private(set) var status: Status = .idle
     private(set) var state: SyncState?
+    /// How far this iPhone's clock is from the host's (from the states' `sentAt`); new for every connection.
+    @ObservationIgnored private(set) var clock = SyncClock()
     /// The host's go2rtc (LAN address + Basic auth) once connected.
     private(set) var server: Go2RTCServer?
 
@@ -328,6 +330,7 @@ final class SyncClient {
             status = .connected(device)
             print("[sync] joined \(device.name) (\(device.modelTitle)), go2rtc at \(address):\(welcome.go2rtcPort)")
         case .state(let state):
+            if let sentAt = state.sentAt { clock.sample(hostTime: sentAt, receivedAt: Date()) }
             self.state = state
             onState?(state)
         case .hello, .proof, .sealed, .command:
@@ -396,6 +399,7 @@ final class SyncClient {
     private func reset(to status: Status) {
         self.status = status
         state = nil
+        clock = SyncClock()
         server = nil
         onState?(nil)
     }

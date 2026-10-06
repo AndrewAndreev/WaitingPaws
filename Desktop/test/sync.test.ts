@@ -116,7 +116,9 @@ describe('Sync', () => {
     const commands: SyncCommand[] = [
       { kind: 'setPendingPlan', plan: p },
       { kind: 'setPendingPlan', plan: null },
-      { kind: 'updateSessionPlan', plan: p },
+      { kind: 'updateSessionPlan', plan: p, quiet: null, since: null },
+      { kind: 'updateSessionPlan', plan: p, quiet: true, since: null },
+      { kind: 'updateSessionPlan', plan: p, quiet: null, since: p },
     ]
     for (const command of commands) {
       expect(SyncMessage.decode(SyncMessage.encode({ kind: 'command', command }))).toEqual({ kind: 'command', command })

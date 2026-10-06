@@ -179,10 +179,13 @@ public struct SyncState: Codable, Equatable {
     /// Changes whenever the Mac's players had to reconnect (quality change): the iPhone's player reconnects too,
     /// or the old stream keeps a second connection to the camera open.
     public var streamRevision: Int?
+    /// The Mac's clock when this state left it: the iPhone keeps track of how far the two clocks are apart
+    /// (`SyncClock`) to send the moment of each button press in the Mac's time. Set by the sender, not compared.
+    public var sentAt: Date?
 
     public init(session: TrainingSession.Snapshot?, recordingSince: Date?, cameraReady: Bool, cameraTitle: String,
                 streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil, cameraSource: String? = nil,
-                streamRevision: Int? = nil) {
+                streamRevision: Int? = nil, sentAt: Date? = nil) {
         self.session = session
         self.recordingSince = recordingSince
         self.cameraReady = cameraReady
@@ -192,17 +195,41 @@ public struct SyncState: Codable, Equatable {
         self.pendingPlan = pendingPlan
         self.cameraSource = cameraSource
         self.streamRevision = streamRevision
+        self.sentAt = sentAt
+    }
+}
+
+/// How far the iPhone's clock is from the host's, from the host's `SyncState.sentAt`: every state arrives some
+/// network delay after it was sent, so the smallest delay seen (the largest `sentAt − arrival`) is the best guess.
+/// A button press is then sent in the host's time — the host logs it at that moment even when the command itself
+/// was held up by a weak Wi-Fi.
+public struct SyncClock: Equatable {
+    /// Host time minus local time, nil before the first sample (the clocks are trusted as they are then).
+    public private(set) var offset: TimeInterval?
+
+    public init() {}
+
+    public mutating func sample(hostTime: Date, receivedAt: Date) {
+        let value = hostTime.timeIntervalSince(receivedAt)
+        offset = max(offset ?? value, value)
+    }
+
+    /// `local` (a moment on this device) in the host's time.
+    public func hostTime(for local: Date) -> Date {
+        local.addingTimeInterval(offset ?? 0)
     }
 }
 
 /// iPhone → Mac.
 public enum SyncCommand: Codable, Equatable {
-    case session(SessionCommand)
+    /// A button press; `at` is when it was pressed, in the host's time (nil from older iPhones: the host's now).
+    case session(SessionCommand, at: Date? = nil)
     case startSession(TrainingPlan)
     /// A schedule pasted (or edited) on the iPhone becomes the Mac's waiting one; nil clears it.
     case setPendingPlan(TrainingPlan?)
-    /// The running session's schedule, edited on the iPhone (`TrainingSession.updatePlan`).
-    case updateSessionPlan(TrainingPlan)
+    /// The running session's schedule, edited on the iPhone (`TrainingSession.updatePlan`: `quiet` for a step of an
+    /// edit still going on, `since` — the plan before the edit — to log it as one change).
+    case updateSessionPlan(TrainingPlan, quiet: Bool? = nil, since: TrainingPlan? = nil)
     case abandonSession
     case startRecording
     case stopRecording

@@ -123,7 +123,7 @@ export const Timeline = {
   trailingRoom: 72,
   zoomSteps: [1, 1.5, 2, 3, 4, 6, 8, 12] as readonly number[],
   maxZoom: 12,
-  /// Drag step.
+  /// Drag step with Shift (and of the arrow keys); a plain drag goes by the second.
   snap: 5,
   maxDuration: 60 * 60,
 
@@ -162,9 +162,9 @@ export const Timeline = {
 
   /// Dragging an edge by `dx` pixels from where it started: 5 s steps, exits from 5 s and breaks from 30 s (unless the
   /// trainer wrote less), up to an hour.
-  resized(startValue: number, dx: number, pps: number, kind: BlockKind): number {
+  resized(startValue: number, dx: number, pps: number, kind: BlockKind, step = 5): number {
     const raw = startValue + dx / pps
-    const snapped = Math.round(raw / Timeline.snap) * Timeline.snap
+    const snapped = Math.round(raw / step) * step
     const minimum = Math.min(kind === 'exit' ? 5 : 30, startValue)
     return Math.min(Math.max(snapped, minimum), Timeline.maxDuration)
   },

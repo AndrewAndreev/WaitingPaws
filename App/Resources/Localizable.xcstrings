@@ -7691,6 +7691,22 @@
         }
       }
     },
+    "от плана" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vs plan"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "от плана"
+          }
+        }
+      }
+    },
     "От этой тренировки остался только лог." : {
       "localizations" : {
         "en" : {
@@ -9275,18 +9291,18 @@
         }
       }
     },
-    "Поправить выходы и перерывы прямо во время тренировки" : {
+    "Поправить выходы и перерывы прямо во время тренировки · ⌘E" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Change exits and breaks right during the training"
+            "value" : "Change exits and breaks right during the training · ⌘E"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Поправить выходы и перерывы прямо во время тренировки"
+            "value" : "Поправить выходы и перерывы прямо во время тренировки · ⌘E"
           }
         }
       }
@@ -10103,6 +10119,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Расписание тренировки"
+          }
+        }
+      }
+    },
+    "Расписание…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписание…"
           }
         }
       }
@@ -11627,18 +11659,18 @@
         }
       }
     },
-    "Тяните край блока, чтобы изменить длительность" : {
+    "Тяните край блока, чтобы изменить длительность (⇧ — по 5 с)" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drag a block’s edge to change its duration"
+            "value" : "Drag the edge of a block to change its length (⇧ — in 5 s steps)"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тяните край блока, чтобы изменить длительность"
+            "value" : "Тяните край блока, чтобы изменить длительность (⇧ — по 5 с)"
           }
         }
       }
@@ -12519,6 +12551,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Что происходит в начале и в конце тренировки."
+          }
+        }
+      }
+    },
+    "щёлкните, чтобы вписать, или тяните край (⇧ — по 5 с)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "click to type it in, or drag the edge (⇧ — in 5 s steps)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "щёлкните, чтобы вписать, или тяните край (⇧ — по 5 с)"
           }
         }
       }

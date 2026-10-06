@@ -2,61 +2,166 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Right panel during a session: the same readout and two buttons as on the iPhone (with their keys), then the
-/// numbers of the whole training and «Завершить».
+/// Right panel during a session. Under the exit strip, what this exit (or break) is; then the timer — big tinted
+/// digits over a progress line, the focus of the window — and the same two buttons as on the iPhone, with their
+/// keys. The numbers of the whole training live in the timeline's header, «Завершить» in the toolbar.
 struct ConsoleReadout: View {
     @Environment(AppModel.self) private var model
-    @Environment(MacUIState.self) private var ui
     let session: TrainingSession
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // First claim on the height: the ring grows into whatever the panel has left.
-            SessionReadout(session: session, size: .mac, showsKeys: true, onFinish: { model.finishSession() })
-                .padding(20)
-                .background {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Theme.panel)
-                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(.white.opacity(0.08)))
+        let content = ReadoutContent(session: session)
+        VStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
+                ExitStrip(session: session, large: true)
+                about(content)
+                    .padding(.top, 14)
+                TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                    timer(content.timer(at: context.date))
                 }
-                .layoutPriority(1)
+                .padding(.top, 22)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(.black.opacity(0.32))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.07)))
+            }
+            buttons(content)
             Spacer(minLength: 0)
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                stats(LiveSessionModel(session: session, now: context.date, recordingSince: nil))
-            }
-            HStack {
-                Button { ui.editSessionPlan(model) } label: {
-                    ShortcutLabel(title: String(localized: "Расписание"), symbol: "slider.horizontal.3", key: "⌘E")
-                }
-                .help("Поправить выходы и перерывы прямо во время тренировки")
-                Button { ui.confirmFinish = true } label: {
-                    ShortcutLabel(title: String(localized: "Завершить"), symbol: "flag.checkered", key: "⌘.")
-                }
-                Spacer()
-            }
         }
         .padding(16)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    /// The whole training at a glance, below the buttons: it is not what you look at during an exit.
-    private func stats(_ live: LiveSessionModel) -> some View {
-        HStack(alignment: .top, spacing: 22) {
-            stat(String(localized: "\(session.completedExitsCount) из \(live.plan.exits.count)"), String(localized: "выходов"))
-            stat("\(session.falseStartsCount)", String(localized: "фальстартов"), tint: session.falseStartsCount > 0 ? MacPalette.orange : nil)
-            stat(live.sessionElapsed, String(localized: "идёт тренировка"))
-            stat("≈ \(MacFormat.time.string(from: live.eta))", String(localized: "конец по плану"))
-            Spacer(minLength: 0)
+    /// «Выход 4 · попытка 2», the plan of this exit and its «или до вставания» rule — or the next exit in a break.
+    private func about(_ content: ReadoutContent) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(content.title)
+                    .font(.system(size: 22, weight: .bold))
+                if let attempt = content.attempt {
+                    Text(attempt)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            ForEach(content.lines, id: \.self) { line in
+                switch line {
+                case .main(let text):
+                    Text(text).font(.system(size: 15, weight: .medium))
+                case .standing(let text):
+                    Label(text, systemImage: "figure.stand")
+                        .font(.callout)
+                        .foregroundStyle(MacPalette.blue)
+                case .note(let text):
+                    Label(text, systemImage: "text.bubble")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
-        .padding(.horizontal, 4)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func stat(_ value: String, _ label: String, tint: Color? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(value).font(MacPalette.digits(15, weight: .semibold)).foregroundStyle(tint ?? .primary)
-            Text(label).font(.caption).foregroundStyle(.secondary)
+    /// Big digits in the phase's colour (neutral before the first exit), the caption and the progress line.
+    private func timer(_ timer: ReadoutContent.Timer) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(timer.text)
+                .font(MacPalette.digits(88, weight: .semibold))
+                .foregroundStyle(timer.progress == nil && !timer.overdue ? Color.primary : timer.tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .contentTransition(.numericText())
+                .padding(.vertical, -6)
+            ThinProgress(value: timer.progress ?? 0, tint: timer.tint, height: 6)
+            Text(timer.caption)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(timer.overdue ? timer.tint : .secondary)
         }
+    }
+
+    // MARK: - Buttons
+
+    /// The next step (Space) and the false start (⌫), as on the iPhone: blue toward a break, pink toward an exit.
+    private func buttons(_ content: ReadoutContent) -> some View {
+        HStack(spacing: 10) {
+            if let step = content.step {
+                StepButton(title: step.title, symbol: step.symbol, key: String(localized: "Пробел"),
+                           fill: step.tint, foreground: .black) {
+                    switch step {
+                    case .outside: session.markBehindDoor()
+                    case .backInside: session.endExit()
+                    case .finish: model.finishSession()
+                    }
+                }
+            }
+            if content.canFalseStart {
+                StepButton(title: String(localized: "Фальстарт"), symbol: "arrow.uturn.backward", key: "⌫",
+                           fill: .white.opacity(0.08), foreground: MacPalette.red) {
+                    session.resetExit()
+                }
+            }
+        }
+    }
+}
+
+/// A training step: a 42 pt rounded button, the title centred, its key at the trailing edge while it fits.
+private struct StepButton: View {
+    let title: String
+    let symbol: String
+    let key: String
+    let fill: Color
+    let foreground: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ViewThatFits(in: .horizontal) {
+                label
+                    .padding(.horizontal, 56)
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .trailing) { keyCap }
+                label.frame(maxWidth: .infinity)
+            }
+        }
+        .buttonStyle(StepButtonStyle(fill: fill, foreground: foreground))
+        .help("\(title) · \(key)")
+    }
+
+    private var label: some View {
+        HStack(spacing: 7) {
+            Image(systemName: symbol)
+            Text(title).lineLimit(1)
+        }
+        .fixedSize()
+    }
+
+    private var keyCap: some View {
+        Text(key)
+            .font(.system(size: 10.5, weight: .semibold))
+            .padding(.horizontal, 6)
+            .frame(minWidth: 20, minHeight: 18)
+            .background(foreground.opacity(0.12), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .opacity(0.8)
+            .padding(.trailing, 10)
+    }
+}
+
+private struct StepButtonStyle: ButtonStyle {
+    let fill: Color
+    let foreground: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(foreground)
+            .frame(height: 42)
+            .background(fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 

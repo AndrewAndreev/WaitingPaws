@@ -5,7 +5,7 @@ import WaitingPawsCore
 
 /// The plan on the «Пульт» timeline before the start (A6). Drawn like the live «план и факт» timeline:
 /// pink exits, blue breaks, a ruler with major grid lines, «Факт» and «Запись» lanes under the plan.
-/// Edited with the mouse: drag the right edge of an exit or a break (5 s steps, everything after it moves,
+/// Edited with the mouse: drag the right edge of an exit or a break (by the second, ⇧ — 5 s grid; everything after it moves,
 /// a changed break becomes the exit's own break); zoom with a pinch, ⌥-scroll, ⌘−/⌘+ or «По ширине»;
 /// scroll sideways when zoomed in, or click/drag the overview strip.
 struct MacPlanTimelineEditor: View {
@@ -140,7 +140,7 @@ struct MacPlanTimelineEditor: View {
             }
             Spacer(minLength: 12)
             ViewThatFits(in: .horizontal) {
-                hint(String(localized: "Тяните край блока, чтобы изменить длительность"))
+                hint(String(localized: "Тяните край блока, чтобы изменить длительность (⇧ — по 5 с)"))
                 hint(String(localized: "Тяните край блока"))
                 Color.clear.frame(width: 0, height: 0)
             }
@@ -598,7 +598,9 @@ struct MacPlanTimelineEditor: View {
         }
         guard let drag else { return }
         let raw = drag.startValue + dx / drag.pps
-        let snapped = (raw / Self.snap).rounded() * Self.snap
+        // Seconds as they come; with ⇧ the 5 s grid (as on the live timeline).
+        let step: TimeInterval = NSEvent.modifierFlags.contains(.shift) ? Self.snap : 1
+        let snapped = (raw / step).rounded() * step
         // Exits from 5 s, breaks from 30 s (unless the trainer wrote less), up to an hour.
         let minimum = min(block.edge.kind == .exit ? 5 : 30, drag.startValue)
         let value = min(max(snapped, minimum), 60 * 60)

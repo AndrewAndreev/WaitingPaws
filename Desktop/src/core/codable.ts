@@ -147,6 +147,9 @@ export class ObjectReader {
   bool(key: string): boolean {
     return this.required(key, expectBool)
   }
+  optionalBool(key: string): boolean | null {
+    return this.optional(key, expectBool)
+  }
   uuid(key: string): string {
     return this.required(key, expectUUID)
   }

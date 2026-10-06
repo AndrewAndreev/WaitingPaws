@@ -11,7 +11,7 @@
 .console {
   display: grid;
   /* Two fifths of the window for the readout: the timer and the buttons read from across the room. */
-  grid-template-columns: minmax(0, 1fr) clamp(440px, 42%, 660px);
+  grid-template-columns: minmax(0, 1fr) clamp(440px, 42%, 610px);
   grid-template-rows: minmax(0, 1fr) 236px;
   grid-template-areas:
     'camera panel'
@@ -181,7 +181,7 @@
 .readout {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   padding: 16px;
   height: 100%;
   overflow: auto;
@@ -190,10 +190,8 @@
   --tint: var(--phase-outside);
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 16px;
   padding: 20px;
-  border-radius: 18px;
+  border-radius: 14px;
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
   flex: none;
@@ -255,80 +253,33 @@
 .exit-strip__gap--active {
   background: var(--info);
 }
+.readout__about {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 14px;
+}
 .readout__title {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
-  line-height: 34px;
+  line-height: 28px;
 }
 .readout__attempt {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-}
-/* The ring takes the height the panel has left (titlebar, timeline and the rest of the readout ≈ 660 px). */
-.ring {
-  position: relative;
-  align-self: center;
-  width: clamp(150px, calc(100vh - 660px), 290px);
-  aspect-ratio: 1;
-  container-type: size;
-}
-.ring svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.ring__track,
-.ring__bar {
-  fill: none;
-  stroke-width: 3;
-}
-.ring__track {
-  stroke: var(--border-default);
-}
-.ring__bar {
-  stroke: var(--tint);
-  stroke-linecap: round;
-  transition: stroke-dashoffset 250ms linear;
-}
-.ring__center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.ring__digits {
-  font-family: var(--font-display);
-  font-size: 27cqw;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-.ring__caption {
-  margin-top: 2px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-secondary);
-}
-.ring__digits--over {
-  color: var(--tint);
 }
 .readout__info {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 5px;
   font-size: 15px;
   font-weight: 500;
-  text-align: center;
   color: var(--text-primary);
 }
 .readout__rule,
@@ -336,6 +287,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-size: 13px;
   color: var(--text-secondary);
 }
 .readout__rule {
@@ -347,30 +299,66 @@
   width: 16px;
   height: 16px;
 }
-.readout__stats {
+/* The timer: big digits in the phase's colour, the progress line, the caption. */
+.readout__timer {
   display: flex;
-  gap: 22px;
-  padding: 0 4px;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 22px;
+  container-type: inline-size;
+}
+.readout__digits {
+  font-family: var(--font-display);
+  font-size: min(88px, 24cqw);
+  line-height: 0.95;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  color: var(--tint);
+}
+.readout__digits--neutral {
+  color: var(--text-primary);
+}
+.readout__line {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-default);
+  overflow: hidden;
+}
+.readout__line-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--tint);
+  transition: width 250ms linear;
+}
+.readout__caption {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.readout__caption--over {
+  color: var(--tint);
 }
 .stat__value {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 16px;
 }
 .stat__label {
-  font-size: 12px;
+  font-size: 10px;
+  line-height: 13px;
   color: var(--text-secondary);
 }
 .transport {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  gap: 8px;
+  gap: 10px;
   container-type: inline-size;
 }
 /* Narrow panel: the keys go, the titles stay (Space and Backspace still work). */
-@container (max-width: 460px) {
+@container (max-width: 420px) {
   .step .kbd {
     display: none;
   }
@@ -380,13 +368,13 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
   align-items: center;
-  height: 54px;
-  padding: 0 12px;
-  border-radius: 16px;
+  height: 42px;
+  padding: 0 10px;
+  border-radius: 10px;
   border: none;
   background: var(--bg-control-hover);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   min-width: 0;
@@ -395,13 +383,13 @@
     transform var(--duration-fast) var(--ease);
 }
 .step:active {
-  transform: scale(0.975);
+  transform: scale(0.98);
 }
 .step__label {
   grid-column: 2;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
 }
 .step svg {
@@ -411,10 +399,10 @@
   grid-column: 3;
   justify-self: end;
   margin-left: 6px;
-  background: color-mix(in srgb, currentColor 14%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
   border-color: transparent;
   color: inherit;
-  opacity: 0.75;
+  opacity: 0.8;
 }
 .step--primary {
   background: var(--accent);
@@ -423,23 +411,19 @@
 .step--primary:hover {
   background: var(--accent-hover);
 }
-.step--done {
-  background: var(--success);
-  color: #08240f;
+/* «Вернулись»: the blue of the break it starts (the timeline's breaks are the same blue, dimmed). */
+.step--rest {
+  background: var(--info);
+  color: #06182e;
 }
-.step--done:hover {
-  filter: brightness(1.05);
+.step--rest:hover {
+  filter: brightness(1.06);
 }
 .step--warn {
   color: var(--danger);
 }
 .step--warn:hover {
   background: color-mix(in srgb, var(--bg-control-hover) 100%, var(--danger) 6%);
-}
-.readout__footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 /* ---------- New training panel ---------- */
@@ -563,6 +547,86 @@
   justify-content: center;
   overflow: hidden;
 }
+/* An exit or a break past its plan: one bar, two colours. */
+.seg--split {
+  justify-content: flex-start;
+}
+.seg__fill {
+  height: 100%;
+  flex: none;
+}
+.seg--split .seg__label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+.seg--editable {
+  cursor: pointer;
+}
+.seg--editable:hover,
+.seg.is-active {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+/* The plan's drag handles: above the blocks, straddling the edge between two. */
+.tl-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ew-resize;
+}
+.tl-handle__grip {
+  width: 4px;
+  height: calc(100% - 12px);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+}
+.tl-handle:hover .tl-handle__grip,
+.tl-handle.is-active .tl-handle__grip {
+  opacity: 1;
+}
+.tl-tip {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.tl-tip__delta {
+  color: rgba(0, 0, 0, 0.55);
+}
+.timeline__legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  overflow: hidden;
+}
+.timeline__stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: none;
+}
+.stat {
+  display: inline-flex;
+  flex-direction: column;
+}
 .seg__label {
   font-size: 11px;
   font-weight: 600;
@@ -577,7 +641,7 @@
   background: color-mix(in srgb, var(--brand) 85%, transparent);
 }
 .seg--break {
-  background: color-mix(in srgb, var(--info) 22%, transparent);
+  background: color-mix(in srgb, var(--info) 40%, transparent);
 }
 .seg--break .seg__label,
 .seg--own-break .seg__label,
@@ -585,7 +649,7 @@
   color: var(--text-primary);
 }
 .seg--own-break {
-  background: color-mix(in srgb, var(--info) 40%, transparent);
+  background: color-mix(in srgb, var(--info) 55%, transparent);
 }
 .seg--walk {
   background: color-mix(in srgb, var(--phase-leaving) 70%, transparent);

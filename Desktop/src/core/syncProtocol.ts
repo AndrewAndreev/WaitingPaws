@@ -232,6 +232,11 @@ export interface SyncState {
    * or the old stream keeps a second connection to the camera open.
    */
   streamRevision: number | null
+  /**
+   * The host's clock when this state left it: the iPhone keeps track of how far the two clocks are apart to send
+   * the moment of each button press in the host's time. Set by the sender, not compared.
+   */
+  sentAt: number | null
 }
 
 export const SyncState = {
@@ -249,18 +254,23 @@ export const SyncState = {
       pendingPlan: fields.pendingPlan ?? null,
       cameraSource: fields.cameraSource ?? null,
       streamRevision: fields.streamRevision ?? null,
+      sentAt: fields.sentAt ?? null,
     }
   },
 }
 
 /** iPhone → Mac. */
 export type SyncCommand =
-  | { kind: 'session'; command: SessionCommand }
+  /** A button press; `at` is when it was pressed, in the host's time (null from older iPhones: the host's now). */
+  | { kind: 'session'; command: SessionCommand; at?: number | null }
   | { kind: 'startSession'; plan: TrainingPlan }
   /** A schedule pasted (or edited) on the iPhone becomes the Mac's waiting one; null clears it. */
   | { kind: 'setPendingPlan'; plan: TrainingPlan | null }
-  /** The running session's schedule, edited on the iPhone (`TrainingSession.updatePlan`). */
-  | { kind: 'updateSessionPlan'; plan: TrainingPlan }
+  /**
+   * The running session's schedule, edited on the iPhone (`TrainingSession.updatePlan`: `quiet` for a step of an edit
+   * still going on, `since` — the plan before the edit — to log it as one change).
+   */
+  | { kind: 'updateSessionPlan'; plan: TrainingPlan; quiet?: boolean | null; since?: TrainingPlan | null }
   | { kind: 'abandonSession' }
   | { kind: 'startRecording' }
   | { kind: 'stopRecording' }
@@ -347,6 +357,7 @@ function encodeState(state: SyncState): JSONObject {
     pendingPlan: state.pendingPlan === null ? null : TrainingPlan.encode(state.pendingPlan, dates),
     cameraSource: state.cameraSource,
     streamRevision: state.streamRevision,
+    sentAt: state.sentAt === null ? null : encodeDate(state.sentAt, dates),
   })
 }
 
@@ -362,19 +373,26 @@ function decodeState(value: unknown, path: string): SyncState {
     pendingPlan: json.optional('pendingPlan', (item, itemPath) => TrainingPlan.decode(item, dates, itemPath)),
     cameraSource: json.optionalString('cameraSource'),
     streamRevision: json.optionalInt('streamRevision'),
+    sentAt: json.optionalDate('sentAt', dates),
   }
 }
 
 function encodeCommand(command: SyncCommand): JSONObject {
   switch (command.kind) {
     case 'session':
-      return { session: { _0: command.command } }
+      return { session: compact({ _0: command.command, at: command.at == null ? null : encodeDate(command.at, dates) }) }
     case 'startSession':
       return { startSession: { _0: TrainingPlan.encode(command.plan, dates) } }
     case 'setPendingPlan':
       return { setPendingPlan: command.plan === null ? {} : { _0: TrainingPlan.encode(command.plan, dates) } }
     case 'updateSessionPlan':
-      return { updateSessionPlan: { _0: TrainingPlan.encode(command.plan, dates) } }
+      return {
+        updateSessionPlan: compact({
+          _0: TrainingPlan.encode(command.plan, dates),
+          quiet: command.quiet ? true : null,
+          since: command.since ? TrainingPlan.encode(command.since, dates) : null,
+        }),
+      }
     case 'abandonSession':
     case 'startRecording':
     case 'stopRecording':
@@ -386,13 +404,18 @@ function decodeCommand(value: unknown, path: string): SyncCommand {
   const [name, json] = readEnumCase(value, path)
   switch (name) {
     case 'session':
-      return { kind: 'session', command: json.required('_0', SessionCommand.decode) }
+      return { kind: 'session', command: json.required('_0', SessionCommand.decode), at: json.optionalDate('at', dates) }
     case 'startSession':
       return { kind: 'startSession', plan: json.required('_0', (item, p) => TrainingPlan.decode(item, dates, p)) }
     case 'setPendingPlan':
       return { kind: 'setPendingPlan', plan: json.optional('_0', (item, p) => TrainingPlan.decode(item, dates, p)) }
     case 'updateSessionPlan':
-      return { kind: 'updateSessionPlan', plan: json.required('_0', (item, p) => TrainingPlan.decode(item, dates, p)) }
+      return {
+        kind: 'updateSessionPlan',
+        plan: json.required('_0', (item, p) => TrainingPlan.decode(item, dates, p)),
+        quiet: json.optionalBool('quiet'),
+        since: json.optional('since', (item, p) => TrainingPlan.decode(item, dates, p)),
+      }
     case 'abandonSession':
     case 'startRecording':
     case 'stopRecording':

@@ -351,21 +351,22 @@ export class AppBackend {
     }
   }
 
-  private sessionCommand(command: string): void {
+  /// A button press here (`at` null: now) or on a linked iPhone (`at`: when it was pressed there).
+  private sessionCommand(command: string, at: number | null = null): void {
     const session = this.session
     if (!session) return
     switch (command) {
       case 'startExit':
-        session.startExit()
+        session.startExit(at)
         break
       case 'markBehindDoor':
-        session.markBehindDoor()
+        session.markBehindDoor(at)
         break
       case 'endExit':
-        session.endExit()
+        session.endExit(at)
         break
       case 'resetExit':
-        session.resetExit()
+        session.resetExit(at)
         break
       case 'finish':
         void this.finishSession()
@@ -375,8 +376,9 @@ export class AppBackend {
   }
 
   /// The running session's schedule, edited here or on a linked iPhone. False when the edit drops exits already done.
-  updateSessionPlan(plan: TrainingPlan): boolean {
-    const updated = this.session?.updatePlan(plan) ?? false
+  /// `quiet`: a step of an edit still going on (no log note); `changesSince`: log the whole edit against that plan.
+  updateSessionPlan(plan: TrainingPlan, options: { quiet?: boolean; changesSince?: TrainingPlan | null } = {}): boolean {
+    const updated = this.session?.updatePlan(plan, options) ?? false
     if (updated) this.emit()
     return updated
   }
@@ -822,11 +824,18 @@ export class AppBackend {
   }
 
   /// A button press from a linked iPhone.
-  private applyRemote(command: { kind: string; command?: string; plan?: TrainingPlan | null }): void {
+  private applyRemote(command: {
+    kind: string
+    command?: string
+    plan?: TrainingPlan | null
+    at?: number | null
+    quiet?: boolean
+    since?: TrainingPlan | null
+  }): void {
     switch (command.kind) {
       case 'session':
         if (command.command === 'finish') void this.finishSession()
-        else if (command.command) this.sessionCommand(command.command)
+        else if (command.command) this.sessionCommand(command.command, command.at ?? null)
         break
       case 'startSession':
         if (!this.session && command.plan) this.startSession(command.plan)
@@ -840,7 +849,7 @@ export class AppBackend {
         break
       }
       case 'updateSessionPlan':
-        if (command.plan) this.updateSessionPlan(command.plan)
+        if (command.plan) this.updateSessionPlan(command.plan, { quiet: command.quiet, changesSince: command.since })
         break
       case 'abandonSession':
         void this.abandonSession()
@@ -936,7 +945,8 @@ export class AppBackend {
     'session.start': (plan: TrainingPlan) => this.startSession(plan),
     'session.command': (command: string) => this.sessionCommand(command),
     'session.abandon': () => this.abandonSession(),
-    'session.updatePlan': (plan: TrainingPlan) => this.updateSessionPlan(plan),
+    'session.updatePlan': (plan: TrainingPlan, options?: { quiet?: boolean; changesSince?: TrainingPlan | null }) =>
+      this.updateSessionPlan(plan, options),
     'pending.set': (plan: TrainingPlan | null, keepOriginal?: boolean) => this.setPending(plan, keepOriginal ?? false),
     'recording.toggle': () => this.toggleRecording(),
     'recording.start': () => this.startRecording(),

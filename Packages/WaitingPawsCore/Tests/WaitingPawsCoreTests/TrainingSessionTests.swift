@@ -154,6 +154,27 @@ final class TrainingSessionTests: XCTestCase {
         XCTAssertEqual(session.remaining(at: now), 35)
     }
 
+    /// A drag applies every step at once (the timer follows it) and logs the whole edit once, when it is let go.
+    func testAnEditInStepsIsLoggedOnce() {
+        let session = makeSession()
+        session.markBehindDoor()
+        advance(3)
+        let before = session.plan
+        let notes = session.events.filter { $0.kind == .note }.count
+        for duration in [6.0, 8, 10] {
+            var step = session.plan
+            step.exits[0].duration = duration
+            XCTAssertTrue(session.updatePlan(step, quiet: true))
+            XCTAssertEqual(session.remaining(at: now), duration - 3)
+        }
+        XCTAssertEqual(session.events.filter { $0.kind == .note }.count, notes)
+        var last = session.plan
+        last.exits[0].duration = 12
+        session.updatePlan(last, changesSince: before)
+        XCTAssertEqual(session.events.filter { $0.kind == .note }.count, notes + 1)
+        XCTAssertEqual(session.events.last?.detail, "Расписание изменено: выход 1: 5 с → 12 с")
+    }
+
     func testEditingKeepsTheExitsAlreadyDone() {
         let session = makeSession()
         session.markBehindDoor(); advance(5); session.endExit()
@@ -193,7 +214,7 @@ final class TrainingSessionTests: XCTestCase {
         let owner = makeSession()
         let mirror = TrainingSession(snapshot: owner.snapshot, clock: { self.now })
         var sent: TrainingPlan?
-        mirror.planHandler = { sent = $0 }
+        mirror.planHandler = { plan, _, _ in sent = plan }
         var edited = mirror.plan
         edited.defaultBreak = 90
         XCTAssertTrue(mirror.updatePlan(edited))

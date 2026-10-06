@@ -56,10 +56,12 @@ public final class TrainingSession {
     public var autoFinishAfterLastBreak = true
     /// Set on a mirror of a session that runs on another device (iPhone connected to a Mac): the buttons
     /// call the usual actions, but they are forwarded here instead of changing this copy, and `tick` does
-    /// nothing. The owner applies the command and sends back a new `Snapshot` (`restore`).
-    public var commandHandler: ((SessionCommand) -> Void)?
-    /// The same for `updatePlan` on a mirror: the edited schedule goes to the owner.
-    public var planHandler: ((TrainingPlan) -> Void)?
+    /// nothing. The owner applies the command and sends back a new `Snapshot` (`restore`). The date is when the
+    /// button was pressed here, so a command that arrives late is still logged at the moment of the press.
+    public var commandHandler: ((SessionCommand, Date) -> Void)?
+    /// The same for `updatePlan` on a mirror: the edited schedule goes to the owner (with `quiet` and
+    /// `changesSince` as given).
+    public var planHandler: ((TrainingPlan, Bool, TrainingPlan?) -> Void)?
 
     private let clock: () -> Date
     private var currentBreakStart: Date?
@@ -207,10 +209,13 @@ public final class TrainingSession {
 
     // MARK: - Actions
 
+    // Every action takes `at`: when the button was pressed on another device (a linked iPhone), so the log and the
+    // timeline keep that moment however late the command arrives. See `moment(_:)`.
+
     /// "Начать выход" of an older linked iPhone: the person heads for the door (`leaving`, then `markBehindDoor`).
-    public func startExit() {
-        if let commandHandler { commandHandler(.startExit); return }
-        let now = clock()
+    public func startExit(at time: Date? = nil) {
+        if let commandHandler { commandHandler(.startExit, time ?? clock()); return }
+        let now = moment(time)
         let index: Int
         switch phase {
         case .ready(let i):
@@ -230,9 +235,9 @@ public final class TrainingSession {
 
     /// "Вышли": the door is closed behind you, the exit's countdown starts. Ends the break (or the wait before
     /// the first exit) right away.
-    public func markBehindDoor() {
-        if let commandHandler { commandHandler(.markBehindDoor); return }
-        let now = clock()
+    public func markBehindDoor(at time: Date? = nil) {
+        if let commandHandler { commandHandler(.markBehindDoor, time ?? clock()); return }
+        let now = moment(time)
         switch phase {
         case .leaving(let index, let since):
             phase = .away(exitIndex: index, since: since, leftAt: now)
@@ -251,24 +256,24 @@ public final class TrainingSession {
     }
 
     /// "Вернулись": back inside, the break begins.
-    public func endExit() {
-        if let commandHandler { commandHandler(.endExit); return }
-        finishCurrentExit(falseStart: false)
+    public func endExit(at time: Date? = nil) {
+        if let commandHandler { commandHandler(.endExit, time ?? clock()); return }
+        finishCurrentExit(falseStart: false, at: moment(time))
     }
 
     /// "Фальстарт": the exit failed — take a break and repeat the same exit. Outside: back inside early. In the
     /// break (or before the first exit): the dog went to the door, or there were sounds on the way out, before
     /// "Вышли" — the attempt counts as a false start and the break starts over.
-    public func resetExit() {
-        if let commandHandler { commandHandler(.resetExit); return }
+    public func resetExit(at time: Date? = nil) {
+        if let commandHandler { commandHandler(.resetExit, time ?? clock()); return }
+        let now = moment(time)
         switch phase {
         case .leaving, .away:
-            finishCurrentExit(falseStart: true)
+            finishCurrentExit(falseStart: true, at: now)
         case .ready(let index):
-            falseStartBeforeDoor(index, at: clock())
+            falseStartBeforeDoor(index, at: now)
         case .breakTime(_, let since, let duration, let next):
             guard let next else { return }
-            let now = clock()
             logBreakEnd(since: since, duration: duration, at: now)
             falseStartBeforeDoor(next, at: now)
         case .finished:
@@ -300,16 +305,19 @@ public final class TrainingSession {
     }
 
     /// Replaces the schedule while the session runs — e.g. every break longer when the trainer's text was read wrong
-    /// and nobody noticed before the start. The current exit counts down to its new length, the running break takes
-    /// its new length too, and exits added after the last one carry the training on. The log gets a note with what
-    /// changed. Returns false and changes nothing when the edit drops or reorders exits already done (or the current).
+    /// and nobody noticed before the start. The current exit counts down to its new length at once, the running break
+    /// takes its new length too, and exits added after the last one carry the training on. Returns false and changes
+    /// nothing when the edit drops or reorders exits already done (or the current).
+    ///
+    /// The log gets a note with what changed. An edit applied step by step as it goes (a drag, typing) passes
+    /// `quiet` for every step and `changesSince` — the plan before the edit — with the last one: one note for it all.
     @discardableResult
-    public func updatePlan(_ newPlan: TrainingPlan) -> Bool {
+    public func updatePlan(_ newPlan: TrainingPlan, quiet: Bool = false, changesSince original: TrainingPlan? = nil) -> Bool {
         guard canUpdatePlan(to: newPlan) else { return false }
-        if let planHandler { planHandler(newPlan); return true }
+        if let planHandler { planHandler(newPlan, quiet, original); return true }
         var newPlan = newPlan
         newPlan.renumber()
-        let changes = newPlan.changes(from: plan)
+        let changes = quiet ? [] : newPlan.changes(from: original ?? plan)
         if case .breakTime(let after, let since, _, let next) = phase {
             // A false start's break leads to the same exit again; otherwise to whatever follows now.
             let newNext = next == after ? after : (newPlan.exits.indices.contains(after + 1) ? after + 1 : nil)
@@ -327,11 +335,11 @@ public final class TrainingSession {
 
     /// Ends the session right now (also used by the auto-finish after the last break).
     public func finish() {
-        if let commandHandler { commandHandler(.finish); return }
+        if let commandHandler { commandHandler(.finish, clock()); return }
         guard !phase.isFinished else { return }
         let now = clock()
         if phase.isOutside {
-            finishCurrentExit(falseStart: false)
+            finishCurrentExit(falseStart: false, at: now)
         }
         closeBreak(at: now)
         phase = .finished
@@ -368,15 +376,31 @@ public final class TrainingSession {
 
     // MARK: - Internals
 
-    private func finishCurrentExit(falseStart: Bool) {
+    private func finishCurrentExit(falseStart: Bool, at now: Date) {
         switch phase {
         case .leaving(let index, let since):
-            endAttempt(index, startedAt: since, leftAt: nil, falseStart: falseStart, at: clock())
+            endAttempt(index, startedAt: since, leftAt: nil, falseStart: falseStart, at: now)
         case .away(let index, let since, let leftAt):
-            endAttempt(index, startedAt: since, leftAt: leftAt, falseStart: falseStart, at: clock())
+            endAttempt(index, startedAt: since, leftAt: leftAt, falseStart: falseStart, at: now)
         default:
             return
         }
+    }
+
+    /// When a press happened: `time` from the device it was made on, kept between the start of the current phase and
+    /// now (a clock that is off, or a command for an earlier phase, never puts an event before the one it follows or
+    /// in the future); without it, now.
+    private func moment(_ time: Date?) -> Date {
+        let now = clock()
+        guard let time else { return now }
+        let phaseStart: Date
+        switch phase {
+        case .ready: phaseStart = currentBreakStart ?? startedAt
+        case .leaving(_, let since), .breakTime(_, let since, _, _): phaseStart = since
+        case .away(_, _, let leftAt): phaseStart = leftAt
+        case .finished: return now
+        }
+        return min(now, max(phaseStart, time))
     }
 
     /// A false start before "Вышли": an attempt that never got outside.
@@ -448,8 +472,12 @@ public final class TrainingSession {
         currentBreakStart = nil
     }
 
+    /// Keeps the log in time order: a press from an iPhone may be older than a note or a recording event logged
+    /// while its command was on the way.
     private func log(_ kind: SessionEventKind, at time: Date, exitNumber: Int? = nil, attempt: Int? = nil, detail: String? = nil) {
-        events.append(SessionEvent(time: time, kind: kind, exitNumber: exitNumber, attempt: attempt, detail: detail))
+        let event = SessionEvent(time: time, kind: kind, exitNumber: exitNumber, attempt: attempt, detail: detail)
+        let index = events.lastIndex { $0.time <= time }.map { $0 + 1 } ?? 0
+        events.insert(event, at: index)
     }
 }
 
@@ -458,13 +486,13 @@ public final class TrainingSession {
 public enum SessionCommand: String, Codable, CaseIterable {
     case startExit, markBehindDoor, endExit, resetExit, finish
 
-    /// Applies the command to a session owned by this device.
-    public func apply(to session: TrainingSession) {
+    /// Applies the command to a session owned by this device; `time` is when it was pressed (the owner's clock).
+    public func apply(to session: TrainingSession, at time: Date? = nil) {
         switch self {
-        case .startExit: session.startExit()
-        case .markBehindDoor: session.markBehindDoor()
-        case .endExit: session.endExit()
-        case .resetExit: session.resetExit()
+        case .startExit: session.startExit(at: time)
+        case .markBehindDoor: session.markBehindDoor(at: time)
+        case .endExit: session.endExit(at: time)
+        case .resetExit: session.resetExit(at: time)
         case .finish: session.finish()
         }
     }

@@ -340,7 +340,10 @@ final class SyncHost {
         for (other, old) in clients where other != id && old.hello?.deviceID == hello.deviceID { drop(other) }
 
         client.channel.send(.welcome(welcome()))
-        if let state = stateProvider?() { client.channel.send(.state(state)) }
+        if var state = stateProvider?() {
+            state.sentAt = Date()
+            client.channel.send(.state(state))
+        }
         updateConnected()
         print("[sync] \(hello.deviceName) (\(hello.device.modelTitle)) joined")
     }
@@ -382,8 +385,10 @@ final class SyncHost {
         let data = try? SyncProtocol.encoder().encode(state)
         guard data != lastStateData else { return }
         lastStateData = data
+        var stamped = state
+        stamped.sentAt = Date()
         for client in clients.values where client.approved {
-            client.channel.send(.state(state))
+            client.channel.send(.state(stamped))
         }
     }
 

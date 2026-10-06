@@ -76,6 +76,8 @@ describe('dragging an edge', () => {
     expect(Timeline.resized(120, -500, 1, 'pause')).toBe(30)
     expect(Timeline.resized(20, -500, 1, 'pause')).toBe(20)
     expect(Timeline.resized(3500, 900, 1, 'exit')).toBe(3600)
+    // Without Shift: by the second.
+    expect(Timeline.resized(60, 33, 1, 'exit', 1)).toBe(93)
     expect(Timeline.nudged(60, 1, 'exit')).toBe(65)
     expect(Timeline.nudged(5, -1, 'exit')).toBe(5)
     expect(Timeline.nudged(30, -1, 'pause')).toBe(30)

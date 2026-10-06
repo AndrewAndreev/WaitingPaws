@@ -366,9 +366,10 @@ html.mini #root {
 .mini__btn--primary:hover {
   background: #ffc7d6;
 }
-.mini__btn--done {
-  background: #6ee7a0;
-  color: #08240f;
+/* «Вернулись»: blue, toward the break. */
+.mini__btn--rest {
+  background: #8cbfff;
+  color: #06182e;
 }
 .mini__btn--stop {
   background: #ff6b6b;

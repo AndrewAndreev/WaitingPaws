@@ -167,6 +167,25 @@ describe('TrainingSession', () => {
     expect(session.remaining(now)).toBe(35)
   })
 
+  // A drag applies every step at once (the timer follows it) and logs the whole edit once, when it is let go.
+  it('logs an edit made in steps once', () => {
+    const session = makeSession()
+    session.markBehindDoor()
+    advance(3)
+    const before = session.plan
+    const notes = () => session.events.filter((event) => event.kind === 'note').length
+    for (const duration of [6, 8, 10]) {
+      const step = { ...session.plan, exits: session.plan.exits.map((exit, i) => (i === 0 ? { ...exit, duration } : exit)) }
+      expect(session.updatePlan(step, { quiet: true })).toBe(true)
+      expect(session.remaining(now)).toBe(duration - 3)
+    }
+    expect(notes()).toBe(0)
+    const last = { ...session.plan, exits: session.plan.exits.map((exit, i) => (i === 0 ? { ...exit, duration: 12 } : exit)) }
+    session.updatePlan(last, { changesSince: before })
+    expect(notes()).toBe(1)
+    expect(session.events.at(-1)?.detail).toBe('Расписание изменено: выход 1: 5 с → 12 с')
+  })
+
   it('keeps the exits already done when the schedule is edited', () => {
     const session = makeSession()
     session.markBehindDoor(); advance(5); session.endExit()
@@ -199,11 +218,34 @@ describe('TrainingSession', () => {
     mirror.planHandler = (plan) => {
       sent = plan
     }
+    // A step of an edit applies without a note; the last one logs the whole edit.
     expect(mirror.updatePlan({ ...mirror.plan, defaultBreak: 90 })).toBe(true)
     expect(mirror.plan.defaultBreak, 'the owner applies it').toBe(120)
     owner.updatePlan(sent!)
     mirror.restore(owner.snapshot)
     expect(mirror.plan.defaultBreak).toBe(90)
+  })
+
+  // A press on the iPhone whose command reaches the computer seconds later is still logged when it was pressed.
+  it('keeps the moment of a late press, within the phase', () => {
+    const session = makeSession()
+    session.markBehindDoor()
+    const leftAt = now
+    advance(4)
+    const pressed = now
+    advance(6)
+    session.endExit(pressed)
+    expect(session.results[0].endedAt).toBe(pressed)
+    expect(session.phase).toMatchObject({ kind: 'breakTime', since: pressed })
+    expect(session.remaining(now)).toBe(114)
+
+    // A clock that is off: never before the phase, never in the future.
+    session.markBehindDoor(now + 90_000)
+    expect(session.phase).toMatchObject({ kind: 'away', leftAt: now })
+    session.endExit(leftAt - 30_000)
+    expect(session.results[1].endedAt).toBe(now)
+    const times = session.events.map((event) => event.time)
+    expect(times).toEqual([...times].sort((a, b) => a - b))
   })
 
   it('reads the standing rule from the notes', () => {

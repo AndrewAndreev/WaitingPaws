@@ -3,7 +3,7 @@ import { DurationText } from '@core/durationText'
 import logo from '../assets/logo.svg'
 import { call, ui, useNow, useStore } from '../store'
 import { cameraName, cameraOnline, formatTime, isConfigured, isRecording } from '../model'
-import { PhoneIcon, RecordIcon, SoundOffIcon, SoundOnIcon } from '../ui/icons'
+import { FinishIcon, PhoneIcon, RecordIcon, SoundOffIcon, SoundOnIcon } from '../ui/icons'
 import { Tooltip } from '../ui/kit'
 import { CameraMenu } from '../training/CameraMenu'
 
@@ -73,6 +73,14 @@ function TrainingCommands() {
         </Tooltip>
       )}
       {!cameraOnline(app) && configured && <span className="badge badge--warning">{t('go2rtc не запущен')}</span>}
+      {app.session && (
+        <Tooltip content={t('Завершить тренировку') + ' (Ctrl+E)'}>
+          <button className="tb-btn" onClick={() => ui.set({ confirmFinish: true })}>
+            <FinishIcon />
+            {t('Завершить')}
+          </button>
+        </Tooltip>
+      )}
     </div>
   )
 }

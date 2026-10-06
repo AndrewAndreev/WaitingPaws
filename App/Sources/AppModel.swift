@@ -1073,11 +1073,11 @@ extension AppModel {
     /// A button press from a linked iPhone.
     private func applyRemote(_ command: SyncCommand) {
         switch command {
-        case .session(let command):
+        case .session(let command, let time):
             if command == .finish {
                 finishSession()
             } else if let session {
-                command.apply(to: session)
+                command.apply(to: session, at: time)
             }
         case .startSession(let plan):
             if session == nil {
@@ -1092,8 +1092,8 @@ extension AppModel {
             } else {
                 setPending(plan)
             }
-        case .updateSessionPlan(let plan):
-            session?.updatePlan(plan)
+        case .updateSessionPlan(let plan, let quiet, let since):
+            session?.updatePlan(plan, quiet: quiet ?? false, changesSince: since)
         case .abandonSession:
             abandonSession()
         case .startRecording:
@@ -1139,8 +1139,14 @@ extension AppModel {
                 session.restore(snapshot)
             } else if session == nil || isMirroringSession {
                 let mirror = TrainingSession(snapshot: snapshot)
-                mirror.commandHandler = { [weak self] command in self?.syncClient.send(.session(command)) }
-                mirror.planHandler = { [weak self] plan in self?.syncClient.send(.updateSessionPlan(plan)) }
+                // Sent with the moment of the press in the Mac's time: a late command still lands where it happened.
+                mirror.commandHandler = { [weak self] command, time in
+                    guard let self else { return }
+                    syncClient.send(.session(command, at: syncClient.clock.hostTime(for: time)))
+                }
+                mirror.planHandler = { [weak self] plan, quiet, since in
+                    self?.syncClient.send(.updateSessionPlan(plan, quiet: quiet ? true : nil, since: since))
+                }
                 session = mirror
                 lastRecord = nil
                 lastClip = nil

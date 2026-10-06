@@ -94,6 +94,33 @@ struct LiveSessionModel {
 
     var sessionElapsed: String { DurationText.clock(now.timeIntervalSince(session.startedAt)) }
 
+    /// When the first exit started: the plan's start on the timeline. Before it, now — the plan slides along until
+    /// the first «Вышли» (the wait before the first exit says nothing).
+    var planStart: Date {
+        if let first = session.results.first { return first.leftAt ?? first.startedAt }
+        switch phase {
+        case .leaving(_, let since): return since
+        case .away(_, _, let leftAt): return leftAt
+        default: return now
+        }
+    }
+
+    /// How far the session is from the plan laid out from the first exit (+ behind, − ahead): when the current exit
+    /// started, or — in a break — when the next one can start at the earliest.
+    var drift: TimeInterval? {
+        guard let index = session.currentExitIndex, index <= plan.exits.count else { return nil }
+        var planned: TimeInterval = 0
+        for i in 0..<index { planned += plan.exits[i].duration + plan.breakAfter(exitAt: i) }
+        let actual: Date
+        switch phase {
+        case .leaving(_, let since): actual = since
+        case .away(_, _, let leftAt): actual = leftAt
+        case .breakTime(_, let since, let duration, _): actual = max(now, since.addingTimeInterval(duration))
+        default: actual = now
+        }
+        return actual.timeIntervalSince(planStart) - planned
+    }
+
     /// Rough finish time: what is left of the plan from now.
     var eta: Date {
         guard let index = session.currentExitIndex else { return now }
@@ -114,7 +141,7 @@ struct LiveSessionModel {
     /// The next step (Space): «Вышли», «Вернулись», or «Завершить» in the last break.
     var primary: Action? {
         switch phase {
-        case .away: return Action(title: String(localized: "Вернулись"), symbol: "checkmark", tint: MacPalette.green)
+        case .away: return Action(title: String(localized: "Вернулись"), symbol: "checkmark", tint: MacPalette.blue)
         case .breakTime(_, _, _, nil): return Action(title: String(localized: "Завершить"), symbol: "flag.checkered")
         case .ready, .leaving, .breakTime: return Action(title: String(localized: "Вышли"), symbol: "door.left.hand.closed")
         case .finished: return nil

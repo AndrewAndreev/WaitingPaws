@@ -48,7 +48,7 @@ export function MiniPanel() {
           <span className={`mini__timer tabular tint-${live.tint}`}>{live.timerText}</span>
           <span className="mini__sep" />
           {!live.isFinished && (
-            <button className={'mini__btn mini__btn--primary' + (live.isAway ? ' mini__btn--done' : '')} onClick={() => void primaryStep()}>
+            <button className={'mini__btn mini__btn--primary' + (live.isAway ? ' mini__btn--rest' : '')} onClick={() => void primaryStep()}>
               {primaryStepTitle(session)}
             </button>
           )}

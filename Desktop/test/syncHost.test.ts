@@ -256,7 +256,9 @@ describe('SyncHost', () => {
     expect(hostID).toMatch(/^[0-9A-F-]{36}$/)
     expect(welcome.welcome).toMatchObject({ hostID, platform: 'windows', model: 'Dell XPS 15 9510' })
     const state = await phone.next('state')
-    expect(state.state).toEqual(syncState(baseState()))
+    // Stamped with this computer's clock when sent: the phone measures the difference between the clocks with it.
+    expect(state.state).toEqual({ ...syncState(baseState()), sentAt: expect.any(Number) })
+    expect(Math.abs(state.state.sentAt! - Date.now())).toBeLessThan(5000)
     expect(h.changes).toBeGreaterThan(changesBefore)
 
     // Both sides keep the same new secret; the host's is in the file, with what the hello said about the phone.
@@ -274,17 +276,19 @@ describe('SyncHost', () => {
     })
     expect(Math.abs(view.pairedDevices[0].lastSeen! - Date.now())).toBeLessThan(5000)
 
-    // Commands from the phone reach the backend in its terms.
+    // Commands from the phone reach the backend in its terms; a press carries when it was made (older phones: none).
     phone.send({ kind: 'command', command: { kind: 'session', command: 'endExit' } })
     phone.send({ kind: 'command', command: { kind: 'startSession', plan } })
     phone.send({ kind: 'command', command: { kind: 'setPendingPlan', plan: null } })
     phone.send({ kind: 'command', command: { kind: 'startRecording' } })
-    await until(() => h.commands.length === 4)
-    expect(h.commands[0]).toEqual({ kind: 'session', command: 'endExit' })
+    phone.send({ kind: 'command', command: { kind: 'session', command: 'markBehindDoor', at: 1_790_000_000_123 } })
+    await until(() => h.commands.length === 5)
+    expect(h.commands[0]).toEqual({ kind: 'session', command: 'endExit', at: null })
     expect(h.commands[1].kind).toBe('startSession')
     expect((h.commands[1] as { plan: TrainingPlan }).plan.exits.map((exit) => exit.duration)).toEqual([5, 30])
     expect(h.commands[2]).toEqual({ kind: 'setPendingPlan', plan: null })
     expect(h.commands[3]).toEqual({ kind: 'startRecording' })
+    expect(h.commands[4]).toEqual({ kind: 'session', command: 'markBehindDoor', at: 1_790_000_000_123 })
   })
 
   it('sends the state only when it changed, at most every interval, the last change always', async () => {

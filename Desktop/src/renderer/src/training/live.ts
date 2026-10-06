@@ -180,14 +180,34 @@ export class LiveSession {
     return phase.kind === 'leaving' || phase.kind === 'away' ? phase.since : null
   }
 
-  /// How far the session is behind the ideal schedule (door walks and long breaks add up). Seconds; + = behind.
+  /// When the first exit started: the plan's start on the timeline. Before it, now — the plan slides along until the
+  /// first «Вышли» (the wait before the first exit says nothing).
+  get planStart(): number {
+    const first = this.session.results[0]
+    if (first) return first.leftAt ?? first.startedAt
+    const phase = this.phase
+    if (phase.kind === 'leaving') return phase.since
+    if (phase.kind === 'away') return phase.leftAt
+    return this.now
+  }
+
+  /// How far the session is from the plan laid out from the first exit (seconds; + = behind): when the current exit
+  /// started, or — in a break — when the next one can start at the earliest.
   get drift(): number | null {
     const index = this.currentExitIndex
     if (index === null) return null
     let planned = 0
     for (let i = 0; i < index; i++) planned += this.plan.exits[i].duration + TrainingPlan.breakAfter(this.plan, i)
-    const actual = ((this.currentStart ?? this.now) - this.session.startedAt) / 1000
-    return actual - planned
+    const phase = this.phase
+    const actual =
+      phase.kind === 'leaving'
+        ? phase.since
+        : phase.kind === 'away'
+          ? phase.leftAt
+          : phase.kind === 'breakTime'
+            ? Math.max(this.now, phase.since + phase.duration * 1000)
+            : this.now
+    return (actual - this.planStart) / 1000 - planned
   }
 
   results(): readonly ExitResult[] {

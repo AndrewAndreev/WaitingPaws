@@ -33,8 +33,9 @@ camera while you are behind the door, and send the trainer a ready log afterward
    ```
 
    Check the exits before the start: any exit or break can be changed with a tap. The schedule can be corrected
-   during the training too (**Schedule** on the Mac, ••• → **Edit Schedule** on the iPhone), say when every break
-   turns out longer than the app read it.
+   during the training too, say when every break turns out longer than the app read it: on the Mac right on the
+   timeline (click an exit or a break to type its length, or drag its edge; ⇧ snaps to 5 s) or with **Schedule…**,
+   on the iPhone with ••• → **Edit Schedule**. The timers follow at once.
 2. Two buttons, the same on the iPhone and the Mac. **Outside** once the door is closed behind you: a countdown to
    the planned time, and the live camera shows the dog. Going over the plan is highlighted.
 3. **Back Inside**: the break counts down to the next exit. A break that runs longer turns red and counts up, so you

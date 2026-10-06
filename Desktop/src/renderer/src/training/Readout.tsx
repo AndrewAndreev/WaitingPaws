@@ -3,47 +3,37 @@ import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { TrainingPlan } from '@core/models'
 import { SessionPhase } from '@core/trainingSession'
-import { call, ui } from '../store'
-import { formatTime } from '../model'
-import { CheckIcon, EditIcon, FalseStartIcon, FinishIcon, NoteIcon, OutsideIcon, StandIcon } from '../ui/icons'
-import { Button, Kbd } from '../ui/kit'
+import { call } from '../store'
+import { CheckIcon, FalseStartIcon, FinishIcon, NoteIcon, OutsideIcon, StandIcon } from '../ui/icons'
+import { Kbd } from '../ui/kit'
 import type { LiveSession } from './live'
 
-/// Right panel during a session — the Mac's and the iPhone's readout: the exit strip, the phase, a big ring timer,
-/// what the plan says about this moment and the same two buttons ("Вышли" / "Вернулись" and "Фальстарт"). The
-/// numbers of the whole training sit below, with «Завершить».
+/// Right panel during a session (the Mac's «Пульт»): under the exit strip, what this exit (or break) is; then the
+/// timer — big digits in the phase's colour over a progress line, the focus of the window — and the same two buttons
+/// as on the iPhone, with their keys. The numbers of the whole training live in the timeline's header, «Завершить»
+/// in the title bar.
 export function Readout({ live }: { live: LiveSession }) {
+  const neutral = live.isReady || live.isLeaving
   return (
     <div className="readout">
       <div className={`readout__card tint-${live.tint}`}>
         <ExitStrip live={live} />
-        <div className="readout__title">
-          <span>{live.title}</span>
-          {live.session.attempt > 1 && !live.isBreak && <span className="readout__attempt">{t('попытка %lld', live.session.attempt)}</span>}
+        <div className="readout__about">
+          <div className="readout__title">
+            <span>{live.title}</span>
+            {live.session.attempt > 1 && !live.isBreak && <span className="readout__attempt">{t('попытка %lld', live.session.attempt)}</span>}
+          </div>
+          <Info live={live} />
         </div>
-        <TimerRing progress={live.isAway || live.isBreak ? live.progress : null}>
-          <span className={'ring__digits tabular' + (live.overdue ? ' ring__digits--over' : '')}>{live.timerText}</span>
-          <span className={'ring__caption' + (live.overdue ? ' ring__digits--over' : '')}>{live.timerCaption}</span>
-        </TimerRing>
-        <Info live={live} />
-        <Transport live={live} />
+        <div className="readout__timer">
+          <div className={'readout__digits tabular' + (neutral ? ' readout__digits--neutral' : '')}>{live.timerText}</div>
+          <div className="readout__line">
+            <div className="readout__line-bar" style={{ width: `${Math.min(100, Math.max(0, (live.isAway || live.isBreak ? live.progress : 0) * 100))}%` }} />
+          </div>
+          <div className={'readout__caption' + (live.overdue ? ' readout__caption--over' : '')}>{live.timerCaption}</div>
+        </div>
       </div>
-
-      <div className="spacer" />
-      <div className="readout__stats">
-        <Stat value={t('%lld из %lld', live.completedExits, live.plan.exits.length)} label={t('выходов')} />
-        <Stat value={String(live.falseStarts)} label={t('фальстартов')} warn={live.falseStarts > 0} />
-        <Stat value={DurationText.clock((live.now - live.session.startedAt) / 1000)} label={t('идёт тренировка')} />
-        <Stat value={`≈ ${formatTime(live.eta)}`} label={t('конец по плану')} />
-      </div>
-      <div className="readout__footer">
-        <Button icon={<EditIcon />} onClick={() => ui.set({ editingSessionPlan: true })} title={t('Поправить выходы и перерывы прямо во время тренировки')}>
-          {t('Расписание')}
-        </Button>
-        <Button icon={<FinishIcon />} shortcut="Ctrl+E" onClick={() => ui.set({ confirmFinish: true })}>
-          {t('Завершить')}
-        </Button>
-      </div>
+      <Transport live={live} />
     </div>
   )
 }
@@ -82,22 +72,6 @@ function ExitStrip({ live }: { live: LiveSession }) {
   )
 }
 
-function TimerRing({ progress, children }: { progress: number | null; children: ReactNode }) {
-  const radius = 46
-  const length = 2 * Math.PI * radius
-  return (
-    <div className="ring">
-      <svg viewBox="0 0 100 100" aria-hidden>
-        <circle className="ring__track" cx="50" cy="50" r={radius} />
-        {progress !== null && (
-          <circle className="ring__bar" cx="50" cy="50" r={radius} strokeDasharray={length} strokeDashoffset={length * (1 - Math.min(1, Math.max(0, progress)))} transform="rotate(-90 50 50)" />
-        )}
-      </svg>
-      <div className="ring__center">{children}</div>
-    </div>
-  )
-}
-
 /// Only what matters now. Outside: the plan of this exit and its "или до вставания" rule. In a break: the next exit.
 function Info({ live }: { live: LiveSession }) {
   const exit = live.currentExit
@@ -122,24 +96,13 @@ function Info({ live }: { live: LiveSession }) {
   )
 }
 
-function Stat({ value, label, warn }: { value: string; label: string; warn?: boolean }) {
-  return (
-    <div className="stat">
-      <div className="stat__value tabular" style={warn ? { color: 'var(--warning)' } : undefined}>
-        {value}
-      </div>
-      <div className="stat__label">{label}</div>
-    </div>
-  )
-}
-
 /// Always the same two buttons: the next step (Space) and the false start (Backspace, ⌫ on the button).
 function Transport({ live }: { live: LiveSession }) {
   const phase = live.phase
   return (
     <div className="transport">
       {phase.kind === 'away' ? (
-        <Step icon={<CheckIcon />} title={t('Вернулись')} keys="Пробел" tone="done" onClick={() => void call('session.command', 'endExit')} />
+        <Step icon={<CheckIcon />} title={t('Вернулись')} keys="Пробел" tone="rest" onClick={() => void call('session.command', 'endExit')} />
       ) : SessionPhase.canGoOutside(phase) ? (
         <Step icon={<OutsideIcon />} title={t('Вышли')} keys="Пробел" tone="primary" onClick={() => void call('session.command', 'markBehindDoor')} />
       ) : phase.kind === 'breakTime' ? (
@@ -152,7 +115,8 @@ function Transport({ live }: { live: LiveSession }) {
   )
 }
 
-function Step({ icon, title, keys, hint, tone, onClick }: { icon: ReactNode; title: string; keys: string; hint?: string; tone: 'primary' | 'done' | 'warn'; onClick: () => void }) {
+/// Pink toward an exit, blue toward a break («Вернулись»), the false start quiet.
+function Step({ icon, title, keys, hint, tone, onClick }: { icon: ReactNode; title: string; keys: string; hint?: string; tone: 'primary' | 'rest' | 'warn'; onClick: () => void }) {
   return (
     <button className={`step step--${tone}`} onClick={onClick} title={`${title} (${t(hint ?? keys)})`}>
       <span className="step__label">

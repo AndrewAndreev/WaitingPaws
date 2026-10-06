@@ -43,25 +43,26 @@ struct Pill: View {
 }
 
 enum BigButtonStyle {
-    case primary, success, secondary, destructive
+    /// Pink: toward an exit. `rest`: blue, toward a break («Вернулись»).
+    case primary, rest, secondary, destructive
 
     var background: Color {
         switch self {
         case .primary: return Theme.accent
-        case .success: return Color(red: 0.36, green: 0.85, blue: 0.56)
+        case .rest: return Theme.info
         case .secondary, .destructive: return Theme.control
         }
     }
 
     var foreground: Color {
         switch self {
-        case .primary, .success: return .black
+        case .primary, .rest: return .black
         case .secondary: return .white
         case .destructive: return Theme.danger
         }
     }
 
-    var isPrimary: Bool { self == .primary || self == .success }
+    var isPrimary: Bool { self == .primary || self == .rest }
 }
 
 /// Main training actions. Primary ones are filled with the accent, the rest use the shared control fill.
@@ -70,30 +71,16 @@ struct BigButton: View {
     var systemImage: String? = nil
     var style: BigButtonStyle = .primary
     var height: CGFloat = 52
-    /// Mac: the key that presses it ("Пробел", "⌫"), at the trailing edge.
-    var key: String? = nil
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Group {
-                if let key {
-                    // The key only while the title fits next to it, centred (a narrow window drops it).
-                    ViewThatFits(in: .horizontal) {
-                        label
-                            .padding(.horizontal, 64)
-                            .frame(maxWidth: .infinity)
-                            .overlay(alignment: .trailing) { keyCap(key) }
-                        label.frame(maxWidth: .infinity)
-                    }
-                } else {
-                    label.frame(maxWidth: .infinity)
-                }
-            }
-            .frame(height: height)
-            .foregroundStyle(style.foreground)
-            .background(style.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            label
+                .frame(maxWidth: .infinity)
+                .frame(height: height)
+                .foregroundStyle(style.foreground)
+                .background(style.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(PressableButtonStyle())
     }
@@ -109,16 +96,6 @@ struct BigButton: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-    }
-
-    private func keyCap(_ key: String) -> some View {
-        Text(key)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
-            .padding(.horizontal, 6)
-            .frame(minWidth: 22, minHeight: 20)
-            .background(style.foreground.opacity(0.14), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-            .opacity(0.75)
-            .padding(.trailing, 12)
     }
 }
 
