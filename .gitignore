@@ -6,3 +6,8 @@ DerivedData/
 *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 GoMobile/build/
 Frameworks/
+
+# Claude Code: local preview servers and agent worktrees
+.claude/launch.json
+.claude/settings.local.json
+.claude/worktrees/

@@ -1,5 +1,27 @@
 # Waiting Paws
 
+Separation training for dogs on iPhone, Mac and Windows. Paste the schedule your trainer sent ("Exit 1 – 30 seconds,
+all breaks 1 minute…") and the app turns it into one big button per step (Start exit → Outside → Back inside), timers
+for exits and breaks, a full-screen live view of the dog from a home camera, an optional recording and a log for the
+trainer. Xiaomi (Mi Home) cameras are set up by signing in, other cameras work over RTSP, and an iPhone can watch
+through a Mac or PC on the same network. Timers, schedules and logs work without a camera too.
+
+- Video goes through [go2rtc](https://github.com/AlexxIT/go2rtc), compiled into the app (gomobile on iPhone and Mac,
+  `go2rtc.exe` on Windows) with the patches described below in «Сборка».
+- No accounts, analytics or servers of our own: everything stays on your devices
+  ([privacy policy](App/Resources/Legal/PrivacyPolicy-en.md)).
+- Build: `./GoMobile/build.sh`, `xcodegen generate`, open `WaitingPaws.xcodeproj` and set your own `DEVELOPMENT_TEAM`
+  in `project.yml`. Windows: [Desktop/README.md](Desktop/README.md). Core tests: `cd Packages/WaitingPawsCore && swift test`.
+- Not affiliated with, endorsed or sponsored by Xiaomi. "Xiaomi" and "Mi Home" are trademarks of their owners. Like go2rtc
+  and Home Assistant, the app uses Xiaomi's cloud API to sign in to your own account, list its cameras and change their
+  settings; the video itself goes over your local network.
+- Code: MIT. The Waiting Paws name and the app icon are not covered, see [Лицензия](#лицензия). Security reports:
+  [SECURITY.md](SECURITY.md).
+
+The rest of this README (architecture, build details, diagnostics) is in Russian.
+
+---
+
 Приложения для iOS и macOS для тренировки коротких выходов из дома с собакой: расписание от тренера,
 крупные кнопки «Начать выход / За дверью / Выход закончен», таймеры выходов и перерывов, живая камера
 во весь экран, запись видео и лог по реальным нажатиям.
@@ -183,7 +205,7 @@ Packages/WaitingPawsCore         — Swift Package без UI, с тестами
   Go2RTC/StreamRecorder.swift    — запись MP4 в файл
   Storage/SessionStore.swift     — сохранение логов/видео
 Design/logos-v2                  — все концепты логотипа кодом (SVG) + галерея-мокап, см. README там
-Design/app-icon                  — исходники иконки приложения (05b, палитра «Ночь»)
+Design/app-icon                  — исходники иконки приложения (концепт 07 «Песочные часы», палитра «Ночь»)
 ```
 
 Иконка приложения генерируется из кода: `node Design/logos-v2/app-icon.js` пересобирает SVG в
@@ -409,3 +431,5 @@ iPhone, сразу на «Синхронизации»), на Mac — `--demo-ip
 
 go2rtc и остальной сторонний код — под своими лицензиями: `App/Resources/Legal/Acknowledgements.txt`,
 `Desktop/build/ThirdPartyNotices-desktop.txt`.
+
+Проект не связан с Xiaomi и не одобрен ею; «Xiaomi» и «Mi Home» — товарные знаки их владельцев.
