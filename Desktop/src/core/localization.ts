@@ -122,7 +122,7 @@ export function dateFormatter(template: string, language: CoreLanguage = current
   const key = `${locale}|${template}`
   let formatter = formatters.get(key)
   if (!formatter) {
-    formatter = new Intl.DateTimeFormat(locale, skeletonOptions(template, locale))
+    formatter = new Intl.DateTimeFormat(locale, skeletonOptions(template))
     formatters.set(key, formatter)
   }
   return formatter
@@ -133,21 +133,7 @@ export function formatDate(ms: number, template: string, language: CoreLanguage 
   return dateFormatter(template, language).format(ms)
 }
 
-/**
- * The hour cycle ICU's pattern generator picks for `j`: the region's preference (ru_US writes "6:00 PM",
- * en_RU "18:00"), which `Intl` alone does not apply.
- */
-function preferredHourCycle(locale: string): Intl.DateTimeFormatOptions['hourCycle'] {
-  try {
-    const info = new Intl.Locale(locale) as Intl.Locale & { getHourCycles?: () => string[]; hourCycles?: string[] }
-    const cycle = info.getHourCycles?.()[0] ?? info.hourCycles?.[0]
-    return cycle === 'h11' || cycle === 'h12' || cycle === 'h23' || cycle === 'h24' ? cycle : undefined
-  } catch {
-    return undefined
-  }
-}
-
-function skeletonOptions(template: string, locale: string): Intl.DateTimeFormatOptions {
+function skeletonOptions(template: string): Intl.DateTimeFormatOptions {
   const options: Intl.DateTimeFormatOptions = {}
   for (const [run] of template.matchAll(/([A-Za-z])\1*/g)) {
     const width = run.length
@@ -165,12 +151,11 @@ function skeletonOptions(template: string, locale: string): Intl.DateTimeFormatO
       case 'E':
         options.weekday = width === 4 ? 'long' : width >= 5 ? 'narrow' : 'short'
         break
-      case 'j': {
+      case 'j':
+        // The language's clock, as the UI writes times: Russian is 18:00 in any region, en-US 6:00 PM, en-GB 18:00.
+        // (ICU's `j` on the Mac takes the region's instead: ru_US would write "6:00 PM".)
         options.hour = width >= 2 ? '2-digit' : 'numeric'
-        const cycle = preferredHourCycle(locale)
-        if (cycle) options.hourCycle = cycle
         break
-      }
       case 'H':
       case 'k':
         options.hour = width >= 2 ? '2-digit' : 'numeric'

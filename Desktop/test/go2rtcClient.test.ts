@@ -297,16 +297,18 @@ describe('localization', () => {
     expect(detectCoreLanguage(['fr'])).toBe('en')
   })
 
-  it('formats dates with the device region', () => {
+  it('formats dates with the device region and times with the language clock', () => {
     const date = new Date(2026, 9, 5, 18, 7, 9).getTime()
     setCoreRegion('US')
     expect(formatDate(date, 'ddMMyyyy', 'en')).toBe('10/05/2026')
     expect(formatDate(date, 'jmm', 'en')).toMatch(/^6:07\sPM$/)
+    expect(formatDate(date, 'jmm', 'ru')).toBe('18:07')
+    expect(formatDate(date, 'ddMMyyyy jmmss', 'ru')).toBe('05.10.2026, 18:07:09')
     setCoreRegion('GB')
     expect(formatDate(date, 'ddMMyyyy', 'en')).toBe('05/10/2026')
     expect(formatDate(date, 'jmm', 'en')).toBe('18:07')
     setCoreRegion('RU')
     expect(formatDate(date, 'ddMMyyyy jmmss', 'ru')).toBe('05.10.2026, 18:07:09')
-    expect(formatDate(date, 'jmm', 'en')).toBe('18:07')
+    expect(formatDate(date, 'jmm', 'en')).toMatch(/^6:07\sPM$/)
   })
 })

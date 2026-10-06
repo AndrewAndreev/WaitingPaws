@@ -333,7 +333,7 @@ export const SessionLogFormatter = {
     return text
   },
 
-  /** "25.09.2026, 18:00:05" / "09/25/2026, 6:00:05 PM" (the app's language and the device's region). */
+  /** "25.09.2026, 18:00:05" / "09/25/2026, 6:00:05 PM" (the date order of the device's region, the clock of the app's language). */
   dateTime(ms: number): string {
     return formatDate(ms, 'ddMMyyyy jmmss')
   },
