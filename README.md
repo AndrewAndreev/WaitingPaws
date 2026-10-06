@@ -1,435 +1,163 @@
-# Waiting Paws
+<p align="center">
+  <img src="App/Resources/Assets.xcassets/AppIconImage.imageset/AppIcon.png" width="128" alt="Waiting Paws icon">
+</p>
 
-Separation training for dogs on iPhone, Mac and Windows. Paste the schedule your trainer sent ("Exit 1 – 30 seconds,
-all breaks 1 minute…") and the app turns it into one big button per step (Start exit → Outside → Back inside), timers
-for exits and breaks, a full-screen live view of the dog from a home camera, an optional recording and a log for the
-trainer. Xiaomi (Mi Home) cameras are set up by signing in, other cameras work over RTSP, and an iPhone can watch
-through a Mac or PC on the same network. Timers, schedules and logs work without a camera too.
+<h1 align="center">Waiting Paws</h1>
 
-- Video goes through [go2rtc](https://github.com/AlexxIT/go2rtc), compiled into the app (gomobile on iPhone and Mac,
-  `go2rtc.exe` on Windows) with the patches described below in «Сборка».
-- No accounts, analytics or servers of our own: everything stays on your devices
-  ([privacy policy](App/Resources/Legal/PrivacyPolicy-en.md)).
-- Build: `./GoMobile/build.sh`, `xcodegen generate`, open `WaitingPaws.xcodeproj` and set your own `DEVELOPMENT_TEAM`
-  in `project.yml`. Windows: [Desktop/README.md](Desktop/README.md). Core tests: `cd Packages/WaitingPawsCore && swift test`.
-- Not affiliated with, endorsed or sponsored by Xiaomi. "Xiaomi" and "Mi Home" are trademarks of their owners. Like go2rtc
-  and Home Assistant, the app uses Xiaomi's cloud API to sign in to your own account, list its cameras and change their
-  settings; the video itself goes over your local network.
-- Code: MIT. The Waiting Paws name and the app icon are not covered, see [Лицензия](#лицензия). Security reports:
-  [SECURITY.md](SECURITY.md).
+<p align="center">
+  Separation training for dogs on iPhone, Mac and Windows<br>
+  <a href="README.ru.md">Читать по-русски</a>
+</p>
 
-The rest of this README (architecture, build details, diagnostics) is in Russian.
+![Waiting Paws on iPhone: the trainer's schedule, an exit in progress with the live camera, and the log](docs/screenshots/showcase/iphone-en.jpg)
 
----
+Teaching a dog to stay home alone takes many short practice exits: leave for 10 seconds, come back, wait two minutes,
+leave for 30 seconds… A trainer sends the schedule, and you are left juggling a stopwatch, the chat with the schedule
+and a camera app, then writing down for the trainer how it went.
 
-Приложения для iOS и macOS для тренировки коротких выходов из дома с собакой: расписание от тренера,
-крупные кнопки «Начать выход / За дверью / Выход закончен», таймеры выходов и перерывов, живая камера
-во весь экран, запись видео и лог по реальным нажатиям.
+Waiting Paws does all of that in one place. Paste the schedule, press one big button per step, watch the dog on the
+camera while you are behind the door, and send the trainer a ready log afterwards.
 
-Одна запись в App Store для iPhone и Mac (Universal Purchase): у обоих таргетов bundle id `su.comrade.waitingpaws`.
-Языки — английский (базовый: на всех языках устройства, кроме русского) и русский.
+## How it works
 
-Версия для **Windows** — Electron-приложение в `Desktop/` (тот же сценарий, тот же go2rtc с нашими патчами, история в
-том же формате, iPhone подключается к нему как к Mac; интерфейс — веб-код, который можно поднять и в браузере).
-Сборка, установщик и релизы — в [Desktop/README.md](Desktop/README.md).
+1. **Paste the schedule** your trainer sent. The app understands exits and their durations, "or until the dog stands
+   up", breaks after a particular exit or for all of them, in English or Russian:
 
-## Как это работает
-
-```
-┌──────────────────────────────────────────┐   P2P (локальная сеть)   ┌──────────────┐
-│ Waiting Paws (iOS / macOS)               │ ───────────────────────▶ │ Камера Xiaomi│
-│  SwiftUI ◀── MSE/WebRTC ── go2rtc (Go)   │                          │   (Mi Home)  │
-│             внутри процесса, 127.0.0.1   │                          └──────────────┘
-└──────────────────────────────────────────┘
-```
-
-* **Встроенный режим (по умолчанию).** [go2rtc](https://github.com/AlexxIT/go2rtc) 1.9.14 собран в
-  `Frameworks/Go2RTC.xcframework` (gomobile) и запускается внутри приложения на `127.0.0.1:11984`.
-  Отдельный сервер не нужен: при первом запуске экран приветствия с «Войти в Xiaomi» (лист: логин, пароль,
-  регион, затем код) и выбор камеры; «Другие способы» — Mac с Waiting Paws в сети, свой сервер, без камеры.
-  Камера должна быть в той же Wi-Fi сети, видео и запись идут, пока приложение открыто.
-* **Свой сервер** — опция в настройках («Подключение → Свой сервер go2rtc»), нужна версия **1.9.11+**
-  с модулем `xiaomi`. Подходит, если нужен просмотр не из дома или постоянная запись.
-* Логин в Xiaomi в обоих режимах выполняет go2rtc (`POST /api/xiaomi`), приложение пароль не хранит;
-  капча и код подтверждения (SMS / e-mail) поддержаны. Токен go2rtc сохраняет в своём
-  `go2rtc.yaml` (встроенный режим: `Application Support/go2rtc/`).
-* После входа go2rtc отдаёт список камер Mi Home, выбранная камера регистрируется как поток
-  (`PUT /api/streams`). Можно также выбрать любой уже существующий поток go2rtc (RTSP и т.п.).
-  В список попадают и камеры дома, к которому аккаунту дали общий доступ (`GET /api/xiaomi/cameras` —
-  добавка к go2rtc; сторонний go2rtc отвечает 404, тогда `GET /api/xiaomi` — без общих домов).
-* Живое видео: встроенный плеер go2rtc (`video-rtc.js`, WebRTC → MSE → HLS) внутри WKWebView.
-* Запись: `GET /api/stream.mp4?src=…` пишется в файл; останавливается кнопкой или автоматически
-  по окончании перерыва после последнего выхода.
-* Файлы: `Documents/Waiting Paws/Recordings/*.mp4` и `Documents/Waiting Paws/Sessions/*.txt|json`
-  (на iPhone — «Файлы» → «На iPhone» → Waiting Paws, на Mac — кнопка «Показать в Finder»).
-  На iPhone готовое видео дополнительно копируется в «Фото» (разрешение только на добавление;
-  выключается в настройках). Видео всегда пишется со звуком камеры; переключатель «Звук» влияет
-  только на плеер (глушит его без переподключения). После остановки записи фрагментированный MP4 от
-  go2rtc пересобирается на месте: видео без перекодирования, звук камеры перекодируется в AAC. Если
-  камера звука не дала, добавляется тихая AAC-дорожка, иначе Telegram отправляет видео как GIF.
-  Старые записи доводятся так же при первом открытии в истории. Если камера несколько секунд не слала кадры, время
-  в записи не сдвигается: остаётся стоп-кадр, в звуке — тишина, и картинка совпадает с часами камеры и со звуком.
-* Запись переживает пропажу камеры. Если go2rtc потерял камеру и закрыл поток записи (без «Стоп»), запись не
-  заканчивается молча: через 2 с и дальше, пока камера не вернётся, приложение просит поток снова и пишет следующую
-  часть в `Recordings/.parts/`. При остановке части склеиваются в первый файл (`RecordingFinalizer.join`), каждая —
-  на своём месте по времени: время без камеры остаётся пустым отрезком, и лог тренировки («перейти к выходу» в
-  истории) совпадает с видео. В журнале — `[rec] the camera stream broke off …`, `[rec] waiting for the camera to write part N`,
-  `[rec] joined N parts`.
-* Запись идёт в том же качестве, что и картинка (у камеры Xiaomi одно соединение на всё), это подписано рядом
-  с выбором качества. После смены качества все плееры переподключаются, включая iPhone, связанный с Mac
-  (`SyncState.streamRevision`): иначе старый поток go2rtc держал бы второе соединение с камерой.
-* Качество Xiaomi (меню камеры → «Качество»): поток перерегистрируется с `subtype=1|2|3|auto`.
-  Пока камера показывает видео, `/api/streams` не отдаёт исходный `xiaomi://` URL, поэтому он берётся
-  из `GET /api/config`. Там же видно фактическое разрешение («Сейчас 2304×1296»). Уровни у моделей разные
-  (у C302 и SD, и HD — 848×480, только 2K — 2304×1296), поэтому приложение запоминает, что камера реально
-  отдала на каждом уровне (по `did`, `AppSettings.qualityResolutions`), и пишет это в меню: «HD · 480p».
-* Режим камеры Xiaomi (меню камеры → «Режим съёмки» и «Настройки камеры», на Mac ещё настройки →
-  Камера): ночной/обычный/авто, цветная ночная съёмка, WDR, поворот, время на картинке, частота
-  сети, слежение, индикатор — только то, что объявляет модель. Список берётся из её MIoT-спецификации
-  на miot-spec.org (кешируется в Caches/MiotSpec), значения читаются и меняются через облако Xiaomi
-  эндпоинтом `POST /api/xiaomi/miot` (добавка Waiting Paws к go2rtc, `GoMobile/xiaomi/miot.go`) с уже
-  сохранённым токеном аккаунта. Смысл чисел берётся из спецификации: у C302 night-shot 0 — «выкл»,
-  у chuangmi — «вкл». Работает и с iPhone, подключённого к Mac (через go2rtc Мака), и вне домашней сети.
-* Кадр показывается целиком, камеру можно приблизить щипком, двойной тап сбрасывает зум. На Mac:
-  щипок на трекпаде вокруг курсора, двойной тап двумя пальцами, перетаскивание или прокрутка двумя
-  пальцами для сдвига, ⌘/⌥ + колёсико мыши, двойной клик — сброс, «Вид» → ⌘= / ⌘− / ⌘0.
-* «Только запись» на Mac: видео на всё окно (без панели справа и таймлайна), таймер и «Остановить»
-  на стеклянной плавающей панели — её можно перетащить в любой угол, место запоминается.
-  На iPhone так же: карточки внизу уходят, видео во весь экран, время и круглая «Стоп» — на
-  полупрозрачной панели поверх (без размытия: blur над живым видео дорог для iPhone). iPhone, подключённый
-  к Mac, показывает этот режим и когда запись идёт на Mac («Запись на Mac»), «Стоп» останавливает её там.
-  Вместо постоянной карточки «Тренировка синхронизирована» под кнопкой «Mac» на 4 с всплывает подсказка
-  («Синхронизировано с …», после записи на Mac — «Видео сохранено на Mac»).
-* К последнему Mac, с которым iPhone работал, он подключается сам — и после перезапуска любого из приложений, пока
-  синхронизацию не отключили вручную (`sync.autoConnectHost`, id хоста), и не посреди своей тренировки или записи.
-  Подключиться вручную: карточка «Рядом Mac с Waiting Paws» на главном экране (её прячут ✕, тренировка и итоги),
-  пункт «Синхронизировать с …» в меню камеры или раздел «Синхронизация» в настройках. Сломавшийся поиск Bonjour (после
-  сворачивания бывает `-65569 DefunctConnection`) перезапускается; найденные хосты — в журнале `[sync] hosts nearby: …`.
-* Несколько Mac и iPhone в одной сети (и ПК с Windows, когда будет порт). Каждое устройство сообщает о себе
-  `SyncDevice`: постоянный id (`sync.deviceID`), имя, вид (`SyncPlatform`: mac, iphone, ipad, windows) и модель
-  («iPhone 16» по таблице идентификаторов, «MacBook Pro» из IORegistry). Хост — в TXT Bonjour (`id`, `os`, `model`)
-  и в зашифрованном `welcome`, iPhone — в `hello`. Это необязательные поля протокола v2: сборки до них по-прежнему
-  соединяются (хост без id узнаётся по имени, iPhone без вида — iPhone). Сопряжения привязаны к id, а не к имени, так что
-  два «MacBook Air» или переименованный Mac не путаются. Секрет на iPhone лежит в `sync.token.id.<id>`; секрет старых
-  сборок (`sync.token.<имя Mac>`) переезжает туда после первого удачного подключения.
-  * iOS отдаёт приложениям только «iPhone» вместо имени устройства, поэтому по умолчанию iPhone называется своей
-    моделью. Имя можно задать в настройках («Имя этого iPhone»). Mac берёт имя компьютера, и его тоже можно поменять
-    («Настройки → iPhone → Имя этого Mac»); новое имя сразу видно iPhone.
-  * На iPhone: если рядом несколько компьютеров, карточка «Синхронизировать с…» показывает их все (сначала тот, к
-    которому подключались последним, затем с идущей тренировкой). У каждого — иконка вида, модель, камера или номер
-    выхода и пометка «уже подключались». В меню «Mac» можно переключиться на другой компьютер. В настройках —
-    «Подключались раньше» с «Забыть».
-  * На Mac: запрос «Подключить «iPhone Тани»?» называет модель телефона и этот Mac. У разрешённых iPhone видны
-    модель и «Подключён сейчас» или время последнего подключения; «подключён» определяется по id, а не по имени.
-  * Тексты на iPhone берут вид хоста: «Запись на Mac», с ПК — «Запись на ПК».
-* Расписание до старта общее для Mac и iPhone: вставленное на Mac сразу видно на iPhone карточкой
-  «Сегодня · и на Mac», вставленное (и поправленное) на iPhone появляется на Mac в «Сегодня» и на
-  таймлайне. Начать можно с любой стороны; ✕ на iPhone и «Убрать» на Mac убирают его с обоих.
-  Протокол: `SyncState.pendingPlan` (Mac → iPhone) и `SyncCommand.setPendingPlan` (iPhone → Mac).
-* Связь iPhone ↔ Mac (протокол v2, `SyncCrypto`): на каждое соединение обе стороны создают ключи Curve25519,
-  iPhone доказывает прежнее сопряжение HMAC-ом от общего секрета (сам секрет по сети не ходит, перехваченный
-  hello повторить нельзя), новый iPhone ждёт «Разрешить» на Mac, и обе стороны выводят новый секрет из обмена
-  ключами. Всё после этого (`welcome` с паролем go2rtc, состояния, команды) идёт зашифрованным ChaChaPoly
-  с отдельным ключом на направление и счётчиком против повторов. «Забыть» на Mac меняет пароль go2rtc для LAN
-  сразу (`MobileSetLANPassword`) и рассылает новый оставшимся iPhone. Конфиг go2rtc (с токенами Xiaomi) по LAN
-  не отдаётся: источник камеры для её настроек Mac присылает в `SyncState.cameraSource`.
-* Без камеры: на первом экране (iPhone) и в окне приветствия (Mac) — «Продолжить без камеры». Таймеры,
-  расписание и лог работают, запись и камера скрыты, камеру можно подключить позже («Подключить камеру…»).
-* Аккаунт Xiaomi можно забыть: «Выйти из аккаунта Xiaomi» в настройках (`POST /api/xiaomi/logout` — добавка
-  к go2rtc, удаляет токен из памяти и `go2rtc.yaml`, камеры аккаунта убираются из go2rtc).
-* Фон на iPhone: фонового режима нет. Идущая запись получает обычные ~30 с, затем файл аккуратно закрывается,
-  а при возврате запись продолжается новым файлом (начало — в истории). Если iOS закрыла слушающий сокет
-  приостановленного приложения, при возврате API go2rtc открывается снова (`MobileRelisten`), плееры
-  переподключаются (`AppModel.playerGeneration`).
-* «Прошлое расписание» / «Повторить» — последняя тренировка из истории (до первой их нет). Полоска над таймером — все выходы плана: пройденные приглушены,
-  текущий подсвечен, перерывы между ними показаны отрезками.
-* «Только запись» на главном экране пишет видео без расписания и лога: на экране только время и
-  «Остановить запись», после остановки — «Поделиться» и «История» (экран не гаснет, пока идёт запись).
-  Кнопка «Запись» в верхней панели без тренировки делает то же самое.
-* История: тренировки и записи без тренировки в одном списке (запись без тренировки — только видео;
-  туда же попадает видео, у которого удалили только лог). Свайп или долгое нажатие на строке удаляет
-  её вместе с видео, в карточке тренировки есть корзина (можно удалить только лог), в меню «…» —
-  «Удалить всё». Копии в Фото не трогаются.
-
-## Сценарий
-
-1. **Вставить расписание** — текст от тренера разбирается парсером: заголовок (день, тренеры, дата),
-   заметки, `N выход - 30 секунд ИЛИ до вставания`, `Перерыв 5 минут` после конкретного выхода или
-   `Все перерывы 2 минуты` по умолчанию. Если строки «Все перерывы» нет, а тренер пишет
-   `Перерыв 2 минуты` после большинства выходов, этот перерыв становится общим; свой перерыв остаётся
-   только у выходов, где он отличается. Всё можно поправить в редакторе перед стартом: «Перерыв между
-   выходами» меняет все обычные перерывы, «Сделать везде …» сбрасывает свои; тап по времени выхода
-   или перерыва в строке открывает барабаны минут/секунд и быстрые варианты.
-2. **Начать выход N** → идёте к двери, таймер считает время.
-3. **За дверью** → обратный отсчёт до плана, перебор подсвечивается оранжевым.
-4. **Выход закончен** → перерыв (отсчёт, подсказка про следующий выход) или
-   **Сбросить выход (фальстарт)** → перерыв и повтор того же выхода (номер попытки растёт).
-5. Когда перерыв истёк, приложение само переходит к следующему выходу; после последнего — завершает
-   тренировку, останавливает запись и сохраняет лог.
-
-Лог для тренера — по строке на попытку, в нотации расписания (кнопка «Лог» в истории и после
-тренировки отправляет его текстом; тот же текст лежит в `Sessions/*.txt`):
-
-```
-Тренировка на пятницу · Андрей
-25.09.2026, 18:00–18:13 (13 мин) · выходов 4 из 4 · фальстартов 1
-
-1 выход — 2 с: за дверью 0:03 ✅ · перерыв 2:08
-2 выход — 5 с: фальстарт, за дверью 0:01 ❌ · перерыв 1:00 (план 5 мин)
-2 выход — 5 с, попытка 2: за дверью 0:06 ✅ · перерыв 5:05
-```
-
-План перерыва пишется, только если реальный отличается больше чем на 15 с; перерыв после последнего
-выхода не пишется. Все нажатия с секундами остаются в `Sessions/*.json`.
-
-## Структура
-
-```
-project.yml                      — спецификация xcodegen (два таргета: WaitingPaws-iOS, WaitingPaws-macOS)
-App/Sources                      — общий SwiftUI-код для обеих платформ
-  AppModel.swift                 — состояние приложения: сессия, запись, история
-  AppSettings.swift              — настройки (UserDefaults + Keychain для пароля go2rtc)
-  Views/Session                  — главный экран: камера + HUD
-  Views/Plan                     — ввод и редактор расписания
-  Views/Onboarding               — приветствие → вход в Xiaomi → камера (iPhone; на Mac — Mac/Onboarding)
-  Views/History, Views/Settings
-  Views/Camera/CameraStreamView  — WKWebView с плеером go2rtc
-  Go2RTC/EmbeddedGo2RTC.swift    — запуск встроенного go2rtc (конфиг, статус)
-GoMobile/                        — Go-обёртка go2rtc и build.sh для сборки xcframework (desktop/ — go2rtc.exe для Windows)
-Desktop/                         — версия для Windows (Electron + React, ядро портировано на TypeScript)
-Frameworks/Go2RTC.xcframework    — результат сборки (не в git, собирается скриптом)
-Packages/WaitingPawsCore         — Swift Package без UI, с тестами
-  Parser/PlanParser.swift        — разбор текста расписания
-  Engine/TrainingSession.swift   — машина состояний тренировки и лог событий
-  Go2RTC/Go2RTCClient.swift      — API go2rtc (потоки, Xiaomi-логин, список камер)
-  Go2RTC/StreamRecorder.swift    — запись MP4 в файл
-  Storage/SessionStore.swift     — сохранение логов/видео
-Design/logos-v2                  — все концепты логотипа кодом (SVG) + галерея-мокап, см. README там
-Design/app-icon                  — исходники иконки приложения (концепт 07 «Песочные часы», палитра «Ночь»)
-```
-
-Иконка приложения генерируется из кода: `node Design/logos-v2/app-icon.js` пересобирает SVG в
-`Design/app-icon` и все PNG в `App/Resources/Assets.xcassets/AppIcon.appiconset` (нужны
-`rsvg-convert` и ImageMagick: `brew install librsvg imagemagick`).
-
-## Сборка
-
-1. Фреймворк go2rtc (один раз, и после обновления версии go2rtc):
-
-   ```bash
-   brew install go xcodegen
-   go install golang.org/x/mobile/cmd/gomobile@latest && ~/go/bin/gomobile init
-   ./GoMobile/build.sh
+   ```
+   Sunday training - Anna/Mark - 25.10.2026
+   All breaks 2 minutes
+   Exit 1 - 5 seconds
+   Exit 2 - 10 seconds
+   Break 5 minutes
+   Exit 3 - 30 seconds OR until the dog stands up
    ```
 
-   Скрипт клонирует go2rtc нужного тега в `GoMobile/build/`, добавляет пакет `GoMobile/mobile`
-   (повторяет `main()` go2rtc с модулями api, ws, streams, http, rtsp, webrtc, mp4, hls, mjpeg, xiaomi,
-   ограничивает Go двумя ядрами) и собирает `Frameworks/Go2RTC.xcframework` для iOS, симулятора и macOS
-   (~16 МБ в iOS-сборке). Транспорт Xiaomi CS2 — своя копия `GoMobile/xiaomi-cs2/conn.go` (основа v1.9.14,
-   скрипт откажется собирать с другой версией go2rtc): UDP-сокет с буфером приёма 4 МБ (системных 768 КБ
-   не хватало на всплеск ключевого кадра, а каждая потеря датаграммы — это стоп картинки до повтора от
-   камеры), 2048 пакетов не по порядку вместо 250 (пока ждём потерянный, остальные подтверждаются, и камера
-   не шлёт их повторно), очередь кадров 1000 вместо 100, полная командная очередь не рвёт соединение, без
-   спама «cs2: unknown msg». По умолчанию просим UDP (`transport=tcp` в источнике — просить TCP), и это пожелание,
-   а не требование: камера, которая его не предлагает, через ≤2 с подключается по своему выбору. C302 сама
-   выбирает TCP, а там потерянный в Wi-Fi пакет держал весь поток 1–1,5 с до повтора; по UDP CS2 восполняет
-   потерю за миллисекунды (одна камера, одни минуты: самая длинная пауза 0,2–0,45 с по UDP и 1,2–1,45 с по TCP).
-   В журнал — транспорт при подключении и раз в 30 с тайминг кадров (см. «Диагностика» ниже). Камере, которой
-   плохо по UDP (потерянный пакет держит видео 3 с), соединение пересоздаётся по TCP, и час она получает TCP
-   (`cs2: UDP to … is struggling …`): на медленном Wi-Fi (C200: пинг ~200 мс) камера пересылает пакеты раньше, чем
-   до неё доходят наши подтверждения, треть трафика — повторы, и связь проседает до обрыва; TCP подстраивается под канал.
-   Очередь кадров на каждого зрителя в go2rtc — 256 вместо 64 (зритель, отставший на ~3 с, терял кадры и
-   стоял до следующего ключевого). Запись идёт в реальном времени: своя копия `GoMobile/mp4/muxer.go` (основа v1.9.14)
-   для `/api/stream.mp4` держит каждый кадр до прихода следующего и даёт ему длительность до него, так что пауза
-   источника (кадры, которые камера не отправила, переподключение) остаётся в файле стоп-кадром на своём месте. В
-   оригинале любая пауза длиннее 1 с сжимается до 1 мс: на C200 со слабым Wi-Fi картинка за 4 минуты убежала от звука
-   и часов камеры на 32 с, за здоровые 45 минут — на 6 с. Живой плеер (MSE) по-прежнему сжимает паузы, ему стоп-кадр
-   на секунды не нужен. Звук Xiaomi (`GoMobile/xiaomi-miss/audioclock.go`, подключается `sed`-ом в `producer.go`)
-   идёт по часам камеры: в оригинале это счётчик пакетов с нуля при каждом подключении, и после переподключения или
-   потерянных пакетов звук ушёл бы вперёд картинки. `RecordingFinalizer` при перекодировании в AAC возвращает такие
-   паузы тишиной: декодер их выбрасывает. Тесты: `cd GoMobile/build/go2rtc && go test ./pkg/mp4 ./pkg/xiaomi/miss`.
-   Через `sed`: HEVC в MP4 пишется с тегом `hvc1` вместо `hev1` (Apple читает
-   только `hvc1`; без этого Фото отвечали ошибкой 3302, а плеер не открывал запись).
-   Файлы из `GoMobile/xiaomi/` копируются в `internal/xiaomi` go2rtc: `/api/xiaomi/miot` читает и
-   меняет настройки камеры (ночной режим и т. п.) через Mi Cloud, `/api/xiaomi/logout` забывает аккаунт,
-   `/api/xiaomi/cameras` перечисляет камеры своих и общих домов (как Mi Home и интеграция Xiaomi для
-   Home Assistant: `/v2/homeroom/gethome` с `fetch_share`, затем `/v2/home/device_list_page` по `dids`;
-   upstream `/api/xiaomi` спрашивает только `device_list_page` без параметров и общих домов не видит).
-   Сторонний go2rtc их не знает — тогда режимы камеры не показываются, выход недоступен, а камеры общих
-   домов не находятся.
-   `GoMobile/api/waitingpaws.go` копируется в `internal/api`: защита API (Host — только IP, localhost или `.local`,
-   чужой Origin браузера — 403, в том числе для WebSocket; `/api/exit`, `/api/restart` и запись конфига выключены;
-   клиентам из LAN недоступны конфиг, журнал, аккаунты Xiaomi и изменение потоков), пароль для LAN, который
-   меняется без перезапуска, и `Relisten` после приостановки на iOS. `log.Fatal` при ошибке слушающего сокета
-   заменён на ошибку в журнале: иначе приложение закрывалось бы при возврате из фона. Тест защиты:
-   `cd GoMobile/build/go2rtc && go test ./internal/api -run WaitingPaws`.
-   Без фреймворка проект тоже собирается (`#if canImport(Go2RTC)`), но встроенный режим будет
-   недоступен — приложение предложит указать свой сервер.
+   Check the exits before the start: any exit or break can be changed with a tap.
+2. **Start Exit**: walk to the door, the timer is running.
+3. **Outside**: a countdown to the planned time, and the live camera shows the dog. Going over the plan is highlighted.
+4. **Back Inside**: the break counts down, and the next exit starts by itself when it's over. If the dog got up or
+   barked too early, **False Start** repeats the same exit after a break.
+5. After the last exit the training is saved together with its video, and the **log for the trainer** is ready to send:
 
-2. Проект:
+   ```
+   Sunday training · Anna/Mark
+   10/25/2026, 6:00 PM–6:13 PM (13 min) · exits 3 of 3 · false starts 1
 
-   ```bash
-   xcodegen generate
-   open WaitingPaws.xcodeproj
+   Exit 1 — 5 s: outside 0:05 ✅ · break 2:04
+   Exit 2 — 10 s: false start, outside 0:03 ❌ · break 1:00 (plan 5 min)
+   Exit 2 — 10 s, attempt 2: outside 0:11 ✅ · break 5:02
+   Exit 3 — 30 s or until the dog stands: outside 0:30 ✅
    ```
 
-Схемы `WaitingPaws-iOS` и `WaitingPaws-macOS`. Команда разработчика задана в `project.yml`
-(`DEVELOPMENT_TEAM`); для своей сборки поменяйте её там.
+## Features
 
-### Локализация
+- **The trainer's schedule, read for you.** Paste it from Telegram, WhatsApp or notes and fix anything before the start.
+- **One big button per step.** Exit and break timers, overrun warnings, the next exit starts on its own, false starts
+  are counted as attempts.
+- **Live camera** while you are outside: full screen, pinch to zoom. Picture quality and the camera's own settings
+  (night mode, image flip, status light and whatever else the model supports) are right in the app.
+- **Video recording** of every training, or a recording without one. Saved as a regular MP4 with sound, ready to share;
+  on iPhone also copied to Photos.
+- **A log for the trainer**: one line per attempt, in the trainer's notation, sent as plain text.
+- **History** of trainings with their videos and logs. On Mac and Windows: a progress chart, a table of all trainings
+  and "jump to the exit" in the video.
+- **iPhone and a computer together.** Leave the Mac or PC with the camera and take the iPhone outside: it shows the
+  computer's camera and drives the same training. The link works over your home network and is encrypted end to end;
+  the first connection is approved on the computer.
+- **Works without a camera**: timers, schedules and logs only.
+- English and Russian.
 
-Тексты в коде — русские, они же ключи `App/Resources/Localizable.xcstrings` (английский — базовый язык,
-`developmentLanguage: en`). В SwiftUI литералы переводятся сами (`Text("…")`, `Button("…")`), всё, что становится
-`String`, оборачивается в `String(localized: "…")`, множественное число — `pluralText(n, ru:, en:)` из ядра.
-Ядро (`WaitingPawsCore`) двуязычное без каталога: `tr(ru, en)` по `CoreLanguage.current`, парсер расписания понимает
-русский и английский текст тренера («1 выход - 30 секунд», "Exit 1 - 30 seconds") при любом языке интерфейса.
+## Screenshots
 
-После изменения текстов:
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/app-store/en/iphone-6.9/06-home.jpg" width="200" alt="Home screen"><br>Start a training</td>
+    <td align="center"><img src="docs/screenshots/app-store/en/iphone-6.9/02-plan.jpg" width="200" alt="Plan review"><br>Review the schedule</td>
+    <td align="center"><img src="docs/screenshots/app-store/en/iphone-6.9/01-outside.jpg" width="200" alt="Exit in progress"><br>Outside, with the camera</td>
+    <td align="center"><img src="docs/screenshots/app-store/en/iphone-6.9/03-break.jpg" width="200" alt="Break"><br>Break until the next exit</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/app-store/en/iphone-6.9/04-log.jpg" width="200" alt="Training log"><br>Log for the trainer</td>
+    <td align="center"><img src="docs/screenshots/app-store/en/iphone-6.9/05-history.jpg" width="200" alt="History"><br>History</td>
+    <td align="center"><img src="docs/screenshots/app-store/en/iphone-6.9/07-record.jpg" width="200" alt="Recording"><br>Recording only</td>
+    <td align="center"><img src="docs/screenshots/app-store/en/iphone-6.9/08-cameras.jpg" width="200" alt="Camera picker"><br>Pick the camera</td>
+  </tr>
+</table>
 
-```bash
-xcodebuild -scheme WaitingPaws-iOS -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/wp-dd build
-xcodebuild -scheme WaitingPaws-macOS -destination 'generic/platform=macOS' -derivedDataPath /tmp/wp-dd build
-Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает каталог и перечисляет ключи без перевода
-```
+![Waiting Paws on Mac with the linked iPhone](docs/screenshots/showcase/mac-en.jpg)
 
-Переводы — `Tools/strings/en.json` (русский ключ → английский текст). Строки `Info.plist` по-русски —
-`App/Resources/InfoPlist.xcstrings`.
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/app-store/en/mac/03-review.jpg" alt="Schedule recognized"><br>The trainer's text and the recognized exits</td>
+    <td align="center"><img src="docs/screenshots/app-store/en/mac/05-history.jpg" alt="History on Mac"><br>Progress, history and the log</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/app-store/en/mac/06-settings.jpg" alt="Camera settings"><br>Camera quality and settings</td>
+    <td align="center"><img src="docs/screenshots/app-store/en/mac/07-welcome.jpg" alt="Welcome window"><br>Setup: Xiaomi account, other cameras, or no camera</td>
+  </tr>
+</table>
 
-### Перед публикацией
+## Cameras
 
-* `App/Resources/PrivacyInfo.xcprivacy` — манифест приватности (UserDefaults, даты файлов, `mach_absolute_time` рантайма Go).
-* `App/Resources/Legal/` — политика конфиденциальности (ru/en, показывается в «О приложении») и лицензии открытого ПО.
-  `GoMobile/licenses.sh` пересобирает лицензии по модулям, реально попадающим во встроенный go2rtc;
-  `Tools/legal_html.py` пишет `docs/privacy.html` для URL политики в App Store Connect.
-* `docs/` — страницы поддержки и политики (GitHub Pages из папки `/docs`), `docs/app-store/` — заметки для App Review
-  и черновик метаданных.
-* `docs/screenshots/app-store/<en|ru>/` — скриншоты для App Store (iPhone 6.9″ 1320×2868, Mac 2880×1800),
-  `docs/screenshots/showcase/` — картинки с рамками устройств и подписями. Пересъёмка: `Tools/screenshots/make.sh`
-  (отдельный симулятор «WP Screens», фоновые копии Mac-приложения с `--retina`, только DEBUG-демо-данные;
-  `make.sh compose` пересобирает картинки из уже снятых кадров).
+- **Xiaomi (Mi Home) cameras**: sign in with your Xiaomi account right in the app (password, then the code from the
+  SMS or e-mail) and pick the camera that faces the door. Cameras of homes shared with your account are listed too.
+  Tested with the Xiaomi C200 and C302.
+- **Other cameras**: any camera with an RTSP stream. Anything else that [go2rtc](https://github.com/AlexxIT/go2rtc)
+  supports (ONVIF and more) works through your own go2rtc server.
+- The camera and your phone or computer must be on the same Wi-Fi network: the video goes straight over it.
+- The iPhone app shows and records video while it is open. In the background the recording pauses and continues when
+  you come back.
 
-Тесты ядра:
+## Install
 
-```bash
-cd Packages/WaitingPawsCore && swift test
-```
+### Windows
 
-## Диагностика
+Download the latest version from [Releases](https://github.com/AndrewAndreev/WaitingPaws/releases/latest):
 
-Отклик UI оценивайте при запуске с домашнего экрана, а не из Xcode: под отладчиком каждая первая
-загрузка системного фреймворка (клавиатура, диктовка, презентация листа) ждёт lldb, и первое открытие
-редактора расписания занимает в разы дольше, чем без отладчика. Клавиатура прогревается через 2 с после
-старта, чтобы первый ввод не ждал её загрузки.
+- `WaitingPaws-<version>-Setup.exe`: the installer. It installs for all users and adds Windows Firewall rules, so the
+  camera and the iPhone link work on private networks.
+- `WaitingPaws-<version>-win-x64.zip`: the portable version. Unpack it and run `Waiting Paws.exe`; allow access on
+  private networks when Windows asks.
 
-Журнал приложения (stdout/stderr, go2rtc) — `Library/Caches/Logs`, последние 5 запусков, пароли в адресах
-(`rtsp://user:pass@…`) маскируются. На Mac: Настройки → Диагностика → «Показать в Finder».
+Windows 10 or 11, 64-bit. The app is not code-signed yet, so on the first launch SmartScreen says "Windows protected
+your PC": choose **More info → Run anyway**.
 
-Плеер (MSE) — своя замена `onmse` из `video-rtc.js` в `CameraStreamView`: воспроизведение отстаёт от «живого края»
-на адаптивный запас: 0,8 с, сразу растёт (до 3,5 с), чтобы покрыть паузу в данных, и каждые 10 с плавно (по 0,3 с)
-подтягивается к самой длинной паузе за последние 30 с + 0,4 с. За дверью, где паузы ~0,8 с, это ~1,3 с запаса
-(прежнее правило держало 1,8 с, пока не пройдут 30 с почти без пауз). Ожидание первого ключевого кадра после
-подключения — до целого GOP, ~3 с у C302 — паузой не считается. Скорость подстраивается мягко (0,95–1,3×; отставание
-сверх запаса догоняется на 1,15–1,3× за секунды; медленнее 1× — только до базовых 0,8 с: выросший запас наполняют
-сами опоздавшие данные, а если они так и не пришли, замедление только добавило бы задержки), длительность MediaSource бесконечная. В оригинале скорость равнялась
-запасу (до 0,1×), а кончившиеся данные WebKit считал концом потока и ставил видео на паузу до следующей перемотки —
-отсюда «фриз — кадры через 3 с — фриз». Строки в журнале для разбора лагов:
+### iPhone and Mac
 
-* `[player] 12:03:30 stats 30s: stalls …, max data gap … ms, lag …, cushion …` — плеер (только если что-то случилось или отставание больше 1,5 с);
-* `[go2rtc] 12:03:30 mse/fmp4 ws … fell behind: N frames dropped` — go2rtc выбросил кадры отставшему зрителю;
-* `12:03:30 cs2: connected to 192.168.1.20:13780 over UDP in 840 ms` — как камера подключилась;
-* `12:03:30 cs2: 30s over TCP: 450 video frames (15.0 fps), … kbit/s, longest pause … ms (camera time … ms),
-  delivery spread … ms` — вход потока от камеры (через 30 с после подключения и дальше только при паузах от 0,7 с,
-  ожидании потерянного UDP-пакета от 0,3 с или переполнении). Пауза в доставке при ровном времени камеры — данные задержались в сети (их догонит запас
-  плеера); пауза и во времени камеры — камера кадры не прислала. Разброс доставки — какой запас нужен плееру.
-  Если эта строка спокойная, а плеер на iPhone видит паузы, — дело в Wi-Fi между Mac и iPhone.
+**Coming soon to the App Store**: one app for iPhone (iOS 17 or later) and Mac (macOS 26 or later).
 
-Пока картинки нет, поверх плеера видно, что происходит (`PlayerPhase` из строк `state …` страницы):
-«Подключаемся к камере…» (через 10 с — подсказка, что камера может быть не в сети или занята), «Камера на связи,
-ждём первый кадр…» (go2rtc уже прислал кодеки, ждём ключевой кадр), «Камера не отвечает» с причиной от go2rtc
-(тайм-аут, отказ; video-rtc.js переподключается сам), а над застывшим больше 2 с кадром — плашка «Нет новых кадров».
-На карточке камеры в настройках Mac слой выключен: там своя подпись.
+Until then you can build it from source with Xcode, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
-DEBUG `--player-trace` пишет состояние плеера каждую секунду. Проверка без камеры: локальный go2rtc с потоком
-`exec:ffmpeg … testsrc …` и приложение в режиме «Свой сервер», провалы — `kill -STOP`/`-CONT` его процесса.
+## Privacy
 
-Каждое зависание главного потока дольше 250 мс пишется в консоль Xcode строкой
-`[perf] main thread hang 1200 ms at 10:34:12.345`. Настройки → «Показывать нагрузку» (или аргумент
-запуска `--perf`) дополнительно выводит над камерой строку:
-CPU приложения и главного потока, память, максимальная задержка главного потока за секунду
-(`UI +… мс`, больше 250 мс = заметные подвисания) и число потоков. Видео рендерит WebKit в отдельном
-процессе, его нагрузка сюда не входит. Чтобы отделить встроенный go2rtc от видео, переключитесь в
-«Свой сервер go2rtc» на Mac с той же камерой и сравните.
+No accounts, no analytics, no ads, no tracking and no servers of our own. Settings, logs and videos stay on your
+devices. The Xiaomi sign-in goes from the app straight to Xiaomi; the password is not stored. See the
+[privacy policy](App/Resources/Legal/PrivacyPolicy-en.md).
 
-Первой строкой — задержка картинки: `Задержка ≈ 1,6 с: сеть 0,4 с + буфер 1,2 с`. На Mac та же панель — в углу
-картинки камеры. Обе части меряет сам плеер (MSE), поэтому цифра одна и та же для любого пути — и для iPhone,
-смотрящего через Mac (камера → Mac → Wi-Fi → iPhone). «Сеть» — насколько позже, чем самые быстрые за последнюю минуту,
-приходит свежее видео: время внутри ролика — это время кадров камеры (go2rtc переносит его как есть), и «приход минус
-время в ролике» растёт, только когда кто-то в пути держит кадры. Абсолютного времени съёмки нет (C302 ставит на кадры
-свой счётчик с момента включения, а не настоящее время), поэтому кодирование в камере и базовая передача (~0,2–0,3 с)
-в сумму не входят. «Буфер» — сколько прошло с прихода свежих данных плюс сколько видео ещё впереди в буфере плеера
-(во время фриза растёт). Пачка, догнавшая паузу, показывается как рост буфера, а не сети: свежий её кусок пришёл
-вовремя, а запас вырос. Пока «сеть» не набралась (первые секунды) — `Задержка ≥ 0,8 с: только буфер плеера`.
-Жёлтым — больше 1,2 с, красным — больше 2 с.
+## Feedback
 
-Запись запрашивается у go2rtc как `video=h264,h265&audio=aac,opus,pcma,pcmu`. Без ffmpeg go2rtc
-не умеет делать AAC: Opus он кладёт в MP4 как есть, а PCMA/PCMU (звук многих Xiaomi) сам превращает
-в FLAC. AVFoundation оба читает, но Фото и большинство плееров принимают в MP4 только AAC, поэтому
-приложение после записи перекодирует звук в AAC (`RecordingFinalizer`). Если
-перекодировать не удалось, файл остаётся как был, ошибка пишется в лог (`[rec] finalize failed`).
+Questions, ideas and bug reports: [Issues](https://github.com/AndrewAndreev/WaitingPaws/issues). Security problems:
+please report them privately, see [SECURITY.md](SECURITY.md).
 
-## Отладка без камеры
+## For developers
 
-Встроенный go2rtc доступен с Mac по `http://127.0.0.1:11984` и в симуляторе, и в macOS-приложении
-(если запустить обе копии на одном Mac, вторая возьмёт следующий свободный порт — 11986 и дальше; фактический адрес виден в настройках Mac-приложения → Подключение). Во встроенной сборке нет модуля ffmpeg, поэтому тестовый
-поток удобно отдать с отдельного go2rtc по RTSP:
+- [ARCHITECTURE.md](ARCHITECTURE.md): how the iPhone and Mac apps work inside (embedded go2rtc, recording, the iPhone
+  link, files), in Russian.
+- [DEVELOPMENT.md](DEVELOPMENT.md): building, project layout, localization, tests, diagnostics, demo mode, in Russian.
+- [GoMobile/README.md](GoMobile/README.md): the embedded go2rtc and its patches, in Russian.
+- [Desktop/README.md](Desktop/README.md): the Windows app.
 
-```bash
-# внешний go2rtc (с ffmpeg) на других портах
-printf 'api:\n  listen: ":1985"\nrtsp:\n  listen: ":8554"\nstreams:\n  testcam: ffmpeg:virtual?video&size=1280x720#video=h264#audio=aac\n' > /tmp/go2rtc.yaml
-go2rtc -config /tmp/go2rtc.yaml &
-# и подключить его к встроенному
-curl -X PUT "http://127.0.0.1:11984/api/streams?name=testcam&src=rtsp://127.0.0.1:8554/testcam"
-```
+## License
 
-У `ffmpeg:virtual` нет звука. Чтобы проверить запись со звуком «как у Xiaomi», поток с синусом можно
-отдать через `exec` (`-c:a libopus -ar 48000 -ac 2` для Opus или `-c:a pcm_alaw -ar 8000 -ac 1` для PCMA):
-
-```yaml
-streams:
-  opuscam: "exec:ffmpeg -hide_banner -v error -re -f lavfi -i testsrc=size=1280x720:rate=20 -re -f lavfi -i sine=frequency=440:sample_rate=48000 -c:v libx264 -g 40 -preset superfast -tune zerolatency -pix_fmt yuv420p -c:a libopus -ar 48000 -ac 2 -f rtsp {output}"
-```
-
-В Debug-сборке есть аргументы запуска: `--demo-session` (сразу стартует демонстрационное расписание),
-`--demo-phase leaving|away|break|finish` (состояния HUD), `--demo-finish-after 12` (завершить через
-12 с, проверяет запись и сохранение в Фото), `--demo-clip 10` (записать 10 с без тренировки),
-`--demo-screen plan|plan-twice|camera|history|history-last` (открыть лист расписания,
-открыть-закрыть-открыть его, выбор камеры, историю или сразу последнюю запись в ней),
-`--demo-parse` (сразу разобрать текст
-из прошлого расписания и показать редактор), `--demo-plan-edit` (редактор сразу в режиме «Править»),
-`--demo-duration-editor` (открыть выбор перерыва после первого выхода), `--perf` (строка нагрузки).
-Связка: `--demo-hosts` (на iPhone рядом два Mac и ПК, ничего не слушает), `--demo-screen settings-sync` (настройки
-iPhone, сразу на «Синхронизации»), на Mac — `--demo-iphone` (подключённый и разрешённые iPhone), `--demo-pairing`
-(запрос «Подключить?»), `--demo-settings-pane iPhone` (настройки сразу на панели iPhone).
-
-## Что дальше
-
-* Другие платформы камер — любой источник, который понимает go2rtc, уже можно выбрать как поток;
-  отдельный мастер пока есть только для Xiaomi. Чтобы добавить модули go2rtc во встроенную сборку,
-  допишите их `Init()` в `GoMobile/mobile/mobile.go` и пересоберите фреймворк.
-* Push-уведомления/виджет для таймера, Live Activity на iOS.
-
-## Лицензия
-
-Код — под лицензией [MIT](LICENSE). Название «Waiting Paws» и иконка приложения под неё не входят: форки и сборки,
-которые распространяются дальше, должны называться иначе и иметь свою иконку. Иконка — концепт `07` «Песочные часы»
-в любом виде: `App/Resources/Assets.xcassets/AppIcon.appiconset/` и `AppIconImage.imageset/`, `Design/app-icon/`,
-`Design/logos-v2/**/07-hourglass*`, `Desktop/build/icon.*`, `Desktop/resources/icon.png`,
+The code is under the [MIT license](LICENSE). The Waiting Paws name and the app icon are not covered by it: forks and
+redistributed builds need their own name and icon. The icon is concept 07 "Hourglass" in any rendering, including
+`App/Resources/Assets.xcassets/AppIcon.appiconset/` and `AppIconImage.imageset/`, `Design/app-icon/`,
+`Design/logos-v2/**/07-hourglass*`, `Desktop/build/icon.*`, `Desktop/resources/icon.png` and
 `Desktop/src/renderer/src/assets/logo.svg`.
 
-> The code is MIT-licensed. The Waiting Paws name and the app icon (concept 07 "Hourglass" in any rendering, including
-> the files listed above) are not covered by the license: forks and redistributed builds need their own name and icon.
-
-go2rtc и остальной сторонний код — под своими лицензиями: `App/Resources/Legal/Acknowledgements.txt`,
+go2rtc and other third-party code keep their own licenses: `App/Resources/Legal/Acknowledgements.txt`,
 `Desktop/build/ThirdPartyNotices-desktop.txt`.
 
-Проект не связан с Xiaomi и не одобрен ею; «Xiaomi» и «Mi Home» — товарные знаки их владельцев.
+Not affiliated with, endorsed or sponsored by Xiaomi. "Xiaomi" and "Mi Home" are trademarks of their owners. Like
+go2rtc and Home Assistant, the app uses Xiaomi's cloud API to sign in to your own account, list its cameras and change
+their settings; the video itself goes over your local network.

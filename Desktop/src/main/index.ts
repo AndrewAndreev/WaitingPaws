@@ -12,7 +12,7 @@ import type { ThemePreference } from '@shared/settings'
 import packageInfo from '../../package.json'
 
 /// Waiting Paws for Windows: one window (training, history and settings are pages of it), the bundled go2rtc as a
-/// child process, recordings finalized in a hidden window. See README «Windows».
+/// child process, recordings finalized in a hidden window. See Desktop/README.md.
 
 registerMediaScheme()
 app.setAppUserModelId('su.comrade.waitingpaws')

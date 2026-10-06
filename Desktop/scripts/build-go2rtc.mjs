@@ -69,7 +69,7 @@ const CHECKS = [
   ['internal/api/api.go', 'log.Fatal', false, 'api fatal'],
 ]
 
-// What README/build.sh test after patching (GoMobile tests live in these packages).
+// What GoMobile/README.md and build.sh test after patching (GoMobile tests live in these packages).
 const TEST_PACKAGES = ['./pkg/mp4', './pkg/xiaomi/miss', './pkg/xiaomi/miss/cs2', './internal/api']
 
 function fail(message) {

@@ -28,7 +28,7 @@ cp "$HERE"/mobile/*.go "$SRC/mobile/"
 cp "$HERE"/xiaomi/*.go "$SRC/internal/xiaomi/"
 cp "$HERE"/api/*.go "$SRC/internal/api/"
 
-# Local patches for the in-app build (see README):
+# Local patches for the in-app build (see GoMobile/README.md):
 # 1-2. Xiaomi CS2 transport: our copy of pkg/xiaomi/miss/cs2/conn.go (bigger UDP and reorder buffers, a full command
 #      queue drops instead of killing the connection, no "unknown msg" spam, stats in the log). It is a copy of
 #      v1.9.14: compare with upstream before changing GO2RTC_VERSION.

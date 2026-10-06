@@ -142,7 +142,7 @@ describe('TrainingSession', () => {
   })
 })
 
-// Not in the Swift suite: the store behaviour of the TS session and the README's log example.
+// Not in the Swift suite: the store behaviour of the TS session and the log example in ARCHITECTURE.md.
 describe('TrainingSession store', () => {
   beforeEach(() => setCoreLanguage('ru'))
 
@@ -214,7 +214,7 @@ describe('TrainingSession store', () => {
     expect(session.events[8]).toMatchObject({ exitNumber: 2, attempt: 1 })
   })
 
-  it('writes the README example header and lines', () => {
+  it('writes the ARCHITECTURE.md log example header and lines', () => {
     setCoreRegion('RU')
     const start = new Date(2026, 8, 25, 18, 0, 0).getTime()
     let now = start
