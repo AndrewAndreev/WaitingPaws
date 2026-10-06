@@ -15,9 +15,10 @@ HOW TO REVIEW WITHOUT A CAMERA
    Exit 2 - 10 seconds
    Exit 3 - 30 seconds OR until the dog stands up
 
-3. Review the parsed exits and tap "Start Training". Then "Start Exit" → "Outside" → "Back Inside". Breaks count
-   down and the next exit starts by itself; after the last one the training is saved to History with a text log
-   for the trainer ("Send Log").
+3. Review the parsed exits and tap "Start Training". Then "Outside" → "Back Inside" (and "False Start" when the dog
+   reacts). Breaks count down to the next exit (past the plan they count up in red); after the last one the training
+   is saved to History with a text log for the trainer ("Send Log"). The schedule can be edited during the training
+   from the ••• menu ("Edit Schedule").
 
 CAMERA FEATURES (need hardware)
 The live view and recording need a Xiaomi (Mi Home) camera on the same Wi-Fi network, or any RTSP/ONVIF camera.

@@ -137,17 +137,17 @@ final class AppModel {
                     self?.finishSession()
                 }
             }
-            // `--demo-exits-done <n>`: the first n exits were done over the last minutes, with walks to the door,
-            // time outside and breaks as planned (screenshots with a realistic timeline).
+            // `--demo-exits-done <n>`: the first n exits were done over the last minutes, with time outside and
+            // breaks as planned (screenshots with a realistic timeline).
             if let index = CommandLine.arguments.firstIndex(of: "--demo-exits-done"), index + 1 < CommandLine.arguments.count,
                let done = Int(CommandLine.arguments[index + 1]), let current = session {
                 session = Self.demoReplay(current.plan, exitsDone: done)
             }
-            // `--demo-phase leaving|away|break|finish` fast-forwards the demo session to that phase.
+            // `--demo-phase away|break|finish` fast-forwards the demo session to that phase («leaving»: the walk to
+            // the door an older iPhone's «Начать выход» starts).
             if let index = CommandLine.arguments.firstIndex(of: "--demo-phase"), index + 1 < CommandLine.arguments.count {
                 let phase = CommandLine.arguments[index + 1]
-                session?.startExit()
-                if phase == "away" || phase == "break" { session?.markBehindDoor() }
+                if phase == "leaving" { session?.startExit() } else { session?.markBehindDoor() }
                 if phase == "break" || phase == "finish" { session?.endExit() }
                 if phase == "finish" { finishSession() }
             }
@@ -163,18 +163,19 @@ final class AppModel {
     private static func demoReplay(_ plan: TrainingPlan, exitsDone: Int) -> TrainingSession {
         let clock = DemoClock()
         let done = min(exitsDone, plan.exits.count)
-        // `--demo-break-left <seconds>`: how much of the last break is still ahead (4 s by default).
+        // `--demo-break-left <seconds>`: how much of the last break is still ahead (4 s by default; `--demo-break-over
+        // <seconds>`: the break ran over by that much).
         let args = CommandLine.arguments
-        let early = args.firstIndex(of: "--demo-break-left").flatMap { $0 + 1 < args.count ? TimeInterval(args[$0 + 1]) : nil } ?? 4
-        let walk: TimeInterval = 6, linger: TimeInterval = 3
+        func value(_ flag: String) -> TimeInterval? { args.firstIndex(of: flag).flatMap { $0 + 1 < args.count ? TimeInterval(args[$0 + 1]) : nil } }
+        let early = value("--demo-break-over").map { -$0 } ?? value("--demo-break-left") ?? 4
+        let linger: TimeInterval = 3
         // The replay ends `early` seconds before the last break is over, which is now: from then on the session's
         // clock is the real one, like the views' (TimelineView) that count the time left.
-        let total = (0..<done).reduce(0) { $0 + walk + plan.exits[$1].duration + linger + plan.breakAfter(exitAt: $1) }
+        let total = (0..<done).reduce(0) { $0 + plan.exits[$1].duration + linger + plan.breakAfter(exitAt: $1) }
         clock.offset = -(total - early)
         let session = TrainingSession(plan: plan, clock: { Date().addingTimeInterval(clock.offset) })
         if args.contains("--demo-recording") { session.noteRecording(started: true, fileName: "demo.mp4") }
         for index in 0..<done {
-            session.startExit(); clock.offset += walk
             session.markBehindDoor(); clock.offset += plan.exits[index].duration + linger
             session.endExit(); clock.offset += plan.breakAfter(exitAt: index)
         }
@@ -1042,13 +1043,11 @@ extension AppModel {
                 self?.sharePlanWithMac(PlanParser.parse(Self.demoPlanText))
             }
         }
-        // `--demo-remote-steps`: once linked, press "Начать выход" and then "За дверью" from the iPhone.
+        // `--demo-remote-steps`: once linked, press «Вышли» from the iPhone.
         if CommandLine.arguments.contains("--demo-remote-steps") {
             Task { [weak self] in
                 while self?.isMirroringSession != true { try? await Task.sleep(for: .milliseconds(300)) }
                 try? await Task.sleep(for: .seconds(3))
-                self?.session?.startExit()
-                try? await Task.sleep(for: .seconds(4))
                 self?.session?.markBehindDoor()
                 // `--demo-remote-finish`: then "Вернулись", recording on, and finish (exercises the summary + log).
                 guard CommandLine.arguments.contains("--demo-remote-finish") else { return }
@@ -1093,6 +1092,8 @@ extension AppModel {
             } else {
                 setPending(plan)
             }
+        case .updateSessionPlan(let plan):
+            session?.updatePlan(plan)
         case .abandonSession:
             abandonSession()
         case .startRecording:
@@ -1139,6 +1140,7 @@ extension AppModel {
             } else if session == nil || isMirroringSession {
                 let mirror = TrainingSession(snapshot: snapshot)
                 mirror.commandHandler = { [weak self] command in self?.syncClient.send(.session(command)) }
+                mirror.planHandler = { [weak self] plan in self?.syncClient.send(.updateSessionPlan(plan)) }
                 session = mirror
                 lastRecord = nil
                 lastClip = nil

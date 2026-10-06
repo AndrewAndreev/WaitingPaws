@@ -259,6 +259,8 @@ export type SyncCommand =
   | { kind: 'startSession'; plan: TrainingPlan }
   /** A schedule pasted (or edited) on the iPhone becomes the Mac's waiting one; null clears it. */
   | { kind: 'setPendingPlan'; plan: TrainingPlan | null }
+  /** The running session's schedule, edited on the iPhone (`TrainingSession.updatePlan`). */
+  | { kind: 'updateSessionPlan'; plan: TrainingPlan }
   | { kind: 'abandonSession' }
   | { kind: 'startRecording' }
   | { kind: 'stopRecording' }
@@ -371,6 +373,8 @@ function encodeCommand(command: SyncCommand): JSONObject {
       return { startSession: { _0: TrainingPlan.encode(command.plan, dates) } }
     case 'setPendingPlan':
       return { setPendingPlan: command.plan === null ? {} : { _0: TrainingPlan.encode(command.plan, dates) } }
+    case 'updateSessionPlan':
+      return { updateSessionPlan: { _0: TrainingPlan.encode(command.plan, dates) } }
     case 'abandonSession':
     case 'startRecording':
     case 'stopRecording':
@@ -387,6 +391,8 @@ function decodeCommand(value: unknown, path: string): SyncCommand {
       return { kind: 'startSession', plan: json.required('_0', (item, p) => TrainingPlan.decode(item, dates, p)) }
     case 'setPendingPlan':
       return { kind: 'setPendingPlan', plan: json.optional('_0', (item, p) => TrainingPlan.decode(item, dates, p)) }
+    case 'updateSessionPlan':
+      return { kind: 'updateSessionPlan', plan: json.required('_0', (item, p) => TrainingPlan.decode(item, dates, p)) }
     case 'abandonSession':
     case 'startRecording':
     case 'stopRecording':

@@ -2,13 +2,15 @@ import Foundation
 import Observation
 
 public enum SessionPhase: Equatable, Codable {
-    /// Waiting for the "Начать выход" tap.
+    /// Before the first exit: waiting for "Вышли".
     case ready(exitIndex: Int)
-    /// Walking to the door; the dog is still watching.
+    /// Walking to the door; the dog is still watching. Only the "Начать выход" of an older linked iPhone leads here:
+    /// the buttons now go from the break straight to `away`.
     case leaving(exitIndex: Int, since: Date)
     /// Behind the door; countdown to the planned duration.
     case away(exitIndex: Int, since: Date, leftAt: Date)
-    /// Break after an exit. `nextExitIndex == nil` means the plan is finished and this is the cool-down.
+    /// Break after an exit. It lasts until "Вышли" (past its plan, too); `nextExitIndex == nil` means the plan is
+    /// finished and this is the cool-down, which ends the session when it runs out.
     case breakTime(afterExitIndex: Int, since: Date, duration: TimeInterval, nextExitIndex: Int?)
     case finished
 
@@ -23,13 +25,26 @@ public enum SessionPhase: Equatable, Codable {
         default: return false
         }
     }
+
+    /// "Вышли" is the next step: before the first exit, or in a break with an exit after it.
+    public var canGoOutside: Bool {
+        switch self {
+        case .ready, .leaving: return true
+        case .breakTime(_, _, _, let next): return next != nil
+        default: return false
+        }
+    }
+
+    /// "Фальстарт" means something now: on the way out or outside.
+    public var canFalseStart: Bool { canGoOutside || isOutside }
 }
 
-/// State machine of one training session. All transitions are driven by button presses
-/// (plus `tick(at:)` that is called by a timer for automatic break ending).
+/// State machine of one training session. All transitions are driven by two buttons — "Вышли" / "Вернулись" and
+/// "Фальстарт" — plus `tick(at:)`, called by a timer, that finishes the session when the last break runs out.
 @Observable
 public final class TrainingSession {
-    public let plan: TrainingPlan
+    /// The schedule; `updatePlan` replaces it while the session runs (same id, see there).
+    public private(set) var plan: TrainingPlan
     public let startedAt: Date
     public private(set) var phase: SessionPhase
     public private(set) var events: [SessionEvent] = []
@@ -43,6 +58,8 @@ public final class TrainingSession {
     /// call the usual actions, but they are forwarded here instead of changing this copy, and `tick` does
     /// nothing. The owner applies the command and sends back a new `Snapshot` (`restore`).
     public var commandHandler: ((SessionCommand) -> Void)?
+    /// The same for `updatePlan` on a mirror: the edited schedule goes to the owner.
+    public var planHandler: ((TrainingPlan) -> Void)?
 
     private let clock: () -> Date
     private var currentBreakStart: Date?
@@ -98,6 +115,7 @@ public final class TrainingSession {
     }
 
     private func apply(_ snapshot: Snapshot) {
+        if plan != snapshot.plan { plan = snapshot.plan }
         if phase != snapshot.phase { phase = snapshot.phase }
         if events != snapshot.events { events = snapshot.events }
         if results != snapshot.results { results = snapshot.results }
@@ -189,7 +207,7 @@ public final class TrainingSession {
 
     // MARK: - Actions
 
-    /// "Начать выход": the person heads for the door.
+    /// "Начать выход" of an older linked iPhone: the person heads for the door (`leaving`, then `markBehindDoor`).
     public func startExit() {
         if let commandHandler { commandHandler(.startExit); return }
         let now = clock()
@@ -200,10 +218,7 @@ public final class TrainingSession {
         case .breakTime(_, let since, let duration, let next):
             guard let next else { return }
             index = next
-            let actual = now.timeIntervalSince(since)
-            let early = actual < duration
-            log(.breakEnded, at: now, detail: early ? tr("досрочно, \(DurationText.clock(actual)) из \(DurationText.short(duration))",
-                                                     "early, \(DurationText.clock(actual)) of \(DurationText.short(duration))") : nil)
+            logBreakEnd(since: since, duration: duration, at: now)
         default:
             return
         }
@@ -213,25 +228,101 @@ public final class TrainingSession {
             detail: tr("план \(plan.exits[index].durationDescription)", "plan \(plan.exits[index].durationDescription)"))
     }
 
-    /// "За дверью": the door is closed, the countdown starts.
+    /// "Вышли": the door is closed behind you, the exit's countdown starts. Ends the break (or the wait before
+    /// the first exit) right away.
     public func markBehindDoor() {
         if let commandHandler { commandHandler(.markBehindDoor); return }
-        guard case .leaving(let index, let since) = phase else { return }
         let now = clock()
-        phase = .away(exitIndex: index, since: since, leftAt: now)
-        log(.behindDoor, at: now, exitNumber: plan.exits[index].number, attempt: attempt)
+        switch phase {
+        case .leaving(let index, let since):
+            phase = .away(exitIndex: index, since: since, leftAt: now)
+            log(.behindDoor, at: now, exitNumber: plan.exits[index].number, attempt: attempt)
+        case .ready(let index):
+            closeBreak(at: now)
+            goOutside(index, at: now)
+        case .breakTime(_, let since, let duration, let next):
+            guard let next else { return }
+            logBreakEnd(since: since, duration: duration, at: now)
+            closeBreak(at: now)
+            goOutside(next, at: now)
+        default:
+            return
+        }
     }
 
-    /// "Выход закончен": back inside, the break begins.
+    /// "Вернулись": back inside, the break begins.
     public func endExit() {
         if let commandHandler { commandHandler(.endExit); return }
         finishCurrentExit(falseStart: false)
     }
 
-    /// "Сбросить выход": false start — back inside, take a break and repeat the same exit.
+    /// "Фальстарт": the exit failed — take a break and repeat the same exit. Outside: back inside early. In the
+    /// break (or before the first exit): the dog went to the door, or there were sounds on the way out, before
+    /// "Вышли" — the attempt counts as a false start and the break starts over.
     public func resetExit() {
         if let commandHandler { commandHandler(.resetExit); return }
-        finishCurrentExit(falseStart: true)
+        switch phase {
+        case .leaving, .away:
+            finishCurrentExit(falseStart: true)
+        case .ready(let index):
+            falseStartBeforeDoor(index, at: clock())
+        case .breakTime(_, let since, let duration, let next):
+            guard let next else { return }
+            let now = clock()
+            logBreakEnd(since: since, duration: duration, at: now)
+            falseStartBeforeDoor(next, at: now)
+        case .finished:
+            return
+        }
+    }
+
+    // MARK: - Editing the schedule
+
+    /// How many exits from the start of the plan are fixed while the session runs: the ones done and the current
+    /// one. An edit may change their values, but not remove or reorder them.
+    public var fixedExitCount: Int {
+        switch phase {
+        case .ready(let index): return index
+        case .leaving(let index, _), .away(let index, _, _): return index + 1
+        case .breakTime(let after, _, _, _): return after + 1
+        case .finished: return plan.exits.count
+        }
+    }
+
+    /// Whether `newPlan` can replace the running schedule: the same plan (id), with the fixed exits still first and
+    /// in their order, and an exit for the session to be at.
+    public func canUpdatePlan(to newPlan: TrainingPlan) -> Bool {
+        guard !phase.isFinished, newPlan.id == plan.id, newPlan.isValid else { return false }
+        let fixed = fixedExitCount
+        guard newPlan.exits.count >= fixed else { return false }
+        if case .ready(let index) = phase, index >= newPlan.exits.count { return false }
+        return newPlan.exits.prefix(fixed).map(\.id) == plan.exits.prefix(fixed).map(\.id)
+    }
+
+    /// Replaces the schedule while the session runs — e.g. every break longer when the trainer's text was read wrong
+    /// and nobody noticed before the start. The current exit counts down to its new length, the running break takes
+    /// its new length too, and exits added after the last one carry the training on. The log gets a note with what
+    /// changed. Returns false and changes nothing when the edit drops or reorders exits already done (or the current).
+    @discardableResult
+    public func updatePlan(_ newPlan: TrainingPlan) -> Bool {
+        guard canUpdatePlan(to: newPlan) else { return false }
+        if let planHandler { planHandler(newPlan); return true }
+        var newPlan = newPlan
+        newPlan.renumber()
+        let changes = newPlan.changes(from: plan)
+        if case .breakTime(let after, let since, _, let next) = phase {
+            // A false start's break leads to the same exit again; otherwise to whatever follows now.
+            let newNext = next == after ? after : (newPlan.exits.indices.contains(after + 1) ? after + 1 : nil)
+            let duration = newPlan.breakAfter(exitAt: after)
+            phase = .breakTime(afterExitIndex: after, since: since, duration: duration, nextExitIndex: newNext)
+            if !results.isEmpty { results[results.count - 1].plannedBreak = duration }
+        }
+        plan = newPlan
+        if !changes.isEmpty {
+            log(.note, at: clock(), exitNumber: currentExit?.number,
+                detail: tr("Расписание изменено: ", "Schedule changed: ") + changes.joined(separator: "; "))
+        }
+        return true
     }
 
     /// Ends the session right now (also used by the auto-finish after the last break).
@@ -249,18 +340,13 @@ public final class TrainingSession {
                                                   "exits \(completedExitsCount) of \(plan.exits.count)"))
     }
 
-    /// Called periodically. Ends breaks whose time has run out.
+    /// Called periodically. Finishes the session when the break after the last exit runs out; other breaks
+    /// go on past their plan until "Вышли" (the views count the extra time up).
     public func tick(at now: Date? = nil) {
-        guard commandHandler == nil else { return }
+        guard commandHandler == nil, autoFinishAfterLastBreak else { return }
         let now = now ?? clock()
-        guard case .breakTime(_, let since, let duration, let next) = phase else { return }
-        guard now.timeIntervalSince(since) >= duration else { return }
-        if let next {
-            phase = .ready(exitIndex: next)
-            log(.breakEnded, at: now)
-        } else if autoFinishAfterLastBreak {
-            finish()
-        }
+        guard case .breakTime(_, let since, let duration, nil) = phase, now.timeIntervalSince(since) >= duration else { return }
+        finish()
     }
 
     public func addNote(_ text: String) {
@@ -283,19 +369,45 @@ public final class TrainingSession {
     // MARK: - Internals
 
     private func finishCurrentExit(falseStart: Bool) {
-        let now = clock()
-        let index: Int
-        let since: Date
-        var leftAt: Date?
         switch phase {
-        case .leaving(let i, let s):
-            index = i; since = s
-        case .away(let i, let s, let l):
-            index = i; since = s; leftAt = l
+        case .leaving(let index, let since):
+            endAttempt(index, startedAt: since, leftAt: nil, falseStart: falseStart, at: clock())
+        case .away(let index, let since, let leftAt):
+            endAttempt(index, startedAt: since, leftAt: leftAt, falseStart: falseStart, at: clock())
         default:
             return
         }
+    }
 
+    /// A false start before "Вышли": an attempt that never got outside.
+    private func falseStartBeforeDoor(_ index: Int, at now: Date) {
+        closeBreak(at: now)
+        endAttempt(index, startedAt: now, leftAt: nil, falseStart: true, at: now)
+    }
+
+    private func goOutside(_ index: Int, at now: Date) {
+        phase = .away(exitIndex: index, since: now, leftAt: now)
+        log(.behindDoor, at: now, exitNumber: plan.exits[index].number, attempt: attempt,
+            detail: tr("план \(plan.exits[index].durationDescription)", "plan \(plan.exits[index].durationDescription)"))
+    }
+
+    /// "Перерыв окончен" when it ends by a button: early, or how far past its plan.
+    private func logBreakEnd(since: Date, duration: TimeInterval, at now: Date) {
+        let actual = now.timeIntervalSince(since)
+        let detail: String?
+        if actual < duration {
+            detail = tr("досрочно, \(DurationText.clock(actual)) из \(DurationText.short(duration))",
+                        "early, \(DurationText.clock(actual)) of \(DurationText.short(duration))")
+        } else if actual - duration >= 1 {
+            detail = tr("дольше плана, \(DurationText.clock(actual)) из \(DurationText.short(duration))",
+                        "longer than planned, \(DurationText.clock(actual)) of \(DurationText.short(duration))")
+        } else {
+            detail = nil
+        }
+        log(.breakEnded, at: now, detail: detail)
+    }
+
+    private func endAttempt(_ index: Int, startedAt since: Date, leftAt: Date?, falseStart: Bool, at now: Date) {
         let exit = plan.exits[index]
         let plannedBreak = plan.breakAfter(exitAt: index)
         let result = ExitResult(number: exit.number,
@@ -309,9 +421,11 @@ public final class TrainingSession {
                                 plannedBreak: plannedBreak)
         results.append(result)
 
-        let awayText = tr("за дверью \(DurationText.clock(result.awayDuration)), всего \(DurationText.clock(result.totalDuration))",
-                          "outside \(DurationText.clock(result.awayDuration)), total \(DurationText.clock(result.totalDuration))")
-        log(falseStart ? .falseStart : .exitEnded, at: now, exitNumber: exit.number, attempt: attempt, detail: awayText)
+        let detail = leftAt == nil && since == now
+            ? tr("до двери", "before the door")
+            : tr("за дверью \(DurationText.clock(result.awayDuration)), всего \(DurationText.clock(result.totalDuration))",
+                 "outside \(DurationText.clock(result.awayDuration)), total \(DurationText.clock(result.totalDuration))")
+        log(falseStart ? .falseStart : .exitEnded, at: now, exitNumber: exit.number, attempt: attempt, detail: detail)
 
         let nextIndex: Int?
         if falseStart {
@@ -339,7 +453,8 @@ public final class TrainingSession {
     }
 }
 
-/// A button press on a session, sent to the device that owns it.
+/// A button press on a session, sent to the device that owns it (an edited schedule goes as
+/// `SyncCommand.updateSessionPlan`).
 public enum SessionCommand: String, Codable, CaseIterable {
     case startExit, markBehindDoor, endExit, resetExit, finish
 

@@ -49,7 +49,7 @@ struct SessionTimelineView: View {
             legend(MacPalette.green, String(localized: "за дверью"))
             legend(MacPalette.orange, String(localized: "фальстарт / сверх плана"))
             legend(MacPalette.blue.opacity(0.55), String(localized: "перерыв"))
-            legend(.gray, String(localized: "к двери"))
+            legend(MacPalette.red.opacity(0.6), String(localized: "перерыв сверх плана"))
             Spacer()
             Text(driftText)
                 .font(.callout.monospacedDigit())
@@ -59,7 +59,7 @@ struct SessionTimelineView: View {
         .frame(height: 38)
     }
 
-    /// How far the session is behind the ideal schedule (door walks and long breaks add up).
+    /// How far the session is behind the ideal schedule (long breaks and false starts add up).
     private var driftText: String {
         guard let index = model.session.currentExitIndex else { return "" }
         var planned: TimeInterval = 0
@@ -108,13 +108,22 @@ struct SessionTimelineView: View {
         let results = model.session.results
         for (i, r) in results.enumerated() {
             if let left = r.leftAt {
-                segments.append(Segment(start: r.startedAt, end: left, color: .gray.opacity(0.7)))
+                // A walk to the door only in sessions run from an older iPhone («Начать выход»).
+                if left > r.startedAt { segments.append(Segment(start: r.startedAt, end: left, color: .gray.opacity(0.7))) }
                 segments.append(Segment(start: left, end: max(r.endedAt, left.addingTimeInterval(4)),
                                         color: r.falseStart ? MacPalette.orange : MacPalette.green,
                                         label: r.falseStart ? "↺" : "\(r.number)", strong: true))
+            } else if r.falseStart {
+                // A false start before «Вышли»: a short mark where the break started over.
+                segments.append(Segment(start: r.startedAt, end: max(r.endedAt, r.startedAt.addingTimeInterval(4)),
+                                        color: MacPalette.orange, label: "↺", strong: true))
             }
             let next = i + 1 < results.count ? results[i + 1].startedAt : (currentStart ?? model.now)
-            segments.append(Segment(start: r.endedAt, end: next, color: MacPalette.blue.opacity(0.2)))
+            let planned = r.endedAt.addingTimeInterval(r.plannedBreak)
+            segments.append(Segment(start: r.endedAt, end: min(next, planned), color: MacPalette.blue.opacity(0.2)))
+            if next > planned {
+                segments.append(Segment(start: planned, end: next, color: MacPalette.red.opacity(0.6)))
+            }
         }
         switch model.phase {
         case .leaving(_, let since):
@@ -128,11 +137,26 @@ struct SessionTimelineView: View {
             }
         default: break
         }
-        // What is left, projected from now.
+        // What is left, projected from now: the rest of the current exit or break, then the plan as it goes.
         if let index = model.session.currentExitIndex {
             var t = model.now
+            var started = false
+            switch model.phase {
+            case .away(let i, _, let leftAt):
+                t = max(model.now, leftAt.addingTimeInterval(model.plan.exits[i].duration))
+                started = true
+            case .leaving:
+                started = true
+            case .breakTime:
+                let left = max(0, model.remaining ?? 0)
+                if left > 0 {
+                    segments.append(Segment(start: t, end: t.addingTimeInterval(left), color: MacPalette.blue.opacity(0.3), dashed: true))
+                }
+                t = t.addingTimeInterval(left)
+            default: break
+            }
             for i in index..<model.plan.exits.count {
-                if i > index {
+                if i > index || !started {
                     let e = t.addingTimeInterval(max(model.plan.exits[i].duration, 4))
                     segments.append(Segment(start: t, end: e, color: MacPalette.pink.opacity(0.5), label: "\(model.plan.exits[i].number)", dashed: true))
                     t = t.addingTimeInterval(model.plan.exits[i].duration)

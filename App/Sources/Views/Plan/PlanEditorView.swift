@@ -1,11 +1,16 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Review and correct the parsed plan before starting.
+/// Review and correct the parsed plan before starting — or, with `fixedExits`, the running training's schedule
+/// («Сохранить»; the exits already done and the current one can be changed but not removed or moved).
 struct PlanEditorView: View {
     @Environment(AppModel.self) private var model
     @State var plan: TrainingPlan
+    /// During a training: how many exits from the start are done or running.
+    var fixedExits: Int? = nil
     var onStart: (TrainingPlan) -> Void
+
+    private var isRunning: Bool { fixedExits != nil }
 
     @State private var showNotes = false
     @State private var showDetails = false
@@ -73,14 +78,17 @@ struct PlanEditorView: View {
             }
 
             Section {
-                ForEach($plan.exits) { $exit in
+                ForEach(Array($plan.exits.enumerated()), id: \.element.id) { index, $exit in
                     ExitRow(exit: $exit, defaultBreak: plan.defaultBreak)
+                        .deleteDisabled(index < (fixedExits ?? 0))
+                        .moveDisabled(index < (fixedExits ?? 0))
                 }
                 .onDelete { offsets in
-                    plan.exits.remove(atOffsets: offsets)
+                    plan.exits.remove(atOffsets: offsets.filteredIndexSet { $0 >= (fixedExits ?? 0) })
                     plan.renumber()
                 }
                 .onMove { source, destination in
+                    guard destination >= (fixedExits ?? 0) else { return }
                     plan.exits.move(fromOffsets: source, toOffset: destination)
                     plan.renumber()
                 }
@@ -115,19 +123,27 @@ struct PlanEditorView: View {
         #if DEBUG
         .onAppear { print("[perf] PlanEditorView appear at", PerformanceMonitor.timeFormatter.string(from: Date())) }
         #endif
-        .navigationTitle("Проверьте план")
+        .navigationTitle(isRunning ? "Расписание" : "Проверьте план")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         // Linked to a Mac: the parsed schedule and every edit show up there too (start from either side).
         .task(id: plan) {
+            guard !isRunning else { return }
             do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
             model.sharePlanWithMac(plan)
         }
         .safeAreaInset(edge: .bottom) {
             @Bindable var settings = model.settings
             VStack(spacing: 10) {
-                if model.isLinkedToMac {
+                if isRunning {
+                    BigButton(title: String(localized: "Сохранить"), systemImage: "checkmark", height: 50) {
+                        var final = plan
+                        final.renumber()
+                        onStart(final)
+                    }
+                    .disabled(!plan.isValid)
+                } else if model.isLinkedToMac {
                     // Recording follows the Mac's setting there.
                     Label("Это расписание уже и на \(model.linkedHostKind) — начать можно там или здесь.", systemImage: "laptopcomputer.and.iphone")
                         .font(.system(.footnote, design: .rounded))
@@ -140,12 +156,14 @@ struct PlanEditorView: View {
                     }
                     .tint(Theme.accent)
                 }
-                BigButton(title: String(localized: "Начать тренировку"), systemImage: "play.fill", height: 50) {
-                    var final = plan
-                    final.renumber()
-                    onStart(final)
+                if !isRunning {
+                    BigButton(title: String(localized: "Начать тренировку"), systemImage: "play.fill", height: 50) {
+                        var final = plan
+                        final.renumber()
+                        onStart(final)
+                    }
+                    .disabled(!plan.isValid)
                 }
-                .disabled(!plan.isValid)
             }
             .padding(16)
             .background(Color.black.opacity(0.92))

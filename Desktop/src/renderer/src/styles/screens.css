@@ -10,7 +10,8 @@
 /* ---------- Training page («Пульт») ---------- */
 .console {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
+  /* Two fifths of the window for the readout: the timer and the buttons read from across the room. */
+  grid-template-columns: minmax(0, 1fr) clamp(440px, 42%, 660px);
   grid-template-rows: minmax(0, 1fr) 236px;
   grid-template-areas:
     'camera panel'
@@ -187,21 +188,15 @@
 }
 .readout__card {
   --tint: var(--phase-outside);
-  padding: 16px;
-  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 18px;
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
-  position: relative;
-  overflow: hidden;
-}
-.readout__card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--tint);
+  flex: none;
 }
 .tint-outside {
   --tint: var(--phase-outside);
@@ -212,76 +207,156 @@
 .tint-over {
   --tint: var(--phase-over);
 }
+.tint-break-over {
+  --tint: var(--danger);
+}
 .tint-done {
   --tint: var(--phase-done);
 }
 .tint-neutral {
   --tint: var(--phase-leaving);
 }
-.readout__header {
+.exit-strip {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--text-secondary);
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
 }
-.readout__attempt {
-  color: var(--warning);
-}
-.phase-badge {
-  height: 22px;
-  padding: 0 10px;
-  border-radius: 11px;
+.exit-chip {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--bg-control-hover);
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--tint);
-  background: color-mix(in srgb, var(--tint) 16%, transparent);
+  line-height: 16px;
 }
-.readout__timer {
+.exit-chip svg {
+  width: 13px;
+  height: 13px;
+}
+.exit-chip--current {
+  background: var(--brand);
+  color: var(--text-on-accent);
+}
+.exit-chip--done {
+  opacity: 0.35;
+}
+.exit-strip__gap {
+  flex: none;
+  height: 2px;
+  background: var(--border-strong);
+}
+.exit-strip__gap--active {
+  background: var(--info);
+}
+.readout__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   font-family: var(--font-display);
-  font-size: clamp(64px, 6.4vw, 96px);
-  line-height: 1;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 34px;
+}
+.readout__attempt {
+  font-size: 18px;
   font-weight: 600;
+  color: var(--text-tertiary);
+}
+/* The ring takes the height the panel has left (titlebar, timeline and the rest of the readout ≈ 660 px). */
+.ring {
+  position: relative;
+  align-self: center;
+  width: clamp(150px, calc(100vh - 660px), 290px);
+  aspect-ratio: 1;
+  container-type: size;
+}
+.ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ring__track,
+.ring__bar {
+  fill: none;
+  stroke-width: 3;
+}
+.ring__track {
+  stroke: var(--border-default);
+}
+.ring__bar {
+  stroke: var(--tint);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 250ms linear;
+}
+.ring__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ring__digits {
+  font-family: var(--font-display);
+  font-size: 27cqw;
+  line-height: 1;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  margin: 10px 0 8px;
-  color: var(--tint);
   white-space: nowrap;
 }
-.readout__timer--neutral {
+.ring__caption {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.ring__digits--over {
+  color: var(--tint);
+}
+.readout__info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
   color: var(--text-primary);
 }
-.readout__detail {
+.readout__rule,
+.readout__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-secondary);
-  font-size: 13px;
 }
-.progress {
-  height: 3px;
-  margin-top: 10px;
-  border-radius: 2px;
-  background: var(--border-default);
-  overflow: hidden;
+.readout__rule {
+  color: var(--info);
 }
-.progress__bar {
-  height: 100%;
-  background: var(--tint, var(--accent));
-  transition: width 250ms linear;
+.readout__rule svg,
+.readout__note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
 }
 .readout__stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 18px;
-  margin-top: 16px;
+  display: flex;
+  gap: 22px;
+  padding: 0 4px;
 }
 .stat__value {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 22px;
 }
 .stat__label {
   font-size: 12px;
@@ -289,20 +364,29 @@
 }
 .transport {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 8px;
+  container-type: inline-size;
 }
+/* Narrow panel: the keys go, the titles stay (Space and Backspace still work). */
+@container (max-width: 460px) {
+  .step .kbd {
+    display: none;
+  }
+}
+/* The label stays centred while there is room; on a narrow panel it gives way to the key, then ellipsises. */
 .step {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
   align-items: center;
-  gap: 10px;
-  height: 56px;
-  padding: 0 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  background: var(--bg-control);
+  height: 54px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: none;
+  background: var(--bg-control-hover);
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   min-width: 0;
@@ -310,64 +394,47 @@
     background var(--duration-fast) var(--ease),
     transform var(--duration-fast) var(--ease);
 }
-.step:hover {
-  background: var(--bg-control-hover);
-}
 .step:active {
-  transform: scale(0.985);
+  transform: scale(0.975);
 }
-.step:disabled {
-  opacity: 0.35;
-  cursor: default;
-  pointer-events: none;
+.step__label {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 .step svg {
   flex: none;
 }
-.step__text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
-  line-height: 18px;
-  text-align: left;
-}
-.step__key {
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 14px;
-  opacity: 0.7;
+.step .kbd {
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 6px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  border-color: transparent;
+  color: inherit;
+  opacity: 0.75;
 }
 .step--primary {
   background: var(--accent);
-  border-color: transparent;
   color: var(--text-on-accent);
 }
 .step--primary:hover {
   background: var(--accent-hover);
 }
-.step--primary .kbd {
-  background: rgba(0, 0, 0, 0.12);
-  border-color: rgba(0, 0, 0, 0.18);
-  color: inherit;
-}
-.step--done.step--primary {
+.step--done {
   background: var(--success);
   color: #08240f;
 }
-.step--warn svg {
-  color: var(--warning);
+.step--done:hover {
+  filter: brightness(1.05);
 }
-.readout__note {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  font-size: 13px;
-  color: var(--text-secondary);
+.step--warn {
+  color: var(--danger);
 }
-.readout__note svg {
-  flex: none;
-  margin-top: 1px;
+.step--warn:hover {
+  background: color-mix(in srgb, var(--bg-control-hover) 100%, var(--danger) 6%);
 }
 .readout__footer {
   display: flex;
@@ -529,6 +596,9 @@
 .seg--over,
 .seg--false {
   background: var(--warning);
+}
+.seg--break-over {
+  background: color-mix(in srgb, var(--danger) 60%, transparent);
 }
 .seg--rec {
   background: color-mix(in srgb, var(--danger) 80%, transparent);

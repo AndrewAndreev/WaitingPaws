@@ -9,8 +9,8 @@
 //     const session = new TrainingSession(plan)                  // clock defaults to Date.now
 //     const unsubscribe = session.subscribe((snapshot) => store.setState({ session: snapshot }))
 //     // or: useSyncExternalStore(session.subscribe, () => session.snapshot)
-//     session.startExit(); session.markBehindDoor(); session.endExit()
-//     setInterval(() => session.tick(), 250)                     // ends breaks that ran out
+//     session.markBehindDoor(); session.endExit()                // «Вышли», «Вернулись»
+//     setInterval(() => session.tick(), 250)                     // finishes after the last break
 //     TrainingSession.remaining(session.snapshot, Date.now())    // countdowns are computed, not stored
 //
 // Time is injectable: pass `{ clock: () => ms }` to the constructor (tests advance a fake clock), and
@@ -41,13 +41,19 @@ import { ExitResult, SessionEvent, type SessionEventKind, TrainingRecord } from 
 export type Clock = () => number
 
 export type SessionPhase =
-  /** Waiting for the "Начать выход" tap. */
+  /** Before the first exit: waiting for "Вышли". */
   | { kind: 'ready'; exitIndex: number }
-  /** Walking to the door; the dog is still watching. */
+  /**
+   * Walking to the door; the dog is still watching. Only the "Начать выход" of an older linked iPhone leads here:
+   * the buttons now go from the break straight to `away`.
+   */
   | { kind: 'leaving'; exitIndex: number; since: number }
   /** Behind the door; countdown to the planned duration. */
   | { kind: 'away'; exitIndex: number; since: number; leftAt: number }
-  /** Break after an exit. `nextExitIndex === null` means the plan is finished and this is the cool-down. */
+  /**
+   * Break after an exit. It lasts until "Вышли" (past its plan, too); `nextExitIndex === null` means the plan is
+   * finished and this is the cool-down, which ends the session when it runs out.
+   */
   | { kind: 'breakTime'; afterExitIndex: number; since: number; duration: number; nextExitIndex: number | null }
   | { kind: 'finished' }
 
@@ -58,6 +64,16 @@ export const SessionPhase = {
 
   isOutside(phase: SessionPhase): boolean {
     return phase.kind === 'leaving' || phase.kind === 'away'
+  },
+
+  /** "Вышли" is the next step: before the first exit, or in a break with an exit after it. */
+  canGoOutside(phase: SessionPhase): boolean {
+    return phase.kind === 'ready' || phase.kind === 'leaving' || (phase.kind === 'breakTime' && phase.nextExitIndex !== null)
+  },
+
+  /** "Фальстарт" means something now: on the way out or outside. */
+  canFalseStart(phase: SessionPhase): boolean {
+    return SessionPhase.canGoOutside(phase) || SessionPhase.isOutside(phase)
   },
 
   /** Swift's synthesized enum coding: `{"ready":{"exitIndex":0}}`, `{"finished":{}}`. */
@@ -168,8 +184,8 @@ export const SessionCommand = {
 export type SessionListener = (snapshot: TrainingSessionSnapshot) => void
 
 /**
- * State machine of one training session. All transitions are driven by button presses
- * (plus `tick(now)` that is called by a timer for automatic break ending).
+ * State machine of one training session. All transitions are driven by two buttons — "Вышли" / "Вернулись" and
+ * "Фальстарт" — plus `tick(now)`, called by a timer, that finishes the session when the last break runs out.
  */
 export class TrainingSession {
   /**
@@ -178,6 +194,8 @@ export class TrainingSession {
    * nothing. The owner applies the command and sends back a new snapshot (`restore`).
    */
   commandHandler: ((command: SessionCommand) => void) | null = null
+  /** The same for `updatePlan` on a mirror: the edited schedule goes to the owner. */
+  planHandler: ((plan: TrainingPlan) => void) | null = null
 
   private state: TrainingSessionSnapshot
   private readonly clock: Clock
@@ -272,6 +290,7 @@ export class TrainingSession {
     if (!this.isSameSession(snapshot)) return
     const next: TrainingSessionSnapshot = {
       ...this.state,
+      plan: snapshot.plan,
       phase: snapshot.phase,
       events: snapshot.events,
       results: snapshot.results,
@@ -439,7 +458,7 @@ export class TrainingSession {
 
   // MARK: - Actions
 
-  /** "Начать выход": the person heads for the door. */
+  /** "Начать выход" of an older linked iPhone: the person heads for the door (`leaving`, then `markBehindDoor`). */
   startExit(): void {
     if (this.commandHandler) return this.commandHandler('startExit')
     this.batch(() => this.startExitNow(this.clock()))
@@ -452,18 +471,11 @@ export class TrainingSession {
       case 'ready':
         index = phase.exitIndex
         break
-      case 'breakTime': {
+      case 'breakTime':
         if (phase.nextExitIndex === null) return
         index = phase.nextExitIndex
-        const actual = (now - phase.since) / 1000
-        const early = actual < phase.duration
-        const clock = DurationText.clock(actual)
-        const planned = DurationText.short(phase.duration)
-        this.log('breakEnded', now, {
-          detail: early ? tr(`досрочно, ${clock} из ${planned}`, `early, ${clock} of ${planned}`) : null,
-        })
+        this.logBreakEnd(phase.since, phase.duration, now)
         break
-      }
       default:
         return
     }
@@ -478,31 +490,150 @@ export class TrainingSession {
     })
   }
 
-  /** "За дверью": the door is closed, the countdown starts. */
+  /**
+   * "Вышли": the door is closed behind you, the exit's countdown starts. Ends the break (or the wait before the
+   * first exit) right away.
+   */
   markBehindDoor(): void {
     if (this.commandHandler) return this.commandHandler('markBehindDoor')
     const phase = this.state.phase
-    if (phase.kind !== 'leaving') return
     const now = this.clock()
-    this.batch(() => {
-      this.update({ phase: { kind: 'away', exitIndex: phase.exitIndex, since: phase.since, leftAt: now } })
-      this.log('behindDoor', now, {
-        exitNumber: this.state.plan.exits[phase.exitIndex].number,
-        attempt: this.state.attempt,
-      })
-    })
+    switch (phase.kind) {
+      case 'leaving':
+        return this.batch(() => {
+          this.update({ phase: { kind: 'away', exitIndex: phase.exitIndex, since: phase.since, leftAt: now } })
+          this.log('behindDoor', now, {
+            exitNumber: this.state.plan.exits[phase.exitIndex].number,
+            attempt: this.state.attempt,
+          })
+        })
+      case 'ready':
+        return this.batch(() => {
+          this.closeBreak(now)
+          this.goOutside(phase.exitIndex, now)
+        })
+      case 'breakTime': {
+        const next = phase.nextExitIndex
+        if (next === null) return
+        return this.batch(() => {
+          this.logBreakEnd(phase.since, phase.duration, now)
+          this.closeBreak(now)
+          this.goOutside(next, now)
+        })
+      }
+      default:
+        return
+    }
   }
 
-  /** "Выход закончен": back inside, the break begins. */
+  /** "Вернулись": back inside, the break begins. */
   endExit(): void {
     if (this.commandHandler) return this.commandHandler('endExit')
     this.batch(() => this.finishCurrentExit(false, this.clock()))
   }
 
-  /** "Сбросить выход": false start — back inside, take a break and repeat the same exit. */
+  /**
+   * "Фальстарт": the exit failed — take a break and repeat the same exit. Outside: back inside early. In the break
+   * (or before the first exit): the dog went to the door, or there were sounds on the way out, before "Вышли" —
+   * the attempt counts as a false start and the break starts over.
+   */
   resetExit(): void {
     if (this.commandHandler) return this.commandHandler('resetExit')
-    this.batch(() => this.finishCurrentExit(true, this.clock()))
+    const phase = this.state.phase
+    const now = this.clock()
+    switch (phase.kind) {
+      case 'leaving':
+      case 'away':
+        return this.batch(() => this.finishCurrentExit(true, now))
+      case 'ready':
+        return this.batch(() => this.falseStartBeforeDoor(phase.exitIndex, now))
+      case 'breakTime': {
+        const next = phase.nextExitIndex
+        if (next === null) return
+        return this.batch(() => {
+          this.logBreakEnd(phase.since, phase.duration, now)
+          this.falseStartBeforeDoor(next, now)
+        })
+      }
+      default:
+        return
+    }
+  }
+
+  // MARK: - Editing the schedule
+
+  /**
+   * How many exits from the start of the plan are fixed while the session runs: the ones done and the current one.
+   * An edit may change their values, but not remove or reorder them.
+   */
+  get fixedExitCount(): number {
+    return TrainingSession.fixedExitCount(this.state)
+  }
+
+  static fixedExitCount(snapshot: TrainingSessionSnapshot): number {
+    const phase = snapshot.phase
+    switch (phase.kind) {
+      case 'ready':
+        return phase.exitIndex
+      case 'leaving':
+      case 'away':
+        return phase.exitIndex + 1
+      case 'breakTime':
+        return phase.afterExitIndex + 1
+      case 'finished':
+        return snapshot.plan.exits.length
+    }
+  }
+
+  /**
+   * Whether `plan` can replace the running schedule: the same plan (id), with the fixed exits still first and in
+   * their order, and an exit for the session to be at.
+   */
+  static canUpdatePlan(snapshot: TrainingSessionSnapshot, plan: TrainingPlan): boolean {
+    const phase = snapshot.phase
+    if (phase.kind === 'finished' || !sameUUID(plan.id, snapshot.plan.id) || !TrainingPlan.isValid(plan)) return false
+    const fixed = TrainingSession.fixedExitCount(snapshot)
+    if (plan.exits.length < fixed) return false
+    if (phase.kind === 'ready' && phase.exitIndex >= plan.exits.length) return false
+    return plan.exits.slice(0, fixed).every((exit, index) => sameUUID(exit.id, snapshot.plan.exits[index].id))
+  }
+
+  /**
+   * Replaces the schedule while the session runs — e.g. every break longer when the trainer's text was read wrong
+   * and nobody noticed before the start. The current exit counts down to its new length, the running break takes
+   * its new length too, and exits added after the last one carry the training on. The log gets a note with what
+   * changed. Returns false and changes nothing when the edit drops or reorders exits already done (or the current).
+   */
+  updatePlan(edited: TrainingPlan): boolean {
+    if (!TrainingSession.canUpdatePlan(this.state, edited)) return false
+    if (this.planHandler) {
+      this.planHandler(edited)
+      return true
+    }
+    const plan = TrainingPlan.renumbered(edited)
+    const changes = TrainingPlan.changes(plan, this.state.plan)
+    this.batch(() => {
+      const phase = this.state.phase
+      if (phase.kind === 'breakTime') {
+        // A false start's break leads to the same exit again; otherwise to whatever follows now.
+        const after = phase.afterExitIndex
+        const next = phase.nextExitIndex === after ? after : after + 1 < plan.exits.length ? after + 1 : null
+        const duration = TrainingPlan.breakAfter(plan, after)
+        const results = this.state.results
+        this.update({
+          phase: { ...phase, duration, nextExitIndex: next },
+          results: results.length ? [...results.slice(0, -1), { ...results[results.length - 1], plannedBreak: duration }] : results,
+        })
+      }
+      this.update({ plan })
+      if (changes.length) {
+        this.log('note', this.clock(), {
+          exitNumber: this.currentExit?.number ?? null,
+          detail: tr('Расписание изменено: ', 'Schedule changed: ') + changes.join('; '),
+        })
+      }
+    })
+    return true
   }
 
   /** Ends the session right now (also used by the auto-finish after the last break). */
@@ -524,21 +655,16 @@ export class TrainingSession {
     })
   }
 
-  /** Called periodically. Ends breaks whose time has run out. `now` defaults to the clock. */
+  /**
+   * Called periodically. Finishes the session when the break after the last exit runs out; other breaks go on past
+   * their plan until "Вышли" (the views count the extra time up). `now` defaults to the clock.
+   */
   tick(now: number = this.clock()): void {
-    if (this.commandHandler) return
+    if (this.commandHandler || !this.state.autoFinishAfterLastBreak) return
     const phase = this.state.phase
-    if (phase.kind !== 'breakTime') return
+    if (phase.kind !== 'breakTime' || phase.nextExitIndex !== null) return
     if ((now - phase.since) / 1000 < phase.duration) return
-    if (phase.nextExitIndex !== null) {
-      const next = phase.nextExitIndex
-      this.batch(() => {
-        this.update({ phase: { kind: 'ready', exitIndex: next } })
-        this.log('breakEnded', now)
-      })
-    } else if (this.state.autoFinishAfterLastBreak) {
-      this.finish()
-    }
+    this.finish()
   }
 
   addNote(text: string): void {
@@ -565,9 +691,41 @@ export class TrainingSession {
   private finishCurrentExit(falseStart: boolean, now: number): void {
     const phase = this.state.phase
     if (phase.kind !== 'leaving' && phase.kind !== 'away') return
-    const index = phase.exitIndex
-    const leftAt = phase.kind === 'away' ? phase.leftAt : null
+    this.endAttempt(phase.exitIndex, phase.since, phase.kind === 'away' ? phase.leftAt : null, falseStart, now)
+  }
 
+  /** A false start before "Вышли": an attempt that never got outside. */
+  private falseStartBeforeDoor(index: number, now: number): void {
+    this.closeBreak(now)
+    this.endAttempt(index, now, null, true, now)
+  }
+
+  private goOutside(index: number, now: number): void {
+    this.update({ phase: { kind: 'away', exitIndex: index, since: now, leftAt: now } })
+    const exit = this.state.plan.exits[index]
+    const description = PlannedExit.durationDescription(exit)
+    this.log('behindDoor', now, {
+      exitNumber: exit.number,
+      attempt: this.state.attempt,
+      detail: tr(`план ${description}`, `plan ${description}`),
+    })
+  }
+
+  /** "Перерыв окончен" when it ends by a button: early, or how far past its plan. */
+  private logBreakEnd(since: number, duration: number, now: number): void {
+    const actual = (now - since) / 1000
+    const clock = DurationText.clock(actual)
+    const planned = DurationText.short(duration)
+    let detail: string | null = null
+    if (actual < duration) {
+      detail = tr(`досрочно, ${clock} из ${planned}`, `early, ${clock} of ${planned}`)
+    } else if (actual - duration >= 1) {
+      detail = tr(`дольше плана, ${clock} из ${planned}`, `longer than planned, ${clock} of ${planned}`)
+    }
+    this.log('breakEnded', now, { detail })
+  }
+
+  private endAttempt(index: number, since: number, leftAt: number | null, falseStart: boolean, now: number): void {
     const { plan, attempt } = this.state
     const exit = plan.exits[index]
     const plannedBreak = TrainingPlan.breakAfter(plan, index)
@@ -576,7 +734,7 @@ export class TrainingSession {
       attempt,
       plannedDuration: exit.duration,
       untilStanding: exit.untilStanding,
-      startedAt: phase.since,
+      startedAt: since,
       leftAt,
       endedAt: now,
       falseStart,
@@ -589,7 +747,10 @@ export class TrainingSession {
     this.log(falseStart ? 'falseStart' : 'exitEnded', now, {
       exitNumber: exit.number,
       attempt,
-      detail: tr(`за дверью ${away}, всего ${total}`, `outside ${away}, total ${total}`),
+      detail:
+        leftAt === null && since === now
+          ? tr('до двери', 'before the door')
+          : tr(`за дверью ${away}, всего ${total}`, `outside ${away}, total ${total}`),
     })
 
     let nextIndex: number | null

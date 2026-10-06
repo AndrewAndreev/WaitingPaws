@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
+import { SessionPhase } from '@core/trainingSession'
 import { call, ui, useNow, useStore } from '../store'
 import { isRecording } from '../model'
 import { falseStart, primaryStep, primaryStepTitle } from '../actions'
@@ -41,7 +42,7 @@ export function MiniPanel() {
             {live.currentExit?.number ?? '✓'}
           </span>
           <div className="mini__text">
-            <strong className="ellipsis">{`${live.isBreak ? t('Перерыв') : t('Выход %lld', live.currentExit?.number ?? 0)} · ${live.phaseName.toLowerCase()}`}</strong>
+            <strong className="ellipsis">{`${live.title} · ${live.phaseName}`}</strong>
             <span className="ellipsis">{live.subtitle}</span>
           </div>
           <span className={`mini__timer tabular tint-${live.tint}`}>{live.timerText}</span>
@@ -51,7 +52,7 @@ export function MiniPanel() {
               {primaryStepTitle(session)}
             </button>
           )}
-          {(live.isLeaving || live.isAway) && (
+          {SessionPhase.canFalseStart(live.phase) && (
             <button className="mini__btn" onClick={() => falseStart()} title={t('Фальстарт')}>
               <FalseStartIcon />
             </button>

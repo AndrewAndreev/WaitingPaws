@@ -86,7 +86,7 @@ final class SyncTests: XCTestCase {
         guard case .state(let decoded) = try SyncMessage.decode(state.encoded()) else { return XCTFail("no state") }
         XCTAssertEqual(decoded.pendingPlan, plan)
 
-        for command in [SyncCommand.setPendingPlan(plan), .setPendingPlan(nil)] {
+        for command in [SyncCommand.setPendingPlan(plan), .setPendingPlan(nil), .updateSessionPlan(plan)] {
             XCTAssertEqual(try SyncMessage.decode(SyncMessage.command(command).encoded()), .command(command))
         }
     }

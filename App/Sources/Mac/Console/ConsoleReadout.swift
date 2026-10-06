@@ -2,39 +2,37 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Right panel during a session: the big readout and the four steps with their keys.
+/// Right panel during a session: the same readout and two buttons as on the iPhone (with their keys), then the
+/// numbers of the whole training and «Завершить».
 struct ConsoleReadout: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui
-    let live: LiveSessionModel
+    let session: TrainingSession
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            readout
-            transport
-            if let exit = live.session.currentExit, exit.untilStanding, !live.isBreak {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Image(systemName: "figure.stand").foregroundStyle(MacPalette.blue)
-                    Text("Выход «или до вставания»: собака встала — сразу возвращайтесь.")
+            // First claim on the height: the ring grows into whatever the panel has left.
+            SessionReadout(session: session, size: .mac, showsKeys: true, onFinish: { model.finishSession() })
+                .padding(20)
+                .background {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Theme.panel)
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(.white.opacity(0.08)))
                 }
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            if let note = live.session.currentExit?.note, !note.isEmpty, !live.isBreak {
-                Label(note, systemImage: "text.bubble")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
+                .layoutPriority(1)
             Spacer(minLength: 0)
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                stats(LiveSessionModel(session: session, now: context.date, recordingSince: nil))
+            }
             HStack {
+                Button { ui.editSessionPlan(model) } label: {
+                    ShortcutLabel(title: String(localized: "Расписание"), symbol: "slider.horizontal.3", key: "⌘E")
+                }
+                .help("Поправить выходы и перерывы прямо во время тренировки")
                 Button { ui.confirmFinish = true } label: {
                     ShortcutLabel(title: String(localized: "Завершить"), symbol: "flag.checkered", key: "⌘.")
                 }
                 Spacer()
-                Text("Пробел — следующий шаг")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
         }
         .padding(16)
@@ -42,116 +40,23 @@ struct ConsoleReadout: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    private var readout: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Text(live.isBreak ? "ПЕРЕРЫВ" : "ВЫХОД \(live.session.currentExit?.number ?? 0)")
-                if live.session.attempt > 1, !live.isBreak {
-                    Text("ПОПЫТКА \(live.session.attempt)").foregroundStyle(MacPalette.orange)
-                }
-                Spacer()
-                PhaseBadge(text: live.overdue ? String(localized: "Сверх плана") : live.phaseName, tint: live.tint)
-            }
-            .font(.system(size: 11, weight: .bold))
-            .tracking(1.2)
-            .foregroundStyle(.secondary)
-
-            Text(live.timerText)
-                .font(MacPalette.digits(80, weight: .medium))
-                .foregroundStyle(live.isLeaving || live.isReady ? Color.primary : live.tint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .padding(.vertical, -6)
-
-            Text(detail)
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
-            ThinProgress(value: live.isAway || live.isBreak ? live.progress : 0, tint: live.tint, height: 3)
-                .padding(.top, 2)
-
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
-                GridRow {
-                    stat(String(localized: "\(live.session.completedExitsCount) из \(live.plan.exits.count)"), String(localized: "выходов"))
-                    stat("\(live.session.falseStartsCount)", String(localized: "фальстартов"), tint: live.session.falseStartsCount > 0 ? MacPalette.orange : nil)
-                }
-                GridRow {
-                    stat(DurationText.clock(live.now.timeIntervalSince(live.session.startedAt)), String(localized: "идёт тренировка"))
-                    stat("≈ \(MacFormat.time.string(from: live.eta))", String(localized: "конец по плану"))
-                }
-            }
-            .padding(.top, 8)
+    /// The whole training at a glance, below the buttons: it is not what you look at during an exit.
+    private func stats(_ live: LiveSessionModel) -> some View {
+        HStack(alignment: .top, spacing: 22) {
+            stat(String(localized: "\(session.completedExitsCount) из \(live.plan.exits.count)"), String(localized: "выходов"))
+            stat("\(session.falseStartsCount)", String(localized: "фальстартов"), tint: session.falseStartsCount > 0 ? MacPalette.orange : nil)
+            stat(live.sessionElapsed, String(localized: "идёт тренировка"))
+            stat("≈ \(MacFormat.time.string(from: live.eta))", String(localized: "конец по плану"))
+            Spacer(minLength: 0)
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.black.opacity(0.32))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.07)))
-        }
-    }
-
-    private var detail: String {
-        let plan = live.session.currentExit?.durationDescription ?? ""
-        switch live.phase {
-        case .ready: return "\(live.timerCaption) · \(live.subtitle)"
-        case .leaving: return String(localized: "идём к двери · план \(plan)")
-        case .away:
-            let away = DurationText.clock(live.session.elapsed(at: live.now))
-            return String(localized: "за дверью \(away) · план \(plan)")
-        case .breakTime: return "\(live.timerCaption) · \(live.subtitle)"
-        case .finished: return live.subtitle
-        }
+        .padding(.horizontal, 4)
     }
 
     private func stat(_ value: String, _ label: String, tint: Color? = nil) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(value).font(MacPalette.digits(17, weight: .semibold)).foregroundStyle(tint ?? .primary)
+            Text(value).font(MacPalette.digits(15, weight: .semibold)).foregroundStyle(tint ?? .primary)
             Text(label).font(.caption).foregroundStyle(.secondary)
         }
-    }
-
-    // MARK: - Transport
-
-    private var transport: some View {
-        let phase = live.phase
-        let canStart: Bool = { if case .ready = phase { return true }; if case .breakTime(_, _, _, let next) = phase { return next != nil }; return false }()
-        let canDoor: Bool = { if case .leaving = phase { return true }; return false }()
-        let canReturn = phase.isOutside
-        let primary: Int = canDoor ? 1 : (live.isAway ? 2 : (canStart ? 0 : -1))
-        let space = String(localized: "Пробел")
-        let startTitle = String(localized: "Начать выход")
-        return Grid(horizontalSpacing: 8, verticalSpacing: 8) {
-            GridRow {
-                step(live.isBreak ? (live.primary?.title ?? startTitle) : startTitle, "figure.walk",
-                     key: primary == 0 ? space : nil, enabled: canStart, prominent: primary == 0) {
-                    live.session.startExit()
-                }
-                step(String(localized: "За дверью"), "door.left.hand.closed", key: primary == 1 ? space : nil,
-                     enabled: canDoor, prominent: primary == 1) {
-                    live.session.markBehindDoor()
-                }
-            }
-            GridRow {
-                step(String(localized: "Вернулись"), "checkmark", key: primary == 2 ? space : nil, enabled: canReturn,
-                     prominent: primary == 2, tint: MacPalette.green) {
-                    live.session.endExit()
-                }
-                step(String(localized: "Фальстарт"), "arrow.uturn.backward", key: canReturn ? "⌫" : nil, enabled: canReturn, prominent: false) {
-                    live.session.resetExit()
-                }
-            }
-        }
-    }
-
-    private func step(_ title: String, _ symbol: String, key: String?, enabled: Bool, prominent: Bool,
-                      tint: Color = MacPalette.pinkDeep, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            ShortcutLabel(title: title, symbol: symbol, key: key, prominent: prominent, expand: true)
-                .lineLimit(1)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(prominent ? tint : Color.gray.opacity(0.35))
-        .controlSize(.extraLarge)
-        .disabled(!enabled)
     }
 }
 

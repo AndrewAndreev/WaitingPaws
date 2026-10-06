@@ -127,7 +127,7 @@ export class AppBackend {
       this.session = session
       this.sessionUnsubscribe = session.subscribe(() => this.emit())
       const phase = argValue('demo-phase')
-      if (phase === 'leaving' || phase === 'away') session.startExit()
+      if (phase === 'leaving') session.startExit()
       if (phase === 'away') session.markBehindDoor()
       this.startTicking()
     }
@@ -372,6 +372,13 @@ export class AppBackend {
         return
     }
     void this.completeSessionIfNeeded()
+  }
+
+  /// The running session's schedule, edited here or on a linked iPhone. False when the edit drops exits already done.
+  updateSessionPlan(plan: TrainingPlan): boolean {
+    const updated = this.session?.updatePlan(plan) ?? false
+    if (updated) this.emit()
+    return updated
   }
 
   /// A new waiting schedule (paste, «Повторить», a linked iPhone); null clears it.
@@ -832,6 +839,9 @@ export class AppBackend {
         else this.setPending(plan)
         break
       }
+      case 'updateSessionPlan':
+        if (command.plan) this.updateSessionPlan(command.plan)
+        break
       case 'abandonSession':
         void this.abandonSession()
         break
@@ -926,6 +936,7 @@ export class AppBackend {
     'session.start': (plan: TrainingPlan) => this.startSession(plan),
     'session.command': (command: string) => this.sessionCommand(command),
     'session.abandon': () => this.abandonSession(),
+    'session.updatePlan': (plan: TrainingPlan) => this.updateSessionPlan(plan),
     'pending.set': (plan: TrainingPlan | null, keepOriginal?: boolean) => this.setPending(plan, keepOriginal ?? false),
     'recording.toggle': () => this.toggleRecording(),
     'recording.start': () => this.startRecording(),

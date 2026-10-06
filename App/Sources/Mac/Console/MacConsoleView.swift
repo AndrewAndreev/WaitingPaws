@@ -5,7 +5,8 @@ import WaitingPawsCore
 /// «Пульт» — the training window: camera and the readout on top, the session timeline below.
 /// Before the start the right panel offers the paste / repeat / record-only ways in and the timeline
 /// shows the pasted plan, editable with the mouse; during the session it is the «план и факт» timeline.
-/// Space = the next step, ⌫ = false start (handled here, not as menu key equivalents, so text fields keep them).
+/// Space = the next step («Вышли» / «Вернулись»), ⌫ = false start (handled here, not as menu key equivalents, so
+/// text fields keep them).
 struct MacConsoleView: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui
@@ -29,8 +30,10 @@ struct MacConsoleView: View {
                     }
                 if !clipMode {
                     Divider()
+                    // About two fifths of the window (610 pt of the default 1440): the timer and the buttons read
+                    // from across the room, the picture keeps the rest.
                     rightPanel
-                        .frame(width: 400)
+                        .frame(minWidth: 440, maxWidth: 610)
                         .transition(.move(edge: .trailing))
                 }
             }
@@ -59,11 +62,19 @@ struct MacConsoleView: View {
             return .handled
         }
         .onKeyPress(.delete) {
-            guard model.session?.phase.isOutside == true else { return .ignored }
+            guard model.session?.phase.canFalseStart == true else { return .ignored }
             ui.falseStart(model)
             return .handled
         }
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            #if DEBUG
+            // `--demo-edit-plan`: the running session's schedule open for edits (UI checks).
+            if CommandLine.arguments.contains("--demo-edit-plan") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { ui.editSessionPlan(model) }
+            }
+            #endif
+        }
         // A training started from a linked iPhone: the review of its schedule is over here too.
         .onChange(of: model.session != nil) { _, running in if running { ui.reviewingPlan = false } }
         .task(id: model.settings.streamName) {
@@ -74,6 +85,13 @@ struct MacConsoleView: View {
             MacPlanReviewSheet(plan: pendingPlanBinding,
                                onStart: { ui.startPending(model) },
                                onDone: { ui.reviewingPlan = false })
+                .environment(model)
+        }
+        .sheet(item: $ui.editingSessionPlan, onDismiss: { focused = true }) { _ in
+            MacPlanReviewSheet(plan: Binding(get: { ui.editingSessionPlan ?? TrainingPlan() }, set: { ui.editingSessionPlan = $0 }),
+                               fixedExits: model.session?.fixedExitCount ?? 0,
+                               onStart: { ui.saveSessionPlan(model) },
+                               onDone: { ui.editingSessionPlan = nil })
                 .environment(model)
         }
         .sheet(isPresented: $ui.showXiaomiSignIn, onDismiss: { focused = true }) {
@@ -122,9 +140,7 @@ struct MacConsoleView: View {
     @ViewBuilder
     private var rightPanel: some View {
         if let session = model.session {
-            TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                ConsoleReadout(live: live(session, at: context.date))
-            }
+            ConsoleReadout(session: session)
         } else {
             NewTrainingPanel()
         }

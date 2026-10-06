@@ -86,21 +86,6 @@ struct StatusDot: View {
     }
 }
 
-/// "За дверью" capsule in the phase colour.
-struct PhaseBadge: View {
-    let text: String
-    let tint: Color
-
-    var body: some View {
-        Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 8)
-            .frame(height: 20)
-            .background(tint.opacity(0.16), in: Capsule())
-    }
-}
-
 struct ThinProgress: View {
     var value: Double
     var tint: Color

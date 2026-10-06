@@ -10,7 +10,7 @@ import type { LiveSession } from './live'
 interface Segment {
   start: number
   end: number
-  kind: 'exit' | 'break' | 'own-break' | 'walk' | 'outside' | 'over' | 'false' | 'rec' | 'future-exit' | 'future-break'
+  kind: 'exit' | 'break' | 'own-break' | 'break-over' | 'walk' | 'outside' | 'over' | 'false' | 'rec' | 'future-exit' | 'future-break'
   label?: string
 }
 
@@ -34,7 +34,7 @@ export function SessionTimeline({ live }: { live: LiveSession }) {
         <Legend kind="outside" text={t('за дверью')} />
         <Legend kind="over" text={t('фальстарт / сверх плана')} />
         <Legend kind="break" text={t('перерыв')} />
-        <Legend kind="walk" text={t('к двери')} />
+        <Legend kind="break-over" text={t('перерыв сверх плана')} />
         <span className="spacer" />
         {drift !== null && (
           <span className="muted tabular" style={{ fontSize: 13 }}>
@@ -78,27 +78,41 @@ function factSegments(live: LiveSession): Segment[] {
   const results = live.results()
   results.forEach((result, i) => {
     if (result.leftAt !== null) {
-      segments.push({ start: result.startedAt, end: result.leftAt, kind: 'walk' })
+      // A walk to the door only in sessions run from an older iPhone («Начать выход»).
+      if (result.leftAt > result.startedAt) segments.push({ start: result.startedAt, end: result.leftAt, kind: 'walk' })
       segments.push({ start: result.leftAt, end: Math.max(result.endedAt, result.leftAt + 4000), kind: result.falseStart ? 'false' : 'outside', label: result.falseStart ? '↺' : String(result.number) })
+    } else if (result.falseStart) {
+      // A false start before «Вышли»: a short mark where the break started over.
+      segments.push({ start: result.startedAt, end: Math.max(result.endedAt, result.startedAt + 4000), kind: 'false', label: '↺' })
     }
     const next = i + 1 < results.length ? results[i + 1].startedAt : live.currentStart ?? live.now
-    segments.push({ start: result.endedAt, end: next, kind: 'break' })
+    const planned = result.endedAt + result.plannedBreak * 1000
+    segments.push({ start: result.endedAt, end: Math.min(next, planned), kind: 'break' })
+    if (next > planned) segments.push({ start: planned, end: next, kind: 'break-over' })
   })
   const phase = live.phase
   if (phase.kind === 'leaving') {
     segments.push({ start: phase.since, end: live.now, kind: 'walk' })
   } else if (phase.kind === 'away') {
-    segments.push({ start: phase.since, end: phase.leftAt, kind: 'walk' })
+    if (phase.leftAt > phase.since) segments.push({ start: phase.since, end: phase.leftAt, kind: 'walk' })
     const planned = phase.leftAt + live.plan.exits[phase.exitIndex].duration * 1000
     segments.push({ start: phase.leftAt, end: Math.min(planned, live.now), kind: 'exit', label: String(live.plan.exits[phase.exitIndex].number) })
     if (live.now > planned) segments.push({ start: planned, end: live.now, kind: 'over' })
   }
-  // What is left, projected from now.
+  // What is left, projected from now: the rest of the current exit or break, then the plan as it goes.
   const index = live.currentExitIndex
   if (index !== null) {
     let time = live.now
+    const started = phase.kind === 'away' || phase.kind === 'leaving'
+    if (phase.kind === 'away') {
+      time = Math.max(live.now, phase.leftAt + live.plan.exits[phase.exitIndex].duration * 1000)
+    } else if (phase.kind === 'breakTime') {
+      const left = Math.max(0, live.remaining ?? 0) * 1000
+      if (left > 0) segments.push({ start: time, end: time + left, kind: 'future-break' })
+      time += left
+    }
     for (let i = index; i < live.plan.exits.length; i++) {
-      if (i > index) {
+      if (i > index || !started) {
         const exit = live.plan.exits[i]
         segments.push({ start: time, end: time + Math.max(exit.duration, 4) * 1000, kind: 'future-exit', label: String(exit.number) })
         time += exit.duration * 1000

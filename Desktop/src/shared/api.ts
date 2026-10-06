@@ -123,6 +123,8 @@ export interface BackendMethods {
   'session.start'(plan: TrainingPlanJSON): void
   'session.command'(command: 'startExit' | 'markBehindDoor' | 'endExit' | 'resetExit' | 'finish'): void
   'session.abandon'(): void
+  /** The running session's schedule, edited (false: it drops exits already done or the current one). */
+  'session.updatePlan'(plan: TrainingPlanJSON): boolean
   'pending.set'(plan: TrainingPlanJSON | null, keepOriginal?: boolean): void
   'recording.toggle'(): void
   'recording.start'(): void

@@ -7,7 +7,7 @@ import { call, callStrict, toast, ui, useApp, useStore } from '../store'
 import { formatTime } from '../model'
 import { CheckIcon, ClipIcon, CopyIcon, ErrorIcon, FolderIcon, HistoryIcon, PhoneIcon } from '../ui/icons'
 import { Button, Dialog } from '../ui/kit'
-import { PlanReviewDialog } from '../plan/PlanReviewDialog'
+import { PlanReviewDialog, SessionPlanDialog } from '../plan/PlanReviewDialog'
 import { CameraPickerDialog } from '../onboarding/CameraPickerDialog'
 import { XiaomiSignInDialog } from '../onboarding/XiaomiSignInDialog'
 import { ServerSetupDialog } from '../onboarding/ServerSetupDialog'
@@ -20,6 +20,7 @@ export function GlobalDialogs() {
   const app = useApp()
   const confirmFinish = useStore((store) => store.confirmFinish)
   const reviewingPlan = useStore((store) => store.reviewingPlan)
+  const editingSessionPlan = useStore((store) => store.editingSessionPlan)
   const showCameraPicker = useStore((store) => store.showCameraPicker)
   const showXiaomiSignIn = useStore((store) => store.showXiaomiSignIn)
   const showServerSetup = useStore((store) => store.showServerSetup)
@@ -98,6 +99,7 @@ export function GlobalDialogs() {
       {app.lastRecord && !app.session && <SummaryDialog record={app.lastRecord as TrainingRecord} />}
       {app.lastClip && !app.session && !app.lastRecord && <ClipSavedDialog clip={app.lastClip} />}
       {reviewingPlan && app.pendingPlan && !app.session && <PlanReviewDialog />}
+      {editingSessionPlan && app.session && <SessionPlanDialog />}
       {showCameraPicker && <CameraPickerDialog onClose={() => ui.set({ showCameraPicker: false })} />}
       {showXiaomiSignIn && <XiaomiSignInDialog onClose={() => ui.set({ showXiaomiSignIn: false })} />}
       {showServerSetup && <ServerSetupDialog onClose={() => ui.set({ showServerSetup: false })} />}

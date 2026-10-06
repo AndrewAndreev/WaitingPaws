@@ -13,6 +13,8 @@ interface UIStore {
   settingsPane: SettingsPane
   /// «Расписание разобрано» dialog over the waiting schedule.
   reviewingPlan: boolean
+  /// The running training's schedule open for edits.
+  editingSessionPlan: boolean
   showCameraPicker: boolean
   showXiaomiSignIn: boolean
   showServerSetup: boolean
@@ -37,6 +39,7 @@ export const useStore = create<UIStore>((set) => ({
   route: 'training',
   settingsPane: 'camera',
   reviewingPlan: false,
+  editingSessionPlan: false,
   showCameraPicker: false,
   showXiaomiSignIn: false,
   showServerSetup: false,

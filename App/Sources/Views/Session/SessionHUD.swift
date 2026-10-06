@@ -1,8 +1,7 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Heads-up display for the running session: exit strip, big timer and the action buttons.
-/// Progress and "what's next" are shown by the strip instead of sentences.
+/// The iPhone's heads-up display for the running session: the shared readout on a card.
 struct SessionHUD: View {
     let session: TrainingSession
     /// Smaller ring and tighter spacing for portrait phones.
@@ -11,124 +10,192 @@ struct SessionHUD: View {
 
     var body: some View {
         GlassCard(padding: compact ? 14 : 18) {
-            VStack(spacing: compact ? 10 : 14) {
-                ExitStrip(session: session)
-                header
-                TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                    timer(at: context.date)
-                }
-                actions
+            SessionReadout(session: session, size: compact ? .phoneCompact : .phone, onFinish: onFinish)
+        }
+    }
+}
+
+/// The training readout of both the iPhone and the Mac: the exit strip, the phase, the big ring timer, what the plan
+/// says about this moment, and the same two buttons — "Вышли" (in a break) or "Вернулись" (outside), and "Фальстарт".
+/// Only two timers: the exit counts down to its plan, the break counts down to the next exit; both count up in
+/// colour once they run over.
+struct SessionReadout: View {
+    let session: TrainingSession
+    var size: Size = .phone
+    /// Mac: the keys of the two buttons.
+    var showsKeys = false
+    var onFinish: () -> Void
+
+    struct Size {
+        var ring: CGFloat
+        var digits: CGFloat
+        var title: CGFloat
+        var info: CGFloat
+        var spacing: CGFloat
+        var button: CGFloat
+
+        /// Mac: the ring takes the height the panel has left, within these bounds (`ring` and `digits` then only
+        /// give the digits' share of the ring).
+        var flexibleRing: ClosedRange<CGFloat>? = nil
+        var largeStrip = false
+
+        static let phone = Size(ring: 176, digits: 46, title: 22, info: 15, spacing: 14, button: 52)
+        static let phoneCompact = Size(ring: 140, digits: 38, title: 22, info: 14, spacing: 10, button: 52)
+        static let mac = Size(ring: 220, digits: 60, title: 28, info: 15, spacing: 16, button: 54,
+                              flexibleRing: 150...290, largeStrip: true)
+    }
+
+    var body: some View {
+        VStack(spacing: size.spacing) {
+            ExitStrip(session: session, large: size.largeStrip)
+            header
+            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                timer(at: context.date)
             }
+            info
+            actions
         }
     }
 
     // MARK: - Pieces
 
+    /// "Выход 3" big, the attempt small and quiet next to it: the exit matters more.
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(phaseTitle)
-                .font(Theme.display(22, weight: .bold))
+                .font(Theme.display(size.title, weight: .bold))
             if session.attempt > 1, !isBreak {
-                Pill(text: String(localized: "попытка \(session.attempt)"), tint: Theme.warning)
+                Text("попытка \(session.attempt)")
+                    .font(Theme.display(size.title * 0.64, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.5))
             }
-            if let exit = session.currentExit, exit.untilStanding, !isBreak {
-                Image(systemName: "figure.stand")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.info)
-                    .help("Или до вставания")
-            }
-            Spacer()
-            if let note = session.currentExit?.note, !isBreak {
-                Text(note)
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
+            Spacer(minLength: 0)
         }
     }
 
     private func timer(at now: Date) -> some View {
         let remaining = session.remaining(at: now)
         let overdue = (remaining ?? 0) < 0
-        let tint: Color = overdue ? Theme.warning : (isBreak ? Theme.info : Theme.accent)
+        // An exit past its plan is a warning; a break past its plan is time lost, in red.
+        let overTint = isBreak ? Theme.danger : Theme.warning
+        let tint: Color = overdue ? overTint : (isBreak ? Theme.info : Theme.accent)
         let text: String
         let caption: String
         switch session.phase {
         case .ready:
-            text = DurationText.short(session.currentExit?.duration ?? 0)
+            text = DurationText.clock(session.currentExit?.duration ?? 0)
             caption = String(localized: "план")
         case .leaving:
             text = DurationText.clock(session.elapsed(at: now))
             caption = String(localized: "к двери")
-        case .away:
+        case .away, .breakTime:
             text = overdue ? "+" + DurationText.clock(-(remaining ?? 0)) : DurationText.clock(remaining ?? 0)
-            caption = String(localized: "за дверью")
-        case .breakTime(_, _, _, let next):
-            text = overdue ? "+" + DurationText.clock(-(remaining ?? 0)) : DurationText.clock(remaining ?? 0)
-            if let next, session.plan.exits.indices.contains(next) {
-                caption = String(localized: "до выхода \(session.plan.exits[next].number)")
-            } else {
-                caption = String(localized: "до конца")
-            }
+            caption = overdue ? String(localized: "сверх плана") : String(localized: "осталось")
         case .finished:
             text = "✓"
             caption = ""
         }
 
-        let ring: CGFloat = compact ? 136 : 176
-        return ZStack {
-            TimerRing(progress: session.progress(at: now), tint: tint, lineWidth: 5)
-                .frame(width: ring, height: ring)
-            VStack(spacing: 0) {
-                Text(text)
-                    .font(Theme.display(compact ? (text.count > 6 ? 30 : 38) : (text.count > 6 ? 36 : 46), weight: .bold))
-                    .monospacedDigit()
-                    .foregroundStyle(overdue ? Theme.warning : .white)
-                Text(caption)
-                    .font(.system(.caption, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.55))
+        let progress = session.progress(at: now)
+        return ring { side in
+            // The digits keep their share of the ring (46 pt in the phone's 176 pt one).
+            let digits = (side * size.digits / size.ring * (text.count > 6 ? 0.78 : 1)).rounded()
+            ZStack {
+                TimerRing(progress: progress, tint: tint, lineWidth: side > 200 ? 7 : 5)
+                VStack(spacing: 0) {
+                    Text(text)
+                        .font(Theme.display(digits, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(overdue ? overTint : .white)
+                        .contentTransition(.numericText())
+                    Text(caption)
+                        .font(.system(size: size.info - 2, weight: .semibold, design: .rounded))
+                        .foregroundStyle(overdue ? overTint.opacity(0.8) : .white.opacity(0.55))
+                }
             }
+            .frame(width: side, height: side)
         }
     }
 
+    /// The ring's square: fixed on the phone, as big as the free height allows on the Mac.
+    @ViewBuilder
+    private func ring<Content: View>(@ViewBuilder _ content: @escaping (CGFloat) -> Content) -> some View {
+        if let range = size.flexibleRing {
+            GeometryReader { geometry in
+                content(max(range.lowerBound, min(range.upperBound, min(geometry.size.width, geometry.size.height))))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            // A modest ideal height: the window's own size must not grow to fit the biggest ring.
+            .frame(minHeight: range.lowerBound, idealHeight: range.lowerBound, maxHeight: range.upperBound)
+        } else {
+            content(size.ring)
+        }
+    }
+
+    /// Only what matters now. Outside: the plan of this exit and its "или до вставания" rule. In a break: the next exit.
+    @ViewBuilder
+    private var info: some View {
+        VStack(spacing: 5) {
+            switch session.phase {
+            case .ready, .leaving, .away:
+                if let exit = session.currentExit {
+                    Text("План \(exit.durationDescription)")
+                        .foregroundStyle(.white.opacity(0.85))
+                    if exit.untilStanding {
+                        Label(session.plan.standingRule, systemImage: "figure.stand")
+                            .foregroundStyle(Theme.info)
+                    }
+                    if let note = exit.note, !note.isEmpty {
+                        Label(note, systemImage: "text.bubble")
+                    }
+                }
+            case .breakTime(_, _, _, let next):
+                if let next, session.plan.exits.indices.contains(next) {
+                    let exit = session.plan.exits[next]
+                    Text(session.attempt > 1
+                         ? String(localized: "Следующий выход \(exit.number) — \(exit.durationDescription) · попытка \(session.attempt)")
+                         : String(localized: "Следующий выход \(exit.number) — \(exit.durationDescription)"))
+                        .foregroundStyle(.white.opacity(0.85))
+                } else {
+                    Text("Выходы закончились: после перерыва тренировка завершится")
+                }
+            case .finished:
+                EmptyView()
+            }
+        }
+        .font(.system(size: size.info, weight: .medium, design: .rounded))
+        .foregroundStyle(.white.opacity(0.6))
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Always the same two buttons: the next step (Space on the Mac) and the false start (⌫).
     @ViewBuilder
     private var actions: some View {
-        switch session.phase {
-        case .ready:
-            BigButton(title: String(localized: "Начать выход"), systemImage: "figure.walk") {
-                session.startExit()
-            }
-        case .leaving:
-            BigButton(title: String(localized: "За дверью"), systemImage: "door.left.hand.closed") {
-                session.markBehindDoor()
-            }
-            HStack(spacing: 8) {
-                BigButton(title: String(localized: "Вернулись"), systemImage: "checkmark", style: .secondary, height: 44) {
+        let phase = session.phase
+        let space = showsKeys ? String(localized: "Пробел") : nil
+        HStack(spacing: 8) {
+            if case .away = phase {
+                BigButton(title: String(localized: "Вернулись"), systemImage: "checkmark", style: .success,
+                          height: size.button, key: space) {
                     session.endExit()
                 }
-                BigButton(title: String(localized: "Сброс"), systemImage: "arrow.uturn.backward", style: .destructive, height: 44) {
+            } else if phase.canGoOutside {
+                BigButton(title: String(localized: "Вышли"), systemImage: "door.left.hand.closed",
+                          height: size.button, key: space) {
+                    session.markBehindDoor()
+                }
+            } else if case .breakTime = phase {
+                BigButton(title: String(localized: "Завершить"), systemImage: "flag.checkered",
+                          height: size.button, key: space, action: onFinish)
+            }
+            if phase.canFalseStart {
+                BigButton(title: String(localized: "Фальстарт"), systemImage: "arrow.uturn.backward", style: .destructive,
+                          height: size.button, key: showsKeys ? "⌫" : nil) {
                     session.resetExit()
                 }
             }
-        case .away:
-            BigButton(title: String(localized: "Вернулись"), systemImage: "checkmark", style: .success) {
-                session.endExit()
-            }
-            BigButton(title: String(localized: "Фальстарт"), systemImage: "arrow.uturn.backward", style: .destructive, height: 44) {
-                session.resetExit()
-            }
-        case .breakTime(_, _, _, let next):
-            if let next, session.plan.exits.indices.contains(next) {
-                BigButton(title: String(localized: "Начать выход \(session.plan.exits[next].number)"), systemImage: "figure.walk") {
-                    session.startExit()
-                }
-                BigButton(title: String(localized: "Завершить"), systemImage: "flag.checkered", style: .secondary, height: 44, action: onFinish)
-            } else {
-                BigButton(title: String(localized: "Завершить"), systemImage: "flag.checkered", action: onFinish)
-            }
-        case .finished:
-            EmptyView()
         }
     }
 
@@ -155,6 +222,8 @@ struct SessionHUD: View {
 /// Shows the whole plan and the position in it without any sentence.
 struct ExitStrip: View {
     let session: TrainingSession
+    /// Mac: bigger chips for the wider panel.
+    var large = false
 
     private enum ChipState { case done, current, upcoming }
 
@@ -186,9 +255,9 @@ struct ExitStrip: View {
                 Image(systemName: "figure.stand").font(.system(size: 9, weight: .bold))
             }
         }
-        .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .font(.system(size: large ? 14 : 12, weight: .semibold, design: .rounded).monospacedDigit())
+        .padding(.horizontal, large ? 10 : 8)
+        .padding(.vertical, large ? 6 : 5)
         .background(state == .current ? Theme.accent : Theme.control, in: Capsule())
         .foregroundStyle(state == .current ? .black : .white)
         .opacity(state == .done ? 0.35 : 1)
@@ -197,7 +266,7 @@ struct ExitStrip: View {
     private func breakGap(_ duration: TimeInterval, highlighted: Bool) -> some View {
         Rectangle()
             .fill(highlighted ? Theme.info : Color.white.opacity(0.18))
-            .frame(width: max(6, min(22, duration / 20)), height: 2)
+            .frame(width: max(6, min(large ? 28 : 22, duration / 20)), height: 2)
     }
 
     private func state(for index: Int) -> ChipState {

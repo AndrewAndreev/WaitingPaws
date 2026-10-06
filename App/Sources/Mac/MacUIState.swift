@@ -15,6 +15,8 @@ final class MacUIState {
     var showXiaomiSignIn = false
     var confirmFinish = false
     var confirmAbandon = false
+    /// A copy of the running session's schedule open for edits («Изменить расписание…»).
+    var editingSessionPlan: TrainingPlan?
     /// Zoom of the camera picture in the training window (gestures and the View menu).
     let cameraZoom = ZoomState()
 
@@ -56,36 +58,47 @@ final class MacUIState {
         reviewingPlan = false
     }
 
-    /// Space: the one obvious next step of the running session.
+    /// ⌘E: the running session's schedule in the same sheet as after a paste, «Сохранить» applies it.
+    func editSessionPlan(_ model: AppModel) {
+        guard let session = model.session, !session.isFinished else { return }
+        editingSessionPlan = session.plan
+    }
+
+    func saveSessionPlan(_ model: AppModel) {
+        guard let plan = editingSessionPlan, let session = model.session else { return }
+        if session.updatePlan(plan) {
+            editingSessionPlan = nil
+        } else {
+            model.errorMessage = String(localized: "Прошедшие выходы и текущий нельзя удалить или переставить.")
+        }
+    }
+
+    /// Space: the one obvious next step of the running session — «Вышли», «Вернулись» (or «Завершить» in the last break).
     func primaryStep(_ model: AppModel) {
         guard let session = model.session else {
             startPending(model)
             return
         }
         switch session.phase {
-        case .ready: session.startExit()
-        case .leaving: session.markBehindDoor()
         case .away: session.endExit()
-        case .breakTime(_, _, _, let next):
-            if next != nil { session.startExit() } else { model.finishSession() }
+        case .breakTime(_, _, _, nil): model.finishSession()
+        case .ready, .leaving, .breakTime: session.markBehindDoor()
         case .finished: break
         }
     }
 
-    /// ⌫: false start while leaving or behind the door.
+    /// ⌫: false start — outside, or in a break when the dog went to the door before «Вышли».
     func falseStart(_ model: AppModel) {
-        guard let session = model.session, session.phase.isOutside else { return }
+        guard let session = model.session, session.phase.canFalseStart else { return }
         session.resetExit()
     }
 
     func primaryStepTitle(_ model: AppModel) -> String {
         guard let session = model.session else { return String(localized: "Начать тренировку") }
         switch session.phase {
-        case .ready: return String(localized: "Начать выход \(session.currentExit?.number ?? 1)")
-        case .leaving: return String(localized: "За дверью")
         case .away: return String(localized: "Вернулись")
-        case .breakTime(_, _, _, let next):
-            return next.map { String(localized: "Начать выход \(session.plan.exits[$0].number)") } ?? String(localized: "Завершить")
+        case .breakTime(_, _, _, nil): return String(localized: "Завершить")
+        case .ready, .leaving, .breakTime: return String(localized: "Вышли")
         case .finished: return String(localized: "Готово")
         }
     }
@@ -131,11 +144,14 @@ struct MacCommands: Commands {
             Button(String(localized: "\(ui.primaryStepTitle(model)) (Пробел)")) { ui.primaryStep(model) }
                 .disabled(model.session == nil)
             Button("Фальстарт (⌫)") { ui.falseStart(model) }
-                .disabled(!(model.session?.phase.isOutside ?? false))
+                .disabled(!(model.session?.phase.canFalseStart ?? false))
             Divider()
             Button(model.isRecordingNow ? "Остановить запись" : "Начать запись") { model.toggleRecording() }
                 .keyboardShortcut("r", modifiers: .command)
                 .disabled(!model.isRecordingNow && !model.settings.isConfigured)
+            Button("Изменить расписание…") { ui.editSessionPlan(model) }
+                .keyboardShortcut("e", modifiers: .command)
+                .disabled(model.session == nil)
             Button("Завершить тренировку…") { ui.confirmFinish = true }
                 .keyboardShortcut(".", modifiers: .command)
                 .disabled(model.session == nil)

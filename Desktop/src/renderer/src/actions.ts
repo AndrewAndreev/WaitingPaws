@@ -1,7 +1,7 @@
 import { t } from '@shared/i18n'
 import { PlanParser } from '@core/planParser'
 import { TrainingPlan } from '@core/models'
-import { TrainingSession, type TrainingSessionSnapshot } from '@core/trainingSession'
+import { SessionPhase, type TrainingSessionSnapshot } from '@core/trainingSession'
 import type { HistoryList } from '@shared/api'
 import { call, toast, ui } from './store'
 
@@ -50,7 +50,7 @@ export async function startPending(): Promise<void> {
   ui.set({ reviewingPlan: false })
 }
 
-/// Space: the one obvious next step of the running session.
+/// Space: the one obvious next step of the running session — «Вышли», «Вернулись» (or «Завершить» in the last break).
 export async function primaryStep(): Promise<void> {
   const app = ui.get().app
   const session = app?.session as TrainingSessionSnapshot | null | undefined
@@ -59,40 +59,22 @@ export async function primaryStep(): Promise<void> {
     return
   }
   const phase = session.phase
-  switch (phase.kind) {
-    case 'ready':
-      return void call('session.command', 'startExit')
-    case 'leaving':
-      return void call('session.command', 'markBehindDoor')
-    case 'away':
-      return void call('session.command', 'endExit')
-    case 'breakTime':
-      if (phase.nextExitIndex !== null) return void call('session.command', 'startExit')
-      return void call('session.command', 'finish')
-  }
+  if (phase.kind === 'away') return void call('session.command', 'endExit')
+  if (SessionPhase.canGoOutside(phase)) return void call('session.command', 'markBehindDoor')
+  if (phase.kind === 'breakTime') return void call('session.command', 'finish')
 }
 
-/// Backspace: false start while leaving or behind the door.
+/// Backspace: false start — outside, or in a break when the dog went to the door before «Вышли».
 export function falseStart(): void {
   const session = ui.get().app?.session as TrainingSessionSnapshot | null | undefined
-  if (!session || (session.phase.kind !== 'leaving' && session.phase.kind !== 'away')) return
+  if (!session || !SessionPhase.canFalseStart(session.phase)) return
   void call('session.command', 'resetExit')
 }
 
 export function primaryStepTitle(session: TrainingSessionSnapshot | null): string {
   if (!session) return t('Начать тренировку')
   const phase = session.phase
-  const exit = TrainingSession.currentExit(session)
-  switch (phase.kind) {
-    case 'ready':
-      return t('Начать выход %lld', exit?.number ?? 1)
-    case 'leaving':
-      return t('За дверью')
-    case 'away':
-      return t('Вернулись')
-    case 'breakTime':
-      return phase.nextExitIndex !== null ? t('Начать выход %lld', session.plan.exits[phase.nextExitIndex].number) : t('Завершить')
-    case 'finished':
-      return t('Готово')
-  }
+  if (phase.kind === 'finished') return t('Готово')
+  if (phase.kind === 'away') return t('Вернулись')
+  return SessionPhase.canGoOutside(phase) ? t('Вышли') : t('Завершить')
 }

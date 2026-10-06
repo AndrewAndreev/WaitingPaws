@@ -70,27 +70,55 @@ struct BigButton: View {
     var systemImage: String? = nil
     var style: BigButtonStyle = .primary
     var height: CGFloat = 52
+    /// Mac: the key that presses it ("Пробел", "⌫"), at the trailing edge.
+    var key: String? = nil
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                if let systemImage {
-                    Image(systemName: systemImage)
-                        .font(.system(size: style.isPrimary ? 17 : 15, weight: .semibold))
+            Group {
+                if let key {
+                    // The key only while the title fits next to it, centred (a narrow window drops it).
+                    ViewThatFits(in: .horizontal) {
+                        label
+                            .padding(.horizontal, 64)
+                            .frame(maxWidth: .infinity)
+                            .overlay(alignment: .trailing) { keyCap(key) }
+                        label.frame(maxWidth: .infinity)
+                    }
+                } else {
+                    label.frame(maxWidth: .infinity)
                 }
-                Text(title)
-                    .font(.system(size: style.isPrimary ? 17 : 15, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
             }
-            .frame(maxWidth: .infinity)
             .frame(height: height)
             .foregroundStyle(style.foreground)
             .background(style.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(PressableButtonStyle())
+    }
+
+    private var label: some View {
+        HStack(spacing: 8) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: style.isPrimary ? 17 : 15, weight: .semibold))
+            }
+            Text(title)
+                .font(.system(size: style.isPrimary ? 17 : 15, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+    }
+
+    private func keyCap(_ key: String) -> some View {
+        Text(key)
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .padding(.horizontal, 6)
+            .frame(minWidth: 22, minHeight: 20)
+            .background(style.foreground.opacity(0.14), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .opacity(0.75)
+            .padding(.trailing, 12)
     }
 }
 

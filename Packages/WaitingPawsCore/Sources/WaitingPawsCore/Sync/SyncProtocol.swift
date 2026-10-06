@@ -201,6 +201,8 @@ public enum SyncCommand: Codable, Equatable {
     case startSession(TrainingPlan)
     /// A schedule pasted (or edited) on the iPhone becomes the Mac's waiting one; nil clears it.
     case setPendingPlan(TrainingPlan?)
+    /// The running session's schedule, edited on the iPhone (`TrainingSession.updatePlan`).
+    case updateSessionPlan(TrainingPlan)
     case abandonSession
     case startRecording
     case stopRecording

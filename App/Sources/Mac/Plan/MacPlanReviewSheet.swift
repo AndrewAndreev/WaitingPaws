@@ -6,21 +6,28 @@ import WaitingPawsCore
 /// the trainer's text on the left as a read-only source view (recognised lines marked in the gutter),
 /// the parsed exits as an editable table on the right, the summary and the start in the bottom bar.
 /// Selecting a row highlights its lines in the text; clicking an exit line selects its row.
+/// During a training the same sheet edits the running schedule («Сохранить»): the exits already done and the
+/// current one keep their place (`fixedExits`).
 struct MacPlanReviewSheet: View {
     @Binding var plan: TrainingPlan
-    /// «Начать тренировку ⌘↩».
+    /// «Начать тренировку ⌘↩» (during a training: «Сохранить ⌘↩»).
     var onStart: () -> Void
-    /// «Готово»: keep the plan on the «Пульт» without starting.
+    /// «Готово»: keep the plan on the «Пульт» without starting (during a training: «Отменить»).
     var onDone: () -> Void
+    /// During a training: how many exits from the start are done or running (can't be removed or moved).
+    var fixedExits: Int?
 
     @Environment(AppModel.self) private var model
     @State private var selection: Set<PlannedExit.ID> = []
 
-    init(plan: Binding<TrainingPlan>, onStart: @escaping () -> Void, onDone: @escaping () -> Void) {
+    init(plan: Binding<TrainingPlan>, fixedExits: Int? = nil, onStart: @escaping () -> Void, onDone: @escaping () -> Void) {
         _plan = plan
+        self.fixedExits = fixedExits
         self.onStart = onStart
         self.onDone = onDone
     }
+
+    private var isRunning: Bool { fixedExits != nil }
 
     private var lines: [MacPlanTextLine] { MacPlanTextLine.classify(plan.rawText) }
 
@@ -34,11 +41,13 @@ struct MacPlanReviewSheet: View {
                 HSplitView {
                     PlanSourcePane(lines: lines, plan: plan, lineOfExit: lineOfExit, selection: $selection)
                         .frame(minWidth: 360, idealWidth: 410, maxWidth: 620)
-                    PlanTablePane(plan: $plan, selection: $selection, lines: lines, lineOfExit: lineOfExit)
+                    PlanTablePane(plan: $plan, selection: $selection, lines: lines, lineOfExit: lineOfExit,
+                                  fixedCount: fixedExits ?? 0)
                         .frame(minWidth: 690, maxWidth: .infinity)
                 }
             } else {
-                PlanTablePane(plan: $plan, selection: $selection, lines: lines, lineOfExit: lineOfExit)
+                PlanTablePane(plan: $plan, selection: $selection, lines: lines, lineOfExit: lineOfExit,
+                              fixedCount: fixedExits ?? 0)
             }
             bottomBar
         }
@@ -59,13 +68,15 @@ struct MacPlanReviewSheet: View {
 
     private func header(_ lines: [MacPlanTextLine]) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: plan.isValid ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+            Image(systemName: isRunning ? "pencil.circle.fill" : plan.isValid ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.system(size: 24))
-                .foregroundStyle(plan.isValid ? MacPalette.green : MacPalette.orange)
+                .foregroundStyle(isRunning ? MacPalette.blue : plan.isValid ? MacPalette.green : MacPalette.orange)
             VStack(alignment: .leading, spacing: 2) {
-                Text(plan.isValid ? "Расписание разобрано" : "В расписании нет выходов")
+                Text(isRunning ? "Расписание тренировки" : plan.isValid ? "Расписание разобрано" : "В расписании нет выходов")
                     .font(.title3.weight(.semibold))
-                Text(summary(lines))
+                Text(isRunning
+                     ? String(localized: "Тренировка идёт: изменения применятся сразу, и к идущему перерыву тоже. Прошедшие выходы и текущий нельзя удалить или переставить.")
+                     : summary(lines))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -114,15 +125,23 @@ struct MacPlanReviewSheet: View {
                         .frame(width: 300)
                 }
                 Spacer(minLength: 12)
-                Toggle("Записывать видео", isOn: $settings.autoRecord)
-                    .toggleStyle(.checkbox)
-                    .help("Включить запись с камеры вместе с тренировкой")
-                Button("Готово", action: onDone)
-                    .keyboardShortcut(.cancelAction)
-                    .controlSize(.large)
-                    .help("Оставить расписание на пульте и поправить его на таймлайне · Esc")
+                if isRunning {
+                    Button("Отменить", action: onDone)
+                        .keyboardShortcut(.cancelAction)
+                        .controlSize(.large)
+                        .help("Закрыть без изменений · Esc")
+                } else {
+                    Toggle("Записывать видео", isOn: $settings.autoRecord)
+                        .toggleStyle(.checkbox)
+                        .help("Включить запись с камеры вместе с тренировкой")
+                    Button("Готово", action: onDone)
+                        .keyboardShortcut(.cancelAction)
+                        .controlSize(.large)
+                        .help("Оставить расписание на пульте и поправить его на таймлайне · Esc")
+                }
                 Button(action: onStart) {
-                    ShortcutLabel(title: String(localized: "Начать тренировку"), symbol: "play.fill", key: "⌘↩", prominent: true)
+                    ShortcutLabel(title: isRunning ? String(localized: "Сохранить") : String(localized: "Начать тренировку"),
+                                  symbol: isRunning ? "checkmark" : "play.fill", key: "⌘↩", prominent: true)
                         .padding(.horizontal, 2)
                 }
                 .buttonStyle(.borderedProminent)
@@ -290,6 +309,8 @@ private struct PlanTablePane: View {
     @Binding var selection: Set<PlannedExit.ID>
     let lines: [MacPlanTextLine]
     let lineOfExit: [UUID: Int]
+    /// During a training: the first exits (done or running) stay where they are.
+    var fixedCount = 0
 
     @Environment(\.colorScheme) private var scheme
     @FocusState private var tableFocused: Bool
@@ -407,12 +428,18 @@ private struct PlanTablePane: View {
     private var table: some View {
         Table(of: PlannedExit.self, selection: $selection) {
             TableColumn("№") { exit in
-                Text("\(exit.number)")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                HStack(spacing: 3) {
+                    if isFixed(exit.id) {
+                        Image(systemName: "lock.fill").font(.system(size: 8)).foregroundStyle(.tertiary)
+                    }
+                    Text("\(exit.number)")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .help(isFixed(exit.id) ? String(localized: "Выход уже прошёл или идёт сейчас: его можно поправить, но не удалить и не переставить") : "")
             }
-            .width(24)
+            .width(fixedCount > 0 ? 36 : 24)
             TableColumn("Начало") { exit in
                 Text("+" + DurationText.clock(start(of: exit)))
                     .monospacedDigit()
@@ -576,8 +603,13 @@ private struct PlanTablePane: View {
 
     // MARK: Editing
 
+    private func isFixed(_ id: UUID) -> Bool {
+        plan.exits.prefix(fixedCount).contains { $0.id == id }
+    }
+
     private func add(after ids: Set<PlannedExit.ID>) {
-        let index = plan.exits.lastIndex { ids.contains($0.id) } ?? (plan.exits.count - 1)
+        // Never in between the exits already done.
+        let index = max(fixedCount - 1, plan.exits.lastIndex { ids.contains($0.id) } ?? (plan.exits.count - 1))
         let template = plan.exits.indices.contains(index) ? plan.exits[index] : nil
         let exit = PlannedExit(number: 0, duration: template?.duration ?? 30)
         withAnimation(.snappy) {
@@ -588,7 +620,8 @@ private struct PlanTablePane: View {
     }
 
     private func duplicate(_ ids: Set<PlannedExit.ID>) {
-        guard let index = plan.exits.lastIndex(where: { ids.contains($0.id) }) else { return }
+        guard let last = plan.exits.lastIndex(where: { ids.contains($0.id) }) else { return }
+        let index = max(fixedCount - 1, last)
         let copies = plan.exits.filter { ids.contains($0.id) }.map { source -> PlannedExit in
             var copy = source
             copy.id = UUID()
@@ -604,6 +637,7 @@ private struct PlanTablePane: View {
     private func deleteSelected() { delete(selection) }
 
     private func delete(_ ids: Set<PlannedExit.ID>) {
+        let ids = ids.filter { !isFixed($0) }
         // At least one exit stays: a plan without exits cannot start.
         guard !ids.isEmpty, plan.exits.count > ids.count else { return }
         let next = plan.exits.firstIndex { ids.contains($0.id) }
@@ -620,7 +654,7 @@ private struct PlanTablePane: View {
         let indices = selectedIndices
         guard let first = indices.first, let last = indices.last else { return }
         let destination = delta < 0 ? first - 1 : last + 2
-        guard destination >= 0, destination <= plan.exits.count else { return }
+        guard destination >= fixedCount, first >= fixedCount, destination <= plan.exits.count else { return }
         withAnimation(.snappy) {
             plan.exits.move(fromOffsets: IndexSet(indices), toOffset: destination)
             plan.renumber()
@@ -629,9 +663,9 @@ private struct PlanTablePane: View {
 
     private func move(_ ids: [UUID], to index: Int) {
         let offsets = IndexSet(plan.exits.indices.filter { ids.contains(plan.exits[$0].id) })
-        guard !offsets.isEmpty else { return }
+        guard !offsets.isEmpty, !ids.contains(where: isFixed) else { return }
         withAnimation(.snappy) {
-            plan.exits.move(fromOffsets: offsets, toOffset: min(max(0, index), plan.exits.count))
+            plan.exits.move(fromOffsets: offsets, toOffset: min(max(fixedCount, index), plan.exits.count))
             plan.renumber()
         }
         selection = Set(ids)

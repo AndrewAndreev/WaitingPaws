@@ -105,10 +105,10 @@ enum DemoData {
             for (index, planned) in exits.enumerated() {
                 let jitter = TimeInterval((index * 7 + Int(planned)) % 5)
                 if falseStartAt == index {
-                    session.startExit(); clock.now += 6; session.markBehindDoor()
+                    session.markBehindDoor()
                     clock.now += max(1, planned * 0.4); session.resetExit(); clock.now += 120 + jitter
                 }
-                session.startExit(); clock.now += 5 + jitter; session.markBehindDoor()
+                session.markBehindDoor()
                 clock.now += planned + 1 + jitter / 2; session.endExit()
                 clock.now += index == exits.count - 1 ? 30 : 120 + jitter
             }

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   ExitResult,
   PlannedExit,
+  SessionPhase,
   SessionLogFormatter,
   TrainingPlan,
   TrainingRecord,
@@ -36,10 +37,12 @@ describe('TrainingSession', () => {
   it('walks the happy path', () => {
     const session = makeSession()
     expect(session.phase).toEqual({ kind: 'ready', exitIndex: 0 })
+    expect(SessionPhase.canGoOutside(session.phase)).toBe(true)
 
-    session.startExit()
-    advance(3)
+    // "Вышли" goes straight outside: no walk to the door in between.
     session.markBehindDoor()
+    expect(session.phase).toEqual({ kind: 'away', exitIndex: 0, since: now, leftAt: now })
+    expect(session.events.at(-1)).toMatchObject({ kind: 'behindDoor', detail: 'план 5 с' })
     advance(2)
     expect(session.remaining(now)).toBe(3)
     advance(5)
@@ -48,7 +51,7 @@ describe('TrainingSession', () => {
 
     expect(session.results).toHaveLength(1)
     expect(ExitResult.awayDuration(session.results[0])).toBe(7)
-    expect(ExitResult.totalDuration(session.results[0])).toBe(10)
+    expect(ExitResult.totalDuration(session.results[0])).toBe(7)
     expect(session.results[0].falseStart).toBe(false)
     const phase = session.phase
     if (phase.kind !== 'breakTime') throw new Error('expected break')
@@ -56,15 +59,16 @@ describe('TrainingSession', () => {
     expect(phase.duration).toBe(120)
     expect(phase.nextExitIndex).toBe(1)
 
-    // Break runs out → ready for exit 2.
-    advance(121)
+    // The break runs past its plan until "Вышли": the time left goes negative.
+    advance(131)
     session.tick(now)
-    expect(session.phase).toEqual({ kind: 'ready', exitIndex: 1 })
+    expect(session.phase.kind).toBe('breakTime')
+    expect(session.remaining(now)).toBe(-11)
 
-    advance(10)
-    session.startExit()
-    expect(session.results[0].actualBreak).toBe(131)
     session.markBehindDoor()
+    expect(session.results[0].actualBreak).toBe(131)
+    expect(session.events.find((e) => e.kind === 'breakEnded')?.detail).toBe('дольше плана, 2:11 из 2 мин')
+    expect(session.phase).toEqual({ kind: 'away', exitIndex: 1, since: now, leftAt: now })
     advance(20)
     session.endExit()
 
@@ -72,6 +76,8 @@ describe('TrainingSession', () => {
     if (last.kind !== 'breakTime') throw new Error('expected last break')
     expect(last.duration).toBe(300)
     expect(last.nextExitIndex).toBeNull()
+    expect(SessionPhase.canGoOutside(last)).toBe(false)
+    expect(SessionPhase.canFalseStart(last)).toBe(false)
 
     advance(300)
     session.tick(now)
@@ -80,9 +86,139 @@ describe('TrainingSession', () => {
     expect(session.events.at(-1)?.kind).toBe('sessionFinished')
   })
 
-  it('repeats the exit after a false start', () => {
+  it('logs an early break end', () => {
+    const session = makeSession()
+    session.markBehindDoor(); advance(5); session.endExit()
+    advance(90)
+    session.markBehindDoor()
+    expect(session.events.find((e) => e.kind === 'breakEnded')?.detail).toBe('досрочно, 1:30 из 2 мин')
+    expect(session.results[0].actualBreak).toBe(90)
+  })
+
+  // "Фальстарт" in a break: the dog went to the door (or there were sounds on the way out) before "Вышли".
+  it('starts the break over after a false start in it', () => {
+    const session = makeSession()
+    session.markBehindDoor(); advance(5); session.endExit()
+    advance(100)
+    expect(SessionPhase.canFalseStart(session.phase)).toBe(true)
+    session.resetExit()
+
+    expect(session.results).toHaveLength(2)
+    expect(session.results[0].actualBreak).toBe(100)
+    const failed = session.results[1]
+    expect(failed).toMatchObject({ number: 2, falseStart: true, leftAt: null, startedAt: now })
+    expect(session.attempt).toBe(2)
+    expect(session.events.find((e) => e.kind === 'falseStart')?.detail).toBe('до двери')
+    // A new break (the one after exit 2), then exit 2 again.
+    expect(session.phase).toEqual({ kind: 'breakTime', afterExitIndex: 1, since: now, duration: 300, nextExitIndex: 1 })
+
+    advance(300)
+    session.markBehindDoor(); advance(30); session.endExit(); session.finish()
+    const lines = SessionLogFormatter.text(session.makeRecord(null))
+      .split('\n')
+      .filter((line) => line.includes(' выход — '))
+    expect(lines).toEqual([
+      '1 выход — 5 с: за дверью 0:05 ✅ · перерыв 1:40 (план 2 мин)',
+      '2 выход — 30 с или до вставания: фальстарт до двери ❌ · перерыв 5:00',
+      '2 выход — 30 с или до вставания, попытка 2: за дверью 0:30 ✅',
+    ])
+  })
+
+  it('takes a false start before the first exit', () => {
+    const session = makeSession()
+    advance(20)
+    session.resetExit()
+    expect(session.results).toHaveLength(1)
+    expect(session.results[0].falseStart).toBe(true)
+    expect(session.attempt).toBe(2)
+    expect(session.phase).toEqual({ kind: 'breakTime', afterExitIndex: 0, since: now, duration: 120, nextExitIndex: 0 })
+  })
+
+  // An older linked iPhone still sends "Начать выход" and then "За дверью".
+  it('still walks to the door for an older iPhone', () => {
     const session = makeSession()
     session.startExit()
+    expect(session.phase).toEqual({ kind: 'leaving', exitIndex: 0, since: now })
+    advance(3)
+    session.markBehindDoor()
+    advance(5)
+    session.endExit()
+    expect(ExitResult.awayDuration(session.results[0])).toBe(5)
+    expect(ExitResult.totalDuration(session.results[0])).toBe(8)
+  })
+
+  // The common break was read wrong and is noticed in the first break: every break gets longer, this one too.
+  it('takes an edited schedule during a break', () => {
+    const session = makeSession()
+    session.markBehindDoor(); advance(5); session.endExit()
+    advance(60)
+    const plan = session.plan
+    const edited = { ...plan, defaultBreak: 180, exits: plan.exits.map((exit, i) => (i === 1 ? { ...exit, duration: 45 } : exit)) }
+    expect(session.updatePlan(edited)).toBe(true)
+    expect(session.phase).toEqual({ kind: 'breakTime', afterExitIndex: 0, since: now - 60_000, duration: 180, nextExitIndex: 1 })
+    expect(session.remaining(now)).toBe(120)
+    expect(session.results[0].plannedBreak).toBe(180)
+    expect(session.events.at(-1)).toMatchObject({
+      kind: 'note',
+      detail: 'Расписание изменено: перерывы 2 мин → 3 мин; выход 2: 30 с или до вставания → 45 с или до вставания',
+    })
+    session.markBehindDoor()
+    advance(10)
+    expect(session.remaining(now)).toBe(35)
+  })
+
+  it('keeps the exits already done when the schedule is edited', () => {
+    const session = makeSession()
+    session.markBehindDoor(); advance(5); session.endExit()
+    advance(120); session.markBehindDoor()
+    expect(session.fixedExitCount).toBe(2)
+    const plan = session.plan
+    expect(session.updatePlan({ ...plan, exits: plan.exits.slice(1) }), 'exit 1 is done').toBe(false)
+    expect(session.updatePlan({ ...plan, exits: [plan.exits[1], plan.exits[0]] })).toBe(false)
+    expect(session.plan.exits).toHaveLength(2)
+
+    // One more exit after the last: the cool-down becomes a break before it.
+    expect(session.updatePlan({ ...plan, exits: [...plan.exits, PlannedExit.make({ number: 3, duration: 10 })] })).toBe(true)
+    advance(30); session.endExit()
+    expect(session.phase).toMatchObject({ kind: 'breakTime', duration: 300, nextExitIndex: 2 })
+    expect(session.events.find((e) => e.kind === 'note')?.detail).toBe('Расписание изменено: добавлен выход 3 — 10 с')
+  })
+
+  it('ends with the break when the next exit is removed', () => {
+    const session = makeSession()
+    session.markBehindDoor(); advance(5); session.endExit()
+    const plan = session.plan
+    expect(session.updatePlan({ ...plan, exits: plan.exits.slice(0, 1) })).toBe(true)
+    expect(session.phase).toMatchObject({ kind: 'breakTime', nextExitIndex: null })
+  })
+
+  it('a mirror sends the edited schedule to the owner', () => {
+    const owner = makeSession()
+    const mirror = TrainingSession.fromSnapshot(owner.snapshot, { clock: () => now })
+    let sent: TrainingPlan | null = null
+    mirror.planHandler = (plan) => {
+      sent = plan
+    }
+    expect(mirror.updatePlan({ ...mirror.plan, defaultBreak: 90 })).toBe(true)
+    expect(mirror.plan.defaultBreak, 'the owner applies it').toBe(120)
+    owner.updatePlan(sent!)
+    mirror.restore(owner.snapshot)
+    expect(mirror.plan.defaultBreak).toBe(90)
+  })
+
+  it('reads the standing rule from the notes', () => {
+    const plan = TrainingPlan.make({ exits: [PlannedExit.make({ number: 1, duration: 30, untilStanding: true })] })
+    expect(TrainingPlan.standingDelay(plan)).toBeNull()
+    expect(TrainingPlan.standingRule(plan)).toBe('собака встала — сразу возвращайтесь')
+    const withNote = { ...plan, notes: ['Все перерывы 2 минуты', '🟡 Если встала - входим через 15 секунд от вставания'] }
+    expect(TrainingPlan.standingDelay(withNote)).toBe(15)
+    expect(TrainingPlan.standingRule(withNote)).toBe('собака встала — возвращайтесь через 15 с')
+    expect(TrainingPlan.standingDelay({ ...plan, notes: ['If she stands up in the first 10 seconds, come back in 20 seconds'] })).toBe(20)
+    expect(TrainingPlan.standingDelay({ ...plan, notes: ['Вернуться можно минимум через 20-30 минут после окончания тренировки'] })).toBeNull()
+  })
+
+  it('repeats the exit after a false start', () => {
+    const session = makeSession()
     session.markBehindDoor()
     advance(1)
     session.resetExit()
@@ -94,8 +230,8 @@ describe('TrainingSession', () => {
     if (phase.kind !== 'breakTime') throw new Error('expected break')
     expect(phase.nextExitIndex).toBe(0)
 
-    session.startExit() // early, before the break ends
-    expect(session.phase).toEqual({ kind: 'leaving', exitIndex: 0, since: now })
+    session.markBehindDoor() // early, before the break ends
+    expect(session.phase).toEqual({ kind: 'away', exitIndex: 0, since: now, leftAt: now })
     expect(session.events.filter((e) => e.kind === 'breakEnded')).toHaveLength(1)
     session.endExit()
     expect(session.results[1].attempt).toBe(2)
@@ -105,7 +241,6 @@ describe('TrainingSession', () => {
 
   it('closes the exit when finished while outside', () => {
     const session = makeSession()
-    session.startExit()
     session.markBehindDoor()
     advance(4)
     session.finish()
@@ -117,7 +252,7 @@ describe('TrainingSession', () => {
 
   it('log formatter includes everything', () => {
     const session = makeSession()
-    session.startExit(); session.markBehindDoor(); advance(5); session.endExit(); session.finish()
+    session.markBehindDoor(); advance(5); session.endExit(); session.finish()
     const record = session.makeRecord('video.mp4')
     const text = SessionLogFormatter.text(record)
     expect(text, 'the file name is no use to the trainer').not.toContain('video.mp4')
@@ -127,10 +262,10 @@ describe('TrainingSession', () => {
 
   it('log formatter writes one line per attempt', () => {
     const session = makeSession()
-    session.startExit(); session.markBehindDoor(); advance(2); session.resetExit()
-    advance(60); session.startExit(); session.markBehindDoor(); advance(5); session.endExit()
+    session.markBehindDoor(); advance(2); session.resetExit()
+    advance(60); session.markBehindDoor(); advance(5); session.endExit()
     advance(120); session.tick()
-    session.startExit(); session.markBehindDoor(); advance(30); session.endExit(); session.finish()
+    session.markBehindDoor(); advance(30); session.endExit(); session.finish()
     const lines = SessionLogFormatter.text(session.makeRecord(null))
       .split('\n')
       .filter((line) => line.includes(' выход — '))
@@ -154,22 +289,21 @@ describe('TrainingSession store', () => {
     const unsubscribe = session.subscribe((snapshot) => seen.push(snapshot))
     const before = session.snapshot
 
-    session.startExit()
+    session.markBehindDoor() // phase + log: one notification
     expect(seen).toHaveLength(1)
     expect(seen[0]).toBe(session.snapshot)
     expect(before.phase).toEqual({ kind: 'ready', exitIndex: 0 })
     expect(before.events).toHaveLength(1)
 
-    session.markBehindDoor() // one notification
     now += 6000
     session.endExit() // results + log + break: one notification
-    expect(seen).toHaveLength(3)
-    session.markBehindDoor() // not leaving: nothing changes
-    expect(seen).toHaveLength(3)
+    expect(seen).toHaveLength(2)
+    session.endExit() // not outside: nothing changes
+    expect(seen).toHaveLength(2)
 
     unsubscribe()
     session.finish()
-    expect(seen).toHaveLength(3)
+    expect(seen).toHaveLength(2)
     expect(session.isFinished).toBe(true)
   })
 
@@ -177,7 +311,6 @@ describe('TrainingSession store', () => {
     let now = 0
     const plan = TrainingPlan.make({ exits: [PlannedExit.make({ number: 1, duration: 10 })] })
     const session = new TrainingSession(plan, { clock: () => now })
-    session.startExit()
     now += 1000
     session.markBehindDoor()
     const snapshot = session.snapshot
@@ -196,22 +329,22 @@ describe('TrainingSession store', () => {
     })
     const session = new TrainingSession(plan, { clock: () => now })
     session.noteRecording(true, 'a.mp4')
-    session.startExit(); session.markBehindDoor(); now += 5000; session.endExit()
+    session.markBehindDoor(); now += 5000; session.endExit()
     now += 30_000
     session.addNote('Лаяла')
-    session.startExit()
+    session.markBehindDoor()
     const kinds = session.events.map((e) => e.kind)
     expect(kinds).toEqual([
-      'sessionStarted', 'recordingStarted', 'exitStarted', 'behindDoor', 'exitEnded', 'breakStarted', 'note',
-      'breakEnded', 'exitStarted',
+      'sessionStarted', 'recordingStarted', 'behindDoor', 'exitEnded', 'breakStarted', 'note', 'breakEnded',
+      'behindDoor',
     ])
     expect(session.events[1].detail).toBe('a.mp4')
     expect(session.events[2].detail).toBe('план 5 с')
-    expect(session.events[4].detail).toBe('за дверью 0:05, всего 0:05')
-    expect(session.events[5].detail).toBe('план 2 мин')
-    expect(session.events[6]).toMatchObject({ exitNumber: 2, detail: 'Лаяла' })
-    expect(session.events[7].detail).toBe('досрочно, 0:30 из 2 мин')
-    expect(session.events[8]).toMatchObject({ exitNumber: 2, attempt: 1 })
+    expect(session.events[3].detail).toBe('за дверью 0:05, всего 0:05')
+    expect(session.events[4].detail).toBe('план 2 мин')
+    expect(session.events[5]).toMatchObject({ exitNumber: 2, detail: 'Лаяла' })
+    expect(session.events[6].detail).toBe('досрочно, 0:30 из 2 мин')
+    expect(session.events[7]).toMatchObject({ exitNumber: 2, attempt: 1 })
   })
 
   it('writes the ARCHITECTURE.md log example header and lines', () => {

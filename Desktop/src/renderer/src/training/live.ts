@@ -6,7 +6,7 @@ import { SessionEventKind, type ExitResult } from '@core/sessionLog'
 
 /// Everything the training page shows, derived from a session snapshot at a moment (the Mac app's
 /// `LiveSessionModel`). Recomputed twice a second.
-export type Tint = 'outside' | 'break' | 'over' | 'done' | 'neutral'
+export type Tint = 'outside' | 'break' | 'over' | 'break-over' | 'done' | 'neutral'
 
 export class LiveSession {
   constructor(
@@ -61,14 +61,15 @@ export class LiveSession {
     return TrainingSession.falseStartsCount(this.session)
   }
 
+  /// An exit past its plan is a warning; a break past its plan is time lost, in red.
   get tint(): Tint {
-    if (this.overdue) return 'over'
+    if (this.overdue) return this.isBreak ? 'break-over' : 'over'
     if (this.isBreak) return 'break'
     if (this.isFinished) return 'done'
     return 'outside'
   }
 
-  /// Big readout: countdown, or elapsed time on the way to the door.
+  /// Big readout: countdown (counting up past the plan with a "+"), or elapsed time on the way to the door.
   get timerText(): string {
     switch (this.phase.kind) {
       case 'ready':
@@ -86,71 +87,78 @@ export class LiveSession {
   }
 
   get timerCaption(): string {
-    const phase = this.phase
-    switch (phase.kind) {
+    switch (this.phase.kind) {
       case 'ready':
         return t('план')
       case 'leaving':
         return t('к двери')
       case 'away':
-        return this.overdue ? t('сверх плана') : t('до конца выхода')
       case 'breakTime':
-        return phase.nextExitIndex !== null ? t('до выхода %lld', this.plan.exits[phase.nextExitIndex].number) : t('до конца')
+        return this.overdue ? t('сверх плана') : t('осталось')
       case 'finished':
         return t('всего')
     }
   }
 
-  /// "За дверью", "Идём к двери"…
-  get phaseName(): string {
-    switch (this.phase.kind) {
-      case 'ready':
-        return t('Готовы')
-      case 'leaving':
-        return t('Идём к двери')
-      case 'away':
-        return t('За дверью')
-      case 'breakTime':
-        return t('Перерыв')
-      case 'finished':
-        return t('Готово')
-    }
-  }
-
-  get subtitle(): string {
+  get title(): string {
     const phase = this.phase
     switch (phase.kind) {
       case 'ready':
       case 'leaving':
+      case 'away':
+        return t('Выход %lld', this.currentExit?.number ?? 0)
+      case 'breakTime':
+        return phase.nextExitIndex === null ? t('Последний перерыв') : t('Перерыв')
+      case 'finished':
+        return t('Тренировка завершена')
+    }
+  }
+
+  /// "за дверью", "сверх плана"…: what the timer is doing, next to the title.
+  get phaseName(): string {
+    if (this.overdue) return t('сверх плана')
+    switch (this.phase.kind) {
+      case 'ready':
+        return t('перед выходом')
+      case 'leaving':
+        return t('к двери')
+      case 'away':
+        return t('за дверью')
+      case 'breakTime':
+        return t('осталось')
+      case 'finished':
+        return t('готово')
+    }
+  }
+
+  /// "30 с или до вставания" of the current exit.
+  get exitDescription(): string {
+    return this.currentExit ? PlannedExit.durationDescription(this.currentExit) : ''
+  }
+
+  /// Outside: the plan of this exit. In a break: the next exit — the same lines as the Mac and the iPhone.
+  get subtitle(): string {
+    const phase = this.phase
+    const attempt = this.session.attempt
+    switch (phase.kind) {
+      case 'ready':
+      case 'leaving':
       case 'away': {
-        const parts = [this.currentExit ? PlannedExit.durationDescription(this.currentExit) : '']
-        if (this.session.attempt > 1) parts.push(t('попытка %lld', this.session.attempt))
+        const parts = [t('План %@', this.exitDescription)]
+        if (attempt > 1) parts.push(t('попытка %lld', attempt))
         return parts.join(' · ')
       }
       case 'breakTime':
         if (phase.nextExitIndex !== null) {
           const next = this.plan.exits[phase.nextExitIndex]
-          return t('%@ · дальше выход %lld — %@', DurationText.short(phase.duration), next.number, PlannedExit.durationDescription(next))
+          const description = PlannedExit.durationDescription(next)
+          return attempt > 1
+            ? t('Следующий выход %lld — %@ · попытка %lld', next.number, description, attempt)
+            : t('Следующий выход %lld — %@', next.number, description)
         }
-        return DurationText.short(phase.duration)
+        return t('Выходы закончились: после перерыва тренировка завершится')
       case 'finished':
         return t('выходов %lld из %lld · фальстартов %lld', this.completedExits, this.plan.exits.length, this.falseStarts)
-    }
-  }
-
-  /// The line under the big digits.
-  get detail(): string {
-    const plan = this.currentExit ? PlannedExit.durationDescription(this.currentExit) : ''
-    switch (this.phase.kind) {
-      case 'ready':
-      case 'breakTime':
-        return `${this.timerCaption} · ${this.subtitle}`
-      case 'leaving':
-        return t('идём к двери · план %@', plan)
-      case 'away':
-        return t('за дверью %@ · план %@', DurationText.clock(this.elapsed), plan)
-      case 'finished':
-        return this.subtitle
     }
   }
 

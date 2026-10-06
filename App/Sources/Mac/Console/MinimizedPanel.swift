@@ -111,7 +111,7 @@ private final class FirstClickHostingView<Content: View>: NSHostingView<Content>
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
-/// The capsule: paw, REC, phase + timer, the next step, false start, «Развернуть».
+/// The capsule: paw, REC, phase + timer, the same two buttons as the window, «Развернуть».
 private struct MinimizedStrip: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui
@@ -158,7 +158,7 @@ private struct MinimizedStrip: View {
                             }
                             .buttonStyle(HUDButtonStyle(tint: primary.tint ?? MacPalette.pink, height: 36))
                         }
-                        if session.phase.isOutside {
+                        if session.phase.canFalseStart {
                             Button { ui.falseStart(model) } label: { Label("Фальстарт", systemImage: "arrow.uturn.backward") }
                                 .buttonStyle(HUDButtonStyle(height: 36))
                         }

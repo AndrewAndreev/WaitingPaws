@@ -91,15 +91,11 @@ export function demoHistory(): TrainingRecord[] {
     exits.forEach((planned, index) => {
       const jitter = (index * 7 + planned) % 5
       if (falseStartAt === index) {
-        session.startExit()
-        now += 6000
         session.markBehindDoor()
         now += Math.max(1, planned * 0.4) * 1000
         session.resetExit()
         now += (120 + jitter) * 1000
       }
-      session.startExit()
-      now += (5 + jitter) * 1000
       session.markBehindDoor()
       now += (planned + 1 + jitter / 2) * 1000
       session.endExit()
@@ -114,15 +110,12 @@ export function demoHistory(): TrainingRecord[] {
 /// after the last of them, `breakLeft` seconds before it ends.
 export function demoReplay(plan: TrainingPlan, done: number, breakLeft = 40): TrainingSession {
   const exits = Math.min(done, plan.exits.length)
-  const walk = 6
   const linger = 3
   let total = 0
-  for (let i = 0; i < exits; i++) total += walk + plan.exits[i].duration + linger + TrainingPlan.breakAfter(plan, i)
+  for (let i = 0; i < exits; i++) total += plan.exits[i].duration + linger + TrainingPlan.breakAfter(plan, i)
   let offset = -(total - breakLeft) * 1000
   const session = new TrainingSession(plan, { clock: () => Date.now() + offset })
   for (let i = 0; i < exits; i++) {
-    session.startExit()
-    offset += walk * 1000
     session.markBehindDoor()
     offset += (plan.exits[i].duration + linger) * 1000
     session.endExit()

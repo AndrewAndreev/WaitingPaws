@@ -12,6 +12,7 @@ import {
   encodeDate,
   expectString,
   newUUID,
+  sameUUID,
 } from './codable'
 import { DurationText } from './durationText'
 import { formatDate, tr } from './localization'
@@ -133,6 +134,83 @@ export const TrainingPlan = {
 
   isValid(plan: TrainingPlan): boolean {
     return plan.exits.length > 0
+  },
+
+  /**
+   * How long after the dog stands up to come back on an "или до вставания" exit, from a schedule note such as
+   * "🟡 Если встала - входим через 15 секунд от вставания". `null`: come back right away.
+   */
+  standingDelay(plan: TrainingPlan): number | null {
+    for (const note of plan.notes) {
+      const lower = note.toLowerCase()
+      if (!lower.includes('встал') && !lower.includes('встав') && !lower.includes('stand')) continue
+      // The time after the last "через" / "in" ("входим через 15 секунд", "come back in 15 seconds"), else the line's.
+      let tail = note
+      const ru = lower.lastIndexOf('через ')
+      const en = lower.lastIndexOf(' in ')
+      if (ru >= 0) tail = note.slice(ru + 'через '.length)
+      else if (en >= 0) tail = note.slice(en + ' in '.length)
+      const delay = DurationText.sumOfUnits(tail)
+      if (delay !== null && delay > 0) return delay
+    }
+    return null
+  },
+
+  /**
+   * What an edit changed, for the session log: "перерывы 2 мин → 3 мин", "выход 4: 45 с → 1 мин",
+   * "перерыв после выхода 5: 2 мин → 5 мин", "добавлен выход 6 — 30 с", "убран выход 7". Exits are matched by id.
+   */
+  changes(plan: TrainingPlan, old: TrainingPlan): string[] {
+    const changes: string[] = []
+    const short = DurationText.short
+    if (plan.defaultBreak !== old.defaultBreak) {
+      changes.push(
+        tr(`перерывы ${short(old.defaultBreak)} → ${short(plan.defaultBreak)}`, `breaks ${short(old.defaultBreak)} → ${short(plan.defaultBreak)}`),
+      )
+    }
+    plan.exits.forEach((exit, index) => {
+      const oldIndex = old.exits.findIndex((other) => sameUUID(other.id, exit.id))
+      const description = PlannedExit.durationDescription(exit)
+      if (oldIndex < 0) {
+        changes.push(tr(`добавлен выход ${exit.number} — ${description}`, `exit ${exit.number} added — ${description}`))
+        return
+      }
+      const was = old.exits[oldIndex]
+      if (was.duration !== exit.duration || was.untilStanding !== exit.untilStanding) {
+        const before = PlannedExit.durationDescription(was)
+        changes.push(tr(`выход ${exit.number}: ${before} → ${description}`, `exit ${exit.number}: ${before} → ${description}`))
+      }
+      // Own breaks only: a new common break is already said above.
+      const before = TrainingPlan.breakAfter(old, oldIndex)
+      const after = TrainingPlan.breakAfter(plan, index)
+      if ((was.breakAfter !== null || exit.breakAfter !== null) && before !== after && index < plan.exits.length - 1) {
+        changes.push(
+          tr(
+            `перерыв после выхода ${exit.number}: ${short(before)} → ${short(after)}`,
+            `break after exit ${exit.number}: ${short(before)} → ${short(after)}`,
+          ),
+        )
+      }
+    })
+    for (const exit of old.exits) {
+      if (!plan.exits.some((other) => sameUUID(other.id, exit.id))) {
+        changes.push(tr(`убран выход ${exit.number}`, `exit ${exit.number} removed`))
+      }
+    }
+    return changes
+  },
+
+  /**
+   * What to do on an "или до вставания" exit: "собака встала — сразу возвращайтесь" or, with a note about it,
+   * "собака встала — возвращайтесь через 15 с".
+   */
+  standingRule(plan: TrainingPlan): string {
+    const delay = TrainingPlan.standingDelay(plan)
+    if (delay !== null) {
+      const text = DurationText.short(delay)
+      return tr(`собака встала — возвращайтесь через ${text}`, `the dog stands up — come back in ${text}`)
+    }
+    return tr('собака встала — сразу возвращайтесь', 'the dog stands up — come back right away')
   },
 
   /** A copy with exit numbers rewritten to 1…n in order (`renumber()`). */

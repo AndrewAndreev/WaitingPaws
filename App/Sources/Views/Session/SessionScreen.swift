@@ -16,6 +16,8 @@ struct SessionScreen: View {
     @State private var reloadToken = 0
     /// The schedule waiting on the linked Mac, opened for edits.
     @State private var editingPending: TrainingPlan?
+    /// The running training's schedule, opened for edits.
+    @State private var editingSessionPlan: TrainingPlan?
 
     var body: some View {
         @Bindable var model = model
@@ -77,7 +79,8 @@ struct SessionScreen: View {
         }
         .onAppear {
             #if DEBUG
-            // `--demo-screen plan|camera|camera-setup|settings|history` opens a sheet right away (UI checks without tapping).
+            // `--demo-screen plan|camera|camera-setup|settings|history|session-plan` opens a sheet right away (UI checks
+            // without tapping).
             if let index = CommandLine.arguments.firstIndex(of: "--demo-screen"), index + 1 < CommandLine.arguments.count {
                 switch CommandLine.arguments[index + 1] {
                 case "plan": showPlanInput = true
@@ -89,6 +92,8 @@ struct SessionScreen: View {
                 case "camera-setup": showCameraSetup = true
                 case "settings", "settings-sync": showSettings = true
                 case "history", "history-last": showHistory = true
+                case "session-plan":
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { editingSessionPlan = model.session?.plan }
                 default: break
                 }
             }
@@ -109,6 +114,22 @@ struct SessionScreen: View {
                 }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { editingPending = nil } }
+                }
+            }
+            .environment(model)
+            .sheetFrame()
+        }
+        .sheet(item: $editingSessionPlan) { plan in
+            NavigationStack {
+                PlanEditorView(plan: plan, fixedExits: model.session?.fixedExitCount ?? 0) { final in
+                    if model.session?.updatePlan(final) == true {
+                        editingSessionPlan = nil
+                    } else {
+                        model.errorMessage = String(localized: "Прошедшие выходы и текущий нельзя удалить или переставить.")
+                    }
+                }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { editingSessionPlan = nil } }
                 }
             }
             .environment(model)
@@ -236,6 +257,9 @@ struct SessionScreen: View {
             LinkPill()
             if model.session != nil {
                 Menu {
+                    Button("Изменить расписание", systemImage: "slider.horizontal.3") {
+                        if let session = model.session, !session.isFinished { editingSessionPlan = session.plan }
+                    }
                     Button("Завершить тренировку", systemImage: "flag.checkered") { confirmFinish = true }
                     Button("Отменить без сохранения", systemImage: "xmark.circle", role: .destructive) { confirmAbandon = true }
                 } label: {

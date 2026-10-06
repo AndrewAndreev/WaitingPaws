@@ -91,6 +91,7 @@ export function createBrowserBridge(): PlatformBridge {
       else session[command]()
       complete()
     },
+    'session.updatePlan': (plan) => session?.updatePlan(plan as TrainingPlan) ?? false,
     'session.abandon': () => {
       session = null
       if (tick) window.clearInterval(tick)

@@ -49,6 +49,7 @@ export type SyncHostCommand =
   | { kind: 'session'; command: 'startExit' | 'markBehindDoor' | 'endExit' | 'resetExit' | 'finish' }
   | { kind: 'startSession'; plan: TrainingPlan }
   | { kind: 'setPendingPlan'; plan: TrainingPlan | null }
+  | { kind: 'updateSessionPlan'; plan: TrainingPlan }
   | { kind: 'abandonSession' }
   | { kind: 'startRecording' }
   | { kind: 'stopRecording' }
@@ -673,6 +674,8 @@ export function hostCommand(command: SyncCommand): SyncHostCommand {
       return { kind: 'startSession', plan: command.plan }
     case 'setPendingPlan':
       return { kind: 'setPendingPlan', plan: command.plan }
+    case 'updateSessionPlan':
+      return { kind: 'updateSessionPlan', plan: command.plan }
     case 'abandonSession':
     case 'startRecording':
     case 'stopRecording':

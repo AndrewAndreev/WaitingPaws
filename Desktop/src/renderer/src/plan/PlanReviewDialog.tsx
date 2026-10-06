@@ -3,10 +3,11 @@ import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { TrainingPlan } from '@core/models'
 import { PlanParser } from '@core/planParser'
+import { TrainingSession, type TrainingSessionSnapshot } from '@core/trainingSession'
 import { startPending } from '../actions'
 import { isConfigured } from '../model'
-import { call, ui, useApp } from '../store'
-import { CalendarIcon, ChevronDownIcon, PlayFilledIcon, RuleIcon, SuccessFilledIcon, WarningFilledIcon } from '../ui/icons'
+import { call, toast, ui, useApp } from '../store'
+import { CalendarIcon, CheckIcon, ChevronDownIcon, EditIcon, PlayFilledIcon, RuleIcon, SuccessFilledIcon, WarningFilledIcon } from '../ui/icons'
 import { Button, Checkbox, Dialog, Tooltip } from '../ui/kit'
 import { DurationPopover } from './DurationEditor'
 import { PlanExitTable, type ExitTableCommands } from './PlanExitTable'
@@ -35,12 +36,54 @@ import '../styles/plan.css'
 /// its lines in the text; clicking an exit line selects its row. Every edit goes straight to the waiting plan.
 export function PlanReviewDialog() {
   const { plan, setPlan } = usePendingPlan()
+  if (!plan) return null
+  const start = async () => {
+    if (!TrainingPlan.isValid(plan)) return
+    await flushPendingPlan(plan)
+    await startPending()
+  }
+  return <PlanDialog plan={plan} setPlan={setPlan} onStart={() => void start()} onDone={() => ui.set({ reviewingPlan: false })} />
+}
+
+/// The running training's schedule in the same dialog («Изменить расписание»): edits stay in a draft until
+/// «Сохранить» (`session.updatePlan`). The exits already done and the current one keep their place — an edit that
+/// drops or moves them is not taken.
+export function SessionPlanDialog() {
+  const session = useApp().session as TrainingSessionSnapshot | null
+  const [draft, setDraft] = useState<TrainingPlan | null>(() => (session?.plan as TrainingPlan | undefined) ?? null)
+  if (!session || !draft) return null
+  const close = () => ui.set({ editingSessionPlan: false })
+  const setPlan = (next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) => {
+    const value = typeof next === 'function' ? next(draft) : next
+    if (TrainingSession.canUpdatePlan(session, value)) setDraft(value)
+  }
+  const save = async () => {
+    if (await call('session.updatePlan', draft)) close()
+    else toast({ title: t('Прошедшие выходы и текущий нельзя удалить или переставить.'), kind: 'warning' })
+  }
+  return <PlanDialog plan={draft} setPlan={setPlan} fixedExits={TrainingSession.fixedExitCount(session)} onStart={() => void save()} onDone={close} />
+}
+
+function PlanDialog({
+  plan,
+  setPlan,
+  fixedExits,
+  onStart,
+  onDone,
+}: {
+  plan: TrainingPlan
+  setPlan: (next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) => void
+  /// During a training: how many exits from the start are done or running.
+  fixedExits?: number
+  onStart: () => void
+  onDone: () => void
+}) {
+  const running = fixedExits !== undefined
   const [rawSelection, setSelection] = useState<string[]>([])
   const [sourceWidth, setSourceWidth] = useState<number | null>(null)
   const splitRef = useRef<HTMLDivElement>(null)
   const rawText = plan?.rawText ?? ''
   const lines = useMemo(() => classifyLines(rawText), [rawText])
-  if (!plan) return null
 
   const lineOfExit = exitLines(plan, lines)
   const ids = new Set(plan.exits.map((exit) => exit.id))
@@ -49,11 +92,9 @@ export function PlanReviewDialog() {
   const hasSource = lines.some((line) => line.kind.kind !== 'blank')
   const rule = lines.find((line) => line.kind.kind === 'rule')
 
-  const done = () => ui.set({ reviewingPlan: false })
-  const start = async () => {
-    if (!valid) return
-    await flushPendingPlan(plan)
-    await startPending()
+  const done = onDone
+  const start = () => {
+    if (valid) onStart()
   }
 
   const commands: ExitTableCommands = {
@@ -92,7 +133,7 @@ export function PlanReviewDialog() {
     if (ctrl && !event.shiftKey && !event.altKey) {
       if (key === 'enter') {
         handled()
-        return void start()
+        return start()
       }
       if (key === 'n') {
         handled()
@@ -152,18 +193,26 @@ export function PlanReviewDialog() {
       open
       onOpenChange={(open) => !open && done()}
       icon={
-        valid ? (
+        running ? (
+          <EditIcon className="plan-review__icon" style={{ color: 'var(--info)' }} />
+        ) : valid ? (
           <SuccessFilledIcon className="plan-review__icon" style={{ color: 'var(--success)' }} />
         ) : (
           <WarningFilledIcon className="plan-review__icon" style={{ color: 'var(--warning)' }} />
         )
       }
-      title={valid ? t('Расписание разобрано') : t('В расписании нет выходов')}
-      description={<span className="plan-review__summary-text">{summary(plan, lines)}</span>}
+      title={running ? t('Расписание тренировки') : valid ? t('Расписание разобрано') : t('В расписании нет выходов')}
+      description={
+        <span className="plan-review__summary-text">
+          {running
+            ? t('Тренировка идёт: изменения применятся сразу, и к идущему перерыву тоже. Прошедшие выходы и текущий нельзя удалить или переставить.')
+            : summary(plan, lines)}
+        </span>
+      }
       width={1440}
       height={1000}
       bodyClassName="plan-review"
-      footer={<Footer plan={plan} valid={valid} onStart={() => void start()} onDone={done} />}
+      footer={<Footer plan={plan} valid={valid} running={running} onStart={start} onDone={done} />}
     >
       <div className="plan-review__split" ref={splitRef} onKeyDown={onKeyDown}>
         {hasSource && (
@@ -303,8 +352,7 @@ function RuleView({ line }: { line: PlanTextLine }) {
 
 // MARK: - Footer
 
-function Footer({ plan, valid, onStart, onDone }: { plan: TrainingPlan; valid: boolean; onStart: () => void; onDone: () => void }) {
-  const app = useApp()
+function Footer({ plan, valid, running, onStart, onDone }: { plan: TrainingPlan; valid: boolean; running: boolean; onStart: () => void; onDone: () => void }) {
   return (
     <>
       <div className="plan-summary">
@@ -321,6 +369,26 @@ function Footer({ plan, valid, onStart, onDone }: { plan: TrainingPlan; valid: b
         <PlanMiniBar plan={plan} />
       </div>
       <span className="spacer" />
+      {running ? (
+        <>
+          <Button variant="primary" icon={<CheckIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
+            {t('Сохранить')}
+          </Button>
+          <Tooltip content={t('Закрыть без изменений · Esc')}>
+            <Button onClick={onDone}>{t('Отменить')}</Button>
+          </Tooltip>
+        </>
+      ) : (
+        <PendingButtons valid={valid} onStart={onStart} onDone={onDone} />
+      )}
+    </>
+  )
+}
+
+function PendingButtons({ valid, onStart, onDone }: { valid: boolean; onStart: () => void; onDone: () => void }) {
+  const app = useApp()
+  return (
+    <>
       {isConfigured(app.settings) && (
         <Tooltip content={t('Включить запись с камеры вместе с тренировкой')}>
           <span className="plan-summary__record">
