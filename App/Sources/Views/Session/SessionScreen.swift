@@ -100,7 +100,7 @@ struct SessionScreen: View {
             #endif
         }
         .sheet(isPresented: $showPlanInput) {
-            PlanInputView(initialText: model.settings.lastPlanText) { plan in
+            PlanInputView(initialText: Self.demoPlanText) { plan in
                 model.startSession(with: plan)
             }
             .environment(model)
@@ -184,6 +184,16 @@ struct SessionScreen: View {
         }
     }
 
+    /// The paste screen opens empty. DEBUG `--demo-parse` with `-demoPlanText <text>`: that text, already parsed
+    /// (screenshots).
+    private static var demoPlanText: String {
+        #if DEBUG
+        return UserDefaults.standard.string(forKey: "demoPlanText") ?? ""
+        #else
+        return ""
+        #endif
+    }
+
     // MARK: - Camera
 
     private var cameraArea: some View {
@@ -260,7 +270,7 @@ struct SessionScreen: View {
                     Button("Изменить расписание", systemImage: "slider.horizontal.3") {
                         if let session = model.session, !session.isFinished { editingSessionPlan = session.plan }
                     }
-                    Button("Завершить тренировку", systemImage: "flag.checkered") { confirmFinish = true }
+                    Button(model.finishTitle, systemImage: "flag.checkered") { confirmFinish = true }
                     Button("Отменить без сохранения", systemImage: "xmark.circle", role: .destructive) { confirmAbandon = true }
                 } label: {
                     Image(systemName: "ellipsis")
@@ -318,12 +328,8 @@ struct SessionScreen: View {
                 #endif
             } else {
                 PlanEntryCard(
-                    hasLastPlan: model.lastPlan != nil,
                     canRecord: !hasNoCamera,
                     onPaste: { showPlanInput = true },
-                    onRepeat: {
-                        if let plan = model.lastPlan { model.startSession(with: plan) } else { showPlanInput = true }
-                    },
                     onRecordOnly: { model.startRecording() })
                 .frame(maxWidth: 560)
             }
@@ -331,14 +337,12 @@ struct SessionScreen: View {
     }
 }
 
-/// Card shown before a session: paste the schedule or repeat the previous one.
+/// Card shown before a session: paste the schedule, or record without one.
 struct PlanEntryCard: View {
     @Environment(AppModel.self) private var model
-    var hasLastPlan: Bool
     /// A camera is there (own or the linked Mac's): video can be recorded.
     var canRecord = true
     var onPaste: () -> Void
-    var onRepeat: () -> Void
     /// Video only: no plan, no log.
     var onRecordOnly: () -> Void
 
@@ -359,17 +363,9 @@ struct PlanEntryCard: View {
                     .tint(Theme.accent)
                 }
                 BigButton(title: String(localized: "Вставить расписание"), systemImage: "doc.on.clipboard", action: onPaste)
-                if hasLastPlan || canRecord {
-                    HStack(spacing: 8) {
-                        if hasLastPlan {
-                            BigButton(title: String(localized: "Повторить прошлое"), systemImage: "arrow.counterclockwise",
-                                      style: .secondary, height: 44, action: onRepeat)
-                        }
-                        if canRecord {
-                            BigButton(title: String(localized: "Только запись"), systemImage: "record.circle",
-                                      style: .secondary, height: 44, action: onRecordOnly)
-                        }
-                    }
+                if canRecord {
+                    BigButton(title: String(localized: "Только запись"), systemImage: "record.circle",
+                              style: .secondary, height: 44, action: onRecordOnly)
                 }
             }
         }

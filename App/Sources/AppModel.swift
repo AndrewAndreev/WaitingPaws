@@ -233,12 +233,6 @@ final class AppModel {
         #endif
     }()
 
-    /// The schedule of the latest training in history: what «Повторить прошлое» offers. Nothing before the
-    /// first training (a pasted text alone is not a past training).
-    var lastPlan: TrainingPlan? {
-        history.first { $0.plan.isValid }?.plan
-    }
-
     static var storeRoot: URL {
         isUIPreview
             ? FileManager.default.temporaryDirectory.appendingPathComponent("WaitingPawsPreview", isDirectory: true)
@@ -317,13 +311,29 @@ final class AppModel {
 
     // MARK: - Session
 
+    /// The start starts the recording too: the setting is on and there is a camera here (a linked iPhone does not
+    /// know the Mac's setting: plain «Начать тренировку» there).
+    var startRecordsToo: Bool {
+        if isLinkedToMac { return false }
+        return settings.autoRecord && settings.isConfigured
+    }
+
+    /// «Начать тренировку и запись» when the start starts the recording too.
+    var startTitle: String {
+        startRecordsToo ? String(localized: "Начать тренировку и запись") : String(localized: "Начать тренировку")
+    }
+
+    /// «Завершить тренировку и запись» while a recording runs: finishing stops it.
+    var finishTitle: String {
+        isRecordingNow ? String(localized: "Завершить тренировку и запись") : String(localized: "Завершить тренировку")
+    }
+
     func startSession(with plan: TrainingPlan) {
         var plan = plan
         plan.renumber()
         #if os(iOS)
         if syncClient.isConnected {
             // The Mac owns trainings while linked: it starts the session (and its recording) and mirrors it back.
-            if !plan.rawText.isEmpty, !Self.isDemoLaunch { settings.lastPlanText = plan.rawText }
             lastRecord = nil
             syncClient.send(.startSession(plan))
             return
@@ -335,7 +345,6 @@ final class AppModel {
         session.autoFinishAfterLastBreak = settings.autoFinishAfterLastBreak
         self.session = session
         lastRecord = nil
-        if !plan.rawText.isEmpty, !Self.isUIPreview, !Self.isDemoLaunch { settings.lastPlanText = plan.rawText }
         // Without a camera the training is the timer and the log only.
         if settings.autoRecord, settings.isConfigured, !Self.isUIPreview { startRecording() }
         keepAwake(true)

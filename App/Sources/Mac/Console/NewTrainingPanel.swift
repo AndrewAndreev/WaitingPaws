@@ -2,7 +2,7 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Right panel before a session: the pasted plan with «Начать», the paste zone, the previous plan, record only.
+/// Right panel before a session: the pasted plan with «Начать», the paste zone, record only.
 struct NewTrainingPanel: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui
@@ -17,7 +17,6 @@ struct NewTrainingPanel: View {
                 } else {
                     PasteZone(compact: false)
                 }
-                lastPlan
                 Divider()
                 Button { model.startRecording() } label: {
                     ShortcutLabel(title: String(localized: "Только запись"), symbol: "record.circle", key: "⌘R", expand: true)
@@ -55,7 +54,7 @@ struct NewTrainingPanel: View {
                     .foregroundStyle(.secondary)
             }
             Button { ui.startPending(model) } label: {
-                ShortcutLabel(title: String(localized: "Начать тренировку"), symbol: "play.fill", key: "⌘↩", prominent: true, expand: true)
+                ShortcutLabel(title: model.startTitle, symbol: "play.fill", key: "⌘↩", prominent: true, expand: true)
             }
             .buttonStyle(.borderedProminent)
             .tint(MacPalette.pinkDeep)
@@ -87,28 +86,6 @@ struct NewTrainingPanel: View {
         parts.append("≈ \(DurationText.short((plan.estimatedDuration / 60).rounded() * 60))")
         parts.append(String(localized: "конец ≈ \(MacFormat.time.string(from: Date().addingTimeInterval(plan.estimatedDuration)))"))
         return parts.joined(separator: " · ")
-    }
-
-    @ViewBuilder
-    private var lastPlan: some View {
-        if let last = model.lastPlan {
-            VStack(alignment: .leading, spacing: 8) {
-                SectionHeader(title: String(localized: "Прошлое расписание")) {
-                    if let date = last.date { Text(MacFormat.shortDate.string(from: date)) }
-                }
-                HStack {
-                    Text(last.title).font(.headline).lineLimit(1)
-                    Spacer()
-                    Button { ui.repeatLast(model) } label: {
-                        ShortcutLabel(title: String(localized: "Повторить"), symbol: "arrow.counterclockwise", key: "⌘⇧R")
-                    }
-                }
-                ExitChips(plan: last)
-                Text("\(last.exits.count) вых. · ≈ \(DurationText.short((last.estimatedDuration / 60).rounded() * 60)) · перерывы \(DurationText.short(last.defaultBreak))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
     }
 }
 
@@ -167,24 +144,4 @@ private struct PasteZone: View {
     }
 }
 
-/// The exits of a plan as small duration chips.
-struct ExitChips: View {
-    let plan: TrainingPlan
-
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(plan.exits) { exit in
-                HStack(spacing: 2) {
-                    Text(DurationText.compact(exit.duration))
-                    if exit.untilStanding { Image(systemName: "figure.stand").font(.system(size: 8.5, weight: .bold)) }
-                }
-                .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
-                .fixedSize()
-                .padding(.horizontal, 6)
-                .frame(height: 19)
-                .background(.quaternary, in: Capsule())
-            }
-        }
-    }
-}
 #endif

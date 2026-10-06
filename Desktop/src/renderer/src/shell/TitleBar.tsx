@@ -6,6 +6,7 @@ import { cameraName, cameraOnline, formatTime, isConfigured, isRecording } from 
 import { FinishIcon, PhoneIcon, RecordIcon, SoundOffIcon, SoundOnIcon } from '../ui/icons'
 import { Tooltip } from '../ui/kit'
 import { CameraMenu } from '../training/CameraMenu'
+import { finishTitle } from '../actions'
 
 /// The window's title bar: identity on the left, the camera's status and the training's global commands on the
 /// right, then the system caption buttons (drawn by Windows: Snap Layouts keep working).
@@ -77,7 +78,7 @@ function TrainingCommands() {
         <Tooltip content={t('Завершить тренировку') + ' (Ctrl+E)'}>
           <button className="tb-btn" onClick={() => ui.set({ confirmFinish: true })}>
             <FinishIcon />
-            {t('Завершить')}
+            {finishTitle(app)}
           </button>
         </Tooltip>
       )}

@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { t, plural } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { TrainingPlan } from '@core/models'
 import { PlanParser } from '@core/planParser'
-import { call, ui, useApp, useStore } from '../store'
-import { formatShortDate, formatTime, isConfigured } from '../model'
-import { lastPlan, pasteSchedule, repeatLast, startPending } from '../actions'
-import { PasteIcon, PlayFilledIcon, RecordIcon, RepeatIcon, StandIcon } from '../ui/icons'
+import { call, ui, useApp } from '../store'
+import { formatTime, isConfigured } from '../model'
+import { pasteSchedule, startPending, startTitle } from '../actions'
+import { PasteIcon, PlayFilledIcon, RecordIcon } from '../ui/icons'
 import { Button, Checkbox } from '../ui/kit'
 
-/// Right panel before a session: the pasted plan with «Начать», the paste zone, the previous plan, record only.
+/// Right panel before a session: the pasted plan with «Начать», the paste zone, record only.
 export function NewTrainingPanel() {
   const app = useApp()
   const plan = app.pendingPlan
@@ -25,7 +25,6 @@ export function NewTrainingPanel() {
         ) : (
           <PasteZone compact={false} />
         )}
-        <LastPlan />
         <hr className="divider" />
         <Button block size="lg" icon={<RecordIcon />} shortcut="Ctrl+R" disabled={!isConfigured(app.settings)} onClick={() => void call('recording.start')}>
           {t('Только запись')}
@@ -54,7 +53,7 @@ function TodayCard({ plan }: { plan: TrainingPlan }) {
         </div>
       </div>
       <Button variant="primary" size="lg" block icon={<PlayFilledIcon />} shortcut="Ctrl+Enter" onClick={() => void startPending()}>
-        {t('Начать тренировку')}
+        {startTitle(app)}
       </Button>
       <div className="row">
         {isConfigured(app.settings) && (
@@ -119,48 +118,6 @@ function PasteZone({ compact }: { compact: boolean }) {
       <Button variant="primary" size="lg" icon={<PasteIcon />} shortcut="Ctrl+Shift+V" onClick={() => void pasteSchedule()}>
         {t('Вставить')}
       </Button>
-    </div>
-  )
-}
-
-function LastPlan() {
-  const revision = useStore((store) => store.app?.historyRevision)
-  const [plan, setPlan] = useState<TrainingPlan | null>(null)
-  useEffect(() => {
-    void lastPlan().then(setPlan)
-  }, [revision])
-  if (!plan) return null
-  return (
-    <div className="col" style={{ gap: 8 }}>
-      <div className="row">
-        <span className="section-title">{t('Прошлое расписание')}</span>
-        <span className="spacer" />
-        {plan.date !== null && <span className="faint" style={{ fontSize: 12 }}>{formatShortDate(plan.date)}</span>}
-      </div>
-      <span className="h3 ellipsis">{plan.title}</span>
-      <ExitChips plan={plan} />
-      <span className="faint" style={{ fontSize: 12 }}>
-        {t('%lld вых. · ≈ %@ · перерывы %@', plan.exits.length, DurationText.short(Math.round(TrainingPlan.estimatedDuration(plan) / 60) * 60), DurationText.short(plan.defaultBreak))}
-      </span>
-      <div className="row">
-        <Button size="sm" icon={<RepeatIcon />} shortcut="Ctrl+Shift+R" onClick={() => void repeatLast()}>
-          {t('Повторить прошлое')}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/// The exits of a plan as small duration chips.
-export function ExitChips({ plan }: { plan: TrainingPlan }) {
-  return (
-    <div className="chips">
-      {plan.exits.map((exit) => (
-        <span className="chip tabular" key={exit.id}>
-          {DurationText.compact(exit.duration)}
-          {exit.untilStanding && <StandIcon style={{ width: 11, height: 11 }} />}
-        </span>
-      ))}
     </div>
   )
 }

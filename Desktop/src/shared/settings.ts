@@ -23,7 +23,6 @@ export interface Settings {
   autoRecord: boolean
   autoFinishAfterLastBreak: boolean
   showPerformance: boolean
-  lastPlanText: string
   /// Let iPhones on the same network find this computer, watch its camera and drive its training.
   shareWithIPhone: boolean
   /// The user chose «Продолжить без камеры»: timer, schedule and log only.
@@ -50,7 +49,6 @@ export const defaultSettings: Settings = {
   autoRecord: true,
   autoFinishAfterLastBreak: true,
   showPerformance: false,
-  lastPlanText: '',
   // Off by default on Windows: opening go2rtc to the LAN brings up the firewall prompt, which only makes sense once
   // the user asks for the iPhone link (Settings → iPhone).
   shareWithIPhone: false,

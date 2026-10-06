@@ -140,7 +140,7 @@ struct MacPlanReviewSheet: View {
                         .help("Оставить расписание на пульте и поправить его на таймлайне · Esc")
                 }
                 Button(action: onStart) {
-                    ShortcutLabel(title: isRunning ? String(localized: "Сохранить") : String(localized: "Начать тренировку"),
+                    ShortcutLabel(title: isRunning ? String(localized: "Сохранить") : model.startTitle,
                                   symbol: isRunning ? "checkmark" : "play.fill", key: "⌘↩", prominent: true)
                         .padding(.horizontal, 2)
                 }

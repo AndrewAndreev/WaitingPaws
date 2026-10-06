@@ -4,7 +4,7 @@ import { DurationText } from '@core/durationText'
 import { TrainingPlan } from '@core/models'
 import { PlanParser } from '@core/planParser'
 import { TrainingSession, type TrainingSessionSnapshot } from '@core/trainingSession'
-import { startPending } from '../actions'
+import { startPending, startTitle } from '../actions'
 import { isConfigured } from '../model'
 import { call, toast, ui, useApp } from '../store'
 import { CalendarIcon, CheckIcon, ChevronDownIcon, EditIcon, PlayFilledIcon, RuleIcon, SuccessFilledIcon, WarningFilledIcon } from '../ui/icons'
@@ -399,7 +399,7 @@ function PendingButtons({ valid, onStart, onDone }: { valid: boolean; onStart: (
         </Tooltip>
       )}
       <Button variant="primary" icon={<PlayFilledIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
-        {t('Начать тренировку')}
+        {startTitle(app)}
       </Button>
       <Tooltip content={t('Оставить расписание на пульте и поправить его на таймлайне · Esc')}>
         <Button onClick={onDone}>{t('Готово')}</Button>

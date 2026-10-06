@@ -555,22 +555,6 @@
     "%lld" : {
       "shouldTranslate" : false
     },
-    "%lld вых. · ≈ %@ · перерывы %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exits: %lld · ≈ %@ · breaks: %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld вых. · ≈ %@ · перерывы %@"
-          }
-        }
-      }
-    },
     "%lld из %lld" : {
       "localizations" : {
         "en" : {
@@ -4363,6 +4347,22 @@
         }
       }
     },
+    "Завершить тренировку и запись" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish Training & Recording"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завершить тренировку и запись"
+          }
+        }
+      }
+    },
     "Завершить тренировку?" : {
       "localizations" : {
         "en" : {
@@ -4375,22 +4375,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Завершить тренировку?"
-          }
-        }
-      }
-    },
-    "Завершить тренировку…" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finish Training…"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Завершить тренировку…"
           }
         }
       }
@@ -6683,6 +6667,22 @@
         }
       }
     },
+    "Начать тренировку и запись" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Training & Recording"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начать тренировку и запись"
+          }
+        }
+      }
+    },
     "Не в сети" : {
       "localizations" : {
         "en" : {
@@ -8683,22 +8683,6 @@
         }
       }
     },
-    "Повторить прошлое" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Repeat Last"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Повторить прошлое"
-          }
-        }
-      }
-    },
     "Под этим именем %@ виден на iPhone." : {
       "localizations" : {
         "en" : {
@@ -9847,22 +9831,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прошедшие выходы и текущий нельзя удалить или переставить."
-          }
-        }
-      }
-    },
-    "Прошлое расписание" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last Schedule"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Прошлое расписание"
           }
         }
       }

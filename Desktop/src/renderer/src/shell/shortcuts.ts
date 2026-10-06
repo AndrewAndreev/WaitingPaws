@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { call, ui } from '../store'
-import { falseStart, pasteSchedule, primaryStep, repeatLast, startPending } from '../actions'
+import { falseStart, pasteSchedule, primaryStep, startPending } from '../actions'
 import { isConfigured, isRecording } from '../model'
 
 /// Keyboard shortcuts of the window (Windows conventions: Ctrl, not ⌘; F11 full screen is handled by the main
@@ -47,10 +47,6 @@ export function useGlobalShortcuts(): void {
         if (key === 'v' && !typing) {
           event.preventDefault()
           return void pasteSchedule()
-        }
-        if (key === 'r') {
-          event.preventDefault()
-          return void repeatLast()
         }
       }
       if (ctrl || event.altKey || typing || dialogOpen || store.route !== 'training') return

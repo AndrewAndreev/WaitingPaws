@@ -2,7 +2,8 @@ import { t } from '@shared/i18n'
 import { PlanParser } from '@core/planParser'
 import { TrainingPlan } from '@core/models'
 import { SessionPhase, type TrainingSessionSnapshot } from '@core/trainingSession'
-import type { HistoryList } from '@shared/api'
+import type { AppState } from '@shared/api'
+import { isConfigured, isRecording } from './model'
 import { call, toast, ui } from './store'
 
 /// What menus, keys, the title bar and the panels do — the Mac app's `MacUIState`.
@@ -25,21 +26,14 @@ export async function pasteSchedule(text?: string): Promise<void> {
   ui.set({ reviewingPlan: true, route: 'training' })
 }
 
-/// The schedule of the latest training in history: what «Повторить прошлое» offers.
-export async function lastPlan(): Promise<TrainingPlan | null> {
-  const list = (await call('history.list')) as HistoryList | undefined
-  const record = list?.records.find((item) => TrainingPlan.isValid(item.plan))
-  return record?.plan ?? null
+/// «Начать тренировку и запись» when the start starts the recording too (the setting is on and there is a camera).
+export function startTitle(app: AppState): string {
+  return app.settings.autoRecord && isConfigured(app.settings) ? t('Начать тренировку и запись') : t('Начать тренировку')
 }
 
-/// Ctrl+Shift+R: the previous schedule again (a fresh copy: new ids, today's date).
-export async function repeatLast(): Promise<void> {
-  const app = ui.get().app
-  if (!app || app.session) return
-  const plan = await lastPlan()
-  if (!plan) return
-  await call('pending.set', plan)
-  ui.set({ reviewingPlan: true, route: 'training' })
+/// «Завершить тренировку и запись» while a recording runs: finishing stops it.
+export function finishTitle(app: AppState): string {
+  return isRecording(app) ? t('Завершить тренировку и запись') : t('Завершить')
 }
 
 /// Ctrl+Enter

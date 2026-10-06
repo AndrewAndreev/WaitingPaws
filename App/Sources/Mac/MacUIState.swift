@@ -42,13 +42,6 @@ final class MacUIState {
         reviewingPlan = true
     }
 
-    /// ⌘⇧R: the previous schedule again.
-    func repeatLast(_ model: AppModel) {
-        guard let plan = model.lastPlan else { return }
-        model.setPending(plan)
-        reviewingPlan = true
-    }
-
     /// ⌘↩
     func startPending(_ model: AppModel) {
         guard var plan = model.pendingPlan, model.session == nil else { return }
@@ -94,7 +87,7 @@ final class MacUIState {
     }
 
     func primaryStepTitle(_ model: AppModel) -> String {
-        guard let session = model.session else { return String(localized: "Начать тренировку") }
+        guard let session = model.session else { return model.startTitle }
         switch session.phase {
         case .away: return String(localized: "Вернулись")
         case .breakTime(_, _, _, nil): return String(localized: "Завершить")
@@ -133,10 +126,7 @@ struct MacCommands: Commands {
             Button("Вставить расписание") { ui.pasteSchedule(model) }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
                 .disabled(model.session != nil)
-            Button("Повторить прошлое") { ui.repeatLast(model) }
-                .keyboardShortcut("r", modifiers: [.command, .shift])
-                .disabled(model.session != nil || model.lastPlan == nil)
-            Button("Начать тренировку") { ui.startPending(model) }
+            Button(model.startTitle) { ui.startPending(model) }
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(model.pendingPlan == nil || model.session != nil)
             Divider()
@@ -152,7 +142,7 @@ struct MacCommands: Commands {
             Button("Изменить расписание…") { ui.editSessionPlan(model) }
                 .keyboardShortcut("e", modifiers: .command)
                 .disabled(model.session == nil)
-            Button("Завершить тренировку…") { ui.confirmFinish = true }
+            Button(model.finishTitle + "…") { ui.confirmFinish = true }
                 .keyboardShortcut(".", modifiers: .command)
                 .disabled(model.session == nil)
             Divider()

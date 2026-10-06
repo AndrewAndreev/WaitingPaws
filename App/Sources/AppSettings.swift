@@ -55,7 +55,6 @@ final class AppSettings {
         static let autoFinish = "autoFinishAfterLastBreak"
         static let saveToPhotos = "saveToPhotos"
         static let showPerformance = "showPerformance"
-        static let lastPlanText = "lastPlanText"
         static let shareWithIPhone = "shareWithIPhone"
         static let lanPassword = "go2rtc.lanPassword"
         static let withoutCamera = "withoutCamera"
@@ -80,7 +79,6 @@ final class AppSettings {
     var saveToPhotos: Bool { didSet { Self.defaults.set(saveToPhotos, forKey: Key.saveToPhotos) } }
     /// Diagnostics overlay (CPU, memory, main-thread hangs) on the main screen.
     var showPerformance: Bool { didSet { Self.defaults.set(showPerformance, forKey: Key.showPerformance) } }
-    var lastPlanText: String { didSet { Self.defaults.set(lastPlanText, forKey: Key.lastPlanText) } }
     /// Mac: let iPhones on the same network find this Mac, watch its camera and drive its training.
     /// Opens the embedded go2rtc API on the LAN (Basic auth) from the next launch.
     var shareWithIPhone: Bool { didSet { Self.defaults.set(shareWithIPhone, forKey: Key.shareWithIPhone) } }
@@ -131,7 +129,6 @@ final class AppSettings {
         #else
         saveToPhotos = d.object(forKey: Key.saveToPhotos) as? Bool ?? false
         #endif
-        lastPlanText = d.string(forKey: Key.lastPlanText) ?? ""
         shareWithIPhone = d.object(forKey: Key.shareWithIPhone) as? Bool ?? true
         deviceName = d.string(forKey: Key.deviceName) ?? ""
         withoutCamera = d.bool(forKey: Key.withoutCamera)

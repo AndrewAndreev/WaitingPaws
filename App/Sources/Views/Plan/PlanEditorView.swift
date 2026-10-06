@@ -157,7 +157,7 @@ struct PlanEditorView: View {
                     .tint(Theme.accent)
                 }
                 if !isRunning {
-                    BigButton(title: String(localized: "Начать тренировку"), systemImage: "play.fill", height: 50) {
+                    BigButton(title: model.startTitle, systemImage: "play.fill", height: 50) {
                         var final = plan
                         final.renumber()
                         onStart(final)

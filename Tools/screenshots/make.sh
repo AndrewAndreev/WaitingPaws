@@ -60,7 +60,7 @@ if [[ $WHAT == all || $WHAT == ios ]]; then
   for lang in en ru; do
     [[ $lang == en ]] && plan=$PLAN_EN || plan=$PLAN_RU
     ios $lang 01-outside --demo-session --demo-exits-done 2 --demo-phase away --demo-recording
-    ios $lang 02-plan --demo-screen plan --demo-parse -lastPlanText "$plan"
+    ios $lang 02-plan --demo-screen plan --demo-parse -demoPlanText "$plan"
     WAIT=9 ios $lang 03-break --demo-session --demo-exits-done 3 --demo-phase break --demo-recording
     ios $lang 04-log --demo-history --demo-screen history-last
     ios $lang 05-history --demo-history --demo-screen history

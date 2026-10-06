@@ -5,7 +5,6 @@ export {
   AnimalPawPrint20Filled as PawFilledIcon,
   AnimalPawPrint20Regular as PawIcon,
   ArrowClockwise20Regular as ReloadIcon,
-  ArrowCounterclockwise20Regular as RepeatIcon,
   ArrowUndo20Regular as FalseStartIcon,
   Calendar20Regular as CalendarIcon,
   Camera20Regular as CameraIcon,

@@ -160,8 +160,8 @@ html.mica .app {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  width: calc(var(--rail-width) - 8px);
-  height: 54px;
+  width: calc(var(--rail-width) - 6px);
+  height: 56px;
   padding: 0 2px;
   border-radius: var(--radius-md);
   border: none;
@@ -187,12 +187,14 @@ html.mica .app {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
+/* The accent mark inside the highlight, at its left edge level with the icon (Windows 11 navigation): the tab and
+   its highlight are one shape. */
 .rail__item[aria-current='page']::before {
   content: '';
   position: absolute;
-  left: -4px;
-  top: 16px;
-  bottom: 16px;
+  left: 3px;
+  top: 12px;
+  height: 18px;
   width: 3px;
   border-radius: 2px;
   background: var(--accent);

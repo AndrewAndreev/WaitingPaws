@@ -234,7 +234,9 @@ struct MacConsoleView: View {
             .help("История тренировок · ⌘Y")
             if model.session != nil {
                 Button { ui.confirmFinish = true } label: {
-                    Label("Завершить", systemImage: "flag.checkered")
+                    // While recording, finishing stops the recording too: the button says so.
+                    Label(model.isRecordingNow ? String(localized: "Завершить тренировку и запись") : String(localized: "Завершить"),
+                          systemImage: "flag.checkered")
                         .labelStyle(.titleAndIcon)
                         .padding(.horizontal, ToolbarLook.padding)
                 }

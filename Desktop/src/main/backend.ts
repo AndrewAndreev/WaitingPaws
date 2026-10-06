@@ -282,7 +282,6 @@ export class AppBackend {
     this.sessionUnsubscribe = session.subscribe(() => this.emit())
     this.lastRecord = null
     this.lastClip = null
-    if (renumbered.rawText && !isUIPreview) this.settings.update({ lastPlanText: renumbered.rawText })
     this.setPending(null)
     log(`[session] started «${renumbered.title}», ${renumbered.exits.length} exits`)
     // Without a camera the training is the timer and the log only.
