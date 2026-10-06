@@ -5,7 +5,7 @@
   "description": "Short-absence training for dogs: trainer's schedule, timers, live camera and recording.",
   "author": "Andrew Andreev <andrew@comrade.su>",
   "homepage": "https://github.com/AndrewAndreev/WaitingPaws",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {

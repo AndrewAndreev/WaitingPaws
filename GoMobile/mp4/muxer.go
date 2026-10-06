@@ -1,4 +1,5 @@
 // Waiting Paws copy of go2rtc v1.9.14 pkg/mp4/muxer.go, put in place by GoMobile/build.sh.
+// go2rtc is MIT License, Copyright (c) 2022 Alexey Khit (full text: App/Resources/Legal/Acknowledgements.txt).
 // Changes against upstream (search for "Waiting Paws"): a consumer can keep the source's timeline (KeepTimeline, used
 // by /api/stream.mp4, which the app records). Upstream gives every sample the time since the previous one and cuts any
 // pause over 1 s down to 1 ms. That suits a live player, which shouldn't show a still frame for seconds, but a file

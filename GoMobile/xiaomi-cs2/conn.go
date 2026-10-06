@@ -1,4 +1,5 @@
 // Waiting Paws copy of go2rtc v1.9.14 pkg/xiaomi/miss/cs2/conn.go, put in place by GoMobile/build.sh.
+// go2rtc is MIT License, Copyright (c) 2022 Alexey Khit (full text: App/Resources/Legal/Acknowledgements.txt).
 // Changes against upstream (search for "Waiting Paws"):
 //   - the UDP socket gets a 4 MB receive buffer: the system default (768 KB) overflowed during keyframe bursts
 //     and every lost datagram stalled the picture until the camera resent it;

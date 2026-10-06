@@ -395,3 +395,17 @@ iPhone, сразу на «Синхронизации»), на Mac — `--demo-ip
   отдельный мастер пока есть только для Xiaomi. Чтобы добавить модули go2rtc во встроенную сборку,
   допишите их `Init()` в `GoMobile/mobile/mobile.go` и пересоберите фреймворк.
 * Push-уведомления/виджет для таймера, Live Activity на iOS.
+
+## Лицензия
+
+Код — под лицензией [MIT](LICENSE). Название «Waiting Paws» и иконка приложения под неё не входят: форки и сборки,
+которые распространяются дальше, должны называться иначе и иметь свою иконку. Иконка — концепт `07` «Песочные часы»
+в любом виде: `App/Resources/Assets.xcassets/AppIcon.appiconset/` и `AppIconImage.imageset/`, `Design/app-icon/`,
+`Design/logos-v2/**/07-hourglass*`, `Desktop/build/icon.*`, `Desktop/resources/icon.png`,
+`Desktop/src/renderer/src/assets/logo.svg`.
+
+> The code is MIT-licensed. The Waiting Paws name and the app icon (concept 07 "Hourglass" in any rendering, including
+> the files listed above) are not covered by the license: forks and redistributed builds need their own name and icon.
+
+go2rtc и остальной сторонний код — под своими лицензиями: `App/Resources/Legal/Acknowledgements.txt`,
+`Desktop/build/ThirdPartyNotices-desktop.txt`.
