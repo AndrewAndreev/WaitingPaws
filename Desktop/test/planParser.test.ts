@@ -154,11 +154,52 @@ describe('PlanParser details', () => {
   })
 
   it('recognises break lines like ICU word boundaries', () => {
-    expect(PlanParser.mentionsBreak('all breaks 2 minutes')).toBe(true)
-    expect(PlanParser.mentionsBreak('breakfast first')).toBe(false)
-    expect(PlanParser.mentionsBreak('ébreak')).toBe(false)
+    expect(PlanParser.commonBreak('all breaks 2 minutes')).toBe(120)
+    expect(PlanParser.commonBreak('breakfast 2 minutes')).toBeNull()
+    expect(PlanParser.commonBreak('ébreak 2 minutes')).toBeNull()
     expect(PlanParser.isExitBreak('rest 2 minutes')).toBe(true)
     expect(PlanParser.isExitBreak('breaks 2 minutes')).toBe(false)
+  })
+
+  // The schedule of 06.10.2026: the false-start rule names a time («первые 20 секунд») and mentions «обычный
+  // перерыв», and every break of the training became 20 s instead of «Все перерывы 2 минуты».
+  it('does not take other times in the notes for the break', () => {
+    const plan = PlanParser.parse(`🐹 Тренировка на вторник - Таня - 06.10.2026
+
+➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
+➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
+➡️ В перерывах сидите за столом, работаете
+➡️ Все перерывы 2 минуты
+
+1 выход - 5 секунд
+2 выход - 10 секунд
+3 выход - 5 секунд
+4 выход - 15 секунд
+5 выход - 30 секунд ИЛИ до вставания
+6 выход - 10 секунд
+7 выход - 3 минуты
+
+🟡 Если встала - входим через 15 секунд от вставания
+
+🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку`)
+    expect(plan.defaultBreak).toBe(120)
+    expect(plan.exits.every((exit) => exit.breakAfter === null)).toBe(true)
+    expect(plan.exits.map((exit) => exit.duration)).toEqual([5, 10, 5, 15, 30, 10, 180])
+  })
+
+  it('reads the common break only where the time belongs to it', () => {
+    expect(PlanParser.commonBreak('Все перерывы 2 минуты')).toBe(120)
+    expect(PlanParser.commonBreak('Перерывы между выходами — 1 мин. 30 сек.')).toBe(90)
+    expect(PlanParser.commonBreak('Все перерывы по 1,5 минуты')).toBe(90)
+    expect(PlanParser.commonBreak('Все перерывы 2 минуты, после пятого выхода 5 минут')).toBe(120)
+    expect(PlanParser.commonBreak('Between exits: 2 minute breaks')).toBe(120)
+    expect(PlanParser.commonBreak('All breaks are 3 minutes')).toBe(180)
+    // A time in the same sentence that is not the break's.
+    expect(PlanParser.commonBreak('Если лает дольше 10 секунд, в перерыве не подходим')).toBeNull()
+    expect(PlanParser.commonBreak('Через обычный перерыв снова идём на длинный выход, он длится 30 секунд')).toBeNull()
+    expect(PlanParser.commonBreak('Фальстарт: возвращаемся, перерыв 5 минут и снова на длинный выход')).toBeNull()
+    expect(PlanParser.commonBreak('В перерывах сидите за столом, работаете')).toBeNull()
+    expect(PlanParser.commonBreak('Breakfast 30 minutes before the training')).toBeNull()
   })
 
   it('rounds half away from zero like Swift', () => {

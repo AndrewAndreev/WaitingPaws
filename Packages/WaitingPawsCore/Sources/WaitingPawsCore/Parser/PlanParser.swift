@@ -37,7 +37,7 @@ public enum PlanParser {
                 continue
             }
 
-            if mentionsBreak(lower), let duration = DurationText.sumOfUnits(in: line) {
+            if let duration = commonBreak(in: line) {
                 plan.defaultBreak = duration
                 defaultFromText = true
                 notes.append(line)
@@ -65,9 +65,44 @@ public enum PlanParser {
                 && !lower.hasPrefix("breaks") && !lower.hasPrefix("pauses"))
     }
 
-    /// "Все перерывы 2 минуты", "All breaks 2 minutes": a line about breaks in general.
-    public static func mentionsBreak(_ lower: String) -> Bool {
-        lower.contains("перерыв") || lower.range(of: #"\b(break|breaks|pause|pauses)\b"#, options: .regularExpression) != nil
+    /// "Все перерывы 2 минуты", "Перерывы между выходами — 2 минуты", "All breaks 2 minutes", "2 minute breaks":
+    /// the break of every exit. The time has to belong to the word: a few words after it or right before it,
+    /// in the same part of the sentence. A note that mentions breaks next to some other time says nothing about
+    /// them, and neither does the false-start rule: «Фальстарт: если пошла к двери в первые 20 секунд …, через
+    /// обычный перерыв …» once made every break 20 s.
+    public static func commonBreak(in line: String) -> TimeInterval? {
+        if isFalseStartRule(stripDecorations(line).lowercased()) { return nil }
+        for clause in clauses(of: line) {
+            let range = NSRange(clause.startIndex..., in: clause)
+            guard let match = breakWordRegex.firstMatch(in: clause, range: range),
+                  let word = Range(match.range, in: clause) else { continue }
+            let after = clause[word.upperBound...]
+            if let digit = after.firstIndex(where: \.isWholeNumber),
+               after[..<digit].split(whereSeparator: { !$0.isLetter }).count <= 4,
+               let duration = DurationText.sumOfUnits(in: String(after)) {
+                return duration
+            }
+            let before = String(clause[..<word.lowerBound])
+            if let adjacent = durationBeforeWordRegex.firstMatch(in: before, range: NSRange(before.startIndex..., in: before)),
+               let adjacentRange = Range(adjacent.range, in: before),
+               let duration = DurationText.sumOfUnits(in: before[adjacentRange].replacingOccurrences(of: "-", with: " ")) {
+                return duration
+            }
+        }
+        return nil
+    }
+
+    /// «Фальстарт: …», "False start: …" (lowercased, decorations stripped).
+    public static func isFalseStartRule(_ lower: String) -> Bool {
+        lower.hasPrefix("фальстарт") || lower.hasPrefix("false start")
+    }
+
+    /// Parts of a sentence: split at commas and semicolons, and at the end of a sentence («выход. Если»), but not
+    /// inside «1,5 минуты» or «1 мин. 30 сек».
+    static func clauses(of line: String) -> [String] {
+        let range = NSRange(line.startIndex..., in: line)
+        return clauseBreakRegex.stringByReplacingMatches(in: line, range: range, withTemplate: "\n")
+            .components(separatedBy: "\n")
     }
 
     /// Keeps per-exit breaks only where they differ from the plan's break, so changing that one
@@ -202,6 +237,14 @@ public enum PlanParser {
     )
 
     private static let parenthesesRegex = try! NSRegularExpression(pattern: #"\(([^)]*)\)"#)
+
+    private static let breakWordRegex = try! NSRegularExpression(
+        pattern: #"перерыв\p{L}*|\b(?:break|breaks|pause|pauses)\b"#, options: [.caseInsensitive])
+
+    /// "2 minute " / "2-minute " / «2 минуты » right before the break word.
+    private static let durationBeforeWordRegex = try! NSRegularExpression(pattern: #"\d+(?:[.,]\d+)?[\s-]*\p{L}+[\s-]*$"#)
+
+    private static let clauseBreakRegex = try! NSRegularExpression(pattern: #"[.!?…](?=\s+[^\s\d]|\s*$)|[,;](?=\s)"#)
 
     private static let dateRegex = try! NSRegularExpression(pattern: #"(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})"#)
 }

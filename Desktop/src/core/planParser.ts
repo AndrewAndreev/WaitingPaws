@@ -28,7 +28,12 @@ const dateRegex = /(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})/u
 
 /** ICU's `\b` around "break": word characters are letters, marks, digits and connectors (not only ASCII). */
 const word = '[\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D]'
-const breakWordRegex = new RegExp(`(?<!${word})(?:break|breaks|pause|pauses)(?!${word})`, 'u')
+const breakWordRegex = new RegExp(`перерыв\\p{L}*|(?<!${word})(?:break|breaks|pause|pauses)(?!${word})`, 'iu')
+
+/** "2 minute " / "2-minute " / «2 минуты » right before the break word. */
+const durationBeforeWordRegex = /\d+(?:[.,]\d+)?[\s-]*\p{L}+[\s-]*$/u
+
+const clauseBreakRegex = /[.!?…](?=\s+[^\s\d]|\s*$)|[,;](?=\s)/u
 
 /** Whether English dates with slashes are month-first in the device's region (`dMy` → "M/d/y"). */
 function localeWritesMonthFirst(): boolean {
@@ -71,14 +76,12 @@ export const PlanParser = {
         }
       }
 
-      if (PlanParser.mentionsBreak(lower)) {
-        const duration = DurationText.sumOfUnits(line)
-        if (duration !== null) {
-          plan.defaultBreak = duration
-          defaultFromText = true
-          notes.push(line)
-          return
-        }
+      const commonBreak = PlanParser.commonBreak(line)
+      if (commonBreak !== null) {
+        plan.defaultBreak = commonBreak
+        defaultFromText = true
+        notes.push(line)
+        return
       }
 
       if (index === 0) {
@@ -104,9 +107,44 @@ export const PlanParser = {
     )
   },
 
-  /** "Все перерывы 2 минуты", "All breaks 2 minutes": a line about breaks in general. */
-  mentionsBreak(lower: string): boolean {
-    return lower.includes('перерыв') || breakWordRegex.test(lower)
+  /**
+   * "Все перерывы 2 минуты", "Перерывы между выходами — 2 минуты", "All breaks 2 minutes", "2 minute breaks":
+   * the break of every exit. The time has to belong to the word: a few words after it or right before it,
+   * in the same part of the sentence. A note that mentions breaks next to some other time says nothing about
+   * them, and neither does the false-start rule: «Фальстарт: если пошла к двери в первые 20 секунд …, через
+   * обычный перерыв …» once made every break 20 s.
+   */
+  commonBreak(line: string): number | null {
+    if (PlanParser.isFalseStartRule(PlanParser.stripDecorations(line).toLowerCase())) return null
+    for (const clause of PlanParser.clauses(line)) {
+      const match = breakWordRegex.exec(clause)
+      if (!match) continue
+      const after = clause.slice(match.index + match[0].length)
+      const digit = after.search(/\p{Nd}/u)
+      if (digit >= 0 && (after.slice(0, digit).match(/\p{L}+/gu) ?? []).length <= 4) {
+        const duration = DurationText.sumOfUnits(after)
+        if (duration !== null) return duration
+      }
+      const adjacent = durationBeforeWordRegex.exec(clause.slice(0, match.index))
+      if (adjacent) {
+        const duration = DurationText.sumOfUnits(adjacent[0].replace(/-/g, ' '))
+        if (duration !== null) return duration
+      }
+    }
+    return null
+  },
+
+  /** «Фальстарт: …», "False start: …" (lowercased, decorations stripped). */
+  isFalseStartRule(lower: string): boolean {
+    return lower.startsWith('фальстарт') || lower.startsWith('false start')
+  },
+
+  /**
+   * Parts of a sentence: split at commas and semicolons, and at the end of a sentence («выход. Если»), but not
+   * inside «1,5 минуты» or «1 мин. 30 сек».
+   */
+  clauses(line: string): string[] {
+    return line.split(clauseBreakRegex)
   },
 
   /**

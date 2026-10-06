@@ -145,7 +145,7 @@ struct MacPlanTextLine: Identifiable, Equatable {
                 lastExitLine = id
             } else if PlanParser.isExitBreak(lower), let lastExitLine, DurationText.sumOfUnits(in: stripped) != nil {
                 kind = .ownBreak(afterLine: lastExitLine)
-            } else if PlanParser.mentionsBreak(lower), DurationText.sumOfUnits(in: stripped) != nil {
+            } else if PlanParser.commonBreak(in: stripped) != nil {
                 kind = .defaultBreak
             } else if contentIndex == 0 {
                 kind = .header
@@ -161,8 +161,7 @@ struct MacPlanTextLine: Identifiable, Equatable {
 
     /// «🔖 Фальстарт: …», «Фальстарт — …», "False start: …".
     static func isRule(_ line: String) -> Bool {
-        let lower = stripDecorations(line).lowercased()
-        return line.hasPrefix("🔖") || lower.hasPrefix("фальстарт") || lower.hasPrefix("false start")
+        line.hasPrefix("🔖") || PlanParser.isFalseStartRule(stripDecorations(line).lowercased())
     }
 
     /// `PlanParser.stripDecorations`: leading emoji, bullets and arrows.

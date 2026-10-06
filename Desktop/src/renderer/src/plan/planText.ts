@@ -62,7 +62,7 @@ export function classifyLines(text: string): PlanTextLine[] {
       lastExitLine = id
     } else if (PlanParser.isExitBreak(lower) && lastExitLine !== null && DurationText.sumOfUnits(stripped) !== null) {
       kind = { kind: 'ownBreak', afterLine: lastExitLine }
-    } else if (PlanParser.mentionsBreak(lower) && DurationText.sumOfUnits(stripped) !== null) {
+    } else if (PlanParser.commonBreak(stripped) !== null) {
       kind = { kind: 'defaultBreak' }
     } else if (contentIndex === 0) {
       kind = { kind: 'header' }
@@ -79,8 +79,7 @@ export function classifyLines(text: string): PlanTextLine[] {
 
 /// «🔖 Фальстарт: …», «Фальстарт — …», "False start: …".
 export function isRule(line: string): boolean {
-  const lower = PlanParser.stripDecorations(line).toLowerCase()
-  return line.startsWith('🔖') || lower.startsWith('фальстарт') || lower.startsWith('false start')
+  return line.startsWith('🔖') || PlanParser.isFalseStartRule(PlanParser.stripDecorations(line).toLowerCase())
 }
 
 // MARK: - Highlighting
