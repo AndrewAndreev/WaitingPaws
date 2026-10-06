@@ -187,14 +187,14 @@ html.mica .app {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
-/* The accent mark inside the highlight, at its left edge level with the icon (Windows 11 navigation): the tab and
-   its highlight are one shape. */
+/* The accent mark inside the highlight, at its left edge the full height of the tab (inset so it stays clear of the
+   rounded corners): the tab and its highlight are one shape. */
 .rail__item[aria-current='page']::before {
   content: '';
   position: absolute;
   left: 3px;
-  top: 12px;
-  height: 18px;
+  top: 4px;
+  bottom: 4px;
   width: 3px;
   border-radius: 2px;
   background: var(--accent);

@@ -184,11 +184,10 @@ export function CameraPane() {
         width={460}
         footer={
           <>
+            <Button onClick={() => setSignOutAccount(null)}>{t('Отмена')}</Button>
             <Button variant="danger-solid" autoFocus onClick={() => signOutAccount && void signOut(signOutAccount)}>
               {t('Выйти')}
             </Button>
-            <span className="spacer" />
-            <Button onClick={() => setSignOutAccount(null)}>{t('Отмена')}</Button>
           </>
         }
       />

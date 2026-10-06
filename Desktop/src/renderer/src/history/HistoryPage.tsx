@@ -548,26 +548,22 @@ function DeleteDialog({ visible, onDeleted }: { visible: HistoryRow[]; onDeleted
       hideClose
       footer={
         <>
+          {row.kind === 'record' && onlyLog === null && <Button onClick={() => remove(true)}>{t('Удалить только лог, видео оставить')}</Button>}
+          <span className="spacer" />
+          <Button onClick={close}>{t('Отмена')}</Button>
           {row.kind === 'clip' ? (
             <Button variant="danger-solid" autoFocus onClick={() => remove(false)}>
               {t('Удалить запись')}
             </Button>
+          ) : onlyLog === true ? (
+            <Button variant="danger-solid" autoFocus onClick={() => remove(true)}>
+              {t('Удалить лог')}
+            </Button>
           ) : (
-            <>
-              {onlyLog !== true && (
-                <Button variant="danger-solid" autoFocus onClick={() => remove(false)}>
-                  {row.video ? t('Удалить тренировку и видео') : t('Удалить тренировку')}
-                </Button>
-              )}
-              {onlyLog !== false && (
-                <Button variant={onlyLog === true ? 'danger-solid' : 'default'} autoFocus={onlyLog === true} onClick={() => remove(true)}>
-                  {onlyLog === true ? t('Удалить лог') : t('Удалить только лог, видео оставить')}
-                </Button>
-              )}
-            </>
+            <Button variant="danger-solid" autoFocus onClick={() => remove(false)}>
+              {row.video ? t('Удалить тренировку и видео') : t('Удалить тренировку')}
+            </Button>
           )}
-          <span className="spacer" />
-          <Button onClick={close}>{t('Отмена')}</Button>
         </>
       }
     />
@@ -592,6 +588,9 @@ function DeleteAllDialog({ trainings, clips }: { trainings: number; clips: numbe
       hideClose
       footer={
         <>
+          <Button autoFocus onClick={close}>
+            {t('Отмена')}
+          </Button>
           <Button
             variant="danger-solid"
             onClick={() => {
@@ -602,10 +601,6 @@ function DeleteAllDialog({ trainings, clips }: { trainings: number; clips: numbe
             }}
           >
             {action}
-          </Button>
-          <span className="spacer" />
-          <Button autoFocus onClick={close}>
-            {t('Отмена')}
           </Button>
         </>
       }

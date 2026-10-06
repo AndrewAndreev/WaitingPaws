@@ -82,12 +82,11 @@ export function RecordingPane() {
         width={480}
         footer={
           <>
-            <Button variant="danger-solid" disabled={deleting} onClick={() => void deleteAll()}>
-              {usage && usage.trainings > 0 && usage.clips > 0 ? t('Удалить тренировки (%lld) и записи (%lld)', usage.trainings, usage.clips) : t('Удалить всё')}
-            </Button>
-            <span className="spacer" />
             <Button autoFocus disabled={deleting} onClick={() => setConfirmDelete(false)}>
               {t('Отмена')}
+            </Button>
+            <Button variant="danger-solid" disabled={deleting} onClick={() => void deleteAll()}>
+              {usage && usage.trainings > 0 && usage.clips > 0 ? t('Удалить тренировки (%lld) и записи (%lld)', usage.trainings, usage.clips) : t('Удалить всё')}
             </Button>
           </>
         }

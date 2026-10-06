@@ -82,9 +82,6 @@ export function ServerSetupDialog({ onClose, onSaved }: { onClose: () => void; o
       width={520}
       footer={
         <>
-          <Button variant="primary" disabled={busy || !parsed} onClick={() => void connect()}>
-            {t('Подключить')}
-          </Button>
           {settings.connectionMode === 'external' && app.go2rtc.status !== 'unavailable' && (
             <Tooltip content={t('go2rtc внутри приложения, без отдельного сервера')}>
               <Button onClick={() => void backToEmbedded()}>{t('Вернуться к встроенному')}</Button>
@@ -92,6 +89,9 @@ export function ServerSetupDialog({ onClose, onSaved }: { onClose: () => void; o
           )}
           <span className="spacer" />
           <Button onClick={onClose}>{t('Отменить')}</Button>
+          <Button variant="primary" disabled={busy || !parsed} onClick={() => void connect()}>
+            {t('Подключить')}
+          </Button>
         </>
       }
     >

@@ -33,19 +33,9 @@ export function GlobalDialogs() {
         title={t('Завершить тренировку?')}
         description={t('Запись остановится, лог и видео сохранятся в истории.')}
         hideClose
-        width={460}
+        width={580}
         footer={
           <>
-            <Button
-              variant="primary"
-              autoFocus
-              onClick={() => {
-                ui.set({ confirmFinish: false })
-                void call('session.command', 'finish')
-              }}
-            >
-              {t('Завершить и сохранить')}
-            </Button>
             <Button
               variant="danger"
               onClick={() => {
@@ -57,6 +47,16 @@ export function GlobalDialogs() {
             </Button>
             <span className="spacer" />
             <Button onClick={() => ui.set({ confirmFinish: false })}>{t('Продолжить')}</Button>
+            <Button
+              variant="primary"
+              autoFocus
+              onClick={() => {
+                ui.set({ confirmFinish: false })
+                void call('session.command', 'finish')
+              }}
+            >
+              {t('Завершить и сохранить')}
+            </Button>
           </>
         }
       />
@@ -87,10 +87,10 @@ export function GlobalDialogs() {
           width={460}
           footer={
             <>
+              <Button onClick={() => void call('sync.respond', request.id, false)}>{t('Отклонить')}</Button>
               <Button variant="primary" onClick={() => void call('sync.respond', request.id, true)}>
                 {t('Разрешить')}
               </Button>
-              <Button onClick={() => void call('sync.respond', request.id, false)}>{t('Отклонить')}</Button>
             </>
           }
         />
@@ -128,9 +128,6 @@ function SummaryDialog({ record }: { record: TrainingRecord }) {
       width={620}
       footer={
         <>
-          <Button variant="primary" autoFocus onClick={close}>
-            {t('Готово')}
-          </Button>
           <Button
             icon={<HistoryIcon />}
             onClick={() => {
@@ -139,6 +136,9 @@ function SummaryDialog({ record }: { record: TrainingRecord }) {
             }}
           >
             {t('История')}
+          </Button>
+          <Button variant="primary" autoFocus onClick={close}>
+            {t('Готово')}
           </Button>
         </>
       }
@@ -268,9 +268,6 @@ function ClipSavedDialog({ clip }: { clip: RecordingClip }) {
       width={480}
       footer={
         <>
-          <Button variant="primary" autoFocus onClick={close}>
-            {t('Готово')}
-          </Button>
           <Button
             icon={<HistoryIcon />}
             onClick={() => {
@@ -279,6 +276,9 @@ function ClipSavedDialog({ clip }: { clip: RecordingClip }) {
             }}
           >
             {t('История')}
+          </Button>
+          <Button variant="primary" autoFocus onClick={close}>
+            {t('Готово')}
           </Button>
         </>
       }

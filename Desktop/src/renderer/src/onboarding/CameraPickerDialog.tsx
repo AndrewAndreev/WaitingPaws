@@ -201,9 +201,6 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
       bodyClassName="picker"
       footer={
         <>
-          <Button variant="primary" disabled={!findChoice(catalog, selection) || choosing} onClick={() => void choose(selection)}>
-            {t('Выбрать')}
-          </Button>
           <div className="picker__footer-status grow">
             {error ? (
               <Tooltip content={error}>
@@ -228,6 +225,9 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
           </Tooltip>
           <Button onClick={onClose} disabled={choosing}>
             {t('Отменить')}
+          </Button>
+          <Button variant="primary" disabled={!findChoice(catalog, selection) || choosing} onClick={() => void choose(selection)}>
+            {t('Выбрать')}
           </Button>
         </>
       }

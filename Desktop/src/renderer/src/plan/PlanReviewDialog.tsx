@@ -371,12 +371,12 @@ function Footer({ plan, valid, running, onStart, onDone }: { plan: TrainingPlan;
       <span className="spacer" />
       {running ? (
         <>
-          <Button variant="primary" icon={<CheckIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
-            {t('Сохранить')}
-          </Button>
           <Tooltip content={t('Закрыть без изменений · Esc')}>
             <Button onClick={onDone}>{t('Отменить')}</Button>
           </Tooltip>
+          <Button variant="primary" icon={<CheckIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
+            {t('Сохранить')}
+          </Button>
         </>
       ) : (
         <PendingButtons valid={valid} onStart={onStart} onDone={onDone} />
@@ -398,12 +398,12 @@ function PendingButtons({ valid, onStart, onDone }: { valid: boolean; onStart: (
           </span>
         </Tooltip>
       )}
-      <Button variant="primary" icon={<PlayFilledIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
-        {startTitle(app)}
-      </Button>
       <Tooltip content={t('Оставить расписание на пульте и поправить его на таймлайне · Esc')}>
         <Button onClick={onDone}>{t('Готово')}</Button>
       </Tooltip>
+      <Button variant="primary" icon={<PlayFilledIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
+        {startTitle(app)}
+      </Button>
     </>
   )
 }

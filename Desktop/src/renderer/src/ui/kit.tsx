@@ -191,6 +191,9 @@ export interface DialogProps {
   width?: number | string
   height?: number | string
   children?: ReactNode
+  /// Buttons right-aligned, the main action last (rightmost) with «Отмена» right before it; a status line or an extra
+  /// action goes first, then a `.spacer`. The order of macOS, iOS, Android, GNOME and the web (and of the Mac app);
+  /// only Windows' own ContentDialog puts the main action first.
   footer?: ReactNode
   /// Hide the ✕ (dialogs that must be answered with a button).
   hideClose?: boolean

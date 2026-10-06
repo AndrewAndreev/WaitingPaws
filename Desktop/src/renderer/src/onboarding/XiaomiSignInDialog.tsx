@@ -196,9 +196,6 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
       width={500}
       footer={
         <>
-          <Button variant="primary" disabled={!canSubmit} onClick={submit}>
-            {primaryTitle}
-          </Button>
           {busy && (
             <span className="row muted signin__busy">
               <Spinner />
@@ -207,6 +204,9 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
           )}
           <span className="spacer" />
           <Button onClick={onClose}>{t('Отменить')}</Button>
+          <Button variant="primary" disabled={!canSubmit} onClick={submit}>
+            {primaryTitle}
+          </Button>
         </>
       }
     >

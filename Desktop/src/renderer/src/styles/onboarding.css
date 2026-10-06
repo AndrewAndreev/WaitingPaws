@@ -442,7 +442,7 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  padding: 0 var(--space-2);
+  padding-right: var(--space-2);
   font-size: var(--text-small);
 }
 .picker__error {
@@ -585,7 +585,6 @@
 }
 .signin__busy {
   font-size: var(--text-small);
-  padding-left: var(--space-1);
 }
 .signin__account {
   display: flex;
