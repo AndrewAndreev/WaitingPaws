@@ -154,7 +154,7 @@ private struct MinimizedStrip: View {
                         Divider().frame(height: 22)
                         if let primary = live.primary {
                             Button { ui.primaryStep(model) } label: {
-                                Label(primary.title, systemImage: primary.symbol)
+                                Label { Text(primary.title) } icon: { StepIcon(kind: primary.icon, size: 13) }
                             }
                             .buttonStyle(HUDButtonStyle(tint: primary.tint ?? MacPalette.pink, height: 36))
                         }

@@ -4,7 +4,7 @@ import { DurationText } from '@core/durationText'
 import { TrainingPlan } from '@core/models'
 import { SessionPhase } from '@core/trainingSession'
 import { call } from '../store'
-import { CheckIcon, FalseStartIcon, FinishIcon, NoteIcon, OutsideIcon, StandIcon } from '../ui/icons'
+import { FalseStartIcon, FinishIcon, NoteIcon, StandIcon } from '../ui/icons'
 import { Kbd } from '../ui/kit'
 import type { LiveSession } from './live'
 
@@ -102,9 +102,9 @@ function Transport({ live }: { live: LiveSession }) {
   return (
     <div className="transport">
       {phase.kind === 'away' ? (
-        <Step icon={<CheckIcon />} title={t('Вернулись')} keys="Пробел" tone="rest" onClick={() => void call('session.command', 'endExit')} />
+        <Step icon={<DoorStepIcon entering />} title={t('Вернулись')} keys="Пробел" tone="rest" onClick={() => void call('session.command', 'endExit')} />
       ) : SessionPhase.canGoOutside(phase) ? (
-        <Step icon={<OutsideIcon />} title={t('Вышли')} keys="Пробел" tone="primary" onClick={() => void call('session.command', 'markBehindDoor')} />
+        <Step icon={<DoorStepIcon />} title={t('Вышли')} keys="Пробел" tone="primary" onClick={() => void call('session.command', 'markBehindDoor')} />
       ) : phase.kind === 'breakTime' ? (
         <Step icon={<FinishIcon />} title={t('Завершить')} keys="Пробел" tone="primary" onClick={() => void call('session.command', 'finish')} />
       ) : null}
@@ -125,5 +125,16 @@ function Step({ icon, title, keys, hint, tone, onClick }: { icon: ReactNode; tit
       </span>
       <Kbd keys={keys} />
     </button>
+  )
+}
+
+/// «Вышли» / «Вернулись»: a door open on its right side with an arrow out of it or back into it — the same drawing as
+/// the Mac's and the iPhone's `DoorArrowShape` (a 24 px grid).
+export function DoorStepIcon({ entering = false }: { entering?: boolean }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M14 9V5.5Q14 3 11.5 3H6.5Q4 3 4 5.5V18.5Q4 21 6.5 21H11.5Q14 21 14 18.5V15" />
+      <path d={entering ? 'M21 12H9M13 8L9 12L13 16' : 'M9 12H21M17 8L21 12L17 16'} />
+    </svg>
   )
 }

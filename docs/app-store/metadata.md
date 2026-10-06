@@ -26,7 +26,7 @@ One app record, bundle id `su.comrade.waitingpaws`, platforms iOS and macOS (Uni
 **Description:**
 Waiting Paws makes separation training with your dog calm and precise.
 
-Paste the schedule your trainer sent, check the exits and start. Two big buttons, the same on iPhone and Mac: Outside or Back inside, and False start. The app counts every exit and break, shows only what matters right now — the plan of this exit, or the next one during a break — and a break that runs long turns red and counts up. Spotted a mistake in the schedule mid-training? Fix it right there.
+Paste the schedule your trainer sent, check the exits and start. Two big buttons, the same on iPhone and Mac: Outside or Back inside, and False start. The app counts every exit and break, shows only what matters right now — the plan of this exit, or the next one during a break — and a break that runs long turns yellow and counts up. Spotted a mistake in the schedule mid-training? Fix it right there.
 
 • Schedules from your trainer: exits, durations, "or until the dog stands up", breaks after a particular exit or for all of them
 • Exit and break timers with an overrun warning
@@ -53,7 +53,7 @@ Your data stays on your devices: no accounts, no analytics, no tracking.
 **Описание:**
 Waiting Paws помогает спокойно и точно проводить тренировки коротких выходов из дома с собакой.
 
-Вставьте расписание от тренера, проверьте выходы и начинайте. Две крупные кнопки, одинаковые на iPhone и Mac: «Вышли» или «Вернулись» и «Фальстарт». Приложение считает каждый выход и перерыв, показывает только нужное сейчас — план этого выхода или, в перерыве, следующий выход, — а затянувшийся перерыв краснеет и считает вверх. Заметили ошибку в расписании посреди тренировки? Поправьте прямо там.
+Вставьте расписание от тренера, проверьте выходы и начинайте. Две крупные кнопки, одинаковые на iPhone и Mac: «Вышли» или «Вернулись» и «Фальстарт». Приложение считает каждый выход и перерыв, показывает только нужное сейчас — план этого выхода или, в перерыве, следующий выход, — а затянувшийся перерыв желтеет и считает вверх. Заметили ошибку в расписании посреди тренировки? Поправьте прямо там.
 
 • Расписание от тренера: выходы, длительность, «или до вставания», перерывы после конкретного выхода или для всех
 • Таймеры выходов и перерывов с подсветкой перебора

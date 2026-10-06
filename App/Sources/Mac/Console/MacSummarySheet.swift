@@ -41,7 +41,7 @@ struct MacSummarySheet: View {
                     Text("План и факт").font(.headline)
                     Spacer()
                     legend(MacPalette.pink.opacity(0.35), String(localized: "план"))
-                    legend(MacPalette.green, String(localized: "за дверью"))
+                    legend(MacPalette.pink, String(localized: "за дверью"))
                     legend(MacPalette.orange, String(localized: "фальстарт"))
                 }
                 Chart {
@@ -52,7 +52,7 @@ struct MacSummarySheet: View {
                     ForEach(record.results) { result in
                         BarMark(x: .value("Выход", "\(result.number)"), y: .value("Факт", result.awayDuration / 60),
                                 width: .ratio(result.falseStart ? 0.22 : 0.4))
-                            .foregroundStyle(result.falseStart ? MacPalette.orange : MacPalette.green)
+                            .foregroundStyle(result.falseStart ? MacPalette.orange : MacPalette.pink)
                             .position(by: .value("Попытка", result.falseStart ? "a" : "b"))
                     }
                 }

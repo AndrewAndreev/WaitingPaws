@@ -126,8 +126,9 @@ struct SessionTimelineView: View {
                 // A walk to the door only in sessions run from an older iPhone («Начать выход»).
                 if left > r.startedAt { segments.append(Segment(start: r.startedAt, end: left, color: .gray.opacity(0.7))) }
                 let planned = left.addingTimeInterval(r.plannedDuration)
+                // Pink, as planned: the goal is the longer exit, not a «success» colour for a shorter one.
                 segments.append(Segment(start: left, end: max(r.endedAt, left.addingTimeInterval(4)),
-                                        color: r.falseStart ? MacPalette.orange : MacPalette.green,
+                                        color: r.falseStart ? MacPalette.orange : MacPalette.pink,
                                         label: r.falseStart ? "↺" : "\(r.number)", strong: true,
                                         split: !r.falseStart && r.endedAt > planned ? planned : nil, splitColor: MacPalette.orange))
             } else if r.falseStart {
@@ -138,7 +139,7 @@ struct SessionTimelineView: View {
             let next = i + 1 < results.count ? results[i + 1].startedAt : (currentStart ?? model.now)
             let planned = r.endedAt.addingTimeInterval(r.plannedBreak)
             segments.append(Segment(start: r.endedAt, end: next, color: MacPalette.breakFill,
-                                    split: next > planned ? planned : nil, splitColor: MacPalette.red.opacity(0.6)))
+                                    split: next > planned ? planned : nil, splitColor: MacPalette.orange))
         }
         switch model.phase {
         case .leaving(_, let since):
@@ -505,11 +506,9 @@ private struct TimelineHeader: View {
 
     @ViewBuilder
     private var legendItems: some View {
-        legend(MacPalette.pink, String(localized: "выход по плану"))
-        legend(MacPalette.green, String(localized: "за дверью"))
-        legend(MacPalette.orange, String(localized: "фальстарт / сверх плана"))
+        legend(MacPalette.pink, String(localized: "выход"))
         legend(MacPalette.breakFill, String(localized: "перерыв"))
-        legend(MacPalette.red.opacity(0.6), String(localized: "перерыв сверх плана"))
+        legend(MacPalette.orange, String(localized: "сверх плана / фальстарт"))
     }
 
     private var stats: some View {

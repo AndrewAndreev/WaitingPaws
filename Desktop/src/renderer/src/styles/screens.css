@@ -206,7 +206,7 @@
   --tint: var(--phase-over);
 }
 .tint-break-over {
-  --tint: var(--danger);
+  --tint: var(--phase-over);
 }
 .tint-done {
   --tint: var(--phase-done);
@@ -610,10 +610,14 @@
 .tl-tip__delta {
   color: rgba(0, 0, 0, 0.55);
 }
+/* Items that do not fit wrap to a second row that is cut off: a legend entry goes whole, never half-hidden
+   under the numbers next to it. */
 .timeline__legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  column-gap: 14px;
+  height: 16px;
   min-width: 0;
   overflow: hidden;
 }
@@ -654,15 +658,17 @@
 .seg--walk {
   background: color-mix(in srgb, var(--phase-leaving) 70%, transparent);
 }
+/* What really happened outside: pink, as planned (the goal is the longer exit, not a «success» colour). */
 .seg--outside {
-  background: #6ee7a0;
+  background: var(--brand);
 }
 .seg--over,
 .seg--false {
   background: var(--warning);
 }
+/* A break past its plan: the same yellow as an exit past its plan. */
 .seg--break-over {
-  background: color-mix(in srgb, var(--danger) 60%, transparent);
+  background: var(--warning);
 }
 .seg--rec {
   background: color-mix(in srgb, var(--danger) 80%, transparent);
@@ -919,7 +925,7 @@
 .bars__fact {
   flex: 1;
   border-radius: 3px 3px 0 0;
-  background: #6ee7a0;
+  background: var(--brand);
   min-height: 1px;
 }
 .bars__fact--false {

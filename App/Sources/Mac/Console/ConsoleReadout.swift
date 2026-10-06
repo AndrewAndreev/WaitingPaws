@@ -89,7 +89,7 @@ struct ConsoleReadout: View {
     private func buttons(_ content: ReadoutContent) -> some View {
         HStack(spacing: 10) {
             if let step = content.step {
-                StepButton(title: step.title, symbol: step.symbol, key: String(localized: "Пробел"),
+                StepButton(title: step.title, icon: step.icon, key: String(localized: "Пробел"),
                            fill: step.tint, foreground: .black) {
                     switch step {
                     case .outside: session.markBehindDoor()
@@ -99,7 +99,7 @@ struct ConsoleReadout: View {
                 }
             }
             if content.canFalseStart {
-                StepButton(title: String(localized: "Фальстарт"), symbol: "arrow.uturn.backward", key: "⌫",
+                StepButton(title: String(localized: "Фальстарт"), icon: .symbol("arrow.uturn.backward"), key: "⌫",
                            fill: .white.opacity(0.08), foreground: MacPalette.red) {
                     session.resetExit()
                 }
@@ -111,7 +111,7 @@ struct ConsoleReadout: View {
 /// A training step: a 42 pt rounded button, the title centred, its key at the trailing edge while it fits.
 private struct StepButton: View {
     let title: String
-    let symbol: String
+    let icon: StepIcon.Kind
     let key: String
     let fill: Color
     let foreground: Color
@@ -133,7 +133,7 @@ private struct StepButton: View {
 
     private var label: some View {
         HStack(spacing: 7) {
-            Image(systemName: symbol)
+            StepIcon(kind: icon, size: 15)
             Text(title).lineLimit(1)
         }
         .fixedSize()

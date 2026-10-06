@@ -160,8 +160,9 @@ html.mica .app {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  width: 64px;
+  width: calc(var(--rail-width) - 8px);
   height: 54px;
+  padding: 0 2px;
   border-radius: var(--radius-md);
   border: none;
   background: transparent;
@@ -170,6 +171,13 @@ html.mica .app {
   line-height: 14px;
   font-weight: 500;
   cursor: pointer;
+}
+/* The label never spills past its highlight (a longer translation is cut with «…»). */
+.rail__item > span:not(.rail__badge) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .rail__item:hover {
   background: var(--bg-hover);

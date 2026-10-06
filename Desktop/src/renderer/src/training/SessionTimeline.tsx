@@ -127,11 +127,9 @@ export function SessionTimeline({ live }: { live: LiveSession }) {
       <div className="timeline__header">
         <span className="h3">{t('Таймлайн')}</span>
         <span className="timeline__legend">
-          <Legend kind="exit" text={t('выход по плану')} />
-          <Legend kind="outside" text={t('за дверью')} />
-          <Legend kind="over" text={t('фальстарт / сверх плана')} />
+          <Legend kind="exit" text={t('выход')} />
           <Legend kind="break" text={t('перерыв')} />
-          <Legend kind="break-over" text={t('перерыв сверх плана')} />
+          <Legend kind="over" text={t('сверх плана / фальстарт')} />
         </span>
         <span className="spacer" />
         <Stats live={live} />

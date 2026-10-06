@@ -69,6 +69,8 @@ enum BigButtonStyle {
 struct BigButton: View {
     var title: String
     var systemImage: String? = nil
+    /// Instead of `systemImage`: a training step's icon (the door for «Вышли» / «Вернулись»).
+    var icon: StepIcon.Kind? = nil
     var style: BigButtonStyle = .primary
     var height: CGFloat = 52
     var action: () -> Void
@@ -87,7 +89,9 @@ struct BigButton: View {
 
     private var label: some View {
         HStack(spacing: 8) {
-            if let systemImage {
+            if let icon {
+                StepIcon(kind: icon, size: style.isPrimary ? 17 : 15)
+            } else if let systemImage {
                 Image(systemName: systemImage)
                     .font(.system(size: style.isPrimary ? 17 : 15, weight: .semibold))
             }

@@ -3163,22 +3163,6 @@
         }
       }
     },
-    "выход по плану" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "planned exit"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "выход по плану"
-          }
-        }
-      }
-    },
     "Выход уже прошёл или идёт сейчас: его можно поправить, но не удалить и не переставить" : {
       "localizations" : {
         "en" : {
@@ -8459,22 +8443,6 @@
         }
       }
     },
-    "перерыв сверх плана" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "break over plan"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "перерыв сверх плана"
-          }
-        }
-      }
-    },
     "Перерыв:" : {
       "localizations" : {
         "en" : {
@@ -10439,6 +10407,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "сверх плана"
+          }
+        }
+      }
+    },
+    "сверх плана / фальстарт" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "over plan / false start"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сверх плана / фальстарт"
           }
         }
       }
@@ -12423,22 +12407,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Фальстарт (⌫)"
-          }
-        }
-      }
-    },
-    "фальстарт / сверх плана" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "false start / over plan"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "фальстарт / сверх плана"
           }
         }
       }

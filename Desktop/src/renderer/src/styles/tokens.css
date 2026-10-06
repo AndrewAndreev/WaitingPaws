@@ -39,7 +39,8 @@
   --control-height: 32px;
   --control-height-lg: 40px;
   --titlebar-height: 48px;
-  --rail-width: 72px;
+  /* Room for «Тренировка» / «Настройки» under their icons. */
+  --rail-width: 80px;
 
   --duration-fast: 120ms;
   --duration-normal: 200ms;

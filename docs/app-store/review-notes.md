@@ -16,7 +16,7 @@ HOW TO REVIEW WITHOUT A CAMERA
    Exit 3 - 30 seconds OR until the dog stands up
 
 3. Review the parsed exits and tap "Start Training". Then "Outside" → "Back Inside" (and "False Start" when the dog
-   reacts). Breaks count down to the next exit (past the plan they count up in red); after the last one the training
+   reacts). Breaks count down to the next exit (past the plan they count up in yellow); after the last one the training
    is saved to History with a text log for the trainer ("Send Log"). The schedule can be edited during the training
    from the ••• menu ("Edit Schedule").
 

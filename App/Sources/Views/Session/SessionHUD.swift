@@ -17,7 +17,7 @@ struct SessionHUD: View {
 
 /// What the training readout says, for the iPhone card and the Mac panel alike: the phase, the lines about this
 /// moment, the timer and the same two buttons — "Вышли" (in a break) or "Вернулись" (outside), and "Фальстарт".
-/// Only two timers: the exit counts down to its plan, the break to the next exit; both count up in colour once
+/// Only two timers: the exit counts down to its plan, the break to the next exit; both count up in yellow once
 /// they run over.
 struct ReadoutContent {
     /// The main button (Space on a computer).
@@ -32,11 +32,12 @@ struct ReadoutContent {
             }
         }
 
-        var symbol: String {
+        /// The door with the arrow out of it or back in.
+        var icon: StepIcon.Kind {
             switch self {
-            case .outside: return "door.left.hand.closed"
-            case .backInside: return "checkmark"
-            case .finish: return "flag.checkered"
+            case .outside: return .outside
+            case .backInside: return .backInside
+            case .finish: return .symbol("flag.checkered")
             }
         }
 
@@ -57,7 +58,7 @@ struct ReadoutContent {
         let text: String
         let caption: String
         let overdue: Bool
-        /// Pink outside, blue in a break; past the plan orange outside (a warning) and red in a break (time lost).
+        /// Pink outside, blue in a break; past the plan yellow, both.
         let tint: Color
         let progress: Double?
     }
@@ -119,7 +120,7 @@ struct ReadoutContent {
     func timer(at now: Date) -> Timer {
         let remaining = session.remaining(at: now)
         let overdue = (remaining ?? 0) < 0
-        let tint: Color = overdue ? (isBreak ? Theme.danger : Theme.warning) : (isBreak ? Theme.info : Theme.accent)
+        let tint: Color = overdue ? Theme.warning : (isBreak ? Theme.info : Theme.accent)
         switch session.phase {
         case .ready:
             return Timer(text: DurationText.clock(session.currentExit?.duration ?? 0), caption: String(localized: "план"),
@@ -224,7 +225,7 @@ struct SessionReadout: View {
     private func actions(_ content: ReadoutContent) -> some View {
         HStack(spacing: 8) {
             if let step = content.step {
-                BigButton(title: step.title, systemImage: step.symbol, style: step == .backInside ? .rest : .primary,
+                BigButton(title: step.title, icon: step.icon, style: step == .backInside ? .rest : .primary,
                           height: size.button) {
                     switch step {
                     case .outside: session.markBehindDoor()

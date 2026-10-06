@@ -38,7 +38,7 @@ camera while you are behind the door, and send the trainer a ready log afterward
    on the iPhone with ••• → **Edit Schedule**. The timers follow at once.
 2. Two buttons, the same on the iPhone and the Mac. **Outside** once the door is closed behind you: a countdown to
    the planned time, and the live camera shows the dog. Going over the plan is highlighted.
-3. **Back Inside**: the break counts down to the next exit. A break that runs longer turns red and counts up, so you
+3. **Back Inside**: the break counts down to the next exit. A break that runs longer turns yellow and counts up, so you
    always see how long it really was. If the dog got up or barked too early — or went to the door during the break —
    **False Start** repeats the same exit after a break.
 4. After the last exit the training is saved together with its video, and the **log for the trainer** is ready to send:

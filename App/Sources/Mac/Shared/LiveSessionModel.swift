@@ -28,9 +28,9 @@ struct LiveSessionModel {
     var overdue: Bool { (remaining ?? 0) < 0 }
     var progress: Double { session.progress(at: now) ?? 0 }
 
-    /// An exit past its plan is a warning (orange); a break past its plan is time lost (red).
+    /// Past the plan — an exit or a break — yellow.
     var tint: Color {
-        if overdue { return isBreak ? MacPalette.red : MacPalette.orange }
+        if overdue { return MacPalette.orange }
         if isBreak { return MacPalette.blue }
         if isFinished { return MacPalette.green }
         return MacPalette.pink
@@ -134,16 +134,16 @@ struct LiveSessionModel {
 
     struct Action {
         let title: String
-        let symbol: String
+        let icon: StepIcon.Kind
         var tint: Color? = nil
     }
 
     /// The next step (Space): «Вышли», «Вернулись», or «Завершить» in the last break.
     var primary: Action? {
         switch phase {
-        case .away: return Action(title: String(localized: "Вернулись"), symbol: "checkmark", tint: MacPalette.blue)
-        case .breakTime(_, _, _, nil): return Action(title: String(localized: "Завершить"), symbol: "flag.checkered")
-        case .ready, .leaving, .breakTime: return Action(title: String(localized: "Вышли"), symbol: "door.left.hand.closed")
+        case .away: return Action(title: String(localized: "Вернулись"), icon: .backInside, tint: MacPalette.blue)
+        case .breakTime(_, _, _, nil): return Action(title: String(localized: "Завершить"), icon: .symbol("flag.checkered"))
+        case .ready, .leaving, .breakTime: return Action(title: String(localized: "Вышли"), icon: .outside)
         case .finished: return nil
         }
     }

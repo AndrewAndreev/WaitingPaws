@@ -22,7 +22,6 @@ export {
   Dismiss20Regular as CloseIcon,
   DocumentText20Regular as LogIcon,
   Door20Regular as DoorIcon,
-  DoorArrowLeft20Regular as OutsideIcon,
   Edit20Regular as EditIcon,
   ErrorCircle20Regular as ErrorIcon,
   Flag20Regular as FinishIcon,
