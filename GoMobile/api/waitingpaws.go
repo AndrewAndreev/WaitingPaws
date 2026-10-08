@@ -39,7 +39,8 @@ func credentialsOK(user, pass, cfgUser, cfgPass string) bool {
 //   - Host must be an IP address, localhost or a .local name, so DNS rebinding can't reach the API;
 //   - a browser Origin must be this server itself: no cross-site requests, WebSocket included;
 //   - /api/exit and /api/restart are gone and the config can't be rewritten over HTTP;
-//   - LAN clients (a linked iPhone) only watch: no config, log, Xiaomi accounts or stream changes.
+//   - LAN clients (a linked iPhone) only watch (and change camera modes, turn the camera): no config, log, Xiaomi
+//     accounts or stream changes.
 func guard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !allowedHost(r.Host) {

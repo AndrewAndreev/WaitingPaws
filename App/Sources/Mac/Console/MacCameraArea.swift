@@ -21,7 +21,10 @@ struct MacCameraArea: View {
                 PerformanceBar(fillsWidth: false).padding(12).allowsHitTesting(false)
             }
         }
-        .onChange(of: model.settings.streamName) { ui.cameraZoom.reset() }
+        .onChange(of: model.settings.streamName) {
+            ui.cameraZoom.reset()
+            model.panTilt.stop()
+        }
         #if DEBUG
         // `--demo-zoom=<scale>`: the picture zoomed in (UI checks). One argument: a lone value would shift
         // AppKit's `-key value` pairing and be opened as a document (no window).

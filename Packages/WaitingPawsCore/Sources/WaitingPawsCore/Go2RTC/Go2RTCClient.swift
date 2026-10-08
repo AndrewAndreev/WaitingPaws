@@ -369,6 +369,25 @@ public final class Go2RTCClient: Sendable {
         try XiaomiCameraError.check(result.code)
     }
 
+    // MARK: - Pan/tilt
+
+    /// One step of the pan/tilt camera behind the running stream `stream` (`POST /api/xiaomi/motor`, a Waiting Paws
+    /// addition shaped like go2rtc PR #2531 — another go2rtc answers 404). It rides on the stream's camera session, so
+    /// the stream must be playing; the picture follows about a second later.
+    public func turnCamera(stream: String, _ direction: PanTiltDirection) async throws {
+        var request = URLRequest(url: url(path: "api/xiaomi/motor",
+                                          query: ["src": stream, "operation": String(direction.rawValue)]))
+        request.httpMethod = "POST"
+        // A held button sends a step every half second: a lost one must not hold up the next for long.
+        request.timeoutInterval = 5
+        applyAuth(&request)
+        let (data, response) = try await session.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw Go2RTCError.http(status: status, message: String(decoding: data, as: UTF8.self))
+        }
+    }
+
     private struct MiotResult: Decodable {
         var siid: Int
         var piid: Int

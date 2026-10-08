@@ -26,11 +26,12 @@ const OUT = path.join(DESKTOP, 'resources', 'bin', 'go2rtc.exe')
 
 // GoMobile dir → place in go2rtc's tree (build.sh plus desktop/ for this executable).
 const COPIES = [
-  ['xiaomi', 'internal/xiaomi'], // /api/xiaomi/miot, /api/xiaomi/logout, /api/xiaomi/cameras
+  ['xiaomi', 'internal/xiaomi'], // /api/xiaomi/miot, /api/xiaomi/logout, /api/xiaomi/cameras, /api/xiaomi/motor
+  ['streams', 'internal/streams'], // Stream.Conns: the motor rides on the stream's camera session
   ['api', 'internal/api'], // API guard, runtime LAN credentials, Relisten
   ['xiaomi-cs2', 'pkg/xiaomi/miss/cs2'], // our CS2 transport (copy of v1.9.14 conn.go)
   ['mp4', 'pkg/mp4'], // recordings keep real time (copy of v1.9.14 muxer.go)
-  ['xiaomi-miss', 'pkg/xiaomi/miss'], // Xiaomi sound follows the camera's clock
+  ['xiaomi-miss', 'pkg/xiaomi/miss'], // Xiaomi sound follows the camera's clock, the pan/tilt step
   ['desktop', 'desktop'], // package main of go2rtc.exe
 ]
 
@@ -70,7 +71,7 @@ const CHECKS = [
 ]
 
 // What GoMobile/README.md and build.sh test after patching (GoMobile tests live in these packages).
-const TEST_PACKAGES = ['./pkg/mp4', './pkg/xiaomi/miss', './pkg/xiaomi/miss/cs2', './internal/api']
+const TEST_PACKAGES = ['./pkg/mp4', './pkg/xiaomi/miss', './pkg/xiaomi/miss/cs2', './internal/api', './internal/xiaomi']
 
 function fail(message) {
   console.error(`build-go2rtc: ${message}`)

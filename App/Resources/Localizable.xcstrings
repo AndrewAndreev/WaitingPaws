@@ -724,9 +724,6 @@
         }
       }
     },
-    "18:29:13" : {
-      "shouldTranslate" : false
-    },
     "CPU %lld %%" : {
       "shouldTranslate" : false
     },
@@ -1240,9 +1237,6 @@
         }
       }
     },
-    "x7K2" : {
-      "shouldTranslate" : false
-    },
     "Xiaomi отправил SMS на %@" : {
       "localizations" : {
         "en" : {
@@ -1495,6 +1489,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "без записи — включите «Записывать видео»"
+          }
+        }
+      }
+    },
+    "Без записи и тренировки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not recording, no training"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без записи и тренировки"
           }
         }
       }
@@ -1863,6 +1873,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вернуть выходы и перерывы из текста тренера: %@"
+          }
+        }
+      }
+    },
+    "Вернуть карточки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the Cards Again"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть карточки"
+          }
+        }
+      }
+    },
+    "Вернуть расписание и шкалу · ⇧⌘F" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bring back the schedule and timeline · ⇧⌘F"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть расписание и шкалу · ⇧⌘F"
           }
         }
       }
@@ -3467,6 +3509,22 @@
         }
       }
     },
+    "Готово · Esc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done · Esc"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово · Esc"
+          }
+        }
+      }
+    },
     "График прогресса появится после первой тренировки." : {
       "localizations" : {
         "en" : {
@@ -4443,6 +4501,38 @@
         }
       }
     },
+    "Закончить поворот камеры" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop Turning Camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закончить поворот камеры"
+          }
+        }
+      }
+    },
+    "Закончить поворот камеры · Esc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop turning the camera · Esc"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закончить поворот камеры · Esc"
+          }
+        }
+      }
+    },
     "Закрыть" : {
       "localizations" : {
         "en" : {
@@ -5211,6 +5301,22 @@
         }
       }
     },
+    "Или стрелки на клавиатуре · Esc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Or the arrow keys · Esc"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Или стрелки на клавиатуре · Esc"
+          }
+        }
+      }
+    },
     "Имена на «%@» заняты Waiting Paws" : {
       "localizations" : {
         "en" : {
@@ -5675,6 +5781,22 @@
         }
       }
     },
+    "Камера не на связи" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The camera is offline"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера не на связи"
+          }
+        }
+      }
+    },
     "Камера не на связи — выбрать или переподключить" : {
       "localizations" : {
         "en" : {
@@ -5739,6 +5861,22 @@
         }
       }
     },
+    "Камера не приняла команду" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The camera didn’t take the command"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера не приняла команду"
+          }
+        }
+      }
+    },
     "камера недоступна по сети" : {
       "localizations" : {
         "en" : {
@@ -5799,6 +5937,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Камера с Mac"
+          }
+        }
+      }
+    },
+    "Камера сейчас не передаёт видео — подождите картинку" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The camera isn’t sending video right now — wait for the picture"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера сейчас не передаёт видео — подождите картинку"
           }
         }
       }
@@ -5975,6 +6129,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Капча"
+          }
+        }
+      }
+    },
+    "Картинка на всё окно, без записи и тренировки — например, когда записывает кто-то другой." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The picture fills the window, with no recording or training — for example, when someone else is recording."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка на всё окно, без записи и тренировки — например, когда записывает кто-то другой."
           }
         }
       }
@@ -6551,6 +6721,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Название:"
+          }
+        }
+      }
+    },
+    "Наклонить вверх" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilt Up"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наклонить вверх"
+          }
+        }
+      }
+    },
+    "Наклонить вниз" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilt Down"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наклонить вниз"
           }
         }
       }
@@ -8027,6 +8229,22 @@
         }
       }
     },
+    "Очистить" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистить"
+          }
+        }
+      }
+    },
     "Ошибка" : {
       "localizations" : {
         "en" : {
@@ -8055,6 +8273,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ошибка: %@"
+          }
+        }
+      }
+    },
+    "Панели" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panels"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Панели"
           }
         }
       }
@@ -8667,6 +8901,102 @@
         }
       }
     },
+    "Повернуть" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернуть"
+          }
+        }
+      }
+    },
+    "Повернуть влево" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn Left"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернуть влево"
+          }
+        }
+      }
+    },
+    "Повернуть вправо" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn Right"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернуть вправо"
+          }
+        }
+      }
+    },
+    "Повернуть камеру" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn Camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернуть камеру"
+          }
+        }
+      }
+    },
+    "Повернуть камеру: стрелки на картинке или на клавиатуре" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn the camera with the arrows on the picture or on the keyboard"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернуть камеру: стрелки на картинке или на клавиатуре"
+          }
+        }
+      }
+    },
+    "Поворот камеры" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turning the camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поворот камеры"
+          }
+        }
+      }
+    },
     "Повторить" : {
       "localizations" : {
         "en" : {
@@ -9163,6 +9493,22 @@
         }
       }
     },
+    "Показать панели" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Panels"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать панели"
+          }
+        }
+      }
+    },
     "Показать папку в Finder" : {
       "localizations" : {
         "en" : {
@@ -9607,6 +9953,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Потоки и вход в Xiaomi. Не пересылайте его: в нём токены."
+          }
+        }
+      }
+    },
+    "Потяните, чтобы изменить ширину" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to resize"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потяните, чтобы изменить ширину"
+          }
+        }
+      }
+    },
+    "Потяните, чтобы изменить ширину; до упора вправо — только камера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to resize; all the way to the right for camera only"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потяните, чтобы изменить ширину; до упора вправо — только камера"
           }
         }
       }
@@ -11403,6 +11781,38 @@
         }
       }
     },
+    "только камера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "camera only"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "только камера"
+          }
+        }
+      }
+    },
+    "Только камера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera Only"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только камера"
+          }
+        }
+      }
+    },
     "Тот же логин и пароль, что в приложении Mi Home. Камеры появятся сразу после входа." : {
       "localizations" : {
         "en" : {
@@ -12107,6 +12517,22 @@
         }
       }
     },
+    "Удерживайте стрелку, чтобы вести дальше" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold an arrow to keep turning"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте стрелку, чтобы вести дальше"
+          }
+        }
+      }
+    },
     "Уже авторизованы на сервере" : {
       "localizations" : {
         "en" : {
@@ -12567,6 +12993,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Это расписание уже и на %@ — начать можно там или здесь."
+          }
+        }
+      }
+    },
+    "Этот go2rtc не умеет поворачивать камеру — обновите Waiting Paws на компьютере с камерой" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This go2rtc can’t turn the camera — update Waiting Paws on the computer with the camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот go2rtc не умеет поворачивать камеру — обновите Waiting Paws на компьютере с камерой"
           }
         }
       }

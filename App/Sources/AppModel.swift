@@ -15,6 +15,8 @@ final class AppModel {
     let performance = PerformanceMonitor()
     /// Night mode and the other settings of the Mi Home camera on screen.
     let cameraModes = CameraModesModel()
+    /// Turning the camera on screen (pan/tilt), a mode switched on from the live view.
+    let panTilt = CameraPanTilt()
     #if os(macOS)
     /// Parsed schedule waiting for «Начать тренировку» (the «Сегодня» card and the plan timeline). A linked
     /// iPhone sees it and sets it too: a schedule pasted on either device shows up on both.
@@ -85,6 +87,29 @@ final class AppModel {
             syncClient.demoLink(recording: args.contains("--demo-mac-recording") || args.contains("--demo-mac-recording-ends"),
                                 stopAfter: args.contains("--demo-mac-recording-ends") ? 3 : nil,
                                 pendingPlan: args.contains("--demo-mac-pending") ? PlanParser.parse(DemoData.planText) : nil)
+        }
+        // `--demo-mac-session`: linked to a Mac running the sample training (no network); `--demo-mac-lag <seconds>`
+        // holds every command and every state from the Mac that long (a weak Wi-Fi: presses must show at once).
+        if args.contains("--demo-mac-session") {
+            let lag = args.firstIndex(of: "--demo-mac-lag").flatMap { $0 + 1 < args.count ? Double(args[$0 + 1]) : nil }
+            syncClient.onState = { [unowned self] state in applySyncState(state) }
+            syncClient.demoSession(PlanParser.parse(Self.demoPlanText), lag: lag ?? 0)
+        }
+        // `--demo-remote-steps`: once linked (to a Mac or the demo one), press «Вышли» from the iPhone.
+        if args.contains("--demo-remote-steps") {
+            Task { [weak self] in
+                while self?.isMirroringSession != true { try? await Task.sleep(for: .milliseconds(300)) }
+                try? await Task.sleep(for: .seconds(3))
+                self?.session?.markBehindDoor()
+                // `--demo-remote-finish`: then "Вернулись", recording on, and finish (exercises the summary + log).
+                guard args.contains("--demo-remote-finish") else { return }
+                try? await Task.sleep(for: .seconds(3))
+                self?.session?.endExit()
+                try? await Task.sleep(for: .seconds(1))
+                self?.startRecording()
+                try? await Task.sleep(for: .seconds(8))
+                self?.finishSession()
+            }
         }
         // `--demo-hosts`: several computers with Waiting Paws nearby (the choice on the main screen and in Settings).
         if args.contains("--demo-hosts") { syncClient.demoHosts() }
@@ -1052,22 +1077,6 @@ extension AppModel {
                 self?.sharePlanWithMac(PlanParser.parse(Self.demoPlanText))
             }
         }
-        // `--demo-remote-steps`: once linked, press «Вышли» from the iPhone.
-        if CommandLine.arguments.contains("--demo-remote-steps") {
-            Task { [weak self] in
-                while self?.isMirroringSession != true { try? await Task.sleep(for: .milliseconds(300)) }
-                try? await Task.sleep(for: .seconds(3))
-                self?.session?.markBehindDoor()
-                // `--demo-remote-finish`: then "Вернулись", recording on, and finish (exercises the summary + log).
-                guard CommandLine.arguments.contains("--demo-remote-finish") else { return }
-                try? await Task.sleep(for: .seconds(3))
-                self?.session?.endExit()
-                try? await Task.sleep(for: .seconds(1))
-                self?.startRecording()
-                try? await Task.sleep(for: .seconds(8))
-                self?.finishSession()
-            }
-        }
         #endif
         #endif
     }
@@ -1147,11 +1156,18 @@ extension AppModel {
             if let session, isMirroringSession, session.isSameSession(as: snapshot) {
                 session.restore(snapshot)
             } else if session == nil || isMirroringSession {
-                let mirror = TrainingSession(snapshot: snapshot)
-                // Sent with the moment of the press in the Mac's time: a late command still lands where it happened.
-                mirror.commandHandler = { [weak self] command, time in
-                    guard let self else { return }
-                    syncClient.send(.session(command, at: syncClient.clock.hostTime(for: time)))
+                // The mirror keeps the Mac's time: a press is sent with its moment there (a late command still lands
+                // where it happened), and the press shown here at once matches the Mac's answer.
+                let mirror = TrainingSession(snapshot: snapshot, clock: { [unowned self] in
+                    syncClient.clock.hostTime(for: Date())
+                })
+                mirror.commandHandler = { [weak self, weak mirror] command, time in
+                    self?.syncClient.send(.session(command, at: time))
+                    // Nothing else ticks a mirror: a press the Mac never answers stops showing then.
+                    Task { [weak mirror] in
+                        try? await Task.sleep(for: .seconds(TrainingSession.predictionLifetime + 0.5))
+                        mirror?.tick()
+                    }
                 }
                 mirror.planHandler = { [weak self] plan, quiet, since in
                     self?.syncClient.send(.updateSessionPlan(plan, quiet: quiet ? true : nil, since: since))

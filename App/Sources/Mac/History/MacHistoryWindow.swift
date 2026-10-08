@@ -8,6 +8,11 @@ struct MacHistoryWindow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     @State private var controller = MacHistoryController()
+    /// Where the inspector's left edge is in the window right now (nil while it is closed), and the window's width:
+    /// the search field above the inspector follows that edge, and the buttons before it with it.
+    @State private var inspectorMinX: CGFloat?
+    @State private var windowWidth: CGFloat = 0
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         @Bindable var controller = controller
@@ -19,7 +24,6 @@ struct MacHistoryWindow: View {
             content(rows: rows, selected: selected, isEmpty: isEmpty)
                 .navigationTitle("История")
                 .navigationSubtitle(subtitle)
-                .searchable(text: $controller.search, placement: .toolbar, prompt: "Поиск")
                 .toolbar { toolbar(selected: selected, isEmpty: isEmpty) }
                 .inspector(isPresented: Binding(get: { controller.showsInspector && !isEmpty },
                                                 set: { controller.showsInspector = $0 })) {
@@ -31,9 +35,12 @@ struct MacHistoryWindow: View {
                                                    description: Text("Выберите тренировку или запись в таблице."))
                         }
                     }
+                    .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).minX }) { inspectorMinX = $0 }
+                    .onDisappear { inspectorMinX = nil }
                     .inspectorColumnWidth(min: 290, ideal: 320, max: 440)
                 }
         }
+        .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).width }) { windowWidth = $0 }
         .environment(controller)
         .frame(minWidth: 920, minHeight: 560)
         .background { shortcuts(selected: selected) }
@@ -188,16 +195,47 @@ struct MacHistoryWindow: View {
                 .disabled(isEmpty)
                 .help(controller.showsInspector ? "Скрыть инспектор (⌥⌘I)" : "Показать инспектор (⌥⌘I)")
         }
+
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+
+        // Last in the toolbar, so at the window's edge: as wide as the inspector it sits on, which puts the buttons
+        // above right before the inspector's edge; with the inspector closed, a plain field next to them.
+        ToolbarItem(placement: .primaryAction) {
+            MacToolbarSearchField(text: $controller.search, focus: $searchFocused, prompt: "Поиск")
+                .frame(width: searchWidth)
+                // Follows the inspector frame by frame as it slides or is resized; an animation of its own would
+                // lag behind the toolbar, which places the items at once, and run into the buttons.
+                .transaction { $0.animation = nil }
+        }
     }
 
-    /// ⇧⌘C works with the inspector closed too.
+    /// The part of the window the inspector covers right now, less the toolbar's margin at the window's edge and a
+    /// gap after the inspector's edge (the field stays inside the inspector); never narrower than a plain field.
+    private var searchWidth: CGFloat {
+        var covered: CGFloat = 0
+        // The first layout passes report the inspector at the window's left: not yet where it will be.
+        if let minX = inspectorMinX, windowWidth > 0, minX >= windowWidth / 2 { covered = windowWidth - minX }
+        return max(Self.plainSearchWidth, covered - Self.searchInsets)
+    }
+
+    private static let plainSearchWidth: CGFloat = 200
+    private static let searchInsets: CGFloat = 16
+
+    /// ⇧⌘C works with the inspector closed too; ⌘F goes to the search field.
     private func shortcuts(selected: MacHistoryRow?) -> some View {
-        Button("Скопировать лог") { if let selected { controller.copyLog(of: selected) } }
-            .keyboardShortcut("c", modifiers: [.command, .shift])
-            .disabled(selected?.record == nil)
-            .opacity(0)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        ZStack {
+            Button("Скопировать лог") { if let selected { controller.copyLog(of: selected) } }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+                .disabled(selected?.record == nil)
+            Button("Поиск") {
+                searchFocused = true
+                MacToolbarSearchField.focus(in: NSApp.keyWindow, prompt: String(localized: "Поиск"))
+            }
+            .keyboardShortcut("f", modifiers: .command)
+        }
+        .opacity(0)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     // MARK: Delete
@@ -249,6 +287,52 @@ struct MacHistoryWindow: View {
         case (_, 0): return String(localized: "Удалить \(trainingsText)")
         case (0, _): return String(localized: "Удалить \(clipsText)")
         default: return String(localized: "Удалить \(trainingsText) и \(clipsText)")
+        }
+    }
+}
+
+/// The toolbar's search field, drawn like the system one (the toolbar gives it the glass capsule). Not `.searchable`:
+/// SwiftUI gives that field a fixed width at the window's edge, so it ran over the inspector's edge and could not
+/// follow the inspector's width.
+struct MacToolbarSearchField: View {
+    @Binding var text: String
+    var focus: FocusState<Bool>.Binding
+    var prompt: LocalizedStringKey
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(prompt, text: $text)
+                .textFieldStyle(.plain)
+                .focused(focus)
+                // Esc clears, as in the system field.
+                .onExitCommand { text = "" }
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Очистить")
+            }
+        }
+        .padding(.horizontal, 10)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(prompt))
+    }
+
+    /// ⌘F. `FocusState` does not always reach a text field hosted in the toolbar, so the field is also found in the
+    /// window's frame view (the toolbar lives there) and made first responder directly.
+    static func focus(in window: NSWindow?, prompt: String) {
+        DispatchQueue.main.async {
+            guard let window, let frame = window.contentView?.superview else { return }
+            func field(in view: NSView) -> NSTextField? {
+                if let text = view as? NSTextField, text.isEditable, text.placeholderString == prompt { return text }
+                return view.subviews.lazy.compactMap(field(in:)).first
+            }
+            guard let text = field(in: frame), text.currentEditor() == nil else { return }
+            window.makeFirstResponder(text)
         }
     }
 }

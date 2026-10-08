@@ -52,20 +52,21 @@ func Start(configPath string, overrides string) error {
 		}
 		app.Version = "1.9.14"
 
-		app.Init()     // config and logger
-		api.Init()     // HTTP API (serves in a goroutine)
-		ws.Init()      // WebSocket endpoint used by video-rtc.js
-		streams.Init() // streams registry
-		http.Init()    // http/https sources
-		rtsp.Init()    // rtsp sources (server disabled in config)
-		webrtc.Init()  // WebRTC output for the player
-		mp4.Init()     // MP4 output (recording)
-		hls.Init()     // HLS output
-		mjpeg.Init()   // MJPEG fallback
-		xiaomi.Init()     // Mi Home cameras + /api/xiaomi login
-		xiaomi.InitMiot()   // /api/xiaomi/miot: camera settings via Mi Cloud (Waiting Paws addition)
-		xiaomi.InitLogout() // /api/xiaomi/logout: forget a Mi Home account (Waiting Paws addition)
+		app.Init()           // config and logger
+		api.Init()           // HTTP API (serves in a goroutine)
+		ws.Init()            // WebSocket endpoint used by video-rtc.js
+		streams.Init()       // streams registry
+		http.Init()          // http/https sources
+		rtsp.Init()          // rtsp sources (server disabled in config)
+		webrtc.Init()        // WebRTC output for the player
+		mp4.Init()           // MP4 output (recording)
+		hls.Init()           // HLS output
+		mjpeg.Init()         // MJPEG fallback
+		xiaomi.Init()        // Mi Home cameras + /api/xiaomi login
+		xiaomi.InitMiot()    // /api/xiaomi/miot: camera settings via Mi Cloud (Waiting Paws addition)
+		xiaomi.InitLogout()  // /api/xiaomi/logout: forget a Mi Home account (Waiting Paws addition)
 		xiaomi.InitCameras() // /api/xiaomi/cameras: cameras of own and shared homes (Waiting Paws addition)
+		xiaomi.InitMotor()   // /api/xiaomi/motor: turn a pan/tilt camera (Waiting Paws addition)
 
 		started = true
 	})

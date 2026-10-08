@@ -271,6 +271,9 @@ final class SyncClient {
     }
 
     func send(_ command: SyncCommand) {
+        #if DEBUG
+        if demoMac != nil { return demoMacReceive(command) }
+        #endif
         channel?.send(.command(command))
     }
 
@@ -368,6 +371,51 @@ final class SyncClient {
             state.recordingSince = nil
             self?.state = state
             self?.onState?(state)
+        }
+    }
+
+    /// `--demo-mac-session`: linked to a Mac that runs `plan` here in memory, without any network. `lag`: every command
+    /// reaches it that much later and its state comes back as late (a weak Wi-Fi).
+    @ObservationIgnored private var demoMac: (session: TrainingSession, lag: Double, recordingSince: Date?)?
+
+    func demoSession(_ plan: TrainingPlan, lag: Double) {
+        demoMac = (TrainingSession(plan: plan), lag, nil)
+        status = .connected(SyncDevice(id: "demo-mac", name: "MacBook Pro", kind: .mac, model: "MacBook Pro"))
+        demoMacPublish()
+    }
+
+    private func demoMacReceive(_ command: SyncCommand) {
+        print("[sync] demo: sent \(command)")
+        Task { [weak self] in
+            guard let lag = self?.demoMac?.lag else { return }
+            try? await Task.sleep(for: .seconds(lag))
+            guard let self, let mac = demoMac else { return }
+            print("[sync] demo: the Mac got \(command)")
+            switch command {
+            case .session(.finish, _):
+                mac.session.finish()
+                demoMac?.recordingSince = nil
+            case .session(let command, let time): command.apply(to: mac.session, at: time)
+            case .startRecording: demoMac?.recordingSince = mac.recordingSince ?? Date()
+            case .stopRecording: demoMac?.recordingSince = nil
+            default: break
+            }
+            demoMacPublish()
+        }
+    }
+
+    private func demoMacPublish() {
+        guard let mac = demoMac else { return }
+        let finished = mac.session.isFinished
+        let state = SyncState(session: finished ? nil : mac.session.snapshot, recordingSince: mac.recordingSince,
+                              cameraReady: true, cameraTitle: "Xiaomi Smart Camera C200", streamName: "",
+                              lastRecord: finished ? mac.session.makeRecord(recordingFileName: nil) : nil, sentAt: Date())
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(mac.lag))
+            guard let self, demoMac != nil else { return }
+            print("[sync] demo: state from the Mac, \(state.session.map { "\($0.phase)" } ?? "no session")")
+            self.state = state
+            onState?(state)
         }
     }
 

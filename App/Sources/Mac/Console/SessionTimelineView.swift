@@ -365,8 +365,12 @@ struct SessionTimelineView: View {
         let value = value(of: drag.edge, in: plan)
         let delta = value - drag.startValue
         let end = planSegments.first { $0.edge == drag.edge }?.end ?? model.now
-        let tip = (Text(verbatim: edgeTitle(drag.edge) + " · ") + Text(verbatim: DurationText.clock(value)).fontWeight(.bold)
-                   + Text(verbatim: delta == 0 ? "" : " (\(MacPlanFormat.signed(delta)))").foregroundStyle(.black.opacity(0.55)))
+        // One attributed text (`Text + Text` is deprecated; interpolating Texts would add a key to the catalog).
+        var clock = AttributedString(DurationText.clock(value))
+        clock.inlinePresentationIntent = .stronglyEmphasized
+        var change = AttributedString(delta == 0 ? "" : " (\(MacPlanFormat.signed(delta)))")
+        change.foregroundColor = .black.opacity(0.55)
+        let tip = Text(AttributedString(edgeTitle(drag.edge) + " · ") + clock + change)
             .font(.system(size: 11, weight: .semibold).monospacedDigit())
             .foregroundStyle(.black)
             .fixedSize()

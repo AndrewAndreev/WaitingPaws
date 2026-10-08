@@ -9,14 +9,18 @@
 /* Begin PBXBuildFile section */
 		09615CC5776F3A3C61CA1FDE /* MacWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785D1BAD352BFFA46C471742 /* MacWelcomeView.swift */; };
 		0A0DD7CE1EBB1CB0FFD36709 /* SetupKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363380F0C18A871DAEBE09A7 /* SetupKit.swift */; };
+		0A6F5ABF623344A7262E9307 /* CameraPanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A126E5AF78BEE277CC91B1A6 /* CameraPanTilt.swift */; };
 		0A8569E541657B396F606530 /* WaitingPawsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9C9680E83C89D28AB3F3B99D /* WaitingPawsCore */; };
 		0AD1CD73A6DD1C01A2B7C695 /* SessionHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A543FFBD67D604BF950292 /* SessionHUD.swift */; };
 		0CF17D71AB159A90FED95885 /* SetupKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363380F0C18A871DAEBE09A7 /* SetupKit.swift */; };
+		0EC2986C7F1ABF5F2A6E6F18 /* PanTiltPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12AA8AD184DFA81BBF19749 /* PanTiltPad.swift */; };
 		0F7486DEFC2CA4BFD0376160 /* MacUIState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */; };
 		1195428CB49F8D9B997EF706 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8E692C88D60C366CFA7A12 /* Theme.swift */; };
 		12191F3C92C8990AC320BE32 /* NewTrainingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */; };
+		1224435464F432620D3A5DCA /* ConsolePanelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B0B27C2AA0D56A62AF30F6 /* ConsolePanelLayout.swift */; };
 		15917BF9D596D04A47214BD9 /* KeyboardPrewarmer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5D87597A0F52F2D42B6E6F /* KeyboardPrewarmer.swift */; };
 		17F19D2EBFCFCE84589CB977 /* GlassStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB61697BF2273ACAA76C184E /* GlassStyles.swift */; };
+		18BD9FD3B2FAFC05632A2E93 /* AppModel+PanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346A8A39B13E33AAF999D38E /* AppModel+PanTilt.swift */; };
 		18C89902BAA438D690A2F50F /* GlassStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB61697BF2273ACAA76C184E /* GlassStyles.swift */; };
 		18D4B68FFC0F6DF28E606F20 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
 		1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */; };
@@ -37,12 +41,14 @@
 		2AC851DC82C729B326FF24C2 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
 		2B5C02356ABEB628D2DC4F51 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
 		2C447B33CA2D830A66F6AD60 /* MacSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */; };
+		2CE60CA72D70FA539B4A2166 /* ConsolePanelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B0B27C2AA0D56A62AF30F6 /* ConsolePanelLayout.swift */; };
 		2DF245D25B64FD43DE4DDD79 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38A20951026E43C64982CCD7 /* Localizable.xcstrings */; };
 		2EC6AA5D676BB527E1183DE2 /* ConsoleReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA761F28A420093D2740492F /* ConsoleReadout.swift */; };
 		30DA9B7C10D3A01F1A1A0AF0 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
 		312542C67DA22BF708B936FB /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
 		3141DF20BF7ABA82749E2B7C /* PrivacyPolicy-ru.md in Resources */ = {isa = PBXBuildFile; fileRef = CEA5D093822E9CAD83CAB5D2 /* PrivacyPolicy-ru.md */; };
 		32C5BC7D4694B3220441C196 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */; };
+		3350CD3906CF86E00AF5E29E /* CameraPanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A126E5AF78BEE277CC91B1A6 /* CameraPanTilt.swift */; };
 		33BA36B51071FF4F0A42230F /* MacPlanReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */; };
 		33E75F82080284406C2D48A4 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		34D011B69D7D63FABCC1EB71 /* Go2RTC.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; };
@@ -51,6 +57,7 @@
 		39F5CF6E49596FCA8A1844DA /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
 		3C2C291FDBDB142AA9910F71 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
 		3D02A0EC6348B36CDB24C029 /* MacCameraArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */; };
+		3DB175BC9BAF747705E71F92 /* PanTiltPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12AA8AD184DFA81BBF19749 /* PanTiltPad.swift */; };
 		402CC4C9EB23741F56D70616 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BC4F2D63E281B08766B2C4 /* RootView.swift */; };
 		40F2F685381D7F13DC20C13D /* LiveSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C46490ED793F437A72C93B /* LiveSessionModel.swift */; };
 		427AB731D226280986A118E3 /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
@@ -87,6 +94,7 @@
 		792907206B28D4D6A58F99D0 /* SetupServerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */; };
 		7ADEB6214CBE9D22BDA3921F /* SetupCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A837352B67FA611D8111C00 /* SetupCommon.swift */; };
 		7AE4B75A5F0B841DA37CA766 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */; };
+		7AF1FC9CE7DF588C42176EF3 /* AppModel+PanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346A8A39B13E33AAF999D38E /* AppModel+PanTilt.swift */; };
 		7DAE02536A3B4738ECA07D06 /* SyncIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5E56CC601BE031A3D48DF0 /* SyncIdentity.swift */; };
 		7F5CA5C97017F6F9E02F9A21 /* PlanInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */; };
 		80A7DF3FFDD448ED63301DF0 /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
@@ -189,6 +197,7 @@
 		2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "PrivacyPolicy-en.md"; sourceTree = "<group>"; };
 		2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUI.swift; sourceTree = "<group>"; };
 		33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		346A8A39B13E33AAF999D38E /* AppModel+PanTilt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+PanTilt.swift"; sourceTree = "<group>"; };
 		34E57CF6328D1F36D2C8BB29 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
 		363380F0C18A871DAEBE09A7 /* SetupKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupKit.swift; sourceTree = "<group>"; };
 		38A20951026E43C64982CCD7 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -225,11 +234,13 @@
 		9E4D07D1D62842451078C3B3 /* StepIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepIcon.swift; sourceTree = "<group>"; };
 		9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSummarySheet.swift; sourceTree = "<group>"; };
 		A07E8A420FED84FE8A782BFB /* LogMirror.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMirror.swift; sourceTree = "<group>"; };
+		A126E5AF78BEE277CC91B1A6 /* CameraPanTilt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPanTilt.swift; sourceTree = "<group>"; };
 		A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUIState.swift; sourceTree = "<group>"; };
 		AC3612DF5625E044251C2ABF /* SyncClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncClient.swift; sourceTree = "<group>"; };
 		B85DCB661B7AD5031EC737BA /* SessionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionScreen.swift; sourceTree = "<group>"; };
 		BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanInputView.swift; sourceTree = "<group>"; };
 		BF657A0F361124C3C62F22AA /* TimerRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerRing.swift; sourceTree = "<group>"; };
+		C12AA8AD184DFA81BBF19749 /* PanTiltPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanTiltPad.swift; sourceTree = "<group>"; };
 		C420C79201591C3471BA3CC6 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
 		C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupServerSheet.swift; sourceTree = "<group>"; };
 		CA209D43CA8963E3C71A7B14 /* SyncHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncHost.swift; sourceTree = "<group>"; };
@@ -242,6 +253,7 @@
 		DA410D4D979D88D298BC0DC8 /* MacHistoryWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryWindow.swift; sourceTree = "<group>"; };
 		DA761F28A420093D2740492F /* ConsoleReadout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleReadout.swift; sourceTree = "<group>"; };
 		DF078E66FEB0548DFDA1B148 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		E0B0B27C2AA0D56A62AF30F6 /* ConsolePanelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsolePanelLayout.swift; sourceTree = "<group>"; };
 		E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceMonitor.swift; sourceTree = "<group>"; };
 		E284DBC656F72086C4AECDC8 /* MacHistoryTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryTable.swift; sourceTree = "<group>"; };
 		E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanTimelineEditor.swift; sourceTree = "<group>"; };
@@ -341,7 +353,9 @@
 		47B92FCA72621AA3FE1699F8 /* Go2RTC */ = {
 			isa = PBXGroup;
 			children = (
+				346A8A39B13E33AAF999D38E /* AppModel+PanTilt.swift */,
 				2A9E12D5DF46378F7F1F746E /* CameraModesModel.swift */,
+				A126E5AF78BEE277CC91B1A6 /* CameraPanTilt.swift */,
 				1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */,
 				A07E8A420FED84FE8A782BFB /* LogMirror.swift */,
 				E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */,
@@ -405,6 +419,7 @@
 				8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */,
 				48C67571FE1A685FF1E89C85 /* GlassCard.swift */,
 				EB61697BF2273ACAA76C184E /* GlassStyles.swift */,
+				C12AA8AD184DFA81BBF19749 /* PanTiltPad.swift */,
 				9E4D07D1D62842451078C3B3 /* StepIcon.swift */,
 				BF657A0F361124C3C62F22AA /* TimerRing.swift */,
 			);
@@ -432,6 +447,7 @@
 		8ADA58F84C3050554F0F2D9D /* Console */ = {
 			isa = PBXGroup;
 			children = (
+				E0B0B27C2AA0D56A62AF30F6 /* ConsolePanelLayout.swift */,
 				DA761F28A420093D2740492F /* ConsoleReadout.swift */,
 				84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */,
 				D82D001539C92D7959753385 /* MacConsoleView.swift */,
@@ -703,13 +719,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				9D36C65C9CB5D362FA6219F3 /* AboutViews.swift in Sources */,
+				7AF1FC9CE7DF588C42176EF3 /* AppModel+PanTilt.swift in Sources */,
 				5F311EC55BB5C9535C42AF30 /* AppModel.swift in Sources */,
 				BC8954C82632662A2A250FF9 /* AppSettings.swift in Sources */,
 				ABB2844BE67E7FC1A37E44A0 /* CameraModeControls.swift in Sources */,
 				B8AF3D7E6F3119FB13242691 /* CameraModesModel.swift in Sources */,
+				0A6F5ABF623344A7262E9307 /* CameraPanTilt.swift in Sources */,
 				21288095E2A1499040A448BD /* CameraPickerView.swift in Sources */,
 				C764961258D6DDC76B304F40 /* CameraStreamView.swift in Sources */,
 				65FB4571AC493789B3CD4903 /* ClipCards.swift in Sources */,
+				1224435464F432620D3A5DCA /* ConsolePanelLayout.swift in Sources */,
 				2EC6AA5D676BB527E1183DE2 /* ConsoleReadout.swift in Sources */,
 				2B5C02356ABEB628D2DC4F51 /* DemoData.swift in Sources */,
 				38FD25FEBDF1B3E69F80FA12 /* DurationField.swift in Sources */,
@@ -747,6 +766,7 @@
 				C5E579EAF0078CCE60F09112 /* MinimizedPanel.swift in Sources */,
 				12191F3C92C8990AC320BE32 /* NewTrainingPanel.swift in Sources */,
 				32C5BC7D4694B3220441C196 /* OnboardingFlow.swift in Sources */,
+				0EC2986C7F1ABF5F2A6E6F18 /* PanTiltPad.swift in Sources */,
 				26A1C0AAB8EB7842077F5F44 /* PerformanceMonitor.swift in Sources */,
 				1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */,
 				A90B8E31C84A7B8A92DE0493 /* PlanEditorView.swift in Sources */,
@@ -781,13 +801,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				1CDF1781E48F963F97F7C8FD /* AboutViews.swift in Sources */,
+				18BD9FD3B2FAFC05632A2E93 /* AppModel+PanTilt.swift in Sources */,
 				4E2ACC2223573B440A9C6BCF /* AppModel.swift in Sources */,
 				A9E23A66DFAD9DC85EA65415 /* AppSettings.swift in Sources */,
 				FBDACEDE4C8F4CBA44FA6058 /* CameraModeControls.swift in Sources */,
 				EFEAE081094C1BD9607722C5 /* CameraModesModel.swift in Sources */,
+				3350CD3906CF86E00AF5E29E /* CameraPanTilt.swift in Sources */,
 				BA94B89FED894E5CF6FDEE21 /* CameraPickerView.swift in Sources */,
 				CB9F39E531F2E976136C552F /* CameraStreamView.swift in Sources */,
 				F9CB40DEBE1D55181631B49F /* ClipCards.swift in Sources */,
+				2CE60CA72D70FA539B4A2166 /* ConsolePanelLayout.swift in Sources */,
 				C18BCC23D5701721C47E8372 /* ConsoleReadout.swift in Sources */,
 				29E1EE966430E935616E1C61 /* DemoData.swift in Sources */,
 				39F5CF6E49596FCA8A1844DA /* DurationField.swift in Sources */,
@@ -825,6 +848,7 @@
 				84F904EFE9492E462B8B9EFB /* MinimizedPanel.swift in Sources */,
 				8AEC529897F318743067E9D1 /* NewTrainingPanel.swift in Sources */,
 				580F4712E7221F688A06DB41 /* OnboardingFlow.swift in Sources */,
+				3DB175BC9BAF747705E71F92 /* PanTiltPad.swift in Sources */,
 				D47A9084A840646B26305955 /* PerformanceMonitor.swift in Sources */,
 				25DEE27E7DA565261F9B9A46 /* PhotoLibrarySaver.swift in Sources */,
 				FF09E0C7841537F847238D38 /* PlanEditorView.swift in Sources */,

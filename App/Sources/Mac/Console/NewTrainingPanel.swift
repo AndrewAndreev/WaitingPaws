@@ -26,6 +26,16 @@ struct NewTrainingPanel: View {
                 Text("Видео без расписания и лога — например, посмотреть, что собака делает одна.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Button { ui.cameraOnly = true } label: {
+                    ShortcutLabel(title: String(localized: "Только камера"), symbol: "arrow.up.left.and.arrow.down.right",
+                                  key: "⇧⌘F", expand: true)
+                }
+                .controlSize(.large)
+                .disabled(!model.settings.isConfigured)
+                .padding(.top, 4)
+                Text("Картинка на всё окно, без записи и тренировки — например, когда записывает кто-то другой.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .padding(16)
         }

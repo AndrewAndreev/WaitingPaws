@@ -188,6 +188,25 @@ public struct CameraModeOption: Identifiable, Equatable, Hashable, Sendable {
     }
 }
 
+/// One step of a pan/tilt camera: the motor operation Mi Home sends over the camera's P2P session
+/// (go2rtc `/api/xiaomi/motor`). A step turns the camera by about a tenth of the frame.
+public enum PanTiltDirection: Int, CaseIterable, Sendable {
+    case left = 1, right, up, down
+}
+
+/// What the app reads from a camera's spec: the settings it shows and whether the camera turns.
+public struct CameraSpec: Equatable, Sendable {
+    public var modes: [CameraModeOption]
+    /// A pan/tilt camera. The spec has no commands for turning (that goes over the P2P session), so this is read from
+    /// what only such cameras declare: `ptz-camera`, a PTZ action (`ptz-calibrate`) or a tracking switch.
+    public var panTilt: Bool
+
+    public init(modes: [CameraModeOption], panTilt: Bool) {
+        self.modes = modes
+        self.panTilt = panTilt
+    }
+}
+
 /// Reads device specs published on miot-spec.org (the same ones Mi Home uses).
 public enum MiotSpec {
     public enum SpecError: LocalizedError {
@@ -199,7 +218,33 @@ public enum MiotSpec {
     /// and writable, with their choices translated. Value meanings come from the spec: night-shot 0 is
     /// "Off" on some models and "On" on others.
     public static func cameraModes(fromSpec data: Data) throws -> [CameraModeOption] {
+        try cameraSpec(fromSpec: data).modes
+    }
+
+    /// The settings (see `cameraModes(fromSpec:)`) and whether the camera turns.
+    public static func cameraSpec(fromSpec data: Data) throws -> CameraSpec {
         guard let document = try? JSONDecoder().decode(SpecDocument.self, from: data) else { throw SpecError.unreadable }
+        return CameraSpec(modes: modes(in: document), panTilt: isPanTilt(document))
+    }
+
+    /// `ptz-camera`, `ptz-calibrate`, a `ptz`/`motor` service, or motion / human / pet tracking (the camera follows by
+    /// turning). Fixed cameras (Xiaofang, the Basic 1080p) declare none of these.
+    private static func isPanTilt(_ document: SpecDocument) -> Bool {
+        document.services.contains { service in
+            let serviceName = urnName(service.type)
+            if serviceName.contains("ptz") || serviceName.contains("motor") { return true }
+            if (service.properties ?? []).contains(where: {
+                let name = urnName($0.type)
+                return name.hasPrefix("ptz") || name.hasSuffix("tracking")
+            }) { return true }
+            return (service.actions ?? []).contains {
+                let name = urnName($0.type)
+                return name.hasPrefix("ptz") || name.contains("motor")
+            }
+        }
+    }
+
+    private static func modes(in document: SpecDocument) -> [CameraModeOption] {
         var found: [CameraSetting: CameraModeOption] = [:]
         for service in document.services {
             let serviceName = urnName(service.type)
@@ -289,6 +334,11 @@ public enum MiotSpec {
         var iid: Int
         var type: String
         var properties: [SpecProperty]?
+        var actions: [SpecAction]?
+    }
+
+    private struct SpecAction: Decodable {
+        var type: String
     }
 
     private struct SpecProperty: Decodable {
@@ -334,7 +384,7 @@ public enum MiotSpec {
 public actor MiotSpecProvider {
     private let cacheDirectory: URL
     private let session: URLSession
-    private var memory: [String: [CameraModeOption]] = [:]
+    private var memory: [String: CameraSpec] = [:]
     private static let maxAge: TimeInterval = 30 * 24 * 3600
     private static let base = URL(string: "https://miot-spec.org/miot-spec-v2/")!
 
@@ -345,24 +395,30 @@ public actor MiotSpecProvider {
 
     /// Camera settings `model` (e.g. `xiaomi.camera.c302n`) declares; empty when the model has no published spec.
     public func cameraModes(model: String) async throws -> [CameraModeOption] {
+        try await cameraSpec(model: model).modes
+    }
+
+    /// Settings and pan/tilt of `model`; no settings and no turning when the model has no published spec.
+    public func cameraSpec(model: String) async throws -> CameraSpec {
         if let cached = memory[model] { return cached }
         let file = cacheDirectory.appendingPathComponent(Self.fileName(model) + ".json")
-        if let data = try? Data(contentsOf: file), let options = try? MiotSpec.cameraModes(fromSpec: data) {
-            memory[model] = options
-            return options
+        if let data = try? Data(contentsOf: file), let spec = try? MiotSpec.cameraSpec(fromSpec: data) {
+            memory[model] = spec
+            return spec
         }
         guard let type = try await specType(model: model) else {
-            memory[model] = []
-            return []
+            let none = CameraSpec(modes: [], panTilt: false)
+            memory[model] = none
+            return none
         }
         var components = URLComponents(url: Self.base.appendingPathComponent("instance"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "type", value: type)]
         let data = try await fetch(components.url!)
-        let options = try MiotSpec.cameraModes(fromSpec: data)
+        let spec = try MiotSpec.cameraSpec(fromSpec: data)
         try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         try? data.write(to: file)
-        memory[model] = options
-        return options
+        memory[model] = spec
+        return spec
     }
 
     private func specType(model: String) async throws -> String? {

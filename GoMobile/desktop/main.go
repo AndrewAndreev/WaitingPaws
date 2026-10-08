@@ -68,6 +68,7 @@ func main() {
 	xiaomi.InitMiot()    // /api/xiaomi/miot: camera settings via Mi Cloud (Waiting Paws addition)
 	xiaomi.InitLogout()  // /api/xiaomi/logout: forget a Mi Home account (Waiting Paws addition)
 	xiaomi.InitCameras() // /api/xiaomi/cameras: cameras of own and shared homes (Waiting Paws addition)
+	xiaomi.InitMotor()   // /api/xiaomi/motor: turn a pan/tilt camera (Waiting Paws addition)
 
 	// Ctrl+C in a console; the app itself stops it with TerminateProcess (child.kill) or by exiting.
 	shell.RunUntilSignal()

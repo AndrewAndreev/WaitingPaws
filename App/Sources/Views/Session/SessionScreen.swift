@@ -4,6 +4,7 @@ import WaitingPawsCore
 /// The main screen: camera in the background, training HUD on top.
 struct SessionScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var showPlanInput = false
     @State private var showHistory = false
@@ -18,15 +19,19 @@ struct SessionScreen: View {
     @State private var editingPending: TrainingPlan?
     /// The running training's schedule, opened for edits.
     @State private var editingSessionPlan: TrainingPlan?
+    /// «Только камера»: before a training, the picture on the whole screen without recording (someone else records,
+    /// or the dog is just being watched). A training brings the cards back.
+    @State private var cameraOnly = false
 
     var body: some View {
         @Bindable var model = model
         GeometryReader { geometry in
             let wide = geometry.size.width > geometry.size.height
             let compact = !wide && geometry.size.height < 900
-            // Recording without a training (here or on the linked Mac): the picture takes the screen, the clock
-            // floats over it. The camera keeps its place in each layout, so the player is not recreated.
-            let clipMode = model.isRecordingClip
+            // Recording without a training (here or on the linked Mac), or «Только камера»: the picture takes the
+            // screen, the clock (or the way to record or back) floats over it. The camera keeps its place in each
+            // layout, so the player is not recreated.
+            let clipMode = model.isRecordingClip || (cameraOnly && model.session == nil)
             Group {
                 if wide {
                     HStack(spacing: 12) {
@@ -35,6 +40,7 @@ struct SessionScreen: View {
                                 if clipMode { topBar.padding(12).transition(.opacity) }
                             }
                             .overlay(alignment: .bottom) { clipOverlay(clipMode) }
+                            .overlay(alignment: .bottomTrailing) { cameraCorner(clipMode) }
                         if !clipMode {
                             VStack(spacing: 12) {
                                 topBar
@@ -54,6 +60,7 @@ struct SessionScreen: View {
                         if model.performance.isRunning { performanceBar.padding(.horizontal, 12) }
                         cameraArea
                             .overlay(alignment: .bottom) { clipOverlay(clipMode) }
+                            .overlay(alignment: .bottomTrailing) { cameraCorner(clipMode) }
                             .padding(.horizontal, clipMode ? 0 : 12)
                         if !clipMode {
                             bottomContent(compact: compact)
@@ -73,7 +80,14 @@ struct SessionScreen: View {
         #endif
         .task(id: model.settings.streamName) { await model.refreshXiaomiQuality() }
         // Camera modes also through a linked Mac: they live in the camera.
-        .task(id: model.cameraModesKey) { await model.refreshCameraModes() }
+        .task(id: model.cameraModesKey) {
+            model.panTilt.stop()
+            await model.refreshCameraModes()
+        }
+        .onChange(of: model.canPanTilt) { _, can in if !can { model.panTilt.stop() } }
+        // A finger still on an arrow when the app goes away would never lift.
+        .onChange(of: scenePhase) { _, phase in if phase != .active { model.panTilt.stop() } }
+        .onChange(of: model.session != nil) { _, running in if running { cameraOnly = false } }
         .onChange(of: model.settings.isConfigured) { _, configured in
             if configured { showCameraSetup = false }
         }
@@ -96,6 +110,11 @@ struct SessionScreen: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) { editingSessionPlan = model.session?.plan }
                 default: break
                 }
+            }
+            // `--demo-camera-only`: «Только камера»; `--demo-pan-tilt` (with `--demo-camera-modes`): the turning mode on.
+            if CommandLine.arguments.contains("--demo-camera-only") { cameraOnly = true }
+            if CommandLine.arguments.contains("--demo-pan-tilt") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { model.panTilt.start() }
             }
             #endif
         }
@@ -200,16 +219,58 @@ struct SessionScreen: View {
         ZoomableView { camera }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.black)
+            .overlay { if model.panTilt.isActive && model.canPanTilt { PanTiltFrame().transition(.opacity) } }
     }
 
     @ViewBuilder
     private func clipOverlay(_ clipMode: Bool) -> some View {
         if clipMode {
-            ClipRecordingOverlay()
-                .frame(maxWidth: 520)
-                .padding(12)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+            Group {
+                if model.isRecordingClip {
+                    ClipRecordingOverlay()
+                } else {
+                    CameraOnlyOverlay(onRecord: { model.startRecording() },
+                                      onClose: { cameraOnly = false })
+                }
+            }
+            .frame(maxWidth: 520)
+            .padding(12)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
+    }
+
+    /// The picture's bottom-right corner: «повернуть камеру» and «на весь экран» — or, while turning, the pad. Above
+    /// the floating panel when the picture takes the screen.
+    @ViewBuilder
+    private func cameraCorner(_ clipMode: Bool) -> some View {
+        let turning = model.panTilt.isActive && model.canPanTilt
+        let canExpand = !clipMode && model.session == nil && !hasNoCamera
+        Group {
+            if turning {
+                PanTiltPad(diameter: 132)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottomTrailing)))
+            } else if model.canPanTilt || canExpand {
+                HStack(spacing: 8) {
+                    if model.canPanTilt {
+                        CornerButton(systemImage: "arrow.up.and.down.and.arrow.left.and.right",
+                                     label: String(localized: "Повернуть камеру")) {
+                            withAnimation(.smooth(duration: 0.25)) { model.panTilt.start() }
+                        }
+                    }
+                    if canExpand {
+                        CornerButton(systemImage: "arrow.up.left.and.arrow.down.right",
+                                     label: String(localized: "Только камера")) {
+                            cameraOnly = true
+                        }
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+        .padding(12)
+        // Clear of the clock / «Только камера» panel (~64 pt) at the bottom.
+        .padding(.bottom, clipMode ? 72 : 0)
+        .animation(.smooth(duration: 0.25), value: turning)
     }
 
     @ViewBuilder
@@ -520,5 +581,73 @@ struct NoCameraView: View {
             }
             .padding(24)
         }
+    }
+}
+
+/// A round button in a corner of the picture: dark and translucent so the picture shows round it.
+private struct CornerButton: View {
+    var systemImage: String
+    var label: String
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(.black.opacity(0.55), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+        }
+        .buttonStyle(PressableButtonStyle())
+        .accessibilityLabel(label)
+    }
+}
+
+/// «Только камера»: nothing is recorded; record from here or bring the cards back. Same panel as the recording clock.
+struct CameraOnlyOverlay: View {
+    var onRecord: () -> Void
+    var onClose: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "eye")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(.white.opacity(0.7))
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Только камера")
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                Text("Без записи и тренировки")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            Button(action: onRecord) {
+                Image(systemName: "record.circle")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(Theme.danger)
+                    .frame(width: 48, height: 48)
+                    .background(Theme.control, in: Circle())
+            }
+            .buttonStyle(PressableButtonStyle())
+            .accessibilityLabel("Начать запись")
+            Button(action: onClose) {
+                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(Theme.control, in: Circle())
+            }
+            .buttonStyle(PressableButtonStyle())
+            .accessibilityLabel("Вернуть карточки")
+        }
+        .padding(.leading, 20)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        // Translucent but no blur: a backdrop blur over live video costs the iPhone too much (see GlassCard).
+        .background(.black.opacity(0.55), in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
     }
 }

@@ -55,9 +55,10 @@ public final class TrainingSession {
     /// Finish the session automatically when the break after the last exit runs out.
     public var autoFinishAfterLastBreak = true
     /// Set on a mirror of a session that runs on another device (iPhone connected to a Mac): the buttons
-    /// call the usual actions, but they are forwarded here instead of changing this copy, and `tick` does
-    /// nothing. The owner applies the command and sends back a new `Snapshot` (`restore`). The date is when the
-    /// button was pressed here, so a command that arrives late is still logged at the moment of the press.
+    /// call the usual actions, and they are forwarded here. The owner applies the command and sends back a new
+    /// `Snapshot` (`restore`); this copy shows the press at once meanwhile (see `predictions`), and `tick` never
+    /// ends its breaks. The date is when the button was pressed here (by `clock`, which a mirror keeps in the
+    /// owner's time), so a command that arrives late is still logged at the moment of the press.
     public var commandHandler: ((SessionCommand, Date) -> Void)?
     /// The same for `updatePlan` on a mirror: the edited schedule goes to the owner (with `quiet` and
     /// `changesSince` as given).
@@ -65,6 +66,23 @@ public final class TrainingSession {
 
     private let clock: () -> Date
     private var currentBreakStart: Date?
+
+    /// How long a press on a mirror shows before a snapshot from the owner has it. A weak Wi-Fi holds the command
+    /// and the answer for seconds; when this runs out, the owner's state is shown as it is (it never took the press).
+    public static let predictionLifetime: TimeInterval = 15
+
+    /// A press on a mirror the owner has not confirmed yet: shown on top of its last snapshot.
+    private struct Prediction {
+        let command: SessionCommand
+        let time: Date
+        /// `stepCount` with the press applied: a snapshot from the owner with this many steps has it.
+        var steps: Int
+    }
+
+    /// Presses on this mirror, oldest first, not seen in a snapshot from the owner yet.
+    private var predictions: [Prediction] = []
+    /// The owner's last snapshot, without `predictions`.
+    private var confirmed: Snapshot?
 
     public init(plan: TrainingPlan, clock: @escaping () -> Date = Date.init) {
         self.plan = plan
@@ -102,6 +120,7 @@ public final class TrainingSession {
         self.startedAt = snapshot.startedAt
         self.clock = clock
         self.phase = snapshot.phase
+        self.confirmed = snapshot
         apply(snapshot)
     }
 
@@ -110,10 +129,62 @@ public final class TrainingSession {
         snapshot.plan.id == plan.id && snapshot.startedAt == startedAt
     }
 
-    /// Updates the state in place from a newer snapshot of the same session.
+    /// Updates the state in place from a newer snapshot of the same session. On a mirror, presses the snapshot
+    /// does not have yet stay on top of it: a state the owner sent before the command reached it must not undo them.
     public func restore(_ snapshot: Snapshot) {
         guard isSameSession(as: snapshot) else { return }
-        apply(snapshot)
+        confirmed = snapshot
+        let steps = Self.stepCount(snapshot.events)
+        predictions.removeAll { $0.steps <= steps }
+        show(predictions, on: snapshot)
+    }
+
+    // MARK: - Presses on a mirror
+
+    /// On a mirror: sends the press to the owner and shows it here at once. False on the owner (apply it here).
+    private func forwards(_ command: SessionCommand, at time: Date?) -> Bool {
+        guard let commandHandler else { return false }
+        let time = time ?? clock()
+        commandHandler(command, time)
+        // A mirror made from a plan (not from a snapshot) is the owner's state until the first press.
+        let base = confirmed ?? snapshot
+        confirmed = base
+        show(predictions + [Prediction(command: command, time: time, steps: 0)], on: base)
+        return true
+    }
+
+    /// Shows `base` with `predictions` applied in order. A press that changes nothing there (the owner's state has
+    /// moved on without it) is dropped; the rest are kept with their step counts on this base.
+    private func show(_ predictions: [Prediction], on base: Snapshot) {
+        guard !predictions.isEmpty else {
+            self.predictions = []
+            apply(base)
+            return
+        }
+        let copy = TrainingSession(snapshot: base, clock: clock)
+        var kept: [Prediction] = []
+        for var prediction in predictions {
+            let before = copy.stepCount
+            prediction.command.apply(to: copy, at: prediction.time)
+            guard copy.stepCount > before else { continue }
+            prediction.steps = copy.stepCount
+            kept.append(prediction)
+        }
+        self.predictions = kept
+        apply(copy.snapshot)
+    }
+
+    /// The presses in the log: each one that changes a session adds exactly one step (a finish from outside adds
+    /// two) — notes, the recording and the breaks that come with the steps don't count.
+    private var stepCount: Int { Self.stepCount(events) }
+
+    private static func stepCount(_ events: [SessionEvent]) -> Int {
+        events.reduce(0) { count, event in
+            switch event.kind {
+            case .exitStarted, .behindDoor, .exitEnded, .falseStart, .sessionFinished: return count + 1
+            case .sessionStarted, .breakStarted, .breakEnded, .recordingStarted, .recordingStopped, .note: return count
+            }
+        }
     }
 
     private func apply(_ snapshot: Snapshot) {
@@ -214,7 +285,7 @@ public final class TrainingSession {
 
     /// "Начать выход" of an older linked iPhone: the person heads for the door (`leaving`, then `markBehindDoor`).
     public func startExit(at time: Date? = nil) {
-        if let commandHandler { commandHandler(.startExit, time ?? clock()); return }
+        if forwards(.startExit, at: time) { return }
         let now = moment(time)
         let index: Int
         switch phase {
@@ -236,7 +307,7 @@ public final class TrainingSession {
     /// "Вышли": the door is closed behind you, the exit's countdown starts. Ends the break (or the wait before
     /// the first exit) right away.
     public func markBehindDoor(at time: Date? = nil) {
-        if let commandHandler { commandHandler(.markBehindDoor, time ?? clock()); return }
+        if forwards(.markBehindDoor, at: time) { return }
         let now = moment(time)
         switch phase {
         case .leaving(let index, let since):
@@ -257,7 +328,7 @@ public final class TrainingSession {
 
     /// "Вернулись": back inside, the break begins.
     public func endExit(at time: Date? = nil) {
-        if let commandHandler { commandHandler(.endExit, time ?? clock()); return }
+        if forwards(.endExit, at: time) { return }
         finishCurrentExit(falseStart: false, at: moment(time))
     }
 
@@ -265,7 +336,7 @@ public final class TrainingSession {
     /// break (or before the first exit): the dog went to the door, or there were sounds on the way out, before
     /// "Вышли" — the attempt counts as a false start and the break starts over.
     public func resetExit(at time: Date? = nil) {
-        if let commandHandler { commandHandler(.resetExit, time ?? clock()); return }
+        if forwards(.resetExit, at: time) { return }
         let now = moment(time)
         switch phase {
         case .leaving, .away:
@@ -335,7 +406,7 @@ public final class TrainingSession {
 
     /// Ends the session right now (also used by the auto-finish after the last break).
     public func finish() {
-        if let commandHandler { commandHandler(.finish, clock()); return }
+        if forwards(.finish, at: nil) { return }
         guard !phase.isFinished else { return }
         let now = clock()
         if phase.isOutside {
@@ -349,10 +420,18 @@ public final class TrainingSession {
     }
 
     /// Called periodically. Finishes the session when the break after the last exit runs out; other breaks
-    /// go on past their plan until "Вышли" (the views count the extra time up).
+    /// go on past their plan until "Вышли" (the views count the extra time up). On a mirror it only drops presses
+    /// the owner has not confirmed within `predictionLifetime` (later ones went on top of them, so they go too).
     public func tick(at now: Date? = nil) {
-        guard commandHandler == nil, autoFinishAfterLastBreak else { return }
         let now = now ?? clock()
+        if commandHandler != nil {
+            if let oldest = predictions.first, let confirmed,
+               now.timeIntervalSince(oldest.time) >= Self.predictionLifetime {
+                show([], on: confirmed)
+            }
+            return
+        }
+        guard autoFinishAfterLastBreak else { return }
         guard case .breakTime(_, let since, let duration, nil) = phase, now.timeIntervalSince(since) >= duration else { return }
         finish()
     }

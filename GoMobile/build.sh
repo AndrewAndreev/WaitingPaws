@@ -23,9 +23,11 @@ fi
 mkdir -p "$SRC/mobile"
 cp "$HERE"/mobile/*.go "$SRC/mobile/"
 # Additions to go2rtc's own packages: camera settings via Mi Cloud (/api/xiaomi/miot), forgetting an
-# account (/api/xiaomi/logout), cameras of shared homes (/api/xiaomi/cameras), the API guard, runtime LAN
-# credentials and re-listening after iOS suspension (internal/api/waitingpaws.go).
+# account (/api/xiaomi/logout), cameras of shared homes (/api/xiaomi/cameras), turning a pan/tilt camera
+# (/api/xiaomi/motor, which reaches the stream's camera session through internal/streams/waitingpaws.go), the API
+# guard, runtime LAN credentials and re-listening after iOS suspension (internal/api/waitingpaws.go).
 cp "$HERE"/xiaomi/*.go "$SRC/internal/xiaomi/"
+cp "$HERE"/streams/*.go "$SRC/internal/streams/"
 cp "$HERE"/api/*.go "$SRC/internal/api/"
 
 # Local patches for the in-app build (see GoMobile/README.md):
@@ -37,6 +39,7 @@ cp "$HERE"/xiaomi-cs2/*.go "$SRC/pkg/xiaomi/miss/cs2/"
 # 2a. Recordings keep real time: our copy of pkg/mp4/muxer.go keeps the source's pauses (frames the camera never sent,
 #     a reconnect) in /api/stream.mp4 instead of cutting each one over 1 s down to 1 ms, and the Xiaomi sound follows
 #     the camera's clock (audioclock.go) instead of counting from 0 on every connect. The live player is unchanged.
+#     xiaomi-miss/motor.go adds the pan/tilt step (MISS 0x112) to the camera session.
 cp "$HERE"/mp4/*.go "$SRC/pkg/mp4/"
 cp "$HERE"/xiaomi-miss/*.go "$SRC/pkg/xiaomi/miss/"
 MP4API="$SRC/internal/mp4/mp4.go"

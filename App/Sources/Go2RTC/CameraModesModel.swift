@@ -24,6 +24,8 @@ final class CameraModesModel {
     private(set) var pending: Set<MiotPropertyID> = []
     /// The last failed change, shown next to the settings.
     var changeError: String?
+    /// The camera turns (pan/tilt): its spec says so. The turning itself is `CameraPanTilt`.
+    private(set) var panTilt = false
 
     private var client: Go2RTCClient?
     private var source: String?
@@ -63,9 +65,9 @@ final class CameraModesModel {
         self.source = source
         state = .loading
 
-        let found: [CameraModeOption]
+        let spec: CameraSpec
         do {
-            found = try await specs.cameraModes(model: model)
+            spec = try await specs.cameraSpec(model: model)
         } catch {
             guard current == generation else { return }
             print("[camera-modes] spec for \(model): \(error.localizedDescription)")
@@ -73,12 +75,15 @@ final class CameraModesModel {
             return
         }
         guard current == generation else { return }
+        let found = spec.modes
         guard !found.isEmpty else {
             print("[camera-modes] \(model): no settings in its spec")
             reset()
+            panTilt = spec.panTilt
             return
         }
         options = found
+        panTilt = spec.panTilt
 
         do {
             let read = try await client.xiaomiProperties(source: source, found.map(\.property))
@@ -88,7 +93,7 @@ final class CameraModesModel {
             options = found.filter { read[$0.property] != nil }
             state = options.isEmpty ? .none : .ready
         } catch Go2RTCError.http(let status, _) where status == 404 {
-            // A go2rtc without the Waiting Paws addition (an external server).
+            // A go2rtc without the Waiting Paws addition (an external server): it can't turn the camera either.
             guard current == generation else { return }
             reset()
         } catch {
@@ -128,6 +133,7 @@ final class CameraModesModel {
         state = .none
         options = []
         values = [:]
+        panTilt = false
         client = nil
         source = nil
     }
@@ -142,10 +148,13 @@ final class CameraModesModel {
     }
 
     #if DEBUG
-    /// `--demo-camera-modes`: the C302's settings with sample values; changes stay in memory.
+    /// `--demo-camera-modes`: the C302's settings with sample values; changes stay in memory. It turns, too
+    /// (steps only light the pad's arrows, see `CameraPanTilt`).
     func loadDemo() {
         isDemo = true
-        options = (try? MiotSpec.cameraModes(fromSpec: Data(DemoData.c302Spec.utf8))) ?? []
+        let spec = try? MiotSpec.cameraSpec(fromSpec: Data(DemoData.c302Spec.utf8))
+        options = spec?.modes ?? []
+        panTilt = spec?.panTilt ?? false
         values = Dictionary(uniqueKeysWithValues: options.map { option in
             switch option.kind {
             case .toggle: return (option.property, MiotValue.bool(option.setting == .indicatorLight || option.setting == .timeWatermark))
@@ -154,5 +163,7 @@ final class CameraModesModel {
         })
         state = .ready
     }
+
+    var isDemoCamera: Bool { isDemo }
     #endif
 }

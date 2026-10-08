@@ -17,6 +17,9 @@ final class MacUIState {
     var confirmAbandon = false
     /// A copy of the running session's schedule open for edits («Изменить расписание…»).
     var editingSessionPlan: TrainingPlan?
+    /// «Только камера»: before a training, the picture on the whole window without recording (someone else records,
+    /// or the dog is just being watched). A training brings the panels back.
+    var cameraOnly = false
     /// Zoom of the camera picture in the training window (gestures and the View menu).
     let cameraZoom = ZoomState()
 
@@ -40,6 +43,13 @@ final class MacUIState {
         }
         model.setPending(plan)
         reviewingPlan = true
+        cameraOnly = false
+    }
+
+    /// ⇧⌘F, Esc: the picture on the whole window and back (only before a training).
+    func toggleCameraOnly(_ model: AppModel) {
+        guard model.session == nil else { return }
+        cameraOnly.toggle()
     }
 
     /// ⌘↩
@@ -120,6 +130,16 @@ struct MacCommands: Commands {
             Button("Без увеличения") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.reset() } }
                 .keyboardShortcut("0", modifiers: .command)
                 .disabled(!ui.cameraZoom.isZoomed)
+            Divider()
+            Button(model.panTilt.isActive ? "Закончить поворот камеры" : "Повернуть камеру") {
+                withAnimation(.smooth(duration: 0.25)) { model.panTilt.toggle() }
+            }
+            .disabled(!model.canPanTilt)
+            Button(ui.cameraOnly ? "Показать панели" : "Только камера") {
+                withAnimation(.smooth(duration: 0.35)) { ui.toggleCameraOnly(model) }
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+            .disabled(model.session != nil || model.isRecordingClip || (!ui.cameraOnly && !model.settings.isConfigured))
             Divider()
         }
         CommandMenu("Тренировка") {

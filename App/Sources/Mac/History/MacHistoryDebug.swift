@@ -13,6 +13,8 @@ import SwiftUI
 ///   --history-prompt delete|delete-all  open that confirmation
 ///   --history-inspector-bottom       inspector scrolled to its end
 ///   --history-seek <seconds>         move the playhead of the selected video
+///   --history-no-inspector           inspector closed (the search field next to the buttons)
+///   --history-toggle-inspector <s>   open / close the inspector after that many seconds (the search field moving)
 enum MacHistoryDebug {
     static var colorScheme: ColorScheme? {
         #if DEBUG
@@ -60,6 +62,13 @@ enum MacHistoryDebug {
         if let index = value("--history-select").flatMap(Int.init) {
             let rows = controller.visibleRows(model)
             if rows.indices.contains(index) { controller.selection = rows[index].id }
+        }
+        if CommandLine.arguments.contains("--history-no-inspector") { controller.showsInspector = false }
+        if let delay = value("--history-toggle-inspector").flatMap(Double.init) {
+            Task {
+                try? await Task.sleep(for: .seconds(delay))
+                controller.showsInspector.toggle()
+            }
         }
         switch value("--history-prompt") {
         case "delete":

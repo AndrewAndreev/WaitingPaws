@@ -61,6 +61,25 @@ final class CameraModesTests: XCTestCase {
         XCTAssertEqual(try modes(chuangmiV6).map(\.setting), [.nightShot, .wdr, .imageRollover])
     }
 
+    func testPanTiltComesFromWhatOnlyTurningCamerasDeclare() throws {
+        // C302: human and pet tracking.
+        XCTAssertTrue(try MiotSpec.cameraSpec(fromSpec: Data(c302n.utf8)).panTilt)
+        // Basic 1080p (fixed): night mode and image flip only.
+        XCTAssertFalse(try MiotSpec.cameraSpec(fromSpec: Data(isaHlc7.utf8)).panTilt)
+        // xiaomi.camera.c01a01 style: a PTZ action, no tracking property the app shows.
+        let calibrateOnly = """
+        {"services": [{"iid": 2, "type": "urn:miot-spec-v2:service:camera-control:0000782F:xiaomi-c01a01:1", "properties": [], "actions": [{"iid": 1, "type": "urn:miot-spec-v2:action:ptz-calibrate:00002837:xiaomi-c01a01:1", "in": [], "out": []}]}]}
+        """
+        XCTAssertTrue(try MiotSpec.cameraSpec(fromSpec: Data(calibrateOnly.utf8)).panTilt)
+        // chuangmi.camera.72ac1 (C300): a read-only `ptz-camera`.
+        let ptzProperty = """
+        {"services": [{"iid": 2, "type": "urn:miot-spec-v2:service:camera-control:0000782F:chuangmi-72ac1:1", "properties": [{"iid": 2, "type": "urn:miot-spec-v2:property:ptz-camera:000001AB:chuangmi-72ac1:1", "format": "bool", "access": ["read", "notify"]}]}]}
+        """
+        let c300 = try MiotSpec.cameraSpec(fromSpec: Data(ptzProperty.utf8))
+        XCTAssertTrue(c300.panTilt)
+        XCTAssertEqual(c300.modes, [])
+    }
+
     func testSpecTypeTakesTheNewestVersion() throws {
         let index = """
         {"instances": [

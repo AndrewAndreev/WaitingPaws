@@ -64,14 +64,22 @@ go2rtc с модулями api, ws, streams, http, rtsp, webrtc, mp4, hls, mjpeg
   * `/api/xiaomi/logout` забывает аккаунт;
   * `/api/xiaomi/cameras` перечисляет камеры своих и общих домов, как Mi Home и интеграция Xiaomi для Home Assistant:
     `/v2/homeroom/gethome` с `fetch_share`, затем `/v2/home/device_list_page` по `dids`. Upstream `/api/xiaomi`
-    спрашивает только `device_list_page` без параметров и общих домов не видит.
+    спрашивает только `device_list_page` без параметров и общих домов не видит;
+  * `POST /api/xiaomi/motor?src=<поток>&operation=<1 влево|2 вправо|3 вверх|4 вниз>` — один шаг поворотной камеры.
+    Это команда MISS `0x112 {"operation":N}`, как в Mi Home. В go2rtc v1.9.14 она объявлена, но не отправляется:
+    отправку добавляет `GoMobile/xiaomi-miss/motor.go`. Шаг идёт по сессии камеры работающего потока (у этих камер
+    одна P2P-сессия), до неё эндпоинт добирается через `Stream.Conns()` из `GoMobile/streams/waitingpaws.go`
+    (копируется в `internal/streams`). Ответы: 204 — шаг отправлен, 409 — потока нет, он не запущен или его камера
+    не поворачивается, 502 — камера не приняла команду. Запрос того же вида, что в upstream PR AlexxIT/go2rtc#2531.
+    Тесты: `go test ./internal/xiaomi -run Motor`.
 
-  Сторонний go2rtc их не знает — тогда режимы камеры не показываются, выход недоступен, а камеры общих домов не
-  находятся.
+  Сторонний go2rtc их не знает — тогда режимы камеры не показываются, выход недоступен, камеры общих домов не
+  находятся, а поворот отвечает «обновите Waiting Paws».
 * **Защита API** — `GoMobile/api/waitingpaws.go` копируется в `internal/api`:
   * Host — только IP, localhost или `.local`, чужой Origin браузера — 403, в том числе для WebSocket;
   * `/api/exit`, `/api/restart` и запись конфига выключены;
-  * клиентам из LAN недоступны конфиг, журнал, аккаунты Xiaomi и изменение потоков;
+  * клиентам из LAN недоступны конфиг, журнал, аккаунты Xiaomi и изменение потоков (режимы и поворот камеры —
+    можно: так их меняет подключённый iPhone);
   * пароль для LAN, который меняется без перезапуска, и `Relisten` после приостановки на iOS;
   * `log.Fatal` при ошибке слушающего сокета заменён на ошибку в журнале: иначе приложение закрывалось бы при
     возврате из фона.
@@ -82,6 +90,7 @@ go2rtc с модулями api, ws, streams, http, rtsp, webrtc, mp4, hls, mjpeg
 cd GoMobile/build/go2rtc
 go test ./pkg/mp4 ./pkg/xiaomi/miss ./pkg/xiaomi/miss/cs2
 go test ./internal/api -run WaitingPaws   # защита API
+go test ./internal/xiaomi -run Motor      # поворот камеры
 ```
 
 ## Лицензии

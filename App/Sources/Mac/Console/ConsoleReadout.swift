@@ -165,10 +165,12 @@ private struct StepButtonStyle: ButtonStyle {
     }
 }
 
-/// Recording without a training: the clock and «Остановить» on a glass panel floating over the picture.
+/// Recording without a training: the clock and «Остановить» on a glass panel floating over the picture. In «Только
+/// камера» (not recording) the same panel offers to record or to bring the panels back.
 /// Drag it anywhere; it settles in the nearest corner or edge middle and stays there next time.
 struct ClipRecordingHUD: View {
     @Environment(AppModel.self) private var model
+    @Environment(MacUIState.self) private var ui
     @AppStorage("mac.clipHUDPosition") private var position: HUDPosition = .bottom
     @State private var drag: CGSize = .zero
     @State private var hudSize: CGSize = .zero
@@ -231,7 +233,47 @@ struct ClipRecordingHUD: View {
         }
     }
 
+    @ViewBuilder
     private var panel: some View {
+        if model.isRecordingNow {
+            recordingPanel
+        } else {
+            watchingPanel
+        }
+    }
+
+    /// «Только камера»: nothing is recorded; record from here (⌘R) or go back to the panels (Esc).
+    private var watchingPanel: some View {
+        HStack(spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: "eye")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Только камера").font(.system(size: 13, weight: .semibold))
+                    Text("Без записи и тренировки").font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }
+            Button { model.startRecording() } label: {
+                ShortcutLabel(title: String(localized: "Запись"), symbol: "record.circle", key: "⌘R")
+            }
+            .controlSize(.large)
+            .disabled(!model.settings.isConfigured)
+            Button { ui.cameraOnly = false } label: {
+                ShortcutLabel(title: String(localized: "Панели"), symbol: "sidebar.right", key: "esc")
+            }
+            .controlSize(.large)
+            .help("Вернуть расписание и шкалу · ⇧⌘F")
+        }
+        .padding(.leading, 20)
+        .padding(.trailing, 12)
+        .padding(.vertical, 12)
+        .glassEffect(.regular, in: .capsule)
+        .environment(\.colorScheme, .dark)
+        .help("Перетащите панель в любой угол")
+    }
+
+    private var recordingPanel: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             HStack(spacing: 18) {
                 HStack(alignment: .center, spacing: 10) {

@@ -55,18 +55,117 @@ final class SyncTests: XCTestCase {
 
         mirror.endExit()
         XCTAssertEqual(sent, [.endExit])
-        XCTAssertTrue(mirror.phase.isOutside, "a mirror never changes on its own")
+        if case .breakTime = mirror.phase {} else { XCTFail("the press shows at once, got \(mirror.phase)") }
 
-        // The owner applies the command and the mirror catches up from the next snapshot.
+        // The owner applies the command and its next snapshot is the mirror's state.
         sent.forEach { $0.apply(to: owner) }
         mirror.restore(owner.snapshot)
         XCTAssertEqual(mirror.snapshot, owner.snapshot)
-        if case .breakTime = mirror.phase {} else { XCTFail("expected a break, got \(mirror.phase)") }
 
         // Breaks end on the owner only.
         clock.advance(400)
         mirror.tick()
         if case .breakTime = mirror.phase {} else { XCTFail("mirror must not tick") }
+        XCTAssertEqual(mirror.snapshot, owner.snapshot)
+    }
+
+    /// Weak Wi-Fi: a state the owner sent before the command reached it (a note, the recording) arrives after the
+    /// press. The press stays on screen on top of it, and the owner's own changes show too.
+    func testAPressOutlivesAStateSentBeforeIt() {
+        let clock = Clock()
+        let owner = runningSession(clock) // outside on exit 2 for 12 s
+        let mirror = TrainingSession(snapshot: owner.snapshot, clock: { clock.now })
+        var sent: [(SessionCommand, Date)] = []
+        mirror.commandHandler = { sent.append(($0, $1)) }
+
+        mirror.endExit()
+        clock.advance(1)
+        owner.noteRecording(started: true, fileName: "a.mp4")
+        mirror.restore(owner.snapshot)
+        if case .breakTime = mirror.phase {} else { XCTFail("the press must not be undone, got \(mirror.phase)") }
+        XCTAssertEqual(mirror.events.last?.kind, .recordingStarted)
+        XCTAssertEqual(mirror.results.count, owner.results.count + 1)
+
+        clock.advance(2)
+        sent.forEach { $0.0.apply(to: owner, at: $0.1) }
+        mirror.restore(owner.snapshot)
+        XCTAssertEqual(mirror.snapshot, owner.snapshot)
+        XCTAssertEqual(owner.results.last?.endedAt, sent[0].1, "logged at the press, 3 s before it arrived")
+    }
+
+    /// Two quick presses: the owner's answer to the first keeps the second on screen.
+    func testQuickPressesConfirmedOneByOne() {
+        let clock = Clock()
+        let owner = runningSession(clock)
+        owner.endExit()
+        let mirror = TrainingSession(snapshot: owner.snapshot, clock: { clock.now })
+        var sent: [(SessionCommand, Date)] = []
+        mirror.commandHandler = { sent.append(($0, $1)) }
+
+        mirror.markBehindDoor()
+        clock.advance(1)
+        mirror.resetExit()
+        guard case .breakTime(_, _, _, let next) = mirror.phase else { return XCTFail("expected a break") }
+        XCTAssertEqual(next, 2, "a false start repeats exit 3")
+        XCTAssertEqual(mirror.attempt, 2)
+
+        sent[0].0.apply(to: owner, at: sent[0].1)
+        mirror.restore(owner.snapshot)
+        XCTAssertEqual(mirror.attempt, 2, "the second press is still shown")
+        XCTAssertEqual(mirror.falseStartsCount, owner.falseStartsCount + 1)
+
+        sent[1].0.apply(to: owner, at: sent[1].1)
+        mirror.restore(owner.snapshot)
+        XCTAssertEqual(mirror.snapshot, owner.snapshot)
+    }
+
+    /// A press on the owner at the same moment wins: the mirror's press, made on the old state, gives way to the
+    /// owner's snapshot (the command itself is then applied — or not — by the owner).
+    func testThePressOnTheOwnerWins() {
+        let clock = Clock()
+        let owner = runningSession(clock)
+        owner.endExit()
+        let mirror = TrainingSession(snapshot: owner.snapshot, clock: { clock.now })
+        mirror.commandHandler = { _, _ in }
+
+        mirror.markBehindDoor()
+        XCTAssertTrue(mirror.phase.isOutside)
+        owner.resetExit() // the dog went to the door: false start on the Mac
+        mirror.restore(owner.snapshot)
+        XCTAssertEqual(mirror.snapshot, owner.snapshot)
+    }
+
+    /// A press the owner never takes stops showing after `predictionLifetime`; one that changes nothing is not kept.
+    func testAnUnansweredPressExpires() {
+        let clock = Clock()
+        let owner = runningSession(clock)
+        let mirror = TrainingSession(snapshot: owner.snapshot, clock: { clock.now })
+        mirror.commandHandler = { _, _ in }
+
+        mirror.markBehindDoor() // already outside: nothing to show
+        XCTAssertEqual(mirror.snapshot, owner.snapshot)
+
+        mirror.endExit()
+        clock.advance(TrainingSession.predictionLifetime - 1)
+        mirror.tick()
+        if case .breakTime = mirror.phase {} else { XCTFail("still waiting for the owner, got \(mirror.phase)") }
+        clock.advance(1)
+        mirror.tick()
+        XCTAssertEqual(mirror.snapshot, owner.snapshot)
+    }
+
+    /// «Завершить» on a mirror: «Готово» at once, until the owner's state without the session arrives.
+    func testFinishOnTheMirrorShowsAtOnce() {
+        let clock = Clock()
+        let owner = runningSession(clock)
+        let mirror = TrainingSession(snapshot: owner.snapshot, clock: { clock.now })
+        var sent: [SessionCommand] = []
+        mirror.commandHandler = { command, _ in sent.append(command) }
+        mirror.finish()
+        XCTAssertEqual(sent, [.finish])
+        XCTAssertTrue(mirror.isFinished)
+        mirror.restore(owner.snapshot)
+        XCTAssertTrue(mirror.isFinished)
     }
 
     /// A press on the iPhone whose command reaches the Mac seconds later is still logged when it was pressed.
