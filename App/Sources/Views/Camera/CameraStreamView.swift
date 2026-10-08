@@ -30,7 +30,7 @@ struct CameraStreamView: View {
     var onDelay: ((Double, Double?) -> Void)? = nil
 
     @State private var phase: PlayerPhase = .connecting
-    /// Set inside `ZoomableView(contentZooms: true)`: the page zooms the picture itself.
+    /// Set inside `ZoomableView(contentZooms: true)`: the player zooms the picture itself (the Mac's `PlayerWebView`).
     @Environment(ZoomState.self) private var zoom: ZoomState?
 
     init(server: Go2RTCServer, stream: String, mode: PlayerMode, audioEnabled: Bool, fill: Bool = false,
@@ -154,7 +154,8 @@ struct CameraWebView {
     var onDelay: ((Double, Double?) -> Void)? = nil
     /// Called when the player's phase changes ("state …" messages).
     var onPhase: ((PlayerPhase) -> Void)? = nil
-    /// The picture's zoom (`ZoomState`), applied inside the page: scaled around the centre, then shifted by the offset.
+    /// The picture's zoom (`ZoomState`) on the Mac, applied by the web view's layer (`PlayerWebView`): scaled around
+    /// the centre, then shifted by the offset. (The iPhone's picture zooms in SwiftUI.)
     var zoomScale: CGFloat = 1
     var zoomOffset: CGSize = .zero
 
@@ -166,19 +167,21 @@ struct CameraWebView {
     private func html() -> String {
         let socket = client.playerSocketURL(stream: stream).absoluteString
         let muted = audioEnabled ? "false" : "true"
+        #if os(macOS)
+        // A box of one size at the page's top-left, whatever the window does: `PlayerWebView` fits and zooms it.
+        let fit = "contain"
+        let box = "position: absolute; left: 0; top: 0; width: \(Int(PlayerWebView.pictureBox))px; height: \(Int(PlayerWebView.pictureBox))px;"
+        #else
         let fit = fill ? "cover" : "contain"
+        let box = "display: block; width: 100%; height: 100%;"
+        #endif
         return """
         <!doctype html>
         <html><head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <style>
           html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
-          /* The app's zoom (`zoomStyle`): the same as SwiftUI's scaleEffect + offset; a glide for animated changes. */
-          video-rtc {
-            display: block; width: 100%; height: 100%;
-            transform: translate(var(--zoom-x, 0px), var(--zoom-y, 0px)) scale(var(--zoom, 1));
-            transition: transform var(--zoom-time, 0s) cubic-bezier(0.2, 0.9, 0.3, 1);
-          }
+          video-rtc { \(box) }
           video-rtc video { width: 100%; height: 100%; object-fit: \(fit); background: #000; }
         </style>
         </head><body>
@@ -415,18 +418,25 @@ struct CameraWebView {
         """
     }
 
-    func makeWebView() -> WKWebView {
+    #if os(iOS)
+    typealias WebView = WKWebView
+    #else
+    typealias WebView = PlayerWebView
+    #endif
+
+    func makeWebView() -> WebView {
         let configuration = WKWebViewConfiguration()
         configuration.mediaTypesRequiringUserActionForPlayback = []
         #if os(iOS)
         configuration.allowsInlineMediaPlayback = true
         configuration.allowsPictureInPictureMediaPlayback = false
         #endif
-        configuration.userContentController.add(LogHandler(onVideoSize: onVideoSize, onDelay: onDelay, onPhase: onPhase), name: "log")
+        let log = LogHandler(onVideoSize: onVideoSize, onDelay: onDelay, onPhase: onPhase)
+        configuration.userContentController.add(log, name: "log")
         // Keep feeding the player when its window is covered or not key: a throttled page stops reading the
         // WebSocket and go2rtc then drops frames for it (a freeze until the next keyframe).
         configuration.preferences.inactiveSchedulingPolicy = .none
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = WebView(frame: .zero, configuration: configuration)
         #if os(iOS)
         webView.isOpaque = false
         webView.backgroundColor = .black
@@ -437,6 +447,8 @@ struct CameraWebView {
         // loaded, so the white default background never flashes over the dark window.
         webView.underPageBackgroundColor = .black
         webView.isHidden = true
+        webView.fill = fill
+        log.player = webView
         #endif
         return webView
     }
@@ -460,26 +472,16 @@ struct CameraWebView {
         webView.evaluateJavaScript("window.playerMuted = \(muted); if (window.player && window.player.video) { window.player.video.muted = \(muted); }")
     }
 
-    /// The page's zoom variables (see `video-rtc` in `html()`).
-    static func zoomStyle(scale: CGFloat, offset: CGSize) -> String {
-        String(format: "--zoom: %.4f; --zoom-x: %.2fpx; --zoom-y: %.2fpx", scale, offset.width, offset.height)
-    }
-
-    /// Moves the picture to `zoomScale`/`zoomOffset`; gliding there when the change came inside `withAnimation`.
-    /// A page that (re)loads gets the current zoom in `Coordinator.webView(_:didFinish:)`.
-    private func applyZoom(to webView: WKWebView, coordinator: Coordinator, animated: Bool) {
-        let style = Self.zoomStyle(scale: zoomScale, offset: zoomOffset)
-        guard coordinator.zoomStyle != style else { return }
-        coordinator.zoomStyle = style
-        webView.evaluateJavaScript("document.documentElement.style.cssText = '\(style); --zoom-time: \(animated ? 0.35 : 0)s'")
-    }
-
     /// Forwards player events from JavaScript into the app log; "playing 1920x1080" / "size …" also report the resolution.
     /// "delay 1.25 0.40" (buffer, network) goes to `onDelay` only (every second, not for the log); "state …" to `onPhase`.
     final class LogHandler: NSObject, WKScriptMessageHandler {
         let onVideoSize: ((CGSize) -> Void)?
         let onDelay: ((Double, Double?) -> Void)?
         let onPhase: ((PlayerPhase) -> Void)?
+        #if os(macOS)
+        /// Fits the picture to the video's size.
+        weak var player: PlayerWebView?
+        #endif
         static let clock: DateFormatter = {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -525,11 +527,15 @@ struct CameraWebView {
                 guard case .failed = phase else { if phase == .stalled { print("[player] \(Self.clock.string(from: Date())) stalled 2 s") }; return }
             }
             print("[player] \(Self.clock.string(from: Date())) \(message.body)")
-            guard let onVideoSize, let text = message.body as? String,
+            guard let text = message.body as? String,
                   text.hasPrefix("playing ") || text.hasPrefix("size "),
                   let dimensions = text.split(separator: " ").last?.split(separator: "x"), dimensions.count == 2,
                   let width = Double(dimensions[0]), let height = Double(dimensions[1]), width > 0, height > 0 else { return }
-            onVideoSize(CGSize(width: width, height: height))
+            let size = CGSize(width: width, height: height)
+            #if os(macOS)
+            player?.videoSize = size
+            #endif
+            onVideoSize?(size)
         }
     }
 
@@ -537,11 +543,9 @@ struct CameraWebView {
         var loadedKey: String?
         var server: Go2RTCServer?
         var audioEnabled = false
-        var zoomStyle = CameraWebView.zoomStyle(scale: 1, offset: .zero)
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.isHidden = false
-            webView.evaluateJavaScript("document.documentElement.style.cssText = '\(zoomStyle)'")
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -573,23 +577,114 @@ extension CameraWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         load(into: webView, coordinator: context.coordinator)
-        applyZoom(to: webView, coordinator: context.coordinator, animated: context.transaction.animation != nil)
     }
 }
 #else
+/// The Mac's player view: the page lays the picture out in one fixed box (`pictureBox`, at its top-left) and this view
+/// fits it to its own size — and zooms it — with a layer transform.
+///
+/// WebKit redraws a resized page a few frames late. Sized by the page, the picture trailed the «Пульт» panel's edge while
+/// it was dragged or folded away, and the strip the camera gained showed WKWebView's own grey (the system control
+/// background), as if the panel were left behind. A layer transform lands together with the window's own layout. The
+/// video layer is scaled from the decoded frames, not from a bitmap of the box: the picture stays as sharp. The view's
+/// frame is left as SwiftUI lays it out (a SwiftUI scale on it brought WebKit's toolbar inset, see `ZoomableView`).
+final class PlayerWebView: WKWebView {
+    /// CSS px; every place the player is shown (the training window, the settings card) is larger.
+    static let pictureBox: CGFloat = 160
+
+    /// The video's own size: the picture's aspect in the box and in the view (16:9 until the player knows).
+    var videoSize = CGSize(width: 16, height: 9) {
+        didSet { if videoSize != oldValue { fitPicture(animated: false) } }
+    }
+    /// Crop to fill the view rather than letterbox the whole frame.
+    var fill = false {
+        didSet { if fill != oldValue { fitPicture(animated: false) } }
+    }
+    private var zoomScale: CGFloat = 1
+    private var zoomOffset: CGSize = .zero
+
+    override init(frame: CGRect, configuration: WKWebViewConfiguration) {
+        super.init(frame: frame, configuration: configuration)
+        // The zoomed picture stays inside.
+        clipsToBounds = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    /// Black where the page hasn't painted yet (`underPageBackgroundColor` is the page's colour and doesn't reach
+    /// there; `drawsBackground` is SPI).
+    override func updateLayer() {
+        super.updateLayer()
+        layer?.backgroundColor = NSColor.black.cgColor
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        let changed = newSize != frame.size
+        super.setFrameSize(newSize)
+        if changed { fitPicture(animated: false) }
+    }
+
+    /// `ZoomState`: scaled around the centre, then shifted by the offset; gliding there when `animated`.
+    func zoom(scale: CGFloat, offset: CGSize, animated: Bool) {
+        guard scale != zoomScale || offset != zoomOffset else { return }
+        zoomScale = scale
+        zoomOffset = offset
+        fitPicture(animated: animated)
+    }
+
+    /// The page's picture in its box, onto its place in the view, then zoomed. The backing layer is flipped with its
+    /// anchor at the top-left, so the transform works in the view's own points.
+    private func fitPicture(animated: Bool) {
+        guard let layer, bounds.width > 0, bounds.height > 0, videoSize.width > 0, videoSize.height > 0 else { return }
+        let box = CGSize(width: Self.pictureBox, height: Self.pictureBox)
+        let inPage = Self.place(videoSize, in: box, fill: false)
+        let inView = Self.place(videoSize, in: bounds.size, fill: fill)
+        let k = inView.width / inPage.width
+        let centre = CGPoint(x: bounds.width / 2, y: bounds.height / 2)
+        var transform = CATransform3DMakeTranslation(
+            zoomScale * (inView.minX - k * inPage.minX - centre.x) + centre.x + zoomOffset.width,
+            zoomScale * (inView.minY - k * inPage.minY - centre.y) + centre.y + zoomOffset.height, 0)
+        transform = CATransform3DScale(transform, k * zoomScale, k * zoomScale, 1)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        if animated {
+            // The glide the CSS zoom had.
+            let glide = CABasicAnimation(keyPath: "sublayerTransform")
+            glide.fromValue = layer.presentation()?.sublayerTransform ?? layer.sublayerTransform
+            glide.toValue = transform
+            glide.duration = 0.35
+            glide.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1)
+            layer.add(glide, forKey: "zoom")
+        } else {
+            layer.removeAnimation(forKey: "zoom")
+        }
+        layer.sublayerTransform = transform
+        CATransaction.commit()
+    }
+
+    /// `size` scaled to fit (or fill) `area`, centred in it.
+    private static func place(_ size: CGSize, in area: CGSize, fill: Bool) -> CGRect {
+        let scale = fill ? max(area.width / size.width, area.height / size.height)
+                         : min(area.width / size.width, area.height / size.height)
+        let width = size.width * scale, height = size.height * scale
+        return CGRect(x: (area.width - width) / 2, y: (area.height - height) / 2, width: width, height: height)
+    }
+}
+
 extension CameraWebView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeNSView(context: Context) -> WKWebView {
+    func makeNSView(context: Context) -> PlayerWebView {
         let webView = makeWebView()
         webView.navigationDelegate = context.coordinator
         load(into: webView, coordinator: context.coordinator)
         return webView
     }
 
-    func updateNSView(_ webView: WKWebView, context: Context) {
+    func updateNSView(_ webView: PlayerWebView, context: Context) {
         load(into: webView, coordinator: context.coordinator)
-        applyZoom(to: webView, coordinator: context.coordinator, animated: context.transaction.animation != nil)
+        webView.fill = fill
+        webView.zoom(scale: zoomScale, offset: zoomOffset, animated: context.transaction.animation != nil)
     }
 }
 #endif

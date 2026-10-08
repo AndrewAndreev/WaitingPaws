@@ -14,8 +14,11 @@ struct MacConsoleView: View {
     @FocusState private var focused: Bool
     @State private var reloadToken = 0
     @AppStorage("mac.clipHUDPosition") private var hudPosition: ClipRecordingHUD.HUDPosition = .bottom
-    /// The panel on the right, resized by its edge (see `ConsolePanelLayout`).
-    @AppStorage("mac.trainingPanelWidth") private var panelWidth = Double(ConsolePanelLayout.defaultWidth)
+    /// The panel on the right, resized by its edge (see `ConsolePanelLayout`): the width it was dragged to, nil until
+    /// then — on every launch the panel leaves the camera just the picture's width.
+    @State private var draggedPanelWidth: Double?
+    /// Height of the camera's row, what the picture's width follows from.
+    @State private var cameraHeight: CGFloat = 0
     /// The panel's left edge in the window (nil while it is folded away), the window's width and where the panel's
     /// buttons begin in the toolbar: the camera's group in the toolbar stays on the camera's side of that edge.
     @State private var panelEdge: CGFloat?
@@ -58,16 +61,17 @@ struct MacConsoleView: View {
                         }
                     }
                 if !clipMode {
-                    // As wide as its content needs by default; the edge drags wider for a timer read from across the
-                    // room, or past the narrowest to «Только камера» (back with «Панели», Esc or ⇧⌘F).
+                    // The camera just as wide as the picture by default; the edge drags wider for a timer read from
+                    // across the room, or past the narrowest to «Только камера» (back with «Панели», Esc or ⇧⌘F).
                     let range = ConsolePanelLayout.widthRange(window: windowWidth)
+                    let width = panelWidth(in: range)
                     HStack(spacing: 0) {
-                        TrainingPanelEdge(width: $panelWidth, range: range,
-                                          canFold: model.session == nil && model.settings.isConfigured) {
+                        TrainingPanelEdge(width: Binding(get: { Double(width) }, set: { draggedPanelWidth = $0 }),
+                                          range: range, canFold: model.session == nil && model.settings.isConfigured) {
                             withAnimation(.smooth(duration: 0.35)) { ui.cameraOnly = true }
                         }
                         rightPanel
-                            .frame(width: min(max(CGFloat(panelWidth), range.lowerBound), range.upperBound))
+                            .frame(width: width)
                     }
                     .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).minX }) { panelEdge = $0 }
                     .onDisappear { panelEdge = nil }
@@ -75,6 +79,7 @@ struct MacConsoleView: View {
                 }
             }
             .frame(maxHeight: .infinity)
+            .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { cameraHeight = $0 }
             if !clipMode {
                 Divider()
                 timeline
@@ -93,9 +98,11 @@ struct MacConsoleView: View {
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
         .toolbar { toolbar }
-        // A solid bar: by default the black picture and the grey panel run up under the toolbar and its
-        // capsules straddle the seam between them.
-        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+        // No bar of its own: the picture and the panel run up under the toolbar, and the camera's group stays on the
+        // camera's side of the seam between them (see `ConsolePanelLayout`). Hidden, not automatic: automatic is a
+        // solid bar (a hard scroll-edge pocket) until the player's web view is laid out again — folding the panel, or
+        // the window back from the Dock.
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
@@ -215,6 +222,13 @@ struct MacConsoleView: View {
 
     // MARK: - Parts
 
+    /// The dragged width, or the one that leaves the camera the picture's width; within what the window allows.
+    private func panelWidth(in range: ClosedRange<CGFloat>) -> CGFloat {
+        let width = draggedPanelWidth.map { CGFloat($0) }
+            ?? ConsolePanelLayout.fittedWidth(window: windowWidth, cameraHeight: cameraHeight, video: model.videoSize)
+        return min(max(width, range.lowerBound), range.upperBound)
+    }
+
     @ViewBuilder
     private var rightPanel: some View {
         if let session = model.session {
@@ -314,7 +328,7 @@ struct MacConsoleView: View {
     private func sweepPanel() async {
         try? await Task.sleep(for: .seconds(2))
         for width in [340, 420, 520, 640, 720, 600, 464, 380] as [Double] {
-            panelWidth = width
+            draggedPanelWidth = width
             try? await Task.sleep(for: .milliseconds(900))
         }
         ui.cameraOnly = true

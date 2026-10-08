@@ -18,9 +18,21 @@ enum ConsolePanelLayout {
     /// Dragging the edge this far past `minWidth` folds the panel away.
     static let foldDistance: CGFloat = 80
 
+    /// The panel's edge (`TrainingPanelEdge`).
+    static let edgeWidth: CGFloat = 6
+
     static func widthRange(window: CGFloat) -> ClosedRange<CGFloat> {
         guard window > 0 else { return minWidth...maxWidth }
         return minWidth...max(minWidth, min(maxWidth, window - minCameraWidth))
+    }
+
+    /// The width that leaves the camera just the picture's width at its height, with no black above and below: the
+    /// panel's width until its edge is dragged. A narrower window gets `minWidth` and the bars (the caller clamps to
+    /// `widthRange`). `video` is nil until the player knows it: most cameras are 16:9.
+    static func fittedWidth(window: CGFloat, cameraHeight: CGFloat, video: CGSize?) -> CGFloat {
+        guard window > 0, cameraHeight > 0 else { return defaultWidth }
+        let aspect = video.flatMap { $0.width > 0 && $0.height > 0 ? $0.width / $0.height : nil } ?? 16 / 9
+        return window - edgeWidth - cameraHeight * aspect
     }
 
     /// The toolbar's own room around an item (macOS 26: 8 pt before it, 10 pt after), and the gap kept on each side
@@ -55,7 +67,7 @@ struct TrainingPanelEdge: View {
 
     var body: some View {
         Color.clear
-            .frame(width: 6)
+            .frame(width: ConsolePanelLayout.edgeWidth)
             .overlay(alignment: .leading) { Divider() }
             // A background, not a view: like the panel's own, it runs up under the toolbar, so the panel's colour
             // starts at the same edge there as below.
@@ -90,7 +102,9 @@ struct TrainingPanelEdge: View {
 /// buttons (the items after the spacer) begin, and where the camera's group (the items before it) ends. SwiftUI
 /// reports a toolbar item's place only when its size changes, and the first of the panel's buttons moves without
 /// resizing when those after it change (titles dropped, «Завершить» appears): its reported place went stale and the
-/// camera's group ran over the panel's edge. Read after every update of the item, as the toolbar settles.
+/// camera's group ran over the panel's edge. Read after every update of the item, as the toolbar settles, and whenever
+/// AppKit lays the toolbar out again by itself: the window back from the Dock moved the items with no SwiftUI update,
+/// and the camera's group stayed over the panel.
 struct ToolbarNeighboursProbe: NSViewRepresentable {
     /// Anything whose change may move the items (the probe re-reads on every update).
     var token: Int
@@ -105,16 +119,68 @@ struct ToolbarNeighboursProbe: NSViewRepresentable {
 
     final class ProbeView: NSView {
         var onRead: ((CGFloat, CGFloat?) -> Void)?
+        private var windowObservers: [NSObjectProtocol] = []
+        /// The toolbar's item views (`NSToolbarItemViewer`s), watched for moves.
+        private var watched: [(view: Weak, observer: NSObjectProtocol)] = []
+        /// Bumped by every round of reads: only the latest round reads again later.
+        private var round = 0
+
+        final class Weak {
+            weak var view: NSView?
+            init(_ view: NSView) { self.view = view }
+        }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
+            windowObservers.forEach(NotificationCenter.default.removeObserver)
+            windowObservers = []
+            if let window {
+                let names: [Notification.Name] = [NSWindow.didDeminiaturizeNotification, NSWindow.didResizeNotification,
+                                                  NSWindow.didEndLiveResizeNotification, NSWindow.didChangeScreenNotification,
+                                                  NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
+                                                  NSWindow.didChangeOcclusionStateNotification,
+                                                  NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification]
+                windowObservers = names.map { name in
+                    NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                        MainActor.assumeIsolated { self?.scheduleReads() }
+                    }
+                }
+            }
             scheduleReads()
+        }
+
+        deinit {
+            windowObservers.forEach(NotificationCenter.default.removeObserver)
+            watched.forEach { NotificationCenter.default.removeObserver($0.observer) }
+        }
+
+        /// Item views that move or resize (the toolbar laid out again) start another round of reads.
+        private func watch(_ items: [NSToolbarItem]) {
+            watched.removeAll { entry in
+                guard entry.view.view == nil else { return false }
+                NotificationCenter.default.removeObserver(entry.observer)
+                return true
+            }
+            for viewer in items.compactMap({ $0.view?.superview }) where !watched.contains(where: { $0.view.view === viewer }) {
+                viewer.postsFrameChangedNotifications = true
+                let observer = NotificationCenter.default.addObserver(
+                    forName: NSView.frameDidChangeNotification, object: viewer, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.scheduleReads() }
+                }
+                watched.append((Weak(viewer), observer))
+            }
         }
 
         /// Now and over the next few hundred milliseconds: the toolbar lays items out after SwiftUI's update.
         func scheduleReads() {
-            for delay in [0.0, 0.05, 0.15, 0.4] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.read() }
+            round += 1
+            let current = round
+            DispatchQueue.main.async { [weak self] in self?.read() }
+            for delay in [0.05, 0.15, 0.4] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let self, self.round == current else { return }
+                    self.read()
+                }
             }
         }
 
@@ -122,6 +188,7 @@ struct ToolbarNeighboursProbe: NSViewRepresentable {
             guard let window, let items = window.toolbar?.items,
                   let index = items.firstIndex(where: { item in item.view.map { isDescendant(of: $0) } ?? false })
             else { return }
+            watch(items)
             // Items moved into the overflow menu have no window.
             func frames(_ slice: ArraySlice<NSToolbarItem>) -> [CGRect] {
                 slice.compactMap { $0.view }.filter { $0.window === window }.map { $0.convert($0.bounds, to: nil) }

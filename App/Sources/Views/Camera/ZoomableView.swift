@@ -109,7 +109,7 @@ struct ZoomableView<Content: View>: View {
     /// `zoom`: pass one to drive the zoom from elsewhere (menu commands); otherwise the view keeps its own.
     /// `contentZooms`: the content is not scaled here but gets the `ZoomState` in its environment and shows the
     /// zoom itself — the Mac's web player: WebKit pushes the page of a WKWebView down when its scaled-up frame
-    /// runs under the window's toolbar, so the picture there zooms inside the page instead.
+    /// runs under the window's toolbar, so the picture there zooms in the web view's layer instead (`PlayerWebView`).
     init(zoom: ZoomState? = nil, contentZooms: Bool = false, @ViewBuilder content: () -> Content) {
         external = zoom
         self.contentZooms = contentZooms
