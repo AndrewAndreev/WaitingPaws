@@ -19,11 +19,13 @@ struct MacConsoleView: View {
     @State private var draggedPanelWidth: Double?
     /// Height of the camera's row, what the picture's width follows from.
     @State private var cameraHeight: CGFloat = 0
-    /// The panel's left edge in the window (nil while it is folded away), the window's width and where the panel's
-    /// buttons begin in the toolbar: the camera's group in the toolbar stays on the camera's side of that edge.
+    /// The panel's left edge in the window, the window's width and how much of the toolbar the panel's buttons take
+    /// from the window's edge: the camera's group in the toolbar stays on the camera's side of the panel's edge.
+    /// The edge is kept while the panel is folded away (whatever reads it checks `clipMode`): the window closed and
+    /// opened again from the Dock keeps this state, and the panel, back at the same place, reports no edge again.
     @State private var panelEdge: CGFloat?
     @State private var windowWidth: CGFloat = 0
-    @State private var buttonsMinX: CGFloat?
+    @State private var buttonsWidth: CGFloat?
     /// Where the camera's group ends in the toolbar (DEBUG checks it against the panel's edge).
     @State private var cameraGroupMaxX: CGFloat?
     /// Bumped when the first of the panel's buttons changes its size: the probe reads the toolbar again.
@@ -74,7 +76,6 @@ struct MacConsoleView: View {
                             .frame(width: width)
                     }
                     .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).minX }) { panelEdge = $0 }
-                    .onDisappear { panelEdge = nil }
                     .transition(.move(edge: .trailing))
                 }
             }
@@ -89,9 +90,13 @@ struct MacConsoleView: View {
         }
         .animation(.smooth(duration: 0.35), value: clipMode)
         .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).width }) { windowWidth = $0 }
-        .onChange(of: [panelEdge ?? -1, buttonsMinX ?? -1, windowWidth, clipMode ? 1 : 0]) { updateToolbarFit() }
+        .onChange(of: [panelEdge ?? -1, buttonsWidth ?? -1, windowWidth, clipMode ? 1 : 0]) { updateToolbarFit() }
         #if DEBUG
         .task(id: [panelEdge ?? -1, cameraGroupMaxX ?? -1, clipMode ? 1 : 0]) { await checkCameraGroup() }
+        .onChange(of: [panelEdge ?? -1, windowWidth, buttonsWidth ?? -1, cameraGroupMaxX ?? -1], initial: true) {
+            ConsoleToolbarAudit.latest = .init(edge: panelEdge, windowWidth: windowWidth, buttonsWidth: buttonsWidth,
+                                               groupMaxX: cameraGroupMaxX)
+        }
         #endif
         .onChange(of: toolbarSignature) { updateToolbarFit() }
         .background(Color.black)
@@ -152,6 +157,7 @@ struct MacConsoleView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { model.panTilt.start() }
             }
             if CommandLine.arguments.contains("--demo-panel-sweep") { Task { await sweepPanel() } }
+            if CommandLine.arguments.contains("--demo-window-cycle") { ConsoleToolbarAudit.startOnce() }
             #endif
         }
         // A training started from a linked iPhone: the review of its schedule is over here too.
@@ -290,14 +296,13 @@ struct MacConsoleView: View {
 
     /// The panel's buttons keep their titles while they fit over the panel (see `ConsolePanelLayout`).
     private func updateToolbarFit() {
-        guard !clipMode, let edge = panelEdge, let buttonsMinX, windowWidth > 0, buttonsMinX > windowWidth / 2 else {
+        guard !clipMode, let edge = panelEdge, let width = ConsolePanelLayout.plausible(buttonsWidth, window: windowWidth) else {
             // No panel: the whole toolbar is theirs.
             compactToolbar = false
             return
         }
         let key = toolbarSignature
         if !compactToolbar {
-            let width = windowWidth - buttonsMinX
             titledWidths[key] = width
             if !ConsolePanelLayout.fits(buttonsWidth: width, edge: edge, window: windowWidth) { compactToolbar = true }
         } else if let titled = titledWidths[key] {
@@ -359,13 +364,13 @@ struct MacConsoleView: View {
             ToolbarSpacer(.fixed)
         } else {
             ToolbarItem {
-                ToolbarNeighboursProbe(token: toolbarToken) { minX, groupMaxX in
+                ToolbarNeighboursProbe(token: toolbarToken) { width, groupMaxX in
                     // Only real moves: an update with the same places must not start another round.
-                    if abs((buttonsMinX ?? -100) - minX) > 0.5 { buttonsMinX = minX }
+                    if abs((buttonsWidth ?? -100) - width) > 0.5 { buttonsWidth = width }
                     if let groupMaxX, abs((cameraGroupMaxX ?? -100) - groupMaxX) > 0.5 { cameraGroupMaxX = groupMaxX }
                 }
-                .frame(width: ConsolePanelLayout.spacerWidth(buttonsMinX: buttonsMinX, edge: panelEdge,
-                                                             window: windowWidth), height: 1)
+                .frame(width: ConsolePanelLayout.spacerWidth(buttonsWidth: buttonsWidth, edge: panelEdge,
+                                                              window: windowWidth), height: 1)
                 .accessibilityHidden(true)
             }
             .sharedBackgroundVisibility(.hidden)
@@ -544,4 +549,98 @@ private struct RecordingToolbarButton: View {
         }
     }
 }
+
+#if DEBUG
+/// `--demo-window-cycle [dock,zoom,dockzoom,full,close]`: the window to the Dock and back, zoomed and back, in full
+/// screen and back, closed and opened again from the Dock (the log asks for the reopen: `open` the running app). After
+/// each step the toolbar is read from AppKit here, not through the probe, against the panel's edge.
+@MainActor
+enum ConsoleToolbarAudit {
+    struct Values {
+        var edge: CGFloat?
+        var windowWidth: CGFloat
+        var buttonsWidth: CGFloat?
+        var groupMaxX: CGFloat?
+    }
+
+    /// What the console window shows now (reported by `MacConsoleView`).
+    static var latest = Values(edge: nil, windowWidth: 0, buttonsWidth: nil, groupMaxX: nil)
+    private static var started = false
+
+    static func startOnce() {
+        guard !started else { return }
+        started = true
+        Task { await run() }
+    }
+
+    private static func run() async {
+        try? await Task.sleep(for: .seconds(4))
+        let arguments = CommandLine.arguments
+        let chosen = arguments.firstIndex(of: "--demo-window-cycle").flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil }
+            .map { Set($0.split(separator: ",").map(String.init)) } ?? ["dock", "zoom", "dockzoom", "full", "close"]
+        audit(after: "launch")
+        let dock: [(String, Double, (NSWindow) -> Void)] = [("miniaturize", 1.5, { $0.miniaturize(nil) }),
+                                                            ("deminiaturize", 2.5, { $0.deminiaturize(nil) })]
+        var steps: [(String, Double, (NSWindow) -> Void)] = []
+        if chosen.contains("dock") { steps += dock }
+        if chosen.contains("zoom") { steps += [("zoom", 2.5, { $0.zoom(nil) }), ("unzoom", 2.5, { $0.zoom(nil) })] }
+        if chosen.contains("dockzoom") { steps += [("zoom", 2.5, { $0.zoom(nil) })] + dock + [("unzoom", 2.5, { $0.zoom(nil) })] }
+        if chosen.contains("full") {
+            steps += [("fullscreen", 3.5, { $0.toggleFullScreen(nil) }), ("windowed", 3.5, { $0.toggleFullScreen(nil) })]
+        }
+        for (name, wait, step) in steps {
+            guard let window = consoleWindow() else { break }
+            step(window)
+            try? await Task.sleep(for: .seconds(wait))
+            audit(after: name)
+        }
+        if chosen.contains("close"), let window = consoleWindow() {
+            window.performClose(nil)
+            try? await Task.sleep(for: .seconds(1.5))
+            print("[cycle] closed: reopen the app now")
+            for _ in 0..<80 where consoleWindow() == nil { try? await Task.sleep(for: .milliseconds(250)) }
+            for wait in [0.5, 1.0, 2.0, 4.0] {
+                try? await Task.sleep(for: .seconds(wait))
+                audit(after: "reopen +\(wait)s")
+            }
+        }
+        print("[cycle] done")
+    }
+
+    private static func consoleWindow() -> NSWindow? {
+        NSApp.windows.first { $0.isVisible && probeIndex(in: $0) != nil }
+            ?? NSApp.windows.first { probeIndex(in: $0) != nil }
+    }
+
+    private static func audit(after step: String) {
+        guard let window = consoleWindow(), let items = window.toolbar?.items, let index = probeIndex(in: window) else {
+            print("[cycle] after \(step): no console window")
+            return
+        }
+        // Screen coordinates back to the window's: in full screen the toolbar lives in a window of its own.
+        func frame(_ item: NSToolbarItem) -> CGRect? {
+            guard let view = item.view, let host = view.window else { return nil }
+            return host.convertToScreen(view.convert(view.bounds, to: nil)).offsetBy(dx: -window.frame.minX, dy: 0)
+        }
+        let groupMaxX = items[..<index].compactMap(frame).map(\.maxX).max()
+        let buttonsMinX = items[(index + 1)...].compactMap(frame).map(\.minX).min()
+        let hosts = Set(items.compactMap { $0.view?.window.map { "\(type(of: $0))" } }).sorted()
+        func number(_ value: CGFloat?) -> String { value.map { String(Int($0.rounded())) } ?? "nil" }
+        let state = latest
+        let gap = (state.edge ?? 0) - (groupMaxX ?? 0)
+        print("[cycle] after \(step): window \(number(window.frame.width)) (view \(number(state.windowWidth))), "
+              + "edge \(number(state.edge)), AppKit: buttons take \(number(buttonsMinX.map { window.frame.width - $0 })), "
+              + "camera group to \(number(groupMaxX)); probe: buttons take \(number(state.buttonsWidth)), "
+              + "camera group to \(number(state.groupMaxX)); toolbar in \(hosts.joined(separator: ", "))"
+              + (gap < 1 ? " — RUNS OVER THE EDGE" : ""))
+    }
+
+    private static func probeIndex(in window: NSWindow) -> Int? {
+        func hasProbe(_ view: NSView) -> Bool {
+            view is ToolbarNeighboursProbe.ProbeView || view.subviews.contains(where: hasProbe)
+        }
+        return window.toolbar?.items.firstIndex { item in item.view.map(hasProbe) ?? false }
+    }
+}
+#endif
 #endif

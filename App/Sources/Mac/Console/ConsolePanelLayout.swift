@@ -41,13 +41,20 @@ enum ConsolePanelLayout {
     static let edgeInset: CGFloat = 8
 
     /// Width of the spacer item that puts the camera's group right before the panel's edge (`edge` in window
-    /// coordinates, nil without the panel). `buttonsMinX` is where the panel's buttons begin: the toolbar places them
-    /// from the window's edge, so they stay put when the spacer changes. (The spacer's own frame is no anchor: SwiftUI
-    /// lays a wider spacer out centred in its old item before the toolbar resizes the item.)
-    static func spacerWidth(buttonsMinX: CGFloat?, edge: CGFloat?, window: CGFloat) -> CGFloat {
-        // The first layout passes report items at the window's left: not yet where they will be.
-        guard let buttonsMinX, let edge, window > 0, buttonsMinX > window / 2 else { return 1 }
-        return max(1, buttonsMinX - itemSpacing - (edge - edgeInset))
+    /// coordinates). `buttonsWidth` is how much of the toolbar the panel's buttons take from the window's edge: the
+    /// toolbar places them from there, so they stay put when the spacer changes, and their width doesn't change with
+    /// the window's — a resize moves the spacer in the same layout pass as the panel, without waiting for the toolbar
+    /// to be read again. (The spacer's own frame is no anchor: SwiftUI lays a wider spacer out centred in its old item
+    /// before the toolbar resizes the item.)
+    static func spacerWidth(buttonsWidth: CGFloat?, edge: CGFloat?, window: CGFloat) -> CGFloat {
+        guard let buttonsWidth = plausible(buttonsWidth, window: window), let edge else { return 1 }
+        return max(1, window - buttonsWidth - itemSpacing - (edge - edgeInset))
+    }
+
+    /// The first layout passes report items at the window's left: not yet where they will be.
+    static func plausible(_ buttonsWidth: CGFloat?, window: CGFloat) -> CGFloat? {
+        guard let buttonsWidth, window > 0, buttonsWidth > 0, buttonsWidth < window / 2 else { return nil }
+        return buttonsWidth
     }
 
     /// Whether the panel's buttons fit over the panel. `buttonsWidth`: from their left end to the window's edge.
@@ -98,17 +105,18 @@ struct TrainingPanelEdge: View {
     }
 }
 
-/// Lives in the toolbar's spacer item and reads from AppKit where the toolbar items around it are: where the panel's
-/// buttons (the items after the spacer) begin, and where the camera's group (the items before it) ends. SwiftUI
-/// reports a toolbar item's place only when its size changes, and the first of the panel's buttons moves without
-/// resizing when those after it change (titles dropped, «Завершить» appears): its reported place went stale and the
-/// camera's group ran over the panel's edge. Read after every update of the item, as the toolbar settles, and whenever
-/// AppKit lays the toolbar out again by itself: the window back from the Dock moved the items with no SwiftUI update,
-/// and the camera's group stayed over the panel.
+/// Lives in the toolbar's spacer item and reads from AppKit where the toolbar items around it are: how much of the
+/// toolbar the panel's buttons (the items after the spacer) take from the window's edge, and where the camera's group
+/// (the items before it) ends. SwiftUI reports a toolbar item's place only when its size changes, and the first of the
+/// panel's buttons moves without resizing when those after it change (titles dropped, «Завершить» appears): its
+/// reported place went stale and the camera's group ran over the panel's edge. Read after every update of the item, as
+/// the toolbar settles, and whenever AppKit lays the toolbar out again by itself (the window back from the Dock).
+/// In full screen the toolbar moves into a window of its own (`NSToolbarFullScreenWindow`, without a `toolbar`): the
+/// window the toolbar belongs to is found among the app's windows and places are compared on the screen.
 struct ToolbarNeighboursProbe: NSViewRepresentable {
     /// Anything whose change may move the items (the probe re-reads on every update).
     var token: Int
-    var onRead: (_ buttonsMinX: CGFloat, _ groupMaxX: CGFloat?) -> Void
+    var onRead: (_ buttonsWidth: CGFloat, _ groupMaxX: CGFloat?) -> Void
 
     func makeNSView(context: Context) -> ProbeView { ProbeView() }
 
@@ -134,13 +142,16 @@ struct ToolbarNeighboursProbe: NSViewRepresentable {
             super.viewDidMoveToWindow()
             windowObservers.forEach(NotificationCenter.default.removeObserver)
             windowObservers = []
-            if let window {
-                let names: [Notification.Name] = [NSWindow.didDeminiaturizeNotification, NSWindow.didResizeNotification,
-                                                  NSWindow.didEndLiveResizeNotification, NSWindow.didChangeScreenNotification,
-                                                  NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
-                                                  NSWindow.didChangeOcclusionStateNotification,
-                                                  NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification]
-                windowObservers = names.map { name in
+            // The toolbar's own window in full screen doesn't resize or go to the Dock: the owner's events too.
+            var windows = [window].compactMap { $0 }
+            if let owner = toolbarOwner()?.window, !windows.contains(where: { $0 === owner }) { windows.append(owner) }
+            let names: [Notification.Name] = [NSWindow.didDeminiaturizeNotification, NSWindow.didResizeNotification,
+                                              NSWindow.didEndLiveResizeNotification, NSWindow.didChangeScreenNotification,
+                                              NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
+                                              NSWindow.didChangeOcclusionStateNotification,
+                                              NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification]
+            windowObservers = windows.flatMap { window in
+                names.map { name in
                     NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
                         MainActor.assumeIsolated { self?.scheduleReads() }
                     }
@@ -152,6 +163,19 @@ struct ToolbarNeighboursProbe: NSViewRepresentable {
         deinit {
             windowObservers.forEach(NotificationCenter.default.removeObserver)
             watched.forEach { NotificationCenter.default.removeObserver($0.observer) }
+        }
+
+        /// The window whose toolbar holds this item: the probe's own, or in full screen the one under the toolbar.
+        private func toolbarOwner() -> (window: NSWindow, toolbar: NSToolbar)? {
+            func holdsProbe(_ toolbar: NSToolbar) -> Bool {
+                toolbar.items.contains { item in item.view.map { isDescendant(of: $0) } ?? false }
+            }
+            if let window, let toolbar = window.toolbar, holdsProbe(toolbar) { return (window, toolbar) }
+            guard window != nil else { return nil }
+            for candidate in NSApp.windows {
+                if let toolbar = candidate.toolbar, holdsProbe(toolbar) { return (candidate, toolbar) }
+            }
+            return nil
         }
 
         /// Item views that move or resize (the toolbar laid out again) start another round of reads.
@@ -185,16 +209,19 @@ struct ToolbarNeighboursProbe: NSViewRepresentable {
         }
 
         private func read() {
-            guard let window, let items = window.toolbar?.items,
-                  let index = items.firstIndex(where: { item in item.view.map { isDescendant(of: $0) } ?? false })
+            guard let host = window, let owner = toolbarOwner(),
+                  let index = owner.toolbar.items.firstIndex(where: { item in item.view.map { isDescendant(of: $0) } ?? false })
             else { return }
+            let items = owner.toolbar.items
             watch(items)
-            // Items moved into the overflow menu have no window.
+            // On the screen: in full screen the items are in the toolbar's window over the owner. Items moved into the
+            // overflow menu are in no window.
             func frames(_ slice: ArraySlice<NSToolbarItem>) -> [CGRect] {
-                slice.compactMap { $0.view }.filter { $0.window === window }.map { $0.convert($0.bounds, to: nil) }
+                slice.compactMap { $0.view }.filter { $0.window === host }.map { host.convertToScreen($0.convert($0.bounds, to: nil)) }
             }
             guard let buttonsMinX = frames(items[(index + 1)...]).map(\.minX).min() else { return }
-            onRead?(buttonsMinX, frames(items[..<index]).map(\.maxX).max())
+            let frame = owner.window.frame
+            onRead?(frame.maxX - buttonsMinX, frames(items[..<index]).map(\.maxX).max().map { $0 - frame.minX })
         }
     }
 }
