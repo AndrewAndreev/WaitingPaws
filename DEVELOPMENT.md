@@ -90,6 +90,26 @@ Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает ката�
   (отдельный симулятор «WP Screens», фоновые копии Mac-приложения с `--retina`, только DEBUG-демо-данные;
   `make.sh compose` пересобирает картинки из уже снятых кадров).
 
+### Версии и выпуски
+
+* Версия `X.Y.Z`: исправления — последняя цифра (1.1 → 1.1.1), новые функции — средняя (1.2), крупные перемены —
+  первая. Номер сборки (`CURRENT_PROJECT_VERSION`) растёт на 1 с каждой сборкой, которую кто-то получает.
+* Общие для iPhone и Mac номера — в `settings.base` в `project.yml`, номера одной платформы — в `settings.base` её
+  таргета (у Mac сейчас свои: правка только для Mac не меняет версию iPhone). `Info.plist` берёт их из настроек
+  сборки. Менять и `project.yml`, и `project.pbxproj` (или `xcodegen generate`).
+* Выданная сборка — тег `mac-v<версия>` / `ios-v<версия>` (у Windows — `windows-v<версия>`). Архив для Mac — Release
+  из чистой копии тега:
+
+  ```bash
+  git worktree add --detach /tmp/wp-release mac-v1.1.1 && cp -R Frameworks /tmp/wp-release/
+  cd /tmp/wp-release && xcodebuild archive -scheme WaitingPaws-macOS -configuration Release \
+    -destination 'generic/platform=macOS' -archivePath /tmp/WaitingPaws.xcarchive -allowProvisioningUpdates
+  ditto -c -k --keepParent /tmp/WaitingPaws.xcarchive/Products/Applications/WaitingPaws.app WaitingPaws-1.1.1-mac.zip
+  ```
+
+  Подпись Apple Development, без нотаризации: на другом Mac первый запуск — «Открыть всё равно» в «Конфиденциальность
+  и безопасность» (или `xattr -dr com.apple.quarantine /Applications/WaitingPaws.app`).
+
 ### Тесты
 
 ```bash

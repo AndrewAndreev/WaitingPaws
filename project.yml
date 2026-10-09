@@ -125,6 +125,10 @@ targets:
         # Apple Development (automatic, team above) instead of ad-hoc: a stable signature keeps the
         # Local Network / firewall permissions across rebuilds.
         CODE_SIGN_IDENTITY: "Apple Development"
+        # The Mac's own version and build (the shared ones are in `settings.base` above): a Mac-only fix leaves the
+        # iPhone's as they are.
+        MARKETING_VERSION: "1.1.1"
+        CURRENT_PROJECT_VERSION: "2"
 
 schemes:
   WaitingPaws-iOS:
