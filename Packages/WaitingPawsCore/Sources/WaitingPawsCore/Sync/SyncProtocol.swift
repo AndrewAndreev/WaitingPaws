@@ -182,10 +182,14 @@ public struct SyncState: Codable, Equatable {
     /// The Mac's clock when this state left it: the iPhone keeps track of how far the two clocks are apart
     /// (`SyncClock`) to send the moment of each button press in the Mac's time. Set by the sender, not compared.
     public var sentAt: Date?
+    /// The Mac's second camera (another room), only to look at; nil without one and from builds before it.
+    public var secondStreamName: String?
+    public var secondCameraTitle: String?
 
     public init(session: TrainingSession.Snapshot?, recordingSince: Date?, cameraReady: Bool, cameraTitle: String,
                 streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil, cameraSource: String? = nil,
-                streamRevision: Int? = nil, sentAt: Date? = nil) {
+                streamRevision: Int? = nil, sentAt: Date? = nil, secondStreamName: String? = nil,
+                secondCameraTitle: String? = nil) {
         self.session = session
         self.recordingSince = recordingSince
         self.cameraReady = cameraReady
@@ -196,6 +200,8 @@ public struct SyncState: Codable, Equatable {
         self.cameraSource = cameraSource
         self.streamRevision = streamRevision
         self.sentAt = sentAt
+        self.secondStreamName = secondStreamName
+        self.secondCameraTitle = secondCameraTitle
     }
 }
 

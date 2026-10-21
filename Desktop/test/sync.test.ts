@@ -143,6 +143,16 @@ describe('Sync', () => {
     expect(decoded.state.pendingPlan).toBeNull()
   })
 
+  it('sends the second camera only when there is one', () => {
+    const base = { session: null, recordingSince: null, cameraReady: true, cameraTitle: 'Прихожая', streamName: 'hall', lastRecord: null }
+    const without = JSON.parse(SyncMessage.encode({ kind: 'state', state: SyncState.make(base) })).state._0
+    expect('secondStreamName' in without || 'secondCameraTitle' in without).toBe(false)
+    const state = SyncState.make({ ...base, secondStreamName: 'room', secondCameraTitle: 'Комната' })
+    const json = JSON.parse(SyncMessage.encode({ kind: 'state', state })).state._0
+    expect([json.secondStreamName, json.secondCameraTitle]).toEqual(['room', 'Комната'])
+    expect(SyncMessage.decode(SyncMessage.encode({ kind: 'state', state }))).toEqual({ kind: 'state', state })
+  })
+
   it('host info TXT round trip', () => {
     const info = SyncHostInfo.make({
       name: 'MacBook Андрея',

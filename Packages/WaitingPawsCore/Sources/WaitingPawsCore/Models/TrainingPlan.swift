@@ -1,5 +1,60 @@
 import Foundation
 
+/// When to come back before the planned time, from a line such as «🟡 Если встала и пошла - входим через 2 минуты от
+/// начала движения, когда сняла фокус внимания с двери» or «🟢 Если легла - входим через 30 секунд от укладки».
+public struct EarlyEntry: Codable, Equatable, Hashable, Identifiable {
+    /// The trainer's mark in front of the line.
+    public enum Tone: String, Codable, CaseIterable {
+        case yellow, green, plain
+    }
+
+    public var id: UUID
+    /// What the dog does: «Встала и пошла», «Легла».
+    public var event: String
+    /// How long after it to come back; `nil` — right away.
+    public var delay: TimeInterval?
+    /// The rest of the trainer's sentence: «от начала движения, когда сняла фокус внимания с двери…», «от укладки».
+    public var detail: String?
+    public var tone: Tone
+
+    public init(id: UUID = UUID(), event: String, delay: TimeInterval? = nil, detail: String? = nil, tone: Tone = .plain) {
+        self.id = id
+        self.event = event
+        self.delay = delay
+        self.detail = detail
+        self.tone = tone
+    }
+
+    /// «через 2 мин» / «сразу».
+    public var delayDescription: String {
+        guard let delay, delay > 0 else { return tr("сразу", "right away") }
+        return tr("через \(DurationText.short(delay))", "in \(DurationText.short(delay))")
+    }
+
+    /// «встала и пошла → 2:00», «легла → 0:30», «встала → сразу»: the short form for summaries.
+    public var summary: String {
+        let name = event.prefix(1).lowercased() + event.dropFirst()
+        guard let delay, delay > 0 else { return "\(name) → " + tr("сразу", "right away") }
+        return "\(name) → \(DurationText.clock(delay))"
+    }
+
+    /// The condition is about the dog standing up («встала», «встала и пошла», "stands up").
+    public var isStandingUp: Bool {
+        let lower = event.lowercased()
+        return lower.contains("встал") || lower.contains("встав") || lower.contains("stand") || lower.contains("got up")
+    }
+
+    /// The same condition with a new id (a copy for one exit of the plan's common conditions).
+    public func copy() -> EarlyEntry {
+        EarlyEntry(event: event, delay: delay, detail: detail, tone: tone)
+    }
+
+    /// «До вставания»: an exit's «ИЛИ до вставания» shown as a condition.
+    public static var untilStanding: EarlyEntry {
+        EarlyEntry(id: UUID(uuidString: "00000000-0000-0000-0000-00000000057A")!, event: tr("Встала", "Stands up"))
+    }
+}
+
 /// One planned exit from the apartment.
 public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
     public var id: UUID
@@ -9,23 +64,54 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
     public var duration: TimeInterval
     /// "ИЛИ до вставания" — come back as soon as the dog stands up.
     public var untilStanding: Bool
-    /// Free-form remark, e.g. "выйти и сразу вернуться".
+    /// The exit's own notes: a remark in parentheses («выйти и сразу вернуться»), the trainer's wording of the exit, the
+    /// owner's own words.
     public var note: String?
     /// Explicit break after this exit. `nil` means the plan's default break.
     public var breakAfter: TimeInterval?
+    /// What to do or take on the way out: «куртка», «взять ключи, звякнуть ими», «закрыть дверь на один оборот».
+    public var triggers: [String]
+    /// The exit's own conditions for coming back early (lines under the exit in the schedule).
+    public var earlyEntries: [EarlyEntry]
+    /// The plan's common conditions apply to this exit (when it has none of its own).
+    public var usesCommonEarlyEntries: Bool
 
     public init(id: UUID = UUID(),
                 number: Int,
                 duration: TimeInterval,
                 untilStanding: Bool = false,
                 note: String? = nil,
-                breakAfter: TimeInterval? = nil) {
+                breakAfter: TimeInterval? = nil,
+                triggers: [String] = [],
+                earlyEntries: [EarlyEntry] = [],
+                usesCommonEarlyEntries: Bool = true) {
         self.id = id
         self.number = number
         self.duration = duration
         self.untilStanding = untilStanding
         self.note = note
         self.breakAfter = breakAfter
+        self.triggers = triggers
+        self.earlyEntries = earlyEntries
+        self.usesCommonEarlyEntries = usesCommonEarlyEntries
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, number, duration, untilStanding, note, breakAfter, triggers, earlyEntries, usesCommonEarlyEntries
+    }
+
+    /// Plans from builds before triggers and conditions decode with none of their own.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        number = try container.decode(Int.self, forKey: .number)
+        duration = try container.decode(TimeInterval.self, forKey: .duration)
+        untilStanding = try container.decode(Bool.self, forKey: .untilStanding)
+        note = try container.decodeIfPresent(String.self, forKey: .note)
+        breakAfter = try container.decodeIfPresent(TimeInterval.self, forKey: .breakAfter)
+        triggers = try container.decodeIfPresent([String].self, forKey: .triggers) ?? []
+        earlyEntries = try container.decodeIfPresent([EarlyEntry].self, forKey: .earlyEntries) ?? []
+        usesCommonEarlyEntries = try container.decodeIfPresent(Bool.self, forKey: .usesCommonEarlyEntries) ?? true
     }
 
     /// Human readable planned duration, e.g. "30 с или до вставания" / "30 s or until the dog stands".
@@ -33,6 +119,12 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
         var text = DurationText.short(duration)
         if untilStanding { text += " " + Self.untilStandingText }
         return text
+    }
+
+    /// The note with something in it.
+    public var noteText: String? {
+        guard let note = note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty else { return nil }
+        return note
     }
 
     /// "или до вставания": come back as soon as the dog stands up.
@@ -53,6 +145,8 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     public var defaultBreak: TimeInterval
     public var exits: [PlannedExit]
     public var rawText: String
+    /// Conditions for coming back early written once for the whole training (after or before the exits).
+    public var commonEarlyEntries: [EarlyEntry]
 
     public init(id: UUID = UUID(),
                 title: String = TrainingPlan.defaultTitle,
@@ -61,7 +155,8 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
                 notes: [String] = [],
                 defaultBreak: TimeInterval = TrainingPlan.defaultBreakDuration,
                 exits: [PlannedExit] = [],
-                rawText: String = "") {
+                rawText: String = "",
+                commonEarlyEntries: [EarlyEntry] = []) {
         self.id = id
         self.title = title
         self.trainers = trainers
@@ -70,6 +165,31 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         self.defaultBreak = defaultBreak
         self.exits = exits
         self.rawText = rawText
+        self.commonEarlyEntries = commonEarlyEntries
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, trainers, date, notes, defaultBreak, exits, rawText, commonEarlyEntries
+    }
+
+    /// A plan from a build before conditions keeps «🟡 Если встала - входим через 15 секунд» among its notes: such
+    /// notes become its common conditions.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        trainers = try container.decode(String.self, forKey: .trainers)
+        date = try container.decodeIfPresent(Date.self, forKey: .date)
+        notes = try container.decode([String].self, forKey: .notes)
+        defaultBreak = try container.decode(TimeInterval.self, forKey: .defaultBreak)
+        exits = try container.decode([PlannedExit].self, forKey: .exits)
+        rawText = try container.decode(String.self, forKey: .rawText)
+        if let entries = try container.decodeIfPresent([EarlyEntry].self, forKey: .commonEarlyEntries) {
+            commonEarlyEntries = entries
+        } else {
+            commonEarlyEntries = notes.compactMap { PlanParser.parseEarlyEntry($0) }
+            notes.removeAll { PlanParser.parseEarlyEntry($0) != nil }
+        }
     }
 
     /// Break that follows the exit at `index` (falls back to the default break).
@@ -91,19 +211,73 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
 
     public var isValid: Bool { !exits.isEmpty }
 
-    /// How long after the dog stands up to come back on an "или до вставания" exit, from a schedule note such as
-    /// "🟡 Если встала - входим через 15 секунд от вставания". `nil`: come back right away.
-    public var standingDelay: TimeInterval? {
-        for note in notes {
-            let lower = note.lowercased()
-            guard lower.contains("встал") || lower.contains("встав") || lower.contains("stand") else { continue }
-            // The time after the last "через" / "in" ("входим через 15 секунд", "come back in 15 seconds"), else the line's.
-            var tail = Substring(note)
-            if let range = note.range(of: "через ", options: [.caseInsensitive, .backwards])
-                ?? note.range(of: " in ", options: [.caseInsensitive, .backwards]) {
-                tail = note[range.upperBound...]
-            }
-            if let delay = DurationText.sumOfUnits(in: String(tail)), delay > 0 { return delay }
+    // MARK: - Conditions for coming back early
+
+    /// Conditions that apply to `exit`: its own, or the plan's common ones when it has none and they apply to it.
+    /// An «ИЛИ до вставания» exit without a condition about standing up gets «Встала → сразу».
+    public func earlyEntries(of exit: PlannedExit) -> [EarlyEntry] {
+        var entries = exit.earlyEntries.isEmpty && exit.usesCommonEarlyEntries ? commonEarlyEntries : exit.earlyEntries
+        if exit.untilStanding, !entries.contains(where: \.isStandingUp) {
+            entries.insert(.untilStanding, at: 0)
+        }
+        return entries
+    }
+
+    /// `exit` shows the plan's common conditions (none of its own).
+    public func usesCommonEarlyEntries(_ exit: PlannedExit) -> Bool {
+        exit.earlyEntries.isEmpty && exit.usesCommonEarlyEntries && !commonEarlyEntries.isEmpty
+    }
+
+    /// Which exits get the common conditions: all of them or those of at least a minute. Exits with their own
+    /// conditions keep them.
+    public enum CommonEntriesScope: String, Codable, CaseIterable {
+        case all, long
+
+        /// «К длинным»: an exit this long or longer.
+        public static let longExit: TimeInterval = 60
+
+        func includes(_ exit: PlannedExit) -> Bool {
+            self == .all || exit.duration >= Self.longExit
+        }
+    }
+
+    /// The scope the exits now follow; `nil` when they were picked one by one.
+    public var commonEntriesScope: CommonEntriesScope? {
+        let candidates = exits.filter(\.earlyEntries.isEmpty)
+        return CommonEntriesScope.allCases.first { scope in
+            candidates.allSatisfy { $0.usesCommonEarlyEntries == scope.includes($0) }
+        }
+    }
+
+    public mutating func applyCommonEarlyEntries(to scope: CommonEntriesScope) {
+        for index in exits.indices where exits[index].earlyEntries.isEmpty {
+            exits[index].usesCommonEarlyEntries = scope.includes(exits[index])
+        }
+    }
+
+    /// Turns the common conditions `exit` shows into its own, so they can be changed for this exit alone.
+    public mutating func detachEarlyEntries(ofExitAt index: Int) {
+        guard exits.indices.contains(index), usesCommonEarlyEntries(exits[index]) else { return }
+        exits[index].earlyEntries = commonEarlyEntries.map { $0.copy() }
+        exits[index].usesCommonEarlyEntries = false
+    }
+
+    // MARK: - Rules for the whole training
+
+    /// «🚩 Если залаяла, завыла - ни в коем случае не входить, ждём…»: when NOT to come in.
+    public struct Rule: Equatable, Hashable {
+        /// «Залаяла, завыла».
+        public var title: String
+        /// «ни в коем случае не входить, ждём когда станет чуть спокойнее…».
+        public var detail: String
+        public var text: String
+    }
+
+    /// The note that says when not to come in.
+    public var doNotEnterRule: Rule? {
+        for note in notes where PlanParser.isDoNotEnterRule(note) {
+            let (title, detail) = PlanParser.splitCondition(note)
+            return Rule(title: title ?? tr("Не входить", "Do not come in"), detail: detail, text: note)
         }
         return nil
     }
@@ -127,6 +301,15 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
                 changes.append(tr("выход \(exit.number): \(was.durationDescription) → \(exit.durationDescription)",
                                   "exit \(exit.number): \(was.durationDescription) → \(exit.durationDescription)"))
             }
+            if was.triggers != exit.triggers {
+                changes.append(tr("выход \(exit.number): триггеры", "exit \(exit.number): triggers"))
+            }
+            if old.earlyEntries(of: was) != earlyEntries(of: exit) {
+                changes.append(tr("выход \(exit.number): ранний вход", "exit \(exit.number): coming back early"))
+            }
+            if was.noteText != exit.noteText {
+                changes.append(tr("выход \(exit.number): заметка", "exit \(exit.number): note"))
+            }
             // Own breaks only: a new common break is already said above.
             let before = old.breakAfter(exitAt: oldIndex), after = breakAfter(exitAt: index)
             if (was.breakAfter != nil || exit.breakAfter != nil), before != after, index < exits.count - 1 {
@@ -138,16 +321,6 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
             changes.append(tr("убран выход \(exit.number)", "exit \(exit.number) removed"))
         }
         return changes
-    }
-
-    /// What to do on an "или до вставания" exit: "собака встала — сразу возвращайтесь" or, with a note about it,
-    /// "собака встала — возвращайтесь через 15 с".
-    public var standingRule: String {
-        if let delay = standingDelay {
-            return tr("собака встала — возвращайтесь через \(DurationText.short(delay))",
-                      "the dog stands up — come back in \(DurationText.short(delay))")
-        }
-        return tr("собака встала — сразу возвращайтесь", "the dog stands up — come back right away")
     }
 
     /// Rewrites exit numbers to 1…n in order.

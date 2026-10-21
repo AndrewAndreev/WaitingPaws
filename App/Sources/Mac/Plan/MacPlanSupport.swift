@@ -70,8 +70,9 @@ enum MacPlanTint {
 // MARK: - The trainer's text, line by line
 
 /// One line of the pasted text and what `PlanParser` made of it. Classified with the parser's own
-/// patterns (exit line, «Перерыв N» after an exit, a line about all breaks, the first line as the header),
-/// plus the false-start rule («🔖 Фальстарт: …»), which the parser keeps as a note.
+/// patterns (exit line, «Перерыв N» after an exit, a line about all breaks, a condition for coming back early, the
+/// first line as the header), plus the false-start rule («🔖 Фальстарт: …») and the rule against coming in
+/// («🚩 Если залаяла - не входить»), which the parser keeps as notes.
 struct MacPlanTextLine: Identifiable, Equatable {
     enum Kind: Equatable {
         case header
@@ -83,6 +84,11 @@ struct MacPlanTextLine: Identifiable, Equatable {
         case defaultBreak
         /// «🔖 Фальстарт: …».
         case rule
+        /// «🟡 Если встала и пошла - входим через 2 минуты…»: of the exit on line `afterLine` right above it, or
+        /// common to the training (nil).
+        case condition(afterLine: Int?)
+        /// «🚩 Если залаяла - ни в коем случае не входить…».
+        case doNotEnter
         case note
         case blank
     }
@@ -103,7 +109,7 @@ struct MacPlanTextLine: Identifiable, Equatable {
     /// Lines marked in the gutter.
     var isRecognised: Bool {
         switch kind {
-        case .exit, .ownBreak, .defaultBreak, .rule: true
+        case .exit, .ownBreak, .defaultBreak, .rule, .condition, .doNotEnter: true
         case .header, .note, .blank: false
         }
     }
@@ -113,6 +119,8 @@ struct MacPlanTextLine: Identifiable, Equatable {
         case .exit: MacPlanTint.exit(scheme)
         case .ownBreak, .defaultBreak: MacPlanTint.pause(scheme)
         case .rule: MacPlanTint.rule(scheme)
+        case .condition: (PlanParser.parseEarlyEntry(text)?.tone ?? .plain).color
+        case .doNotEnter: MacPalette.red
         case .header, .note, .blank: .secondary
         }
     }
@@ -124,12 +132,15 @@ struct MacPlanTextLine: Identifiable, Equatable {
         var contentIndex = 0
         var exitOrdinal = 0
         var lastExitLine: Int?
-        var rows = text.components(separatedBy: .newlines)
+        /// The exit line a condition belongs to: the last exit, while no blank line or note has come after it.
+        var attachedLine: Int?
+        var rows = text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: .newlines)
         while rows.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { rows.removeLast() }
         for (index, raw) in rows.enumerated() {
             let id = index + 1
             let line = raw.trimmingCharacters(in: .whitespaces)
             guard !line.isEmpty else {
+                attachedLine = nil
                 result.append(MacPlanTextLine(id: id, text: "", kind: .blank))
                 continue
             }
@@ -143,16 +154,25 @@ struct MacPlanTextLine: Identifiable, Equatable {
                 kind = .exit(number: number, ordinal: exitOrdinal)
                 exitOrdinal += 1
                 lastExitLine = id
+                attachedLine = id
             } else if PlanParser.isExitBreak(lower), let lastExitLine, DurationText.sumOfUnits(in: stripped) != nil {
                 kind = .ownBreak(afterLine: lastExitLine)
+            } else if PlanParser.parseEarlyEntry(line) != nil {
+                kind = .condition(afterLine: attachedLine)
             } else if PlanParser.commonBreak(in: stripped) != nil {
                 kind = .defaultBreak
             } else if contentIndex == 0 {
                 kind = .header
             } else if isRule(line) {
                 kind = .rule
+            } else if PlanParser.isDoNotEnterRule(line) {
+                kind = .doNotEnter
             } else {
                 kind = .note
+            }
+            switch kind {
+            case .exit, .ownBreak, .condition: break
+            default: attachedLine = nil
             }
             result.append(MacPlanTextLine(id: id, text: line, kind: kind))
         }
@@ -207,6 +227,11 @@ struct MacPlanTextLine: Identifiable, Equatable {
             } else {
                 base = .rule
             }
+        case .condition:
+            base = .plain
+            for match in Self.durationRegex.matches(in: text, range: full) { marks.append((match.range, .pause)) }
+        case .doNotEnter:
+            base = .dim
         case .exit:
             base = .dim
             if let label = Self.exitLabelRegex.firstMatch(in: text, range: full) { marks.append((label.range, .label)) }

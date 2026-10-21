@@ -4,10 +4,13 @@ import WaitingPawsCore
 
 /// Right panel during a session. Under the exit strip, what this exit (or break) is; then the timer — big tinted
 /// digits over a progress line, the focus of the window — and the same two buttons as on the iPhone, with their
-/// keys. The numbers of the whole training live in the timeline's header, «Завершить» in the toolbar.
+/// keys. Under them, outside: when to come back early, when not to come in and the exit's notes; in a break: what to
+/// take for the next exit. The rest of the panel is the trainer's text with that exit marked. The numbers of the whole
+/// training live in the timeline's header, «Завершить» in the toolbar.
 struct ConsoleReadout: View {
     @Environment(AppModel.self) private var model
     let session: TrainingSession
+    @State private var showTrainerText = false
 
     var body: some View {
         let content = ReadoutContent(session: session)
@@ -29,14 +32,25 @@ struct ConsoleReadout: View {
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.07)))
             }
             buttons(content)
-            Spacer(minLength: 0)
+            if let brief = content.brief {
+                if content.isBreak {
+                    prepare(brief)
+                } else {
+                    conditions(brief)
+                }
+            }
+            if session.plan.rawText.isEmpty {
+                Spacer(minLength: 0)
+            } else {
+                trainerText(content)
+            }
         }
         .padding(16)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    /// «Выход 4 · попытка 2», the plan of this exit and its «или до вставания» rule — or the next exit in a break.
+    /// «Выход 4 · попытка 2» with ⚡ 🏃 📝 of the exit, and its plan — or the next exit in a break.
     private func about(_ content: ReadoutContent) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -47,23 +61,115 @@ struct ConsoleReadout: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
-            }
-            ForEach(content.lines, id: \.self) { line in
-                switch line {
-                case .main(let text):
-                    Text(text).font(.system(size: 15, weight: .medium))
-                case .standing(let text):
-                    Label(text, systemImage: "figure.stand")
-                        .font(.callout)
-                        .foregroundStyle(MacPalette.blue)
-                case .note(let text):
-                    Label(text, systemImage: "text.bubble")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                if let brief = content.brief {
+                    ExitMarks(plan: session.plan, exit: brief.exit, size: 13)
                 }
+            }
+            if let line = content.line {
+                Text(line).font(.system(size: 15, weight: .medium))
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // MARK: - The exit
+
+    /// Outside: «Ранний вход» — the conditions with the trainer's words under them, the rule against coming in, the
+    /// notes folded.
+    @ViewBuilder
+    private func conditions(_ brief: ExitBrief) -> some View {
+        if !brief.entries.isEmpty || brief.doNotEnter != nil || !brief.notes.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                if !brief.entries.isEmpty {
+                    sectionTitle(String(localized: "Ранний вход"), symbol: "figure.run")
+                    ForEach(brief.entries) { entry in
+                        EarlyEntryPlate(entry: entry, showsDetail: true, height: 46, digits: 20)
+                    }
+                }
+                if let rule = brief.doNotEnter {
+                    DoNotEnterPlate(rule: rule, showsDetail: true, height: 46, digits: 20)
+                }
+                if !brief.notes.isEmpty {
+                    FoldedNotes(notes: brief.notes, size: 12.5)
+                        .padding(.horizontal, 4)
+                        .padding(.top, 2)
+                        .id(brief.exit.id)
+                }
+            }
+        }
+    }
+
+    /// In a break: what to take for the next exit, and its conditions in one line.
+    @ViewBuilder
+    private func prepare(_ brief: ExitBrief) -> some View {
+        if !brief.exit.triggers.isEmpty || brief.entriesSummary != nil {
+            VStack(alignment: .leading, spacing: 6) {
+                sectionTitle(String(localized: "Подготовить к выходу \(brief.exit.number)"), symbol: "bolt.fill")
+                ForEach(Array(brief.exit.triggers.enumerated()), id: \.offset) { _, trigger in
+                    TriggerRow(text: trigger, size: 14)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 36)
+                        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                if let summary = brief.entriesSummary {
+                    Label("На выходе: \(summary)", systemImage: "figure.run")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                }
+            }
+        }
+    }
+
+    /// The trainer's text, always there: the exit of the moment marked and kept in view. When the panel is too short
+    /// for it (a small window), one row that opens it next to the panel; ↗ opens it larger in any case.
+    private func trainerText(_ content: ReadoutContent) -> some View {
+        ViewThatFits(in: .vertical) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    sectionTitle(String(localized: "Текст тренера"), symbol: "doc.text")
+                    Spacer(minLength: 0)
+                    trainerTextButton(content, label: Image(systemName: "arrow.up.left.and.arrow.down.right"))
+                        .help("Открыть текст тренера крупнее")
+                }
+                TrainerTextView(text: session.plan.rawText, exitNumber: content.textExitNumber, fontSize: 12.5)
+                    .frame(maxHeight: .infinity)
+                    .background {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(.black.opacity(0.22))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.06)))
+                    }
+            }
+            .frame(idealHeight: 96, maxHeight: .infinity)
+            trainerTextButton(content, label: Label("Текст тренера", systemImage: "doc.text"))
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Color.clear.frame(height: 0)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private func trainerTextButton(_ content: ReadoutContent, label: some View) -> some View {
+        Button { showTrainerText = true } label: { label }
+            .buttonStyle(.borderless)
+            .popover(isPresented: $showTrainerText, arrowEdge: .leading) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Текст тренера").font(.headline).padding(.horizontal, 10)
+                    TrainerTextView(text: session.plan.rawText, exitNumber: content.textExitNumber, fontSize: 13.5)
+                }
+                .padding(.vertical, 12)
+                .frame(width: 460, height: 580)
+            }
+    }
+
+    private func sectionTitle(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol)
+            .font(.system(size: 11, weight: .semibold))
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 4)
+            .padding(.top, 2)
     }
 
     /// Big digits in the phase's colour (neutral before the first exit), the caption and the progress line.

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { t } from '@shared/i18n'
 import { effectivePlayerMode } from '@shared/settings'
-import { call, useApp, useNow, useStore } from '../store'
-import { isConfigured, isRecordingClip } from '../model'
+import { call, useApp, useNow, useStore, type CameraSlot } from '../store'
+import { hasSecondCamera, isConfigured, isRecordingClip, visibleCamera } from '../model'
 import { CameraPlaceholder, CameraView } from '../player/CameraView'
+import type { PlayerPhase } from '../player/CameraPlayer'
 import { Button } from '../ui/kit'
 import { CameraAddIcon } from '../ui/icons'
 import { ui } from '../store'
@@ -51,9 +52,13 @@ function LiveTimeline() {
   return <SessionTimeline live={new LiveSession(app.session, now, app.recording.since)} />
 }
 
+/// The main camera and, when there is one, the second: both players stay connected, the switcher in the title bar
+/// only changes which one is seen (the other is transparent, muted and lets the mouse through).
 function CameraArea() {
   const app = useApp()
   const showPerformance = useStore((store) => store.app?.settings.showPerformance)
+  const chosen = useStore((store) => store.camera)
+  const secondReload = useStore((store) => store.secondCameraReload)
   const [delay, setDelay] = useState<{ buffer: number; network: number | null } | null>(null)
   if (!isConfigured(app.settings) || !app.server) {
     return (
@@ -72,18 +77,41 @@ function CameraArea() {
       </CameraPlaceholder>
     )
   }
+  const shown = visibleCamera(app.settings, chosen)
+  const live = (slot: CameraSlot) => (phase: PlayerPhase) => {
+    const playing = phase.kind === 'playing' || phase.kind === 'stalled'
+    if (ui.get().cameraLive[slot] !== playing) ui.set({ cameraLive: { ...ui.get().cameraLive, [slot]: playing } })
+  }
   return (
-    <CameraView
-      baseURL={app.server.baseURL}
-      stream={app.settings.streamName}
-      mode={effectivePlayerMode(app.settings)}
-      muted={!app.settings.audioEnabled}
-      reloadToken={app.camera.playerGeneration}
-      zoomable
-      onVideoSize={(width, height) => void call('camera.reportVideoSize', width, height)}
-      onDelay={(buffer, network) => setDelay({ buffer, network })}
-    >
-      {showPerformance && <DiagnosticsBar delay={delay} />}
-    </CameraView>
+    <div className="camera-stack">
+      <div className={'camera-stack__layer' + (shown === 'main' ? '' : ' is-hidden')} aria-hidden={shown !== 'main'}>
+        <CameraView
+          baseURL={app.server.baseURL}
+          stream={app.settings.streamName}
+          mode={effectivePlayerMode(app.settings)}
+          muted={!app.settings.audioEnabled || shown !== 'main'}
+          reloadToken={app.camera.playerGeneration}
+          zoomable
+          onVideoSize={(width, height) => void call('camera.reportVideoSize', width, height)}
+          onDelay={(buffer, network) => setDelay({ buffer, network })}
+          onPhase={live('main')}
+        >
+          {showPerformance && <DiagnosticsBar delay={delay} />}
+        </CameraView>
+      </div>
+      {hasSecondCamera(app.settings) && (
+        <div className={'camera-stack__layer' + (shown === 'second' ? '' : ' is-hidden')} aria-hidden={shown !== 'second'}>
+          <CameraView
+            baseURL={app.server.baseURL}
+            stream={app.settings.secondStreamName}
+            mode={effectivePlayerMode(app.settings)}
+            muted={!app.settings.audioEnabled || shown !== 'second'}
+            reloadToken={secondReload}
+            zoomable
+            onPhase={live('second')}
+          />
+        </div>
+      )}
+    </div>
   )
 }

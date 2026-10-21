@@ -8,11 +8,17 @@
 //           `Exit 3 - 5 seconds`, `Exit 5 - 30 seconds OR until the dog stands up`
 // - break:  `Перерыв 5 минут`, `Break 5 minutes` (applies to the preceding exit)
 // - default break inside the notes: `➡️ Все перерывы 2 минуты`, `All breaks 2 minutes`
+// - a condition for coming back early: `🟡 Если встала и пошла - входим через 2 минуты от начала движения`,
+//   `If she lies down - come back in 30 seconds`. Right under an exit (no blank line between) it is that exit's,
+//   anywhere else it is common to the training.
 // - anything else becomes a note.
+//
+// NSRegularExpression's `\b` knows Unicode letters; JS's `\b` is ASCII-only even with the `u` flag, so the word
+// boundaries below are spelled out as lookarounds (`wordStart` / `wordEnd`).
 
 import { DurationText } from './durationText'
 import { coreLanguage, coreLocale } from './localization'
-import { PlannedExit, TrainingPlan } from './models'
+import { EarlyEntry, type EarlyEntryTone, PlannedExit, TrainingPlan } from './models'
 import { parseSwiftInt, splitLines, trimWhitespaces, trimWhitespacesAnd } from './text'
 
 const decorationRegex = /^[^\p{L}\p{N}(]+/u
@@ -29,6 +35,37 @@ const dateRegex = /(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})/u
 /** ICU's `\b` around "break": word characters are letters, marks, digits and connectors (not only ASCII). */
 const word = '[\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D]'
 const breakWordRegex = new RegExp(`перерыв\\p{L}*|(?<!${word})(?:break|breaks|pause|pauses)(?!${word})`, 'iu')
+/** ICU's `\b` in front of a word that starts with a letter, and after one that ends with a letter. */
+const wordStart = `(?<!${word})`
+const wordEnd = `(?!${word})`
+
+/** «выйти», «выходим», «выйти из квартиры», "go out", "leave": the exit itself, not a trigger. */
+const goingOutRegex = /^(?:выйти|выходим|выйдите|выход)(?:\s+(?:из|за)\s+\p{L}+)?$|^(?:go out|leave|step out)(?:\s+\p{L}+)?$/iu
+
+/** A bullet in the middle of a line: «…поздно вечером➡️ За 30 минут…». */
+const inlineBulletRegex = /(?<=\S)\s*(➡️|➡|🔖|🚩|🟡|🟢)/gu
+
+/** «входим», «заходим», «возвращаемся», "come back", "come in", "go back", "return". */
+const comeBackRegex = new RegExp(
+  `${wordStart}(?:входим|заходим|возвращаемся|возвращайтесь|входите|заходите|come back|come in|go back|go in|return)${wordEnd}`,
+  'iu',
+)
+
+/** «через», "in", "after" in front of the delay. */
+const afterRegex = new RegExp(`${wordStart}(?:через|спустя|in|after)\\s+`, 'iu')
+
+const rightAwayRegex = new RegExp(`${wordStart}(?:сразу|немедленно|right away|immediately|at once)${wordEnd}`, 'iu')
+
+/** «не входить», «не входим», «не заходить», "do not come in", "don't go in". */
+const doNotEnterRegex = new RegExp(
+  `${wordStart}не\\s+(?:входить|входим|заходить|заходим|возвращаться|возвращаемся)${wordEnd}|` +
+    `${wordStart}(?:do not|don't|never)\\s+(?:come|go)\\s+(?:in|back)${wordEnd}`,
+  'iu',
+)
+
+/** "<number> <unit>" (`DurationText`'s units). */
+const durationRegex =
+  /\d+(?:[.,]\d+)?\s*(?:час\p{L}*|hour\p{L}*|hr\p{L}*|мин\p{L}*|min\p{L}*|сек\p{L}*|sec\p{L}*|ч|h|м|m|с|s)(?![\p{L}])/giu
 
 /** "2 minute " / "2-minute " / «2 минуты » right before the break word. */
 const durationBeforeWordRegex = /\d+(?:[.,]\d+)?[\s-]*\p{L}+[\s-]*$/u
@@ -50,20 +87,26 @@ export const PlanParser = {
     let plan = TrainingPlan.make({ rawText: text })
     const exits: PlannedExit[] = []
     const notes: string[] = []
+    const common: EarlyEntry[] = []
     let defaultFromText = false
+    /** The exit the next condition belongs to: the last one, while no blank line has come after it. */
+    let attachedExit: number | null = null
+    let contentIndex = 0
 
-    const lines = splitLines(text)
-      .map(trimWhitespaces)
-      .filter((line) => line !== '')
-
-    lines.forEach((rawLine, index) => {
+    for (const rawLine of PlanParser.lines(text)) {
+      if (rawLine === '') {
+        attachedExit = null
+        continue
+      }
       const line = PlanParser.stripDecorations(rawLine)
-      if (line === '') return
+      if (line === '') continue
+      const index = contentIndex++
 
       const exit = PlanParser.parseExit(line)
       if (exit) {
         exits.push(exit)
-        return
+        attachedExit = exits.length - 1
+        continue
       }
 
       const lower = line.toLowerCase()
@@ -72,29 +115,173 @@ export const PlanParser = {
         const duration = DurationText.sumOfUnits(line)
         if (duration !== null) {
           exits[exits.length - 1] = { ...exits[exits.length - 1], breakAfter: duration }
-          return
+          continue
         }
       }
+
+      const entry = PlanParser.parseEarlyEntry(rawLine)
+      if (entry) {
+        if (attachedExit !== null) {
+          const owner = exits[attachedExit]
+          exits[attachedExit] = { ...owner, earlyEntries: [...owner.earlyEntries, entry], usesCommonEarlyEntries: false }
+        } else {
+          common.push(entry)
+        }
+        continue
+      }
+      attachedExit = null
 
       const commonBreak = PlanParser.commonBreak(line)
       if (commonBreak !== null) {
         plan.defaultBreak = commonBreak
         defaultFromText = true
         notes.push(line)
-        return
+        continue
       }
 
       if (index === 0) {
         plan = PlanParser.parseHeader(line, plan)
-        return
+        continue
       }
 
       notes.push(line)
-    })
+    }
 
     plan.exits = exits
     plan.notes = notes
+    plan.commonEarlyEntries = common
     return PlanParser.normalizeBreaks(plan, defaultFromText)
+  },
+
+  /**
+   * Trimmed lines, with blank ones kept (they end an exit's block). A Windows line break (CRLF) is one break, not a
+   * blank line after every line. A line that runs into the next point without a line break («…поздно вечером➡️ За 30
+   * минут…») is split there.
+   */
+  lines(text: string): string[] {
+    return splitLines(text.replace(/\r\n/g, '\n'))
+      .flatMap((line) => line.replace(inlineBulletRegex, '\n$1').split('\n'))
+      .map(trimWhitespaces)
+  },
+
+  // MARK: - Conditions
+
+  /**
+   * «🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери»,
+   * «🟢 Если легла - входим через 30 секунд от укладки», "If she lies down — come back in 30 seconds". A rule about
+   * not coming in («🚩 Если залаяла - ни в коем случае не входить…») is not one.
+   */
+  parseEarlyEntry(rawLine: string): EarlyEntry | null {
+    const line = PlanParser.stripDecorations(rawLine)
+    const lower = line.toLowerCase()
+    if (!(lower.startsWith('если ') || lower.startsWith('if ')) || PlanParser.isDoNotEnterRule(line)) return null
+    const verb = comeBackRegex.exec(line)
+    if (!verb) return null
+
+    const { title: event } = PlanParser.splitCondition(line.slice(0, verb.index))
+    if (!event) return null
+
+    let tail = line.slice(verb.index + verb[0].length)
+    let delay: number | null = null
+    const after = afterRegex.exec(tail)
+    if (after) {
+      // The time right after «через» / "in", up to the end of its part of the sentence.
+      const rest = tail.slice(after.index + after[0].length)
+      const found = rest.search(/[,;:]/u)
+      const clauseEnd = found < 0 ? rest.length : found
+      const clause = rest.slice(0, clauseEnd)
+      const last = [...clause.matchAll(durationRegex)].at(-1)
+      if (last) {
+        const end = last.index + last[0].length
+        delay = DurationText.sumOfUnits(clause.slice(0, end))
+        tail = clause.slice(end) + rest.slice(clauseEnd)
+      }
+    } else {
+      const now = rightAwayRegex.exec(tail)
+      if (now) tail = tail.slice(now.index + now[0].length)
+    }
+    const detail = trimWhitespacesAnd(tail, ',;:.-–—')
+
+    const tone: EarlyEntryTone =
+      rawLine.startsWith('🟡') || rawLine.startsWith('🟠') ? 'yellow' : rawLine.startsWith('🟢') ? 'green' : 'plain'
+    return EarlyEntry.make({ event, delay, detail: detail === '' ? null : detail, tone })
+  },
+
+  /** «🚩 Если залаяла, завыла - ни в коем случае не входить, ждём…», "If she barks — do not come in". */
+  isDoNotEnterRule(line: string): boolean {
+    return line.startsWith('🚩') || doNotEnterRegex.test(line)
+  },
+
+  /**
+   * «Если залаяла, завыла - ни в коем случае не входить» → («Залаяла, завыла», «ни в коем случае не входить»):
+   * what the dog does (after «если», up to the dash) and the rest. No «если» at the start: no title.
+   */
+  splitCondition(line: string): { title: string | null; detail: string } {
+    const text = PlanParser.stripDecorations(line)
+    const lower = text.toLowerCase()
+    const prefix = lower.startsWith('если ') ? 'если '.length : lower.startsWith('if ') ? 'if '.length : 0
+    if (prefix === 0) return { title: null, detail: text }
+    const body = text.slice(prefix)
+    let separator: { start: number; end: number } | null = null
+    for (const dash of [' - ', ' – ', ' — ', '- ', '— ']) {
+      const start = body.indexOf(dash)
+      if (start >= 0 && (separator === null || start < separator.start)) separator = { start, end: start + dash.length }
+    }
+    if (separator === null) {
+      const comma = body.indexOf(', ')
+      if (comma >= 0) separator = { start: comma, end: comma + 2 }
+    }
+    const head = separator ? body.slice(0, separator.start) : body
+    const rest = separator ? body.slice(separator.end) : ''
+    const title = trimWhitespacesAnd(head, ',;:-–—')
+    const [first = '', ...others] = Array.from(title)
+    return { title: first.toUpperCase() + others.join(''), detail: trimWhitespaces(rest) }
+  },
+
+  // MARK: - The trainer's text, line by line
+
+  sourceLines(text: string): SourceLine[] {
+    const result: SourceLine[] = []
+    let attachedExit: number | null = null
+    let contentIndex = 0
+    const rows = PlanParser.lines(text)
+    while (rows.length && rows[rows.length - 1] === '') rows.pop()
+    while (rows.length && rows[0] === '') rows.shift()
+    rows.forEach((rawLine, id) => {
+      if (rawLine === '') {
+        attachedExit = null
+        result.push({ id, text: '', kind: 'blank', exitNumber: null })
+        return
+      }
+      const index = contentIndex++
+      const line = PlanParser.stripDecorations(rawLine)
+      const lower = line.toLowerCase()
+      let kind: SourceLineKind = 'note'
+      let exitNumber: number | null = null
+      const exit = PlanParser.parseExit(line)
+      if (exit) {
+        kind = 'exit'
+        exitNumber = exit.number
+        attachedExit = exit.number
+      } else if (PlanParser.isExitBreak(lower) && attachedExit !== null && DurationText.sumOfUnits(line) !== null) {
+        kind = 'breakTime'
+        exitNumber = attachedExit
+      } else if (PlanParser.parseEarlyEntry(rawLine) !== null) {
+        kind = 'earlyEntry'
+        exitNumber = attachedExit
+      } else {
+        attachedExit = null
+        if (index === 0) {
+          kind = 'header'
+        } else if (PlanParser.isDoNotEnterRule(rawLine)) {
+          kind = 'doNotEnter'
+        } else if (rawLine.startsWith('🔖') || PlanParser.isFalseStartRule(lower)) {
+          kind = 'falseStart'
+        }
+      }
+      result.push({ id, text: rawLine, kind, exitNumber })
+    })
+    return result
   },
 
   /** "Перерыв 5 минут" / "Break 5 minutes" right after an exit: that exit's own break. */
@@ -202,6 +389,11 @@ export const PlanParser = {
       rest = rest.replace(allParenthesesRegex, '')
     }
 
+    // «10 секунд + куртка + взять ключи, звякнуть ими»: what follows a plus sign is a trigger.
+    const parts = rest.split('+').map(trimWhitespaces)
+    rest = parts[0]
+    const triggers = parts.slice(1).filter((part) => part !== '')
+
     const lower = rest.toLowerCase()
     const untilStanding =
       lower.includes('до вставания') ||
@@ -212,7 +404,19 @@ export const PlanParser = {
     const durationPart = or ? rest.slice(0, or.index) : rest
     const duration = DurationText.sumOfUnits(durationPart) ?? 0
 
-    return PlannedExit.make({ number, duration, untilStanding, note })
+    // «выйти, закрыть дверь на один оборот, подождать 10 секунд и вернуться»: a sentence instead of a time. What
+    // is done before the waiting is a trigger, the sentence itself stays as the exit's note.
+    if (rest !== '' && !/^\p{N}/u.test(rest) && rest.includes(',')) {
+      const clauses = rest.split(',').map(trimWhitespaces)
+      const timed = clauses.findIndex((clause) => DurationText.sumOfUnits(clause) !== null)
+      if (timed >= 0) {
+        const actions = clauses.slice(0, timed).filter((clause) => clause !== '' && !goingOutRegex.test(clause))
+        triggers.unshift(...actions)
+        note = [rest, note].filter((part): part is string => part !== null).join(' · ')
+      }
+    }
+
+    return PlannedExit.make({ number, duration, untilStanding, note, triggers })
   },
 
   parseHeader(line: string, plan: TrainingPlan): TrainingPlan {
@@ -263,4 +467,17 @@ export const PlanParser = {
     if (!Number.isFinite(ms)) return null
     return { date: ms, start: match.index, end: match.index + match[0].length }
   },
+}
+
+/** What a line of the trainer's text is (`PlanParser.SourceLine.Kind`). */
+export type SourceLineKind = 'blank' | 'header' | 'note' | 'exit' | 'earlyEntry' | 'breakTime' | 'doNotEnter' | 'falseStart'
+
+/** One line of the trainer's text, for showing it during the training with the current exit marked. */
+export interface SourceLine {
+  /** 0-based line index. */
+  id: number
+  text: string
+  kind: SourceLineKind
+  /** The exit the line is about: the exit's own line, its conditions and break right under it. */
+  exitNumber: number | null
 }

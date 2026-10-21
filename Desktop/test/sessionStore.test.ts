@@ -117,22 +117,45 @@ const swiftRecord = `{
   "finishedAt" : "2026-09-25T15:13:00Z",
   "id" : "1F0C8A2B-9E4D-4C3B-A2F1-0E9D8C7B6A59",
   "plan" : {
+    "commonEarlyEntries" : [
+      {
+        "delay" : 30,
+        "detail" : "от укладки",
+        "event" : "Легла",
+        "id" : "B17E8273-9AAA-4566-82BB-D3708192A3B4",
+        "tone" : "green"
+      }
+    ],
     "date" : "2026-09-25T09:00:00Z",
     "defaultBreak" : 120,
     "exits" : [
       {
         "duration" : 2,
+        "earlyEntries" : [],
         "id" : "7D3A4E3F-5C66-4122-AE77-9F3C4D5E6F70",
         "number" : 1,
-        "untilStanding" : false
+        "triggers" : [],
+        "untilStanding" : false,
+        "usesCommonEarlyEntries" : true
       },
       {
         "breakAfter" : 300,
         "duration" : 20,
+        "earlyEntries" : [
+          {
+            "event" : "Встала",
+            "id" : "C28F9384-ABBB-4677-93CC-E48192A3B4C5",
+            "tone" : "yellow"
+          }
+        ],
         "id" : "8E4B5F40-6D77-4233-BF88-A04D5E6F7081",
         "note" : "выйти и сразу вернуться",
         "number" : 2,
-        "untilStanding" : true
+        "triggers" : [
+          "куртка"
+        ],
+        "untilStanding" : true,
+        "usesCommonEarlyEntries" : false
       }
     ],
     "id" : "9F5C6051-7E88-4344-8099-B15E6F708192",
@@ -170,6 +193,9 @@ describe('Sessions/*.json compatibility', () => {
     expect(record.plan.date).toBe(Date.UTC(2026, 8, 25, 9, 0, 0))
     expect(record.plan.exits[1]).toMatchObject({ breakAfter: 300, note: 'выйти и сразу вернуться', untilStanding: true })
     expect(record.plan.exits[0]).toMatchObject({ breakAfter: null, note: null })
+    expect(record.plan.exits[1]).toMatchObject({ triggers: ['куртка'], usesCommonEarlyEntries: false })
+    expect(record.plan.exits[1].earlyEntries[0]).toMatchObject({ event: 'Встала', delay: null, detail: null, tone: 'yellow' })
+    expect(record.plan.commonEarlyEntries[0]).toMatchObject({ event: 'Легла', delay: 30, detail: 'от укладки', tone: 'green' })
     expect(record.events[1]).toMatchObject({ kind: 'exitStarted', exitNumber: 1, attempt: 1, detail: 'план 2 с' })
     expect(record.events[0]).toMatchObject({ exitNumber: null, attempt: null, detail: null })
     expect(record.events[2].detail).toBe('video/a.mp4')

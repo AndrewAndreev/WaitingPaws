@@ -1,5 +1,6 @@
 /* Schedule review dialog («Расписание разобрано»), the duration editor and the plan timeline under the camera.
-   Plan colours: pink exits (--phase-outside), blue breaks (--phase-break), orange false-start rule (--warning). */
+   Plan colours: pink exits (--phase-outside), blue breaks (--phase-break), orange false-start rule (--warning);
+   conditions for coming back early in the trainer's colours (🟡 --warning, 🟢 --success), «не входить» red. */
 
 /* Splitters and timeline edges: the resize cursor everywhere while dragging. */
 body.is-resizing-columns,
@@ -82,7 +83,7 @@ body.is-resizing-columns * {
 }
 .plan-line {
   display: grid;
-  grid-template-columns: 30px 3px minmax(0, 1fr);
+  grid-template-columns: 30px 3px minmax(0, 1fr) auto;
   column-gap: 9px;
   padding: 2px 14px 2px 0;
   min-height: 22px;
@@ -123,6 +124,40 @@ body.is-resizing-columns * {
 .plan-line--rule .plan-line__bar {
   background: var(--warning);
 }
+.plan-line--earlyEntry .plan-line__bar {
+  background: var(--text-tertiary);
+}
+.plan-line--tone-yellow .plan-line__bar {
+  background: var(--warning);
+}
+.plan-line--tone-green .plan-line__bar {
+  background: var(--success);
+}
+.plan-line--doNotEnter .plan-line__bar {
+  background: var(--danger);
+}
+/* «→ выход 6» / «общее» at the end of a condition line. */
+.plan-line__tag {
+  align-self: start;
+  margin-top: 1px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--text-tertiary) 70%, transparent);
+  border-radius: 4px;
+  font-family: var(--font-text);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 15px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.plan-line__tag--yellow {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
+}
+.plan-line__tag--green {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 50%, transparent);
+}
 .plan-line__text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -156,13 +191,34 @@ body.is-resizing-columns * {
   color: var(--warning);
   font-weight: 600;
 }
+/* «+ куртка» on an exit line. */
+.plan-run--trigger {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+.plan-run--delay {
+  font-weight: 600;
+}
+.plan-line--tone-yellow .plan-run--delay {
+  color: var(--warning);
+}
+.plan-line--tone-green .plan-run--delay {
+  color: var(--success);
+}
+.plan-run--stop {
+  color: var(--danger);
+  font-weight: 600;
+}
 .plan-source__legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  height: 30px;
+  gap: 3px 12px;
+  min-height: 30px;
   flex: none;
-  padding: 0 12px;
+  padding: 6px 12px;
   border-top: 1px solid var(--border-subtle);
   font-size: 11px;
   color: var(--text-secondary);
@@ -192,6 +248,12 @@ body.is-resizing-columns * {
 }
 .plan-source__swatch--rule {
   background: var(--warning);
+}
+.plan-source__swatch--entry {
+  background: linear-gradient(var(--warning) 50%, var(--success) 50%);
+}
+.plan-source__swatch--stop {
+  background: var(--danger);
 }
 .plan-source__swatch--note {
   border: 1px solid var(--text-tertiary);
@@ -283,18 +345,19 @@ body.is-resizing-columns * {
 }
 
 .plan-table {
-  --plan-cols: 46px 60px minmax(80px, 0.7fr) 98px minmax(124px, 0.9fr) minmax(96px, 2fr) 64px;
+  --plan-cols: 46px 60px minmax(80px, 1fr) minmax(124px, 1.4fr) 64px;
   flex: 1;
-  min-height: 0;
+  /* Head, two or three rows and the toolbar stay on a low window; the inspector below gives way first. */
+  min-height: 210px;
   display: flex;
   flex-direction: column;
   container-type: inline-size;
 }
 .plan-table--no-lines {
-  --plan-cols: 46px 60px minmax(80px, 0.7fr) 98px minmax(124px, 0.9fr) minmax(96px, 2.4fr);
+  --plan-cols: 46px 60px minmax(80px, 1fr) minmax(124px, 1.4fr);
 }
 .plan-table__head,
-.plan-row {
+.plan-row__main {
   display: grid;
   grid-template-columns: var(--plan-cols);
   align-items: center;
@@ -330,10 +393,14 @@ body.is-resizing-columns * {
 }
 .plan-row {
   position: relative;
-  height: 36px;
-  padding: 0 12px 0 8px;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px 4px 8px;
   border-radius: var(--radius-sm);
   cursor: default;
+}
+.plan-row__main {
+  height: 34px;
 }
 .plan-row:nth-child(even) {
   background: color-mix(in srgb, var(--text-primary) 2.5%, transparent);
@@ -349,7 +416,7 @@ body.is-resizing-columns * {
   position: absolute;
   left: 0;
   top: 9px;
-  bottom: 9px;
+  bottom: 12px;
   width: 3px;
   border-radius: 2px;
   background: var(--accent);
@@ -385,11 +452,6 @@ body.is-resizing-columns * {
 .plan-cell--start {
   color: var(--text-tertiary);
   font-size: var(--text-small);
-}
-.plan-cell--center {
-  display: flex;
-  justify-content: center;
-  text-align: center;
 }
 .plan-cell--line {
   display: block;
@@ -446,35 +508,48 @@ body.is-resizing-columns * {
 .plan-end {
   font-size: var(--text-small);
 }
-.plan-check {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-.plan-note {
-  width: 100%;
-  height: 28px;
-  padding: 0 8px;
-  margin-left: -8px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  user-select: text;
-  cursor: text;
-  font-size: var(--text-small);
-}
-.plan-note:hover {
-  border-color: var(--border-default);
-}
-.plan-note:focus {
-  outline: none;
+/* The row's second line: «⚡ куртка · ключи   🏃 встала и пошла → 2:00 · легла → 0:30   📝». */
+.plan-sum {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  height: 20px;
+  /* Under the duration: past the number and the start columns. */
+  padding-left: 114px;
+  font-size: var(--text-caption);
   color: var(--text-primary);
-  background: var(--bg-input);
-  border-color: var(--border-default);
-  border-bottom: 2px solid var(--accent);
+  white-space: nowrap;
+}
+.plan-sum__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.plan-sum__item svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--text-secondary);
+}
+.plan-sum__item--trigger svg {
+  color: var(--warning);
+}
+.plan-sum__item--entry svg {
+  color: var(--phase-outside);
+}
+.plan-sum__item--note {
+  flex: none;
+}
+.plan-sum__item.is-empty,
+.plan-sum__item.is-empty svg {
+  color: var(--text-disabled);
+}
+.plan-sum__tip {
+  display: block;
+  max-width: 360px;
+  white-space: pre-wrap;
 }
 .plan-drop {
   position: absolute;
@@ -552,36 +627,407 @@ body.is-resizing-columns * {
   }
 }
 
-.plan-rule {
+/* «Правила тренировки:» — the plan's rules as chips above the table. */
+.plan-rules {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 6px;
   flex: none;
-  padding: 10px 16px 12px;
-  border-top: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--warning) 7%, var(--bg-surface));
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-caption);
+}
+.plan-rules__label {
+  color: var(--text-tertiary);
+  margin-right: 2px;
+}
+.plan-rules__tip {
+  display: block;
+  max-width: 420px;
+  white-space: pre-wrap;
+}
+.plan-rules__chip {
+  --chip: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 280px;
+  height: 24px;
+  padding: 0 9px 0 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--chip) 35%, transparent);
+  background: color-mix(in srgb, var(--chip) 10%, transparent);
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+  cursor: pointer;
+}
+.plan-rules__chip svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--chip);
+}
+.plan-rules__chip:hover,
+.plan-rules__chip.is-on {
+  background: color-mix(in srgb, var(--chip) 20%, transparent);
+  border-color: var(--chip);
+}
+.plan-rules__chip--stop {
+  --chip: var(--danger);
+}
+.plan-rules__chip--rule {
+  --chip: var(--warning);
+}
+.plan-rules__chip--prep {
+  --chip: var(--info);
+}
+
+/* The common conditions: a yellow bar above the table with «Ко всем · К длинным · Выбрать». */
+.plan-common {
+  display: flex;
+  align-items: center;
+  gap: 10px 12px;
+  flex: none;
+  flex-wrap: wrap;
+  margin: 10px 16px 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
   font-size: var(--text-small);
+}
+.plan-common__icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  align-self: flex-start;
+  margin-top: 1px;
+  color: var(--warning);
+}
+.plan-common__text {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.plan-common__title {
+  font-weight: 600;
+}
+.plan-common__entries {
+  color: var(--text-secondary);
   line-height: 18px;
 }
-.plan-rule__icon {
-  width: 16px;
-  height: 16px;
-  margin-top: 1px;
+.plan-common__entry {
+  white-space: nowrap;
+}
+.plan-common__entry .tone-dot {
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  vertical-align: 0;
+}
+.plan-common__sep {
+  margin: 0 6px;
+  color: var(--text-tertiary);
+}
+.plan-common__ask {
+  margin-left: 6px;
+}
+.plan-common .segmented {
+  flex: none;
+}
+.plan-common .segmented button {
+  height: 26px;
+  font-size: var(--text-small);
+}
+
+/* The selected exit below the table: triggers, conditions, note. */
+.plan-inspector {
+  flex: 0 1 auto;
+  min-height: 84px;
+  max-height: 46%;
+  overflow: auto;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  container-type: inline-size;
+}
+.plan-inspector--empty {
+  padding: 14px 16px;
+  font-size: var(--text-small);
+  color: var(--text-tertiary);
+}
+.plan-inspector__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--text-caption);
+}
+.plan-inspector__title {
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+.plan-inspector__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@container (max-width: 760px) {
+  .plan-inspector__columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .plan-inspector__column--wide {
+    grid-row: span 2;
+  }
+}
+.plan-inspector__column {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.plan-inspector__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.plan-inspector__label > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.plan-inspector__common {
+  display: inline-flex;
+  font-size: var(--text-caption);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-primary);
+}
+.plan-inspector__common .checkbox {
+  gap: 6px;
+}
+.plan-inspector__common .checkbox input {
+  width: 15px;
+  height: 15px;
+}
+.plan-inspector__note {
+  width: 100%;
+  min-height: 74px;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-small);
+  line-height: 18px;
+  user-select: text;
+}
+.plan-inspector__note:focus {
+  outline: none;
+  border-bottom: 2px solid var(--accent);
+}
+
+.plan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 4px 0 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+  font-size: var(--text-small);
+}
+.plan-chip__icon {
+  width: 13px;
+  height: 13px;
   flex: none;
   color: var(--warning);
 }
-.plan-rule__title {
+.plan-chip__remove {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.plan-chip__remove:hover {
+  background: var(--bg-pressed);
+  color: var(--text-primary);
+}
+.plan-chip__remove svg {
+  width: 12px;
+  height: 12px;
+}
+.plan-chip--add {
+  padding: 0 10px 0 8px;
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.plan-chip--add .plan-chip__icon {
+  color: var(--accent-text);
+}
+.plan-chip--add:hover {
+  background: var(--bg-hover);
+}
+.plan-chip--input {
+  width: 180px;
+  padding: 0 10px;
+  border-color: var(--border-default);
+  background: var(--bg-input);
+  outline: none;
+  user-select: text;
+}
+.plan-chip--input:focus {
+  border-color: var(--accent);
+}
+.plan-chip--suggestion {
+  padding: 0 10px;
+  border-color: var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.plan-chip--suggestion:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.plan-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.plan-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  font-size: var(--text-small);
+}
+.plan-entry__dot {
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.plan-entry__dot:hover {
+  box-shadow: 0 0 0 3px var(--bg-hover);
+}
+.plan-entry__event {
+  flex: 1;
+  min-width: 60px;
+  height: 26px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-small);
+  user-select: text;
+}
+.plan-entry__event:hover {
+  border-color: var(--border-default);
+}
+.plan-entry__event:focus {
+  outline: none;
+  background: var(--bg-input);
+  border-color: var(--border-default);
+  border-bottom: 2px solid var(--accent);
+}
+.plan-entry__common {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--bg-control-hover);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+.plan-entry__delay.plan-value {
+  margin-left: 0;
+  flex: none;
+  height: 26px;
+  border-color: var(--border-default);
+  background: var(--bg-control);
   font-weight: 600;
 }
-.plan-rule__line {
-  font-size: 11px;
+.plan-entry__remove {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
 }
-.plan-rule__body {
+.plan-entry__remove:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.plan-entry__remove svg {
+  width: 14px;
+  height: 14px;
+}
+.plan-entry--standing {
   color: var(--text-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+}
+.plan-entry__stand {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--text-secondary);
+}
+.plan-entry--add {
+  align-self: flex-start;
+  min-height: 26px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.plan-entry--add:hover {
+  background: var(--bg-hover);
+}
+.plan-entry--add svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Footer: summary with the mini timeline on the left, record / start / done on the right. */

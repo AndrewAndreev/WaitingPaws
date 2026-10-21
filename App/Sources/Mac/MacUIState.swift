@@ -11,6 +11,8 @@ final class MacUIState {
     /// «Расписание разобрано» sheet after a paste (the waiting schedule itself is `AppModel.pendingPlan`).
     var reviewingPlan = false
     var showCameraPicker = false
+    /// «Вторая камера…»: the picker for the camera only to look at.
+    var showSecondCameraPicker = false
     /// Xiaomi sign-in from the camera menu (e.g. after starting with a plain go2rtc stream).
     var showXiaomiSignIn = false
     var confirmFinish = false
@@ -130,6 +132,17 @@ struct MacCommands: Commands {
             Button("Без увеличения") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.reset() } }
                 .keyboardShortcut("0", modifiers: .command)
                 .disabled(!ui.cameraZoom.isZoomed)
+            Divider()
+            Button(model.settings.cameraDisplayName.isEmpty ? String(localized: "Первая камера") : model.settings.cameraDisplayName) {
+                model.showCamera(second: false)
+            }
+            .keyboardShortcut("1", modifiers: .command)
+            .disabled(!model.hasSecondCamera)
+            Button(model.hasSecondCamera ? model.activeSecondCameraName : String(localized: "Вторая камера")) {
+                model.showCamera(second: true)
+            }
+            .keyboardShortcut("2", modifiers: .command)
+            .disabled(!model.hasSecondCamera)
             Divider()
             Button(model.panTilt.isActive ? "Закончить поворот камеры" : "Повернуть камеру") {
                 withAnimation(.smooth(duration: 0.25)) { model.panTilt.toggle() }

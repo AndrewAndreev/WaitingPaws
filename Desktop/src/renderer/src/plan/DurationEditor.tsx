@@ -17,6 +17,8 @@ export interface DurationEditorProps {
   /// Step of the stepper below a minute (30 s from a minute up).
   step?: number
   tint: 'exit' | 'break'
+  /// How the 0 preset reads («сразу» for a condition); «0 с» without it.
+  zeroLabel?: string
 }
 
 /// A duration chip/cell that opens the editor in a popover (the Mac's `MacDurationEditor`, the iPhone's wheels):
@@ -59,7 +61,7 @@ export function DurationPopover({
   )
 }
 
-export function DurationEditor({ value, onChange, title, presets, defaultValue, step = 5, tint, onClose }: DurationEditorProps & { onClose: () => void }) {
+export function DurationEditor({ value, onChange, title, presets, defaultValue, step = 5, tint, zeroLabel, onClose }: DurationEditorProps & { onClose: () => void }) {
   const total = Math.max(0, Math.round(value ?? defaultValue ?? 0))
   const set = (seconds: number) => onChange(Math.max(0, seconds))
   return (
@@ -90,7 +92,7 @@ export function DurationEditor({ value, onChange, title, presets, defaultValue, 
                 onClose()
               }}
             >
-              {PlanFormat.cell(preset)}
+              {preset === 0 && zeroLabel ? zeroLabel : PlanFormat.cell(preset)}
             </button>
           )
         })}

@@ -49,6 +49,8 @@ final class AppModel {
 
     /// Bumped when every player must reconnect (go2rtc's API came back after the app was suspended).
     var playerGeneration = 0
+    /// The switcher put the second camera on screen (`isShowingSecondCamera` says whether there is one).
+    private(set) var showsSecondCamera = false
     /// The selected camera's `xiaomi://` source, once read (quality, camera settings on a linked iPhone).
     private(set) var currentXiaomiSource: String?
 
@@ -118,8 +120,10 @@ final class AppModel {
         #endif
         #if os(macOS)
         // `--demo-plan`: a parsed schedule waiting on the «Пульт» (no paste needed); `--demo-review` also opens its sheet.
+        // `-demoPlanText <text>` puts that trainer's text there instead of the sample.
         if CommandLine.arguments.contains("--demo-plan") || CommandLine.arguments.contains("--demo-review") {
-            setPending(PlanParser.parse(DemoData.planText))
+            let custom = UserDefaults.standard.string(forKey: "demoPlanText").flatMap { $0.isEmpty ? nil : $0 }
+            setPending(PlanParser.parse(custom ?? DemoData.planText))
         }
         // `--demo-remote-pending`: 2 s after launch a linked iPhone «pastes» another schedule (the remote command path).
         if CommandLine.arguments.contains("--demo-remote-pending") {
@@ -150,6 +154,8 @@ final class AppModel {
                 self?.stopRecording(deleteFile: false)
             }
         }
+        // `--demo-show-second` (with `--demo-second-camera`): the second camera on screen.
+        if CommandLine.arguments.contains("--demo-show-second") { showsSecondCamera = true }
         // `--demo-session` starts a session from a sample schedule right away (handy for previews and UI checks).
         if CommandLine.arguments.contains("--demo-session") {
             let plan = PlanParser.parse(Self.demoPlanText)
@@ -208,8 +214,10 @@ final class AppModel {
         return session
     }
 
+    /// The demo schedule; `-demoPlanText <text>` puts another one there (UI checks of a given trainer's text).
     static var demoPlanText: String {
-        CoreLanguage.current == .ru ? """
+        if let text = UserDefaults.standard.string(forKey: "demoPlanText"), !text.isEmpty { return text }
+        return CoreLanguage.current == .ru ? """
         🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
         ➡️ Все перерывы 2 минуты
         1 выход - 15 секунд
@@ -792,6 +800,7 @@ final class AppModel {
         for (name, list) in sources where list.contains(where: { $0.hasPrefix(prefix) }) {
             try? await client.deleteStream(name: name)
             if name == settings.streamName { removedSelected = true }
+            if name == settings.secondStreamName { removeSecondCamera() }
         }
         if settings.xiaomiAccountID == accountID { settings.xiaomiAccountID = "" }
         if removedSelected {
@@ -961,6 +970,46 @@ extension AppModel {
         return settings.streamName
     }
 
+    // MARK: Second camera
+
+    /// The second camera to look at: ours, or the linked Mac's. Empty without one.
+    var activeSecondStreamName: String {
+        #if DEBUG
+        // `--demo-second-camera`: a second camera «Комната» (UI checks; the settings are not written).
+        if CommandLine.arguments.contains("--demo-second-camera") { return "room" }
+        #endif
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.state?.secondStreamName ?? "" }
+        #endif
+        return settings.hasSecondCamera ? settings.secondStreamName : ""
+    }
+
+    var activeSecondCameraName: String {
+        #if DEBUG
+        if CommandLine.arguments.contains("--demo-second-camera") { return String(localized: "Комната") }
+        #endif
+        #if os(iOS)
+        if syncClient.isConnected { return syncClient.state?.secondCameraTitle ?? String(localized: "Камера 2") }
+        #endif
+        return settings.secondCameraDisplayName
+    }
+
+    var hasSecondCamera: Bool { !activeSecondStreamName.isEmpty }
+
+    /// The second camera is the one on screen (the first one keeps playing and recording behind it).
+    var isShowingSecondCamera: Bool { showsSecondCamera && hasSecondCamera }
+
+    func showCamera(second: Bool) {
+        showsSecondCamera = second
+        if second { panTilt.stop() }
+    }
+
+    func removeSecondCamera() {
+        settings.secondStreamName = ""
+        settings.secondCameraTitle = ""
+        showsSecondCamera = false
+    }
+
     var activeCameraName: String {
         #if os(iOS)
         if syncClient.isConnected { return syncClient.state?.cameraTitle ?? String(localized: "Камера \(linkedHostKind)") }
@@ -1047,7 +1096,9 @@ extension AppModel {
                       lastRecord: lastRecord,
                       pendingPlan: session == nil ? pendingPlan : nil,
                       cameraSource: currentXiaomiSource,
-                      streamRevision: playerGeneration)
+                      streamRevision: playerGeneration,
+                      secondStreamName: settings.hasSecondCamera ? settings.secondStreamName : nil,
+                      secondCameraTitle: settings.hasSecondCamera ? settings.secondCameraDisplayName : nil)
         }
         syncHost.commandHandler = { [unowned self] command in applyRemote(command) }
         syncHost.accessProvider = { [unowned self] in

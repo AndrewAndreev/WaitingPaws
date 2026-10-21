@@ -20,21 +20,23 @@ interface PickerRequest {
   accountID: string | null
   /// The region that account was signed in with (the settings may not have caught up yet).
   region: XiaomiRegion | null
+  /// Which camera the choice is for: the main one or the second (view-only) one.
+  target: 'main' | 'second'
 }
 
 /// What the next camera picker shows. The dialogs themselves open through the UI store flags
 /// (`showCameraPicker`, `showXiaomiSignIn`, `showServerSetup`): the welcome page hosts them before the setup,
 /// GlobalDialogs after it.
-export const usePickerRequest = create<PickerRequest>(() => ({ onlyStreams: false, accountID: null, region: null }))
+export const usePickerRequest = create<PickerRequest>(() => ({ onlyStreams: false, accountID: null, region: null, target: 'main' }))
 
 export function openCameraPicker(request: Partial<PickerRequest> = {}): void {
-  usePickerRequest.setState({ onlyStreams: false, accountID: null, region: null, ...request })
+  usePickerRequest.setState({ onlyStreams: false, accountID: null, region: null, target: 'main', ...request })
   ui.set({ showCameraPicker: true, showXiaomiSignIn: false, showServerSetup: false })
 }
 
 export function closeCameraPicker(): void {
   ui.set({ showCameraPicker: false })
-  usePickerRequest.setState({ onlyStreams: false, accountID: null, region: null })
+  usePickerRequest.setState({ onlyStreams: false, accountID: null, region: null, target: 'main' })
 }
 
 // MARK: - go2rtc status line

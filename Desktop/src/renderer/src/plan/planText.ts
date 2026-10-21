@@ -1,9 +1,10 @@
 // The trainer's text, line by line, and what `PlanParser` made of each line (port of `MacPlanTextLine` and
 // `MacPlanLineMap`). Classified with the parser's own patterns (exit line, «Перерыв N» after an exit, a line about
 // all breaks, the first line as the header), plus the false-start rule («🔖 Фальстарт: …»), which the parser keeps
-// as a note.
+// as a note. Conditions for coming back early and the «не входить» rule come from `PlanParser.sourceLines`, which
+// also knows which exit a condition belongs to.
 import { DurationText } from '@core/durationText'
-import type { TrainingPlan } from '@core/models'
+import type { EarlyEntryTone, TrainingPlan } from '@core/models'
 import { PlanParser } from '@core/planParser'
 import { trimWhitespaces } from '@core/text'
 
@@ -17,6 +18,11 @@ export type PlanLineKind =
   | { kind: 'defaultBreak' }
   /// «🔖 Фальстарт: …».
   | { kind: 'rule' }
+  /// «🟡 Если встала и пошла - входим через 2 минуты…»: right under the exit on line `afterLine`, or common
+  /// (`afterLine` null).
+  | { kind: 'earlyEntry'; tone: EarlyEntryTone; afterLine: number | null }
+  /// «🚩 Если залаяла, завыла - ни в коем случае не входить…».
+  | { kind: 'doNotEnter' }
   | { kind: 'note' }
   | { kind: 'blank' }
 
@@ -31,7 +37,10 @@ export const PlanLine = {
   isExit: (line: PlanTextLine) => line.kind.kind === 'exit',
   isBreak: (line: PlanTextLine) => line.kind.kind === 'ownBreak' || line.kind.kind === 'defaultBreak',
   /// Lines marked in the gutter.
-  isRecognised: (line: PlanTextLine) => ['exit', 'ownBreak', 'defaultBreak', 'rule'].includes(line.kind.kind),
+  isRecognised: (line: PlanTextLine) => ['exit', 'ownBreak', 'defaultBreak', 'rule', 'earlyEntry', 'doNotEnter'].includes(line.kind.kind),
+  /// The exit line an own break or a condition under an exit belongs to.
+  ownerLine: (line: PlanTextLine): number | null =>
+    line.kind.kind === 'ownBreak' ? line.kind.afterLine : line.kind.kind === 'earlyEntry' ? line.kind.afterLine : null,
 }
 
 /// Unlike `splitLines` (Foundation's `.newlines`), CRLF is one line break: Windows clipboards use it.
@@ -44,13 +53,21 @@ export function classifyLines(text: string): PlanTextLine[] {
   let lastExitLine: number | null = null
   const rows = text.split(lineBreaks)
   while (rows.length && trimWhitespaces(rows[rows.length - 1]) === '') rows.pop()
+  // The parser's own reading of the same rows: a row is one or more of its lines (a bullet in the middle of a row
+  // starts a line), its blank rows at the start are left out.
+  const source = PlanParser.sourceLines(rows.join('\n'))
+  let sourceIndex = 0
+  const exitLineOfNumber = new Map<number, number>()
   rows.forEach((raw, index) => {
     const id = index + 1
     const line = trimWhitespaces(raw)
     if (line === '') {
+      if (sourceIndex > 0) sourceIndex += 1
       result.push({ id, text: '', kind: { kind: 'blank' } })
       return
     }
+    const parts = source.slice(sourceIndex, sourceIndex + PlanParser.lines(raw).length)
+    sourceIndex += parts.length
     const stripped = PlanParser.stripDecorations(line)
     const lower = stripped.toLowerCase()
     let kind: PlanLineKind
@@ -60,6 +77,7 @@ export function classifyLines(text: string): PlanTextLine[] {
     } else if (exit) {
       kind = { kind: 'exit', number: exit.number, ordinal: exitOrdinal++ }
       lastExitLine = id
+      exitLineOfNumber.set(exit.number, id)
     } else if (PlanParser.isExitBreak(lower) && lastExitLine !== null && DurationText.sumOfUnits(stripped) !== null) {
       kind = { kind: 'ownBreak', afterLine: lastExitLine }
     } else if (PlanParser.commonBreak(stripped) !== null) {
@@ -70,6 +88,15 @@ export function classifyLines(text: string): PlanTextLine[] {
       kind = { kind: 'rule' }
     } else {
       kind = { kind: 'note' }
+    }
+    if (kind.kind === 'note') {
+      const entry = parts.find((part) => part.kind === 'earlyEntry')
+      if (entry) {
+        const tone = PlanParser.parseEarlyEntry(entry.text)?.tone ?? 'plain'
+        kind = { kind: 'earlyEntry', tone, afterLine: entry.exitNumber === null ? null : exitLineOfNumber.get(entry.exitNumber) ?? null }
+      } else if (parts.some((part) => part.kind === 'doNotEnter')) {
+        kind = { kind: 'doNotEnter' }
+      }
     }
     contentIndex += 1
     result.push({ id, text: line, kind })
@@ -84,7 +111,7 @@ export function isRule(line: string): boolean {
 
 // MARK: - Highlighting
 
-export type PlanTextRole = 'plain' | 'dim' | 'label' | 'duration' | 'pause' | 'flag' | 'title' | 'rule'
+export type PlanTextRole = 'plain' | 'dim' | 'label' | 'duration' | 'pause' | 'flag' | 'title' | 'rule' | 'trigger' | 'delay' | 'stop'
 
 export interface PlanTextRun {
   text: string
@@ -96,6 +123,8 @@ const durationRegex = /\d+(?:[.,]\d+)?\s*(?:час\p{L}*|мин\p{L}*|сек\p{L
 const exitLabelRegex =
   /\d+(?:st|nd|rd|th)?\s*[-–—.)]?\s*(?:выход|exit|departure)\p{L}*|(?:выход|exit|departure)\p{L}*\s*(?:№|#|no\.?)?\s*\d+/iu
 const standingRegex = /или\s+до\s+вставания|пока\s+не\s+встанет|or\s+until\s+(?:the\s+dog\s+|she\s+|he\s+|it\s+)?stands?(?:\s+up)?/iu
+/// «+ куртка», «+ взять ключи, звякнуть ими»: a trigger after a plus sign, up to the next one.
+const triggerRegex = /\+\s*([^+]*[^+\s])/gu
 
 /// The line split into coloured runs: durations of exits pink, breaks blue, the rule's head orange, notes dimmed.
 export function highlightLine(line: PlanTextLine): PlanTextRun[] {
@@ -133,6 +162,22 @@ export function highlightLine(line: PlanTextLine): PlanTextRun[] {
       durations('duration')
       const flag = standingRegex.exec(text)
       if (flag) add(flag.index, flag.index + flag[0].length, 'flag')
+      for (const match of text.matchAll(triggerRegex)) {
+        const start = match.index + match[0].length - match[1].length
+        add(start, start + match[1].length, 'trigger')
+      }
+      break
+    }
+    case 'earlyEntry':
+      // The time to come back after, in the condition's colour.
+      base = 'plain'
+      durations('delay')
+      break
+    case 'doNotEnter': {
+      // «🚩 Если залаяла, завыла -» red, the rest dimmed.
+      base = 'dim'
+      const dash = [' - ', ' – ', ' — '].map((mark) => text.indexOf(mark)).filter((index) => index >= 0)
+      add(0, dash.length ? Math.min(...dash) : text.length, 'stop')
       break
     }
     case 'ownBreak':
@@ -182,7 +227,7 @@ export function exitLines(plan: TrainingPlan, lines: PlanTextLine[]): Map<string
   return map
 }
 
-/// Lines of the selected exits and their own breaks (highlighted in the text).
+/// Lines of the selected exits, their own breaks and conditions (highlighted in the text).
 export function linkedLines(lines: PlanTextLine[], lineOfExit: Map<string, number>, selection: Iterable<string>): Set<number> {
   const exitLineIds = new Set<number>()
   for (const id of selection) {
@@ -191,14 +236,15 @@ export function linkedLines(lines: PlanTextLine[], lineOfExit: Map<string, numbe
   }
   const result = new Set(exitLineIds)
   for (const line of lines) {
-    if (line.kind.kind === 'ownBreak' && exitLineIds.has(line.kind.afterLine)) result.add(line.id)
+    const owner = PlanLine.ownerLine(line)
+    if (owner !== null && exitLineIds.has(owner)) result.add(line.id)
   }
   return result
 }
 
-/// Click on an exit line (or its own break): the exit to select in the table.
+/// Click on an exit line (or its own break, a condition under it): the exit to select in the table.
 export function exitForLine(line: PlanTextLine, plan: TrainingPlan, lineOfExit: Map<string, number>): string | null {
-  const target = line.kind.kind === 'exit' ? line.id : line.kind.kind === 'ownBreak' ? line.kind.afterLine : null
+  const target = line.kind.kind === 'exit' ? line.id : PlanLine.ownerLine(line)
   if (target === null) return null
   for (const [id, row] of lineOfExit) {
     if (row === target && plan.exits.some((exit) => exit.id === id)) return id

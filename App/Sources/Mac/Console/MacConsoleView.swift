@@ -158,6 +158,15 @@ struct MacConsoleView: View {
             }
             if CommandLine.arguments.contains("--demo-panel-sweep") { Task { await sweepPanel() } }
             if CommandLine.arguments.contains("--demo-window-cycle") { ConsoleToolbarAudit.startOnce() }
+            // `--demo-window-size <width>x<height>`: the window at that size (the panel in a tall or short window).
+            let args = CommandLine.arguments
+            if let i = args.firstIndex(of: "--demo-window-size"), i + 1 < args.count {
+                let size = args[i + 1].split(separator: "x").compactMap { Double($0) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    guard size.count == 2, let window = NSApp.windows.first(where: { $0.isVisible && $0.toolbar != nil }) else { return }
+                    window.setFrame(NSRect(origin: window.frame.origin, size: CGSize(width: size[0], height: size[1])), display: true)
+                }
+            }
             #endif
         }
         // A training started from a linked iPhone: the review of its schedule is over here too.
@@ -193,6 +202,9 @@ struct MacConsoleView: View {
             })
             .environment(model)
             .environment(ui)
+        }
+        .sheet(isPresented: $ui.showSecondCameraPicker, onDismiss: { focused = true }) {
+            MacCameraPickerSheet(target: .second) { model.showCamera(second: true) }
         }
         .sheet(isPresented: $ui.showCameraPicker, onDismiss: { focused = true }) {
             MacCameraPickerSheet()
@@ -355,6 +367,7 @@ struct MacConsoleView: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItemGroup {
+            if model.hasSecondCamera { CameraToolbarSwitcher() }
             CameraToolbarMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 })
             if model.canPanTilt { PanTiltToolbarToggle() }
         }
@@ -456,6 +469,12 @@ private struct CameraToolbarMenu: View {
     var body: some View {
         Menu {
             Button("Выбрать камеру…", systemImage: "video.badge.plus") { ui.showCameraPicker = true }
+            Button(model.hasSecondCamera ? "Другая вторая камера…" : "Вторая камера…", systemImage: "rectangle.on.rectangle") {
+                ui.showSecondCameraPicker = true
+            }
+            if model.hasSecondCamera {
+                Button("Убрать вторую камеру", systemImage: "rectangle.badge.minus") { model.removeSecondCamera() }
+            }
             Button(model.settings.xiaomiAccountID.isEmpty ? "Войти в Xiaomi…" : "Войти в другой аккаунт Xiaomi…",
                    systemImage: "person.crop.circle.badge.plus") { ui.showXiaomiSignIn = true }
             Divider()
@@ -487,8 +506,10 @@ private struct CameraToolbarMenu: View {
         .help(cameraOnline ? "Камера, качество и режим съёмки" : "Камера не на связи — выбрать или переподключить")
     }
 
-    /// «Прихожая · HD»; a long Mi Home name is cut in the middle by the toolbar.
+    /// «Прихожая · HD»; a long Mi Home name is cut in the middle by the toolbar. With a second camera the switcher
+    /// names them, and the menu is the first camera's quality.
     private var title: String {
+        if model.hasSecondCamera { return model.xiaomiQuality?.title ?? String(localized: "Камера") }
         let name = model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера") : model.settings.cameraDisplayName
         guard let quality = model.xiaomiQuality else { return name }
         return "\(name) · \(quality.title)"
@@ -496,6 +517,23 @@ private struct CameraToolbarMenu: View {
 
     private var cameraOnline: Bool {
         model.settings.connectionMode == .external || model.embedded.status.isRunning
+    }
+}
+
+/// «Прихожая · Комната» (⌘1 / ⌘2): which camera is on screen. Both keep playing; the recording is the first one's.
+private struct CameraToolbarSwitcher: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Picker("Камера", selection: Binding(get: { model.isShowingSecondCamera },
+                                            set: { model.showCamera(second: $0) })) {
+            Text(model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера 1") : model.settings.cameraDisplayName)
+                .tag(false)
+            Text(model.activeSecondCameraName).tag(true)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .help("Какую камеру показывать · ⌘1 / ⌘2. Записывается первая")
     }
 }
 

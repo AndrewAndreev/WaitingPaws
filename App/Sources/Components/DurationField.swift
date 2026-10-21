@@ -93,6 +93,8 @@ struct OptionalDurationField: View {
 enum DurationPresets {
     static let exits: [TimeInterval] = [0, 2, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600]
     static let breaks: [TimeInterval] = [60, 90, 120, 180, 240, 300, 420, 600, 900]
+    /// How long after the dog does something to come back; 0 is «сразу».
+    static let entryDelays: [TimeInterval] = [0, 10, 15, 20, 30, 40, 60, 90, 120, 180, 300, 600]
 }
 
 /// Value chip that opens `DurationEditor` in a popover. With `defaultValue`, `nil` means "use the default"
@@ -105,6 +107,8 @@ struct DurationButton: View {
     var secondsStep = 1
     var font: Font = .system(.body, design: .rounded)
     var width: CGFloat? = nil
+    /// What zero is called («сразу» for a condition's delay); nil: «0 с».
+    var zeroTitle: String? = nil
 
     @State private var editing = false
 
@@ -124,7 +128,8 @@ struct DurationButton: View {
         .accessibilityLabel(title)
         .accessibilityValue(DurationText.short(shown))
         .popover(isPresented: $editing) {
-            DurationEditor(value: $value, title: title, presets: presets, defaultValue: defaultValue, secondsStep: secondsStep)
+            DurationEditor(value: $value, title: title, presets: presets, defaultValue: defaultValue, secondsStep: secondsStep,
+                           zeroTitle: zeroTitle)
                 .presentationCompactAdaptation(.popover)
         }
         #if DEBUG
@@ -141,16 +146,17 @@ struct DurationButton: View {
 
     /// "2 с", "5 мин", or "1:30" when minutes and seconds mix ("1 мин 30 с" does not fit a chip).
     private var label: String {
-        shown >= 60 && Int(shown) % 60 != 0 ? DurationText.clock(shown) : DurationText.short(shown)
+        if shown == 0, let zeroTitle { return zeroTitle }
+        return shown >= 60 && Int(shown) % 60 != 0 ? DurationText.clock(shown) : DurationText.short(shown)
     }
 }
 
 extension DurationButton {
     /// For values without a default.
     init(value: Binding<TimeInterval>, title: String, presets: [TimeInterval], secondsStep: Int = 1,
-         font: Font = .system(.body, design: .rounded), width: CGFloat? = nil) {
+         font: Font = .system(.body, design: .rounded), width: CGFloat? = nil, zeroTitle: String? = nil) {
         self.init(value: Binding<TimeInterval?>(get: { value.wrappedValue }, set: { value.wrappedValue = $0 ?? 0 }),
-                  title: title, presets: presets, secondsStep: secondsStep, font: font, width: width)
+                  title: title, presets: presets, secondsStep: secondsStep, font: font, width: width, zeroTitle: zeroTitle)
     }
 }
 
@@ -161,6 +167,7 @@ struct DurationEditor: View {
     var presets: [TimeInterval]
     var defaultValue: TimeInterval?
     var secondsStep: Int
+    var zeroTitle: String? = nil
 
     @Environment(\.dismiss) private var dismiss
 
@@ -189,7 +196,8 @@ struct DurationEditor: View {
             #endif
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                 ForEach(presets, id: \.self) { preset in
-                    chip(DurationText.short(preset), selected: value != nil && total == Int(preset)) {
+                    chip(preset == 0 ? zeroTitle ?? DurationText.short(preset) : DurationText.short(preset),
+                         selected: value != nil && total == Int(preset)) {
                         value = preset
                         dismiss()
                     }

@@ -218,6 +218,9 @@ export interface SyncState {
   cameraReady: boolean
   cameraTitle: string
   streamName: string
+  /** The second camera, to look at the other room (view-only: recording stays with `streamName`); null — none. */
+  secondStreamName: string | null
+  secondCameraTitle: string | null
   /** The session that has just finished on the Mac (for the summary and the log on the iPhone). */
   lastRecord: TrainingRecord | null
   /** A schedule pasted on either device and waiting for «Начать» (null while a session runs). */
@@ -250,6 +253,8 @@ export const SyncState = {
       cameraReady: fields.cameraReady,
       cameraTitle: fields.cameraTitle,
       streamName: fields.streamName,
+      secondStreamName: fields.secondStreamName ?? null,
+      secondCameraTitle: fields.secondCameraTitle ?? null,
       lastRecord: fields.lastRecord,
       pendingPlan: fields.pendingPlan ?? null,
       cameraSource: fields.cameraSource ?? null,
@@ -353,6 +358,8 @@ function encodeState(state: SyncState): JSONObject {
     cameraReady: state.cameraReady,
     cameraTitle: state.cameraTitle,
     streamName: state.streamName,
+    secondStreamName: state.secondStreamName,
+    secondCameraTitle: state.secondCameraTitle,
     lastRecord: state.lastRecord === null ? null : TrainingRecord.encode(state.lastRecord, dates),
     pendingPlan: state.pendingPlan === null ? null : TrainingPlan.encode(state.pendingPlan, dates),
     cameraSource: state.cameraSource,
@@ -369,6 +376,8 @@ function decodeState(value: unknown, path: string): SyncState {
     cameraReady: json.bool('cameraReady'),
     cameraTitle: json.string('cameraTitle'),
     streamName: json.string('streamName'),
+    secondStreamName: json.optionalString('secondStreamName'),
+    secondCameraTitle: json.optionalString('secondCameraTitle'),
     lastRecord: json.optional('lastRecord', (item, itemPath) => TrainingRecord.decode(item, dates, itemPath)),
     pendingPlan: json.optional('pendingPlan', (item, itemPath) => TrainingPlan.decode(item, dates, itemPath)),
     cameraSource: json.optionalString('cameraSource'),

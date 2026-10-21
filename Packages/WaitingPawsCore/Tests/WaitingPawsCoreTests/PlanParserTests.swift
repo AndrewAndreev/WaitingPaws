@@ -140,6 +140,127 @@ final class PlanParserTests: XCTestCase {
         XCTAssertEqual(plan.exits.map(\.duration), [5, 10, 5, 15, 30, 10, 180])
     }
 
+    /// The triggering session of 19.10.2026: triggers after «+», an exit written as a sentence, the conditions once
+    /// after all exits, two notes in one line.
+    func testTriggeringSchedule() {
+        let plan = PlanParser.parse("""
+        🐹 ТРИГГЕРОВКА на понедельник - 19.10.2026
+        Делаем через 1-1,5 часа и позже после основной тренировки, но не не поздно вечером➡️ За 30 минут включить музыку, открыть дверь изнутри, положить лежанку в коридор, положить/повесить куртку на виду у Мии
+        ➡️ В перерывах сидите за столом, работаете
+        ➡️ Все перерывы 2 минуты
+
+        1 выход - 5 секунд
+        2 выход - 10 секунд + куртка
+        3 выход - 20 секунд + куртка
+        4 выход - выйти, закрыть дверь на один оборот, подождать 10 секунд и вернуться
+        5 выход - 5 секунд
+        6 выход - выйти, закрыть дверь на один оборот, подождать 20 секунд и вернуться
+        7 выход - 3 минуты + куртка + взять ключи, звякнуть ими
+
+        🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+        🟢 Если легла - входим через 30 секунд от укладки
+        """)
+        XCTAssertEqual(plan.title, "ТРИГГЕРОВКА на понедельник")
+        XCTAssertEqual(plan.defaultBreak, 120)
+        XCTAssertEqual(plan.exits.map(\.duration), [5, 10, 20, 10, 5, 20, 180])
+        XCTAssertEqual(plan.exits.map(\.triggers), [[], ["куртка"], ["куртка"], ["закрыть дверь на один оборот"], [],
+                                                     ["закрыть дверь на один оборот"], ["куртка", "взять ключи, звякнуть ими"]])
+        XCTAssertEqual(plan.exits[3].note, "выйти, закрыть дверь на один оборот, подождать 10 секунд и вернуться")
+        XCTAssertNil(plan.exits[0].note)
+        XCTAssertEqual(plan.notes.count, 4)
+        XCTAssertTrue(plan.notes[0].hasSuffix("поздно вечером"))
+        XCTAssertTrue(plan.notes[1].hasPrefix("За 30 минут включить музыку"))
+
+        XCTAssertEqual(plan.commonEarlyEntries.map(\.event), ["Встала и пошла", "Легла"])
+        XCTAssertEqual(plan.commonEarlyEntries.map(\.delay), [120, 30])
+        XCTAssertEqual(plan.commonEarlyEntries.map(\.tone), [.yellow, .green])
+        XCTAssertEqual(plan.commonEarlyEntries[0].detail,
+                       "от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру")
+        XCTAssertEqual(plan.commonEarlyEntries[1].detail, "от укладки")
+        XCTAssertTrue(plan.exits.allSatisfy { $0.earlyEntries.isEmpty })
+        XCTAssertEqual(plan.commonEntriesScope, .all)
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[6]).map(\.summary), ["встала и пошла → 2:00", "легла → 0:30"])
+    }
+
+    /// The training of 19.10.2026: conditions under exits 6 and 8 with their own times, rules for the whole training.
+    func testConditionsUnderExits() {
+        let plan = PlanParser.parse("""
+        🐹 Тренировка на понедельник - 19.10.2026
+
+        ➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
+        ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
+        ➡️ В перерывах сидите за столом, работаете
+        ➡️ Все перерывы 2 минуты
+        ➡️ Если лежит в лежанке, особо не шевелится, засыпает - перед выходом сначала шуршим на кухне/перемещаемся по квартире пока Мия не поднимет голову, затем сразу идём на выход
+        1 выход - 5 секунд
+
+        2 выход - 10 секунд + обувь
+
+        3 выход - 20 секунд + обувь
+
+        4 выход - 1 минута ИЛИ до вставания
+
+        5 выход - 20 секунд + обувь
+
+        6 выход - 4 минуты
+        🟡 Если встала и пошла - входим через 1 минуту от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+        🟢 Если легла - входим через 20 секунд от укладки
+
+        7 выход - 20 секунд + обувь
+
+        8 выход - 7 минут
+        🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+        🟢 Если легла - входим через 40 секунд от укладки
+
+
+        🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери
+
+        🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку
+        """)
+        XCTAssertEqual(plan.exits.count, 8)
+        XCTAssertEqual(plan.exits.map(\.duration), [5, 10, 20, 60, 20, 240, 20, 420])
+        XCTAssertEqual(plan.exits.map(\.triggers.count), [0, 1, 1, 0, 1, 0, 1, 0])
+        XCTAssertEqual(plan.exits[1].triggers, ["обувь"])
+        XCTAssertTrue(plan.commonEarlyEntries.isEmpty)
+        XCTAssertEqual(plan.exits[5].earlyEntries.map(\.summary), ["встала и пошла → 1:00", "легла → 0:20"])
+        XCTAssertEqual(plan.exits[7].earlyEntries.map(\.summary), ["встала и пошла → 2:00", "легла → 0:40"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[3]).map(\.summary), ["встала → сразу"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[6]), [])
+        XCTAssertEqual(plan.notes.count, 7)
+        XCTAssertEqual(plan.doNotEnterRule?.title, "Залаяла, завыла")
+        XCTAssertTrue(plan.doNotEnterRule?.detail.hasPrefix("ни в коем случае не входить") == true)
+
+        let lines = PlanParser.sourceLines(plan.rawText)
+        XCTAssertEqual(lines.first?.kind, .header)
+        let exit8 = lines.filter { $0.exitNumber == 8 }
+        XCTAssertEqual(exit8.map(\.kind), [.exit, .earlyEntry, .earlyEntry])
+        XCTAssertTrue(exit8[1].text.hasPrefix("🟡"))
+        XCTAssertEqual(lines.filter { $0.kind == .doNotEnter }.count, 1)
+        XCTAssertEqual(lines.filter { $0.kind == .falseStart }.count, 1)
+    }
+
+    /// A schedule pasted on Windows (or typed there and synced): \r\n is one line break, so a condition right under
+    /// an exit still belongs to it.
+    func testWindowsLineEnds() {
+        let plan = PlanParser.parse("1 выход - 5 секунд\r\n2 выход - 4 минуты\r\n🟢 Если легла - входим через 20 секунд\r\n")
+        XCTAssertEqual(plan.exits.count, 2)
+        XCTAssertEqual(plan.exits[1].earlyEntries.map(\.summary), ["легла → 0:20"])
+        XCTAssertTrue(plan.commonEarlyEntries.isEmpty)
+        XCTAssertEqual(PlanParser.sourceLines(plan.rawText).map(\.exitNumber), [1, 2, 2])
+    }
+
+    func testEarlyEntryLines() {
+        let english = PlanParser.parseEarlyEntry("If she lies down - come back in 30 seconds")
+        XCTAssertEqual(english?.event, "She lies down")
+        XCTAssertEqual(english?.delay, 30)
+        let rightAway = PlanParser.parseEarlyEntry("Если встала, сразу входим")
+        XCTAssertEqual(rightAway?.event, "Встала")
+        XCTAssertNil(rightAway?.delay)
+        XCTAssertNil(PlanParser.parseEarlyEntry("🚩 Если залаяла - ни в коем случае не входить, входим когда молчала 30 секунд"))
+        XCTAssertNil(PlanParser.parseEarlyEntry("Если лежит в лежанке - перед выходом сначала шуршим на кухне"))
+        XCTAssertNil(PlanParser.parseEarlyEntry("Вернуться можно минимум через 20-30 минут после окончания тренировки"))
+    }
+
     func testCommonBreakLines() {
         XCTAssertEqual(PlanParser.commonBreak(in: "Все перерывы 2 минуты"), 120)
         XCTAssertEqual(PlanParser.commonBreak(in: "Перерывы между выходами — 1 мин. 30 сек."), 90)

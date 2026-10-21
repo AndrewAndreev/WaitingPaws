@@ -144,6 +144,60 @@ html.mica .app {
 .tb-btn--link svg {
   color: var(--info);
 }
+/* Two cameras: «Прихожая · Комната» and the camera menu's chevron next to it. */
+.tb-cameras {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.tb-btn--chevron {
+  padding: 0 7px;
+}
+.tb-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--bg-control);
+  border: 1px solid var(--border-subtle);
+  min-width: 0;
+}
+.tb-seg__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  max-width: 180px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.tb-seg__item:hover {
+  color: var(--text-primary);
+}
+.tb-seg__item[aria-pressed='true'] {
+  background: var(--bg-surface-3);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+}
+.tb-seg__item svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--text-secondary);
+}
+.tb-seg__item .dot {
+  width: 7px;
+  height: 7px;
+}
 
 .rail {
   grid-area: rail;

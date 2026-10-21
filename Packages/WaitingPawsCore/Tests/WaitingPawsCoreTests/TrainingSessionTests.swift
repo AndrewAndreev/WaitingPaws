@@ -224,17 +224,56 @@ final class TrainingSessionTests: XCTestCase {
         XCTAssertEqual(mirror.plan.defaultBreak, 90)
     }
 
-    func testStandingRuleFromNotes() {
-        var plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 30, untilStanding: true)])
-        XCTAssertNil(plan.standingDelay)
-        XCTAssertEqual(plan.standingRule, "собака встала — сразу возвращайтесь")
-        plan.notes = ["Все перерывы 2 минуты", "🟡 Если встала - входим через 15 секунд от вставания"]
-        XCTAssertEqual(plan.standingDelay, 15)
-        XCTAssertEqual(plan.standingRule, "собака встала — возвращайтесь через 15 с")
-        plan.notes = ["If she stands up in the first 10 seconds, come back in 20 seconds"]
-        XCTAssertEqual(plan.standingDelay, 20)
-        plan.notes = ["Вернуться можно минимум через 20-30 минут после окончания тренировки"]
-        XCTAssertNil(plan.standingDelay)
+    func testEarlyEntriesOfExits() {
+        var plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 30, untilStanding: true),
+                                        PlannedExit(number: 2, duration: 120)])
+        // «ИЛИ до вставания» alone: come back as soon as she stands.
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.summary), ["встала → сразу"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]), [])
+
+        plan.commonEarlyEntries = [EarlyEntry(event: "Встала и пошла", delay: 15, tone: .yellow),
+                                   EarlyEntry(event: "Легла", delay: 30, tone: .green)]
+        XCTAssertEqual(plan.commonEntriesScope, .all)
+        // A condition about standing up takes the place of «до вставания».
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.summary), ["встала и пошла → 0:15", "легла → 0:30"])
+        XCTAssertTrue(plan.usesCommonEarlyEntries(plan.exits[1]))
+
+        plan.applyCommonEarlyEntries(to: .long)
+        XCTAssertEqual(plan.commonEntriesScope, .long)
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.summary), ["встала → сразу"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]).count, 2)
+
+        // Changed for one exit: its own copy, the common ones stay.
+        plan.detachEarlyEntries(ofExitAt: 1)
+        plan.exits[1].earlyEntries[1].delay = 40
+        XCTAssertFalse(plan.usesCommonEarlyEntries(plan.exits[1]))
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]).map(\.summary), ["встала и пошла → 0:15", "легла → 0:40"])
+        XCTAssertEqual(plan.commonEarlyEntries[1].delay, 30)
+        XCTAssertEqual(plan.changes(from: plan).count, 0)
+
+        var edited = plan
+        edited.exits[1].triggers = ["куртка"]
+        edited.exits[1].note = "Ключами звякнуть за дверью"
+        edited.exits[1].earlyEntries.removeLast()
+        XCTAssertEqual(edited.changes(from: plan), ["выход 2: триггеры", "выход 2: ранний вход", "выход 2: заметка"])
+    }
+
+    func testPlanFromAnOlderBuild() throws {
+        // A plan saved before conditions: «🟡 Если встала…» among the notes, no triggers or conditions in the exits.
+        let json = """
+        {"id":"\(UUID().uuidString)","title":"Тренировка","trainers":"","notes":["Все перерывы 2 минуты",
+        "Если встала - входим через 15 секунд от вставания"],"defaultBreak":120,"rawText":"",
+        "exits":[{"id":"\(UUID().uuidString)","number":1,"duration":30,"untilStanding":true}]}
+        """
+        let plan = try JSONDecoder().decode(TrainingPlan.self, from: Data(json.utf8))
+        XCTAssertEqual(plan.notes, ["Все перерывы 2 минуты"])
+        XCTAssertEqual(plan.commonEarlyEntries.map(\.summary), ["встала → 0:15"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.detail), ["от вставания"])
+        XCTAssertEqual(plan.exits[0].triggers, [])
+        XCTAssertTrue(plan.exits[0].usesCommonEarlyEntries)
+
+        let again = try JSONDecoder().decode(TrainingPlan.self, from: JSONEncoder().encode(plan))
+        XCTAssertEqual(again, plan)
     }
 
     func testFalseStartRepeatsExit() {

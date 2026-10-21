@@ -88,4 +88,23 @@ final class EnglishTests: XCTestCase {
         ])
         XCTAssertTrue(text.contains("exits 2 of 2 · false starts 1"))
     }
+
+    /// The README's example: a trigger after «+», conditions right under exit 3.
+    func testTriggersAndConditions() {
+        let plan = PlanParser.parse("""
+        Sunday training - Anna/Mark - 25.10.2026
+        All breaks 2 minutes
+        Exit 1 - 5 seconds
+        Exit 2 - 10 seconds + jacket
+        Break 5 minutes
+        Exit 3 - 3 minutes OR until the dog stands up
+        🟡 If she stands up and walks off - come back in 1 minute
+        🟢 If she lies down - come back in 20 seconds
+        """)
+        XCTAssertEqual(plan.exits.map(\.duration), [5, 10, 180])
+        XCTAssertEqual(plan.exits[1].triggers, ["jacket"])
+        XCTAssertEqual(plan.exits[1].breakAfter, 300)
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[2]).map(\.summary), ["she stands up and walks off → 1:00", "she lies down → 0:20"])
+        XCTAssertTrue(plan.commonEarlyEntries.isEmpty)
+    }
 }

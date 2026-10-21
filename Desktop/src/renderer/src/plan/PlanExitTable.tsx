@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
-import { PlannedExit, type TrainingPlan } from '@core/models'
+import { EarlyEntry, PlannedExit, TrainingPlan } from '@core/models'
 import {
   AddIcon,
   ChevronUpDownIcon,
   DeleteIcon,
   DragHandleIcon,
   DuplicateIcon,
+  EarlyEntryIcon,
+  ExitNoteIcon,
   MoveDownIcon,
   MoveUpIcon,
   SubtractIcon,
+  TriggerIcon,
 } from '../ui/icons'
 import { Button, ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, Kbd, Tooltip } from '../ui/kit'
 import { DurationPopover } from './DurationEditor'
@@ -24,9 +27,10 @@ export interface ExitTableCommands {
   shift: (delta: -1 | 1) => void
 }
 
-/// The parsed exits as an editable table: duration and break popovers, «до вставания», a note, the source line.
-/// Click selects (Ctrl toggles, Shift extends), dragging a row (anywhere outside its controls) reorders,
-/// right click offers duplicate / add below / delete; the toolbar below repeats them with the shortcuts.
+/// The parsed exits as an editable table: duration and break popovers, the source line, and under every exit a summary
+/// of what goes with it — «⚡ куртка · ключи  🏃 встала и пошла → 2:00 · легла → 0:30  📝» (the inspector below the
+/// table edits them). Click selects (Ctrl toggles, Shift extends), dragging a row (anywhere outside its controls)
+/// reorders, right click offers duplicate / add below / delete; the toolbar below repeats them with the shortcuts.
 export function PlanExitTable({
   plan,
   setPlan,
@@ -133,11 +137,7 @@ export function PlanExitTable({
         </span>
         <span role="columnheader">{t('Начало')}</span>
         <span role="columnheader">{t('За дверью')}</span>
-        <span className="plan-cell--center" role="columnheader">
-          {t('До вставания')}
-        </span>
         <span role="columnheader">{t('Перерыв после')}</span>
-        <span role="columnheader">{t('Заметка')}</span>
         {lineOfExit && (
           <span className="plan-cell--line" role="columnheader">
             {t('Строка')}
@@ -264,80 +264,64 @@ function ExitRow({
           aria-selected={selected}
           onPointerDown={onPointerDown}
         >
-          <span className="plan-cell--num tabular">
-            <DragHandleIcon className="plan-row__grip" />
-            {exit.number}
-          </span>
-          <span className="plan-cell--start tabular">+{DurationText.clock(PlanFormat.start(index, plan))}</span>
-          <span>
-            <DurationPopover
-              value={exit.duration}
-              onChange={(value) => update({ duration: Math.max(0, value ?? exit.duration) })}
-              title={t('Выход %lld — за дверью', exit.number)}
-              presets={PlanFormat.exitPresets}
-              tint="exit"
-              tooltip={t('Выход %lld: %@ — изменить', exit.number, PlannedExit.durationDescription(exit))}
-            >
-              <button type="button" className="plan-value plan-value--exit tabular">
-                {PlanFormat.cell(exit.duration)}
-                <ChevronUpDownIcon className="plan-value__chevron" />
-              </button>
-            </DurationPopover>
-          </span>
-          <span className="plan-cell--center">
-            <Tooltip content={t('«ИЛИ до вставания»: собака встала — сразу возвращаться')}>
-              <input
-                type="checkbox"
-                className="plan-check"
-                aria-label={t('Или до вставания')}
-                checked={exit.untilStanding}
-                onChange={(event) => update({ untilStanding: event.target.checked })}
-              />
-            </Tooltip>
-          </span>
-          <span>
-            {isLast ? (
-              <Tooltip content={t('После последнего выхода тренировка заканчивается')}>
-                <span className="faint plan-end">{t('конец')}</span>
-              </Tooltip>
-            ) : (
+          <div className="plan-row__main">
+            <span className="plan-cell--num tabular">
+              <DragHandleIcon className="plan-row__grip" />
+              {exit.number}
+            </span>
+            <span className="plan-cell--start tabular">+{DurationText.clock(PlanFormat.start(index, plan))}</span>
+            <span>
               <DurationPopover
-                value={exit.breakAfter}
-                onChange={(value) => setPlan((current) => setBreakAfter(current, exit.id, value))}
-                title={t('Перерыв после выхода %lld', exit.number)}
-                presets={PlanFormat.breakPresets}
-                defaultValue={plan.defaultBreak}
-                tint="break"
-                tooltip={
-                  exit.breakAfter === null
-                    ? t('Перерыв после выхода %lld — как у всех. Выберите, чтобы задать свой', exit.number)
-                    : t('Свой перерыв после выхода %lld', exit.number)
-                }
+                value={exit.duration}
+                onChange={(value) => update({ duration: Math.max(0, value ?? exit.duration) })}
+                title={t('Выход %lld — за дверью', exit.number)}
+                presets={PlanFormat.exitPresets}
+                tint="exit"
+                tooltip={t('Выход %lld: %@ — изменить', exit.number, PlannedExit.durationDescription(exit))}
               >
-                <button type="button" className={'plan-value tabular' + (exit.breakAfter !== null ? ' plan-value--own' : ' plan-value--common')}>
-                  {exit.breakAfter !== null ? t('%@ · свой', PlanFormat.cell(exit.breakAfter)) : PlanFormat.cell(plan.defaultBreak)}
+                <button type="button" className="plan-value plan-value--exit tabular">
+                  {PlanFormat.cell(exit.duration)}
                   <ChevronUpDownIcon className="plan-value__chevron" />
                 </button>
               </DurationPopover>
+            </span>
+            <span>
+              {isLast ? (
+                <Tooltip content={t('После последнего выхода тренировка заканчивается')}>
+                  <span className="faint plan-end">{t('конец')}</span>
+                </Tooltip>
+              ) : (
+                <DurationPopover
+                  value={exit.breakAfter}
+                  onChange={(value) => setPlan((current) => setBreakAfter(current, exit.id, value))}
+                  title={t('Перерыв после выхода %lld', exit.number)}
+                  presets={PlanFormat.breakPresets}
+                  defaultValue={plan.defaultBreak}
+                  tint="break"
+                  tooltip={
+                    exit.breakAfter === null
+                      ? t('Перерыв после выхода %lld — как у всех. Выберите, чтобы задать свой', exit.number)
+                      : t('Свой перерыв после выхода %lld', exit.number)
+                  }
+                >
+                  <button type="button" className={'plan-value tabular' + (exit.breakAfter !== null ? ' plan-value--own' : ' plan-value--common')}>
+                    {exit.breakAfter !== null ? t('%@ · свой', PlanFormat.cell(exit.breakAfter)) : PlanFormat.cell(plan.defaultBreak)}
+                    <ChevronUpDownIcon className="plan-value__chevron" />
+                  </button>
+                </DurationPopover>
+              )}
+            </span>
+            {line === undefined ? null : line !== null ? (
+              <Tooltip content={t('Строка %lld в тексте тренера', line)}>
+                <span className="plan-cell--line tabular">{line}</span>
+              </Tooltip>
+            ) : (
+              <Tooltip content={t('Выхода нет в тексте тренера — добавлен здесь')}>
+                <span className="plan-cell--line">{t('вручную')}</span>
+              </Tooltip>
             )}
-          </span>
-          <span>
-            <input
-              className="plan-note"
-              value={exit.note ?? ''}
-              aria-label={t('Заметка')}
-              onChange={(event) => update({ note: event.target.value === '' ? null : event.target.value })}
-            />
-          </span>
-          {line === undefined ? null : line !== null ? (
-            <Tooltip content={t('Строка %lld в тексте тренера', line)}>
-              <span className="plan-cell--line tabular">{line}</span>
-            </Tooltip>
-          ) : (
-            <Tooltip content={t('Выхода нет в тексте тренера — добавлен здесь')}>
-              <span className="plan-cell--line">{t('вручную')}</span>
-            </Tooltip>
-          )}
+          </div>
+          <ExitSummary plan={plan} exit={exit} />
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
@@ -356,3 +340,33 @@ function ExitRow({
   )
 }
 
+/// The second line of a row: triggers, conditions for coming back early, the note. The icons are always there, an
+/// empty one dimmed with «—», so the column reads the same on every exit.
+function ExitSummary({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit }) {
+  const entries = TrainingPlan.earlyEntries(plan, exit)
+  const note = PlannedExit.noteText(exit)
+  return (
+    <div className="plan-sum">
+      <span className={'plan-sum__item plan-sum__item--trigger' + (exit.triggers.length ? '' : ' is-empty')}>
+        <TriggerIcon />
+        <span className="ellipsis">{exit.triggers.length ? exit.triggers.join(' · ') : '—'}</span>
+      </span>
+      <span className={'plan-sum__item plan-sum__item--entry' + (entries.length ? '' : ' is-empty')}>
+        <EarlyEntryIcon />
+        <span className="ellipsis">{entries.length ? entries.map(EarlyEntry.summary).join(' · ') : '—'}</span>
+      </span>
+      {note ? (
+        <Tooltip content={<span className="plan-sum__tip">{note}</span>}>
+          <span className="plan-sum__item plan-sum__item--note" aria-label={t('Заметка')}>
+            <ExitNoteIcon />
+          </span>
+        </Tooltip>
+      ) : (
+        <span className="plan-sum__item plan-sum__item--note is-empty">
+          <ExitNoteIcon />
+          <span>—</span>
+        </span>
+      )}
+    </div>
+  )
+}

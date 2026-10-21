@@ -543,6 +543,12 @@ describe('SyncHost', () => {
 })
 
 describe('SyncHost helpers', () => {
+  it('fills the second camera from the backend state, its stream name standing in for a missing title', () => {
+    expect([syncState(baseState()).secondStreamName, syncState(baseState()).secondCameraTitle]).toEqual([null, null])
+    const state = syncState({ ...baseState(), secondStreamName: 'room', secondCameraTitle: '' })
+    expect([state.secondStreamName, state.secondCameraTitle]).toEqual(['room', 'room'])
+  })
+
   it('maps the state and the TXT record like the Mac', () => {
     const session = new TrainingSession(plan, { clock: () => 1_000 })
     expect(SyncHostInfo.txt(syncHostInfo('PC', syncState(baseState())))).toEqual({ v: '2', cam: 'Прихожая', ready: '1', session: '0', os: 'windows' })

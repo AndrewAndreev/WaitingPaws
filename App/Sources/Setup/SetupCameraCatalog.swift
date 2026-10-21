@@ -104,9 +104,14 @@ final class SetupCameraCatalog {
         return nil
     }
 
-    /// Selection id of the camera the app uses now.
-    func currentID(_ model: AppModel) -> String? {
-        let name = model.settings.streamName
+    /// Which of the app's cameras a choice goes to: the one shown and recorded, or the second one only to look at.
+    enum Target {
+        case main, second
+    }
+
+    /// Selection id of the camera the app uses now (as `target`).
+    func currentID(_ model: AppModel, target: Target = .main) -> String? {
+        let name = target == .main ? model.settings.streamName : model.settings.secondStreamName
         guard !name.isEmpty else { return nil }
         if let camera = accounts.lazy.flatMap(\.cameras).first(where: { $0.streamName == name }) { return camera.id }
         return streams.contains { $0.name == name } ? Self.streamID(name) : nil
@@ -210,11 +215,15 @@ final class SetupCameraCatalog {
 
     // MARK: Choosing
 
-    /// Registers the camera's stream in go2rtc when needed and makes it the app's camera.
-    func choose(_ choice: Choice, model: AppModel) async throws {
+    /// Registers the camera's stream in go2rtc when needed and makes it the app's camera (or its second one).
+    func choose(_ choice: Choice, model: AppModel, target: Target = .main) async throws {
         if AppModel.isUIPreview {
             // The preview instance shares the user's settings: never write them.
             print("[setup] preview: would choose \(choice.id)")
+            return
+        }
+        if target == .second {
+            try await chooseSecond(choice, model: model)
             return
         }
         switch choice {
@@ -239,9 +248,42 @@ final class SetupCameraCatalog {
             model.settings.cameraTitle = camera.name
             model.settings.streamName = name ?? ""
         }
+        // The second camera made the first one: no second one left.
+        if model.settings.secondStreamName == model.settings.streamName { model.removeSecondCamera() }
         model.videoSize = nil
         Task { await model.refreshXiaomiQuality() }
         print("[setup] camera \(model.settings.streamName) (\(model.settings.cameraTitle))")
+    }
+
+    /// The second camera: its stream registered like the first one's, the app's settings of the first one untouched.
+    private func chooseSecond(_ choice: Choice, model: AppModel) async throws {
+        let name: String
+        let title: String
+        switch choice {
+        case .stream(let stream):
+            guard !Self.isPreviewStream(stream.name) else { throw SetupError(String(localized: "Это временный поток превью, его нельзя выбрать")) }
+            name = stream.name
+            title = stream.name
+        case .camera(let camera):
+            if let existing = camera.streamName.flatMap({ Self.isPreviewStream($0) ? nil : $0 }) {
+                name = existing
+            } else {
+                guard let client = model.client else { throw Go2RTCError.invalidURL }
+                await SetupStillStore.shared.cancelPreview(of: camera, model: model)
+                let fresh = uniqueStreamName(Go2RTCClient.streamName(for: camera.name))
+                try await client.addStream(name: fresh, source: camera.source.url)
+                streams.append(Go2RTCStream(name: fresh, sources: [camera.source.url]))
+                SetupStillStore.shared.adoptPreview(of: camera, as: fresh, model: model)
+                name = fresh
+            }
+            title = camera.name
+        }
+        guard name != model.settings.streamName else {
+            throw SetupError(String(localized: "Эта камера уже основная — выберите другую"))
+        }
+        model.settings.secondCameraTitle = title
+        model.settings.secondStreamName = name
+        print("[setup] second camera \(name) (\(title))")
     }
 
     /// Adds any go2rtc source by URL (`rtsp://…`, `onvif://…`) as a new stream.

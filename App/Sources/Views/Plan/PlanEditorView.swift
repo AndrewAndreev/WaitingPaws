@@ -14,6 +14,14 @@ struct PlanEditorView: View {
 
     @State private var showNotes = false
     @State private var showDetails = false
+    /// The exit open in «Выход N».
+    @State private var editingExit: EditedExit?
+    /// «Выбрать»: which exits get the common conditions.
+    @State private var pickingCommonExits = false
+
+    private struct EditedExit: Identifiable {
+        let id: UUID
+    }
     #if os(iOS) && DEBUG
     // `--demo-plan-edit` opens the editor in edit mode (layout checks without tapping).
     @State private var editMode: EditMode = CommandLine.arguments.contains("--demo-plan-edit") ? .active : .inactive
@@ -77,11 +85,34 @@ struct PlanEditorView: View {
                      : "Яркие значения в строках выходов — свои перерывы, приглушённые берутся отсюда.")
             }
 
+            if !plan.notes.isEmpty {
+                Section {
+                    DisclosureGroup(isExpanded: $showNotes) {
+                        ForEach(plan.notes, id: \.self) { note in
+                            Label {
+                                Text(note).font(.footnote).foregroundStyle(.secondary)
+                            } icon: {
+                                let (symbol, tint) = ruleIcon(note)
+                                Image(systemName: symbol).foregroundStyle(tint)
+                            }
+                        }
+                    } label: {
+                        Label("Правила на всю тренировку · \(plan.notes.count)", systemImage: "list.bullet.rectangle")
+                    }
+                }
+            }
+
+            if !plan.commonEarlyEntries.isEmpty {
+                commonEntriesCard
+            }
+
             Section {
                 ForEach(Array($plan.exits.enumerated()), id: \.element.id) { index, $exit in
-                    ExitRow(exit: $exit, defaultBreak: plan.defaultBreak)
-                        .deleteDisabled(index < (fixedExits ?? 0))
-                        .moveDisabled(index < (fixedExits ?? 0))
+                    ExitRow(exit: $exit, plan: plan, defaultBreak: plan.defaultBreak) {
+                        editingExit = EditedExit(id: exit.id)
+                    }
+                    .deleteDisabled(index < (fixedExits ?? 0))
+                    .moveDisabled(index < (fixedExits ?? 0))
                 }
                 .onDelete { offsets in
                     plan.exits.remove(atOffsets: offsets.filteredIndexSet { $0 >= (fixedExits ?? 0) })
@@ -106,22 +137,20 @@ struct PlanEditorView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
-            if !plan.notes.isEmpty {
-                Section {
-                    DisclosureGroup("Заметки тренера · \(plan.notes.count)", isExpanded: $showNotes) {
-                        ForEach(plan.notes, id: \.self) { note in
-                            Text(note).font(.footnote).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
         }
         #if os(macOS)
         .listStyle(.inset)
         #endif
         #if DEBUG
         .onAppear { print("[perf] PlanEditorView appear at", PerformanceMonitor.timeFormatter.string(from: Date())) }
+        // `--demo-exit-editor <n>` opens «Выход n» (UI checks without tapping).
+        .task {
+            let args = CommandLine.arguments
+            guard let flag = args.firstIndex(of: "--demo-exit-editor"), flag + 1 < args.count, let number = Int(args[flag + 1]),
+                  let exit = plan.exits.first(where: { $0.number == number }) else { return }
+            try? await Task.sleep(for: .seconds(1))
+            editingExit = EditedExit(id: exit.id)
+        }
         #endif
         .navigationTitle(isRunning ? "Расписание" : "Проверьте план")
         #if os(iOS)
@@ -176,18 +205,105 @@ struct PlanEditorView: View {
         #if os(iOS)
         .environment(\.editMode, $editMode)
         #endif
+        .sheet(item: $editingExit) { edited in
+            NavigationStack {
+                ExitEditorView(plan: $plan, exitID: edited.id)
+            }
+            .sheetFrame(width: 520, height: 640)
+        }
+        .sheet(isPresented: $pickingCommonExits) {
+            NavigationStack {
+                CommonExitsPicker(plan: $plan)
+            }
+            .sheetFrame(width: 420, height: 520)
+        }
+    }
+
+    /// «🚩 не входить», «🔖 фальстарт», the rest as points.
+    private func ruleIcon(_ note: String) -> (String, Color) {
+        if PlanParser.isDoNotEnterRule(note) { return ("flag.fill", Theme.danger) }
+        if PlanParser.isFalseStartRule(note.lowercased()) { return ("bookmark.fill", Theme.warning) }
+        return ("arrow.right.circle", .secondary)
+    }
+
+    /// The conditions the trainer wrote once for the whole training, and which exits they go to.
+    private var commonEntriesCard: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 10) {
+                Label {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Условия раннего входа — для всей тренировки")
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        Text(plan.commonEarlyEntries.map(\.summary).joined(separator: " · "))
+                            .font(.system(.footnote, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "figure.run").foregroundStyle(Theme.warning)
+                }
+                Picker("К каким выходам", selection: Binding(
+                    get: { plan.commonEntriesScope.map { $0 == .all ? 0 : 1 } ?? 2 },
+                    set: { choice in
+                        switch choice {
+                        case 0: withAnimation { plan.applyCommonEarlyEntries(to: .all) }
+                        case 1: withAnimation { plan.applyCommonEarlyEntries(to: .long) }
+                        default: pickingCommonExits = true
+                        }
+                    })) {
+                    Text("Ко всем").tag(0)
+                    Text("От 1 мин").tag(1)
+                    Text("Выбрать").tag(2)
+                }
+                .pickerStyle(.segmented)
+            }
+            .padding(.vertical, 4)
+        } footer: {
+            Text("Тренер написал их один раз, не под выходом. Выходу их можно поменять — нажмите на строку под ним.")
+        }
+        .listRowBackground(Theme.warning.opacity(0.12))
     }
 }
 
-/// One exit on a single line: number · − duration + · break · "until standing" toggle.
-/// Every control has a fixed width so the row neither jumps when a value changes nor overflows
-/// in edit mode, where the ± and toggle make room for the delete and reorder controls.
-/// The note (if any) goes on a second line; add one via swipe or long press.
+/// «Выбрать»: a switch per exit for the common conditions; an exit with its own ones keeps them.
+private struct CommonExitsPicker: View {
+    @Binding var plan: TrainingPlan
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            ForEach($plan.exits) { $exit in
+                Toggle(isOn: $exit.usesCommonEarlyEntries) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Выход \(exit.number) · \(DurationText.short(exit.duration))")
+                        if !exit.earlyEntries.isEmpty {
+                            Text("свои условия").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .tint(Theme.accent)
+                .disabled(!exit.earlyEntries.isEmpty)
+            }
+        }
+        .navigationTitle("Общие условия")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() } }
+        }
+    }
+}
+
+/// One exit: number · − duration + · break on the first line; under it what the exit has in words — triggers,
+/// conditions for coming back early, a note — which opens «Выход N». Every control has a fixed width so the row
+/// neither jumps when a value changes nor overflows in edit mode, where the ± make room for the delete and reorder
+/// controls.
 private struct ExitRow: View {
     @Binding var exit: PlannedExit
+    let plan: TrainingPlan
     var defaultBreak: TimeInterval
+    var onEdit: () -> Void
 
-    @State private var editingNote = false
     #if os(iOS)
     @Environment(\.editMode) private var editMode
     private var isEditing: Bool { editMode?.wrappedValue.isEditing == true }
@@ -219,52 +335,29 @@ private struct ExitRow: View {
                                    presets: DurationPresets.breaks, defaultValue: defaultBreak, secondsStep: 5,
                                    font: .system(.subheadline, design: .rounded), width: 46)
                 }
-                if isEditing {
-                    Image(systemName: "figure.stand")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 16)
-                        .opacity(exit.untilStanding ? 1 : 0)
-                } else {
-                    standingToggle
+            }
+            Button(action: onEdit) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    ExitSummaryText(plan: plan, exit: exit)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
                 }
+                .padding(.leading, 25)
+                .contentShape(Rectangle())
             }
-            if editingNote || exit.note != nil {
-                TextField("Заметка", text: Binding(
-                    get: { exit.note ?? "" },
-                    set: { exit.note = $0.isEmpty ? nil : $0 }))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 25)
-                    #if os(macOS)
-                    .textFieldStyle(.plain)
-                    #endif
-            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Выход \(exit.number): триггеры, ранний вход, заметка"))
         }
         .padding(.vertical, 2)
         .swipeActions(edge: .leading) {
-            Button { editingNote = true } label: { Label("Заметка", systemImage: "text.bubble") }.tint(Theme.info)
+            Button(action: onEdit) { Label("Изменить", systemImage: "slider.horizontal.3") }.tint(Theme.info)
         }
         .contextMenu {
-            Button("Добавить заметку", systemImage: "text.bubble") { editingNote = true }
+            Button("Триггеры, условия, заметка…", systemImage: "slider.horizontal.3", action: onEdit)
             Toggle("Или до вставания", systemImage: "figure.stand", isOn: $exit.untilStanding)
         }
-    }
-
-    private var standingToggle: some View {
-        Button {
-            exit.untilStanding.toggle()
-        } label: {
-            Image(systemName: "figure.stand")
-                .font(.system(size: 15, weight: .semibold))
-                .frame(width: 30, height: 30)
-                .background(exit.untilStanding ? Theme.accent : Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                .foregroundStyle(exit.untilStanding ? .black : .white)
-        }
-        .buttonStyle(.plain)
-        .help("Или до вставания")
-        .accessibilityLabel("Или до вставания")
-        .accessibilityValue(exit.untilStanding ? "включено" : "выключено")
     }
 
     /// 5 s steps under a minute, 30 s from a minute up.

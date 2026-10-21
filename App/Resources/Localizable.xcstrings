@@ -29,6 +29,22 @@
     "—" : {
       "shouldTranslate" : false
     },
+    "· общие" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· common"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· общие"
+          }
+        }
+      }
+    },
     "· свой" : {
       "localizations" : {
         "en" : {
@@ -82,6 +98,22 @@
     },
     "«%@», %@, %@." : {
       "shouldTranslate" : false
+    },
+    "«Выбрать»: отметьте «Общие условия» у нужных выходов внизу" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“Pick”: tick “Common conditions” on the exits you want below"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Выбрать»: отметьте «Общие условия» у нужных выходов внизу"
+          }
+        }
+      }
     },
     "«ИЛИ до вставания»: собака встала — сразу возвращаться" : {
       "localizations" : {
@@ -641,6 +673,22 @@
     "%lld%%" : {
       "shouldTranslate" : false
     },
+    "→ выход %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ exit %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ выход %lld"
+          }
+        }
+      }
+    },
     "≈ %@" : {
       "shouldTranslate" : false
     },
@@ -672,6 +720,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n2 выход - 10 секунд\n…"
+          }
+        }
+      }
+    },
+    "🟡 Жёлтый" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🟡 Yellow"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🟡 Жёлтый"
+          }
+        }
+      }
+    },
+    "🟢 Зелёный" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🟢 Green"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🟢 Зелёный"
           }
         }
       }
@@ -723,6 +803,9 @@
           }
         }
       }
+    },
+    "18:29:13" : {
+      "shouldTranslate" : false
     },
     "CPU %lld %%" : {
       "shouldTranslate" : false
@@ -1237,6 +1320,9 @@
         }
       }
     },
+    "x7K2" : {
+      "shouldTranslate" : false
+    },
     "Xiaomi отправил SMS на %@" : {
       "localizations" : {
         "en" : {
@@ -1573,6 +1659,22 @@
         }
       }
     },
+    "Без цвета" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без цвета"
+          }
+        }
+      }
+    },
     "был фальстарт" : {
       "localizations" : {
         "en" : {
@@ -1889,6 +1991,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вернуть карточки"
+          }
+        }
+      }
+    },
+    "Вернуть общие" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use common"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть общие"
+          }
+        }
+      }
+    },
+    "Вернуть общие условия" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the common conditions"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть общие условия"
           }
         }
       }
@@ -2245,22 +2379,6 @@
         }
       }
     },
-    "включено" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "on"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "включено"
-          }
-        }
-      }
-    },
     "Включить запись с камеры вместе с тренировкой" : {
       "localizations" : {
         "en" : {
@@ -2289,6 +2407,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включить звук камеры в приложении (запись всегда со звуком)"
+          }
+        }
+      }
+    },
+    "Во время тренировки заметка свёрнута в одну строку под условиями." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "During the training the note is folded into one line under the conditions."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Во время тренировки заметка свёрнута в одну строку под условиями."
           }
         }
       }
@@ -2613,6 +2747,22 @@
         }
       }
     },
+    "Встала и пошла" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stood up and walked"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Встала и пошла"
+          }
+        }
+      }
+    },
     "Встроенный go2rtc" : {
       "localizations" : {
         "en" : {
@@ -2705,6 +2855,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вся тренировка по ширине · ⌘0"
+          }
+        }
+      }
+    },
+    "Вторая камера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Second Camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вторая камера"
+          }
+        }
+      }
+    },
+    "Вторая камера…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Second Camera…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вторая камера…"
+          }
+        }
+      }
+    },
+    "Второй камерой — «%@»" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As the second camera — “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Второй камерой — «%@»"
           }
         }
       }
@@ -2805,6 +3003,38 @@
         }
       }
     },
+    "Выберите вторую камеру" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the second camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите вторую камеру"
+          }
+        }
+      }
+    },
+    "Выберите выход: внизу появятся его триггеры, условия раннего входа и заметка." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select an exit: its triggers, conditions for coming back early and note appear below."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите выход: внизу появятся его триггеры, условия раннего входа и заметка."
+          }
+        }
+      }
+    },
     "Выберите камеру" : {
       "localizations" : {
         "en" : {
@@ -2849,6 +3079,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите поток go2rtc"
+          }
+        }
+      }
+    },
+    "Выберите строку, чтобы добавить триггеры, условия и заметку" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select the row to add triggers, conditions and a note"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите строку, чтобы добавить триггеры, условия и заметку"
           }
         }
       }
@@ -2977,22 +3223,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выйти…"
-          }
-        }
-      }
-    },
-    "выключено" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "off"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "выключено"
           }
         }
       }
@@ -3169,6 +3399,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выход %lld: %@ — изменить"
+          }
+        }
+      }
+    },
+    "Выход %lld: триггеры, ранний вход, заметка" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exit %lld: triggers, coming back early, note"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выход %lld: триггеры, ранний вход, заметка"
           }
         }
       }
@@ -3669,6 +3915,22 @@
         }
       }
     },
+    "До вставания — сразу" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Until she stands up — right away"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "До вставания — сразу"
+          }
+        }
+      }
+    },
     "Добавить" : {
       "localizations" : {
         "en" : {
@@ -3733,22 +3995,6 @@
         }
       }
     },
-    "Добавить заметку" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Note"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Добавить заметку"
-          }
-        }
-      }
-    },
     "Добавить источник по адресу: rtsp://, onvif://, http://" : {
       "localizations" : {
         "en" : {
@@ -3809,6 +4055,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить поток…"
+          }
+        }
+      }
+    },
+    "Добавить…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить…"
           }
         }
       }
@@ -3969,6 +4231,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "другая версия Waiting Paws"
+          }
+        }
+      }
+    },
+    "Другая вторая камера…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another Second Camera…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другая вторая камера…"
           }
         }
       }
@@ -4565,6 +4843,22 @@
         }
       }
     },
+    "Закрыть текст тренера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close the trainer’s text"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть текст тренера"
+          }
+        }
+      }
+    },
     "Заметка" : {
       "localizations" : {
         "en" : {
@@ -4581,6 +4875,22 @@
         }
       }
     },
+    "Заметка к выходу" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Note for the exit"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметка к выходу"
+          }
+        }
+      }
+    },
     "Заметка тренера" : {
       "localizations" : {
         "en" : {
@@ -4593,22 +4903,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заметка тренера"
-          }
-        }
-      }
-    },
-    "Заметки тренера · %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trainer’s Notes · %lld"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Заметки тренера · %lld"
           }
         }
       }
@@ -5509,6 +5803,38 @@
         }
       }
     },
+    "К длинным ≥ 1 мин" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To long ones ≥ 1 min"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "К длинным ≥ 1 мин"
+          }
+        }
+      }
+    },
+    "К каким выходам" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which exits"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "К каким выходам"
+          }
+        }
+      }
+    },
     "Как на картинке" : {
       "localizations" : {
         "en" : {
@@ -5605,6 +5931,22 @@
         }
       }
     },
+    "Какую камеру показывать · ⌘1 / ⌘2. Записывается первая" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which camera to show · ⌘1 / ⌘2. The first one is recorded"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Какую камеру показывать · ⌘1 / ⌘2. Записывается первая"
+          }
+        }
+      }
+    },
     "Камер не найдено" : {
       "localizations" : {
         "en" : {
@@ -5697,6 +6039,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Камера %@"
+          }
+        }
+      }
+    },
+    "Камера 1" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera 1"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера 1"
+          }
+        }
+      }
+    },
+    "Камера 2" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera 2"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера 2"
           }
         }
       }
@@ -6197,6 +6571,54 @@
         }
       }
     },
+    "Ко всем" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To all"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ко всем"
+          }
+        }
+      }
+    },
+    "Когда вернуться раньше плана: что сделала собака и через сколько входить." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When to come back before the plan: what the dog did and how long after to come in."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда вернуться раньше плана: что сделала собака и через сколько входить."
+          }
+        }
+      }
+    },
+    "Когда не входить" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When not to come in"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда не входить"
+          }
+        }
+      }
+    },
     "Код из «Сообщений» появится над клавиатурой" : {
       "localizations" : {
         "en" : {
@@ -6241,6 +6663,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Код приходит в течение минуты."
+          }
+        }
+      }
+    },
+    "Комната" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Room"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Комната"
           }
         }
       }
@@ -6337,6 +6775,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Кто тренирует"
+          }
+        }
+      }
+    },
+    "куртка, обувь, ключи…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "jacket, shoes, keys…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "куртка, обувь, ключи…"
           }
         }
       }
@@ -6597,6 +7051,22 @@
         }
       }
     },
+    "На выходе: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On the exit: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На выходе: %@"
+          }
+        }
+      }
+    },
     "На нём уже подключена камера «%@». iPhone покажет её и тренировку с %@, входить в Xiaomi не нужно." : {
       "localizations" : {
         "en" : {
@@ -6773,6 +7243,22 @@
         }
       }
     },
+    "Например, в комнате, куда уходит собака. Её можно смотреть переключателем, записывается первая камера." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For example, in the room the dog goes to. Switch to it to watch; the first camera is the one recorded."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Например, в комнате, куда уходит собака. Её можно смотреть переключателем, записывается первая камера."
+          }
+        }
+      }
+    },
     "Настройки" : {
       "localizations" : {
         "en" : {
@@ -6897,6 +7383,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не в сети"
+          }
+        }
+      }
+    },
+    "не входить" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "don’t come in"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не входить"
           }
         }
       }
@@ -7557,6 +8059,22 @@
         }
       }
     },
+    "Новый триггер" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Trigger"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый триггер"
+          }
+        }
+      }
+    },
     "Нужен вход в аккаунт Xiaomi" : {
       "localizations" : {
         "en" : {
@@ -7733,6 +8251,70 @@
         }
       }
     },
+    "общее" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "common"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "общее"
+          }
+        }
+      }
+    },
+    "общие" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "common"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "общие"
+          }
+        }
+      }
+    },
+    "Общие условия" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Common conditions"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Общие условия"
+          }
+        }
+      }
+    },
+    "Общие условия тренировки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The training’s common conditions"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Общие условия тренировки"
+          }
+        }
+      }
+    },
     "Один перерыв для всех выходов. Чтобы задать свой перерыв выходу, нажмите на время рядом с ⏸ в его строке." : {
       "localizations" : {
         "en" : {
@@ -7877,6 +8459,38 @@
         }
       }
     },
+    "От 1 мин" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From 1 min"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "От 1 мин"
+          }
+        }
+      }
+    },
+    "От начала движения, когда сняла фокус с двери…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From when she started moving, once her focus left the door…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "От начала движения, когда сняла фокус с двери…"
+          }
+        }
+      }
+    },
     "от плана" : {
       "localizations" : {
         "en" : {
@@ -8017,6 +8631,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть"
+          }
+        }
+      }
+    },
+    "Открыть текст тренера крупнее" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the trainer’s text larger"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть текст тренера крупнее"
           }
         }
       }
@@ -8385,6 +9015,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пароль уходит только встроенному go2rtc, Waiting Paws его не хранит. Токен входа go2rtc держит у себя, на этом Mac."
+          }
+        }
+      }
+    },
+    "Первая камера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First Camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первая камера"
           }
         }
       }
@@ -9029,6 +9675,22 @@
         }
       }
     },
+    "Подготовить к выходу %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get ready for exit %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подготовить к выходу %lld"
+          }
+        }
+      }
+    },
     "Поделиться" : {
       "localizations" : {
         "en" : {
@@ -9473,6 +10135,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показать инспектор (⌥⌘I)"
+          }
+        }
+      }
+    },
+    "Показать камеру «%@»" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show camera “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать камеру «%@»"
           }
         }
       }
@@ -10005,6 +10683,38 @@
         }
       }
     },
+    "Правила на всю тренировку · %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rules for the whole training · %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Правила на всю тренировку · %lld"
+          }
+        }
+      }
+    },
+    "Правила тренировки:" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Training rules:"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Правила тренировки:"
+          }
+        }
+      }
+    },
     "правило фальстарта" : {
       "localizations" : {
         "en" : {
@@ -10261,6 +10971,22 @@
         }
       }
     },
+    "Развернуть заметки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show notes"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Развернуть заметки"
+          }
+        }
+      }
+    },
     "Развернуть окно тренировки" : {
       "localizations" : {
         "en" : {
@@ -10369,6 +11095,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешить подключение с iPhone"
+          }
+        }
+      }
+    },
+    "ранний вход" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "coming back early"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ранний вход"
+          }
+        }
+      }
+    },
+    "Ранний вход" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coming back early"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ранний вход"
           }
         }
       }
@@ -10741,6 +11499,22 @@
         }
       }
     },
+    "Свернуть заметки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide notes"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свернуть заметки"
+          }
+        }
+      }
+    },
     "сверх плана" : {
       "localizations" : {
         "en" : {
@@ -10769,6 +11543,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "сверх плана / фальстарт"
+          }
+        }
+      }
+    },
+    "Своё условие" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Own condition"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Своё условие"
+          }
+        }
+      }
+    },
+    "свои условия" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "own conditions"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "свои условия"
           }
         }
       }
@@ -10913,6 +11719,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Свой сервер go2rtc…"
+          }
+        }
+      }
+    },
+    "Своя заметка к выходу" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your note for the exit"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Своя заметка к выходу"
           }
         }
       }
@@ -11525,6 +12347,22 @@
         }
       }
     },
+    "сразу" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "right away"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сразу"
+          }
+        }
+      }
+    },
     "старт" : {
       "localizations" : {
         "en" : {
@@ -11829,6 +12667,22 @@
         }
       }
     },
+    "Тренер написал их один раз, не под выходом. Выходу их можно поменять — нажмите на строку под ним." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The trainer wrote them once, not under an exit. To change them for one exit, tap the line under it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тренер написал их один раз, не под выходом. Выходу их можно поменять — нажмите на строку под ним."
+          }
+        }
+      }
+    },
     "Тренеры" : {
       "localizations" : {
         "en" : {
@@ -12005,6 +12859,102 @@
         }
       }
     },
+    "Триггер" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Триггер"
+          }
+        }
+      }
+    },
+    "Триггеров: %lld, условий раннего входа: %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Triggers: %lld, conditions for coming back early: %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Триггеров: %lld, условий раннего входа: %lld"
+          }
+        }
+      }
+    },
+    "Триггеры" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Triggers"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Триггеры"
+          }
+        }
+      }
+    },
+    "Триггеры · ранний вход · заметка" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Triggers · coming back early · note"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Триггеры · ранний вход · заметка"
+          }
+        }
+      }
+    },
+    "Триггеры на выходе" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Triggers on the way out"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Триггеры на выходе"
+          }
+        }
+      }
+    },
+    "Триггеры, условия, заметка…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Triggers, Conditions, Note…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Триггеры, условия, заметка…"
+          }
+        }
+      }
+    },
     "Тяните край блока" : {
       "localizations" : {
         "en" : {
@@ -12069,6 +13019,38 @@
         }
       }
     },
+    "Убрать «%@»" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать «%@»"
+          }
+        }
+      }
+    },
+    "Убрать вторую камеру" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Second Camera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать вторую камеру"
+          }
+        }
+      }
+    },
     "Убрать расписание" : {
       "localizations" : {
         "en" : {
@@ -12097,6 +13079,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Убрать свои перерывы: %@"
+          }
+        }
+      }
+    },
+    "Убрать условие" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove condition"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать условие"
           }
         }
       }
@@ -12661,6 +13659,70 @@
         }
       }
     },
+    "Условие раннего входа выхода выше" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Condition for coming back early of the exit above"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условие раннего входа выхода выше"
+          }
+        }
+      }
+    },
+    "Условие раннего входа для всей тренировки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Condition for coming back early for the whole training"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условие раннего входа для всей тренировки"
+          }
+        }
+      }
+    },
+    "Условия раннего входа — для всей тренировки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conditions for coming back early — for the whole training"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия раннего входа — для всей тренировки"
+          }
+        }
+      }
+    },
+    "Условия, которые тренер написал для всей тренировки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conditions the trainer wrote for the whole training"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия, которые тренер написал для всей тренировки"
+          }
+        }
+      }
+    },
     "Файл" : {
       "localizations" : {
         "en" : {
@@ -12885,6 +13947,86 @@
         }
       }
     },
+    "Цвет" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет"
+          }
+        }
+      }
+    },
+    "Цвет условия" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Condition color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет условия"
+          }
+        }
+      }
+    },
+    "Цвет условия, как у тренера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The condition’s color, as the trainer marked it"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет условия, как у тренера"
+          }
+        }
+      }
+    },
+    "через" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "in"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "через"
+          }
+        }
+      }
+    },
+    "Через сколько входить" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come in after"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через сколько входить"
+          }
+        }
+      }
+    },
     "Читаю настройки камеры…" : {
       "localizations" : {
         "en" : {
@@ -12897,6 +14039,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Читаю настройки камеры…"
+          }
+        }
+      }
+    },
+    "Что взять или сделать, выходя: куртка, обувь, звякнуть ключами" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What to take or do on the way out: jacket, shoes, jingle the keys"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что взять или сделать, выходя: куртка, обувь, звякнуть ключами"
+          }
+        }
+      }
+    },
+    "Что взять или сделать, выходя: куртка, обувь, звякнуть ключами." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What to take or do on the way out: jacket, shoes, jingle the keys."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что взять или сделать, выходя: куртка, обувь, звякнуть ключами."
           }
         }
       }
@@ -12961,6 +14135,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "экспорт недоступен"
+          }
+        }
+      }
+    },
+    "Эта камера уже основная — выберите другую" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is already the main camera — choose another one"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эта камера уже основная — выберите другую"
+          }
+        }
+      }
+    },
+    "Эти условия тренер написал для всей тренировки. Изменения здесь касаются только этого выхода." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The trainer wrote these for the whole training. Changes here apply to this exit only."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эти условия тренер написал для всей тренировки. Изменения здесь касаются только этого выхода."
           }
         }
       }

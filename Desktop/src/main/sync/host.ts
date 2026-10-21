@@ -38,6 +38,9 @@ export interface SyncHostState {
   cameraReady: boolean
   cameraTitle: string
   streamName: string
+  /** The second camera (view-only); null — none. */
+  secondStreamName?: string | null
+  secondCameraTitle?: string | null
   lastRecord: TrainingRecord | null
   pendingPlan: TrainingPlan | null
   cameraSource: string | null
@@ -631,6 +634,8 @@ export function syncState(state: SyncHostState): SyncState {
     cameraReady: state.cameraReady,
     cameraTitle: state.cameraTitle ?? '',
     streamName: state.streamName ?? '',
+    secondStreamName: state.secondStreamName || null,
+    secondCameraTitle: state.secondStreamName ? state.secondCameraTitle || state.secondStreamName : null,
     lastRecord: state.lastRecord ?? null,
     pendingPlan: state.pendingPlan ?? null,
     cameraSource: state.cameraSource ?? null,

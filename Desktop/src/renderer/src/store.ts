@@ -5,6 +5,7 @@ import type { AppState, MethodArgs, MethodName, MethodResult } from '@shared/api
 /// The backend's state as last pushed, plus window-level UI state that menus, the title bar and panels share
 /// (the Mac app's `MacUIState`).
 export type Route = 'training' | 'history' | 'settings'
+export type CameraSlot = 'main' | 'second'
 export type SettingsPane = 'camera' | 'connection' | 'training' | 'recording' | 'iphone' | 'appearance' | 'diagnostics' | 'about'
 
 interface UIStore {
@@ -16,6 +17,12 @@ interface UIStore {
   /// The running training's schedule open for edits.
   editingSessionPlan: boolean
   showCameraPicker: boolean
+  /// The camera on screen when there is a second one (Ctrl+1 / Ctrl+2). Both players stay connected.
+  camera: CameraSlot
+  /// Which players show a picture (the dot «на связи» on the hidden camera).
+  cameraLive: Record<CameraSlot, boolean>
+  /// «Переподключить» with the second camera on screen reconnects it too.
+  secondCameraReload: number
   showXiaomiSignIn: boolean
   showServerSetup: boolean
   confirmFinish: boolean
@@ -41,6 +48,9 @@ export const useStore = create<UIStore>((set) => ({
   reviewingPlan: false,
   editingSessionPlan: false,
   showCameraPicker: false,
+  camera: 'main',
+  cameraLive: { main: false, second: false },
+  secondCameraReload: 0,
   showXiaomiSignIn: false,
   showServerSetup: false,
   confirmFinish: false,

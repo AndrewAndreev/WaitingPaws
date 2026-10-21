@@ -114,6 +114,33 @@ describe('the trainer’s text', () => {
     expect(exitForLine(lines[2], parsed, map)).toBeNull()
   })
 
+  it('marks conditions under exits, common ones and the «не входить» rule', () => {
+    const text = `1 выход - 5 секунд
+2 выход - 4 минуты + обувь
+🟡 Если встала - входим через 1 минуту
+
+🟢 Если легла - входим через 20 секунд
+🚩 Если залаяла - ни в коем случае не входить`
+    const lines = classifyLines(text)
+    expect(lines[2].kind).toEqual({ kind: 'earlyEntry', tone: 'yellow', afterLine: 2 })
+    expect(lines[4].kind).toEqual({ kind: 'earlyEntry', tone: 'green', afterLine: null })
+    expect(lines[5].kind).toEqual({ kind: 'doNotEnter' })
+    const parsed = PlanParser.parse(text)
+    const map = exitLines(parsed, lines)
+    expect([...linkedLines(lines, map, [parsed.exits[1].id])].sort()).toEqual([2, 3])
+    expect(exitForLine(lines[2], parsed, map)).toBe(parsed.exits[1].id)
+    expect(exitForLine(lines[4], parsed, map)).toBeNull()
+    expect(highlightLine(lines[1]).find((run) => run.role === 'trigger')?.text).toBe('обувь')
+    expect(highlightLine(lines[2]).find((run) => run.role === 'delay')?.text).toBe('1 минуту')
+  })
+
+  it('follows the parser’s lines through blank rows at the top, CRLF and a bullet in the middle of a row', () => {
+    const text = '\r\nТренировка\r\nДелаем вечером➡️ За 30 минут включить музыку\r\n3 выход - 5 секунд\r\n🟢 Если легла - входим через 20 секунд'
+    const lines = classifyLines(text)
+    expect(lines.map((line) => line.kind.kind)).toEqual(['blank', 'header', 'note', 'exit', 'earlyEntry'])
+    expect(lines[4].kind).toEqual({ kind: 'earlyEntry', tone: 'green', afterLine: 4 })
+  })
+
   it('matches by the written number when the plan was edited before the first look', () => {
     const parsed = PlanParser.parse('Тренировка\n1 выход - 5 секунд\n2 выход - 10 секунд\n3 выход - 15 секунд')
     const edited = { ...parsed, id: 'EDITED', exits: parsed.exits.slice(1) }

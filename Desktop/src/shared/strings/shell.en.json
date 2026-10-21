@@ -27,5 +27,14 @@
   "Открыть настройки брандмауэра": "Open Firewall Settings",
   "Настройки камеры…": "Camera Settings…",
   "iPhone видит камеру и ведёт эту тренировку": "An iPhone sees the camera and is running this training",
-  "Записать видео": "Record Video"
+  "Записать видео": "Record Video",
+  "Камеры": "Cameras",
+  "Камера на экране": "Camera on screen",
+  "на связи": "connected",
+  "подключается…": "connecting…",
+  "%1$@ — %2$@ (%3$@)": "%1$@ — %2$@ (%3$@)",
+  "Основная камера…": "Main Camera…",
+  "Вторая камера…": "Second Camera…",
+  "Убрать вторую камеру": "Remove Second Camera",
+  "Качество — %@": "Quality — %@"
 }

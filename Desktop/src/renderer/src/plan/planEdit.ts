@@ -4,7 +4,7 @@
 import { plural, t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { coreLocale } from '@core/localization'
-import { PlannedExit, TrainingPlan } from '@core/models'
+import { EarlyEntry, PlannedExit, TrainingPlan } from '@core/models'
 import { roundHalfAwayFromZero } from '@core/text'
 
 export const PlanFormat = {
@@ -30,6 +30,22 @@ export const PlanFormat = {
   breaks: (n: number) => plural(n, ['%d перерыв', '%d перерыва', '%d перерывов'], ['%d break', '%d breaks']),
   notes: (n: number) => plural(n, ['%d заметка', '%d заметки', '%d заметок'], ['%d note', '%d notes']),
   lines: (n: number) => plural(n, ['%d строка', '%d строки', '%d строк'], ['%d line', '%d lines']),
+  triggers: (n: number) => plural(n, ['%d триггер', '%d триггера', '%d триггеров'], ['%d trigger', '%d triggers']),
+  conditions: (n: number) => plural(n, ['%d условие', '%d условия', '%d условий'], ['%d condition', '%d conditions']),
+
+  /// «через 2:00» / «сразу»: when to come back after the dog did it.
+  entryDelay(entry: EarlyEntry): string {
+    return entry.delay !== null && entry.delay > 0 ? t('через %@', DurationText.clock(entry.delay)) : t('сразу')
+  },
+
+  /// «встала и пошла → через 2:00» (the common conditions in the bar above the table).
+  entryLine(entry: EarlyEntry): string {
+    const [first = '', ...rest] = Array.from(entry.event)
+    return `${first.toLowerCase()}${rest.join('')} → ${PlanFormat.entryDelay(entry)}`
+  },
+
+  /// Delays offered for a condition: right away to five minutes.
+  entryPresets: [0, 10, 15, 20, 30, 40, 60, 90, 120, 180, 300] as readonly number[],
 
   exitsTotal(plan: TrainingPlan): number {
     return plan.exits.reduce((sum, exit) => sum + exit.duration, 0)
@@ -166,6 +182,59 @@ export function canShift(plan: TrainingPlan, selection: Iterable<string>, delta:
   const indices = selectedIndices(plan, selection)
   if (!indices.length) return false
   return delta < 0 ? indices[0] > 0 : indices[indices.length - 1] < plan.exits.length - 1
+}
+
+// MARK: - Triggers and conditions of one exit
+
+export function addTrigger(plan: TrainingPlan, id: string, text: string): TrainingPlan {
+  const trigger = text.trim()
+  const exit = plan.exits.find((item) => item.id === id)
+  if (!exit || trigger === '' || exit.triggers.includes(trigger)) return plan
+  return updateExit(plan, id, { triggers: [...exit.triggers, trigger] })
+}
+
+export function removeTrigger(plan: TrainingPlan, id: string, index: number): TrainingPlan {
+  const exit = plan.exits.find((item) => item.id === id)
+  if (!exit) return plan
+  return updateExit(plan, id, { triggers: exit.triggers.filter((_, other) => other !== index) })
+}
+
+/// Triggers of the other exits this one has not got: offered as one-click chips.
+export function suggestedTriggers(plan: TrainingPlan, id: string, limit = 4): string[] {
+  const own = new Set(plan.exits.find((exit) => exit.id === id)?.triggers ?? [])
+  const result: string[] = []
+  for (const exit of plan.exits) {
+    for (const trigger of exit.triggers) {
+      if (!own.has(trigger) && !result.includes(trigger)) result.push(trigger)
+    }
+  }
+  return result.slice(0, limit)
+}
+
+/// The conditions the editor lists for an exit: what `TrainingPlan.earlyEntries` gives, without «Встала → сразу» of
+/// «ИЛИ до вставания» (the editor shows that one as a switch).
+export function editableEntries(plan: TrainingPlan, exit: PlannedExit): EarlyEntry[] {
+  const untilStanding = EarlyEntry.untilStanding().id
+  return TrainingPlan.earlyEntries(plan, exit).filter((entry) => entry.id !== untilStanding)
+}
+
+/// An edit of the exit's conditions (`editableEntries` in, the new list out). The common conditions it shows become
+/// its own copy first (`detachEarlyEntries`): the change is for this exit alone, the other exits keep the common ones.
+export function editEarlyEntries(plan: TrainingPlan, id: string, edit: (entries: EarlyEntry[]) => EarlyEntry[]): TrainingPlan {
+  const index = plan.exits.findIndex((exit) => exit.id === id)
+  if (index < 0) return plan
+  const detached = TrainingPlan.detachEarlyEntries(plan, index)
+  return updateExit(detached, id, { earlyEntries: edit(detached.exits[index].earlyEntries), usesCommonEarlyEntries: false })
+}
+
+/// «Общие условия» of one exit: on — the plan's common conditions instead of its own; off — none.
+export function setUsesCommonEntries(plan: TrainingPlan, id: string, value: boolean): TrainingPlan {
+  return updateExit(plan, id, { earlyEntries: [], usesCommonEarlyEntries: value })
+}
+
+/// The dot of a condition cycles through the trainer's colours: 🟡 → 🟢 → none.
+export function nextTone(tone: EarlyEntry['tone']): EarlyEntry['tone'] {
+  return tone === 'yellow' ? 'green' : tone === 'green' ? 'plain' : 'yellow'
 }
 
 /// A new common break; own breaks that now equal it become common again (as `PlanParser` reads them).

@@ -14,11 +14,15 @@ struct MacCameraPickerSheet: View {
     var onlyStreams = false
     /// Only this Mi Home account (right after signing in to it).
     var accountID: String? = nil
+    /// The camera this picks: the app's one, or the second one to look at.
+    var target: SetupCameraCatalog.Target = .main
     var onChosen: () -> Void = {}
 
-    init(onlyStreams: Bool = false, accountID: String? = nil, onChosen: @escaping () -> Void = {}) {
+    init(onlyStreams: Bool = false, accountID: String? = nil, target: SetupCameraCatalog.Target = .main,
+         onChosen: @escaping () -> Void = {}) {
         self.onlyStreams = onlyStreams
         self.accountID = accountID
+        self.target = target
         self.onChosen = onChosen
     }
 
@@ -58,10 +62,12 @@ struct MacCameraPickerSheet: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(onlyStreams ? "Выберите поток go2rtc" : "Выберите камеру")
+                Text(onlyStreams ? "Выберите поток go2rtc" : target == .second ? "Выберите вторую камеру" : "Выберите камеру")
                     .font(.title2.weight(.semibold))
                 Text(onlyStreams
                      ? "RTSP, ONVIF и другие источники, которые уже есть в go2rtc."
+                     : target == .second
+                     ? "Например, в комнате, куда уходит собака. Её можно смотреть переключателем, записывается первая камера."
                      : "Нужна та, что смотрит на входную дверь. Видео идёт по локальной сети через go2rtc.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -260,7 +266,7 @@ struct MacCameraPickerSheet: View {
         if let account, let camera = catalog.accounts.first(where: { $0.id == account })?.cameras.first {
             selection = camera.id
         } else if selection == nil || catalog.choice(for: selection) == nil {
-            selection = catalog.currentID(model) ?? firstID
+            selection = catalog.currentID(model, target: target) ?? firstID
         }
         guard force else { return }
         for stream in catalog.streams { SetupStillStore.shared.request(stream.name, model: model, force: true) }
@@ -283,7 +289,7 @@ struct MacCameraPickerSheet: View {
         Task {
             defer { choosing = false }
             do {
-                try await catalog.choose(choice, model: model)
+                try await catalog.choose(choice, model: model, target: target)
                 onChosen()
                 dismiss()
             } catch {

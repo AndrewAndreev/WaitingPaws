@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Popover } from 'radix-ui'
 import type { Go2RTCStream } from '@core/go2rtcClient'
 import { t } from '@shared/i18n'
-import { call, useApp } from '../store'
+import { call, ui, useApp } from '../store'
 import { AddIcon, ReloadIcon, SelectedIcon, SignInIcon, VideoOffIcon, WarningIcon } from '../ui/icons'
 import { Button, Dialog, Spinner, Tooltip } from '../ui/kit'
 import {
@@ -34,13 +34,17 @@ import '../styles/onboarding.css'
 /// «Выбрать камеру…»: Mi Home cameras and other go2rtc streams as tiles. Choosing one registers its stream in go2rtc
 /// when needed, saves it as the app's camera and closes the dialog. Mi Home cameras that are not streams yet get a
 /// preview on demand. Without a Xiaomi account on go2rtc the Mi Home part is a card with «Войти в Xiaomi…»: after the
-/// sign-in its cameras appear right here. What it lists (only streams, one account) comes from `openCameraPicker`.
+/// sign-in its cameras appear right here. What it lists (only streams, one account) and which camera it is for (the
+/// main one or «Вторая камера…», which only becomes `secondStreamName`) comes from `openCameraPicker`.
 export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
   const app = useApp()
   const [request] = useState(() => usePickerRequest.getState())
   // The request is for this opening only (the camera menu opens the picker without one).
-  useEffect(() => () => usePickerRequest.setState({ onlyStreams: false, accountID: null, region: null }), [])
+  useEffect(() => () => usePickerRequest.setState({ onlyStreams: false, accountID: null, region: null, target: 'main' }), [])
   const onlyStreams = request.onlyStreams
+  const forSecond = request.target === 'second'
+  /// The settings this picker reads and writes: the second camera's look like the main camera's to the catalog.
+  const current = forSecond ? { ...app.settings, streamName: app.settings.secondStreamName } : app.settings
   /// After a sign-in here every account is listed, not only `request.accountID`.
   const [allAccounts, setAllAccounts] = useState(false)
   const [signedInRegion, setSignedInRegion] = useState(request.region)
@@ -73,9 +77,11 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
       setSelection(cameraID(fresh))
       setSelectAccount(null)
     } else if (!findChoice(catalog, selection)) {
-      const current = currentID(catalog, app.settings)
-      const visible = current && (!onlyStreams || others.some((stream) => streamID(stream.name) === current))
-      setSelection(visible ? current : firstID(accounts, others))
+      const chosen = currentID(catalog, current)
+      const visible = chosen && (!onlyStreams || others.some((stream) => streamID(stream.name) === chosen))
+      // For the second camera the first one that is not the main camera.
+      const main = forSecond ? currentID(catalog, app.settings) : null
+      setSelection(visible ? chosen : firstID(accounts, others, main))
     }
     // Only when the lists change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,10 +95,26 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
   const choose = async (id: string | null) => {
     const choice = findChoice(catalog, id)
     if (!choice || choosing || !setup.client) return
+    if (forSecond && id === currentID(catalog, app.settings)) {
+      setError(t('Эта камера уже основная — выберите другую'))
+      return
+    }
     setChoosing(true)
     setError(null)
     try {
       const patch = await prepareChoice(choice, setup.client)
+      if (forSecond) {
+        if (patch.streamName === app.settings.streamName) {
+          setError(t('Эта камера уже основная — выберите другую'))
+          setChoosing(false)
+          return
+        }
+        // View-only: the stream and its name, nothing of the main camera's account, quality or modes.
+        onClose()
+        ui.set({ camera: 'second' })
+        await call('settings.update', { secondStreamName: patch.streamName ?? '', secondCameraTitle: patch.cameraTitle ?? '' })
+        return
+      }
       // Closed before the settings change: the page behind may switch (welcome → training) right away.
       onClose()
       await call('streams.select', patch)
@@ -190,11 +212,13 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
     <Dialog
       open
       onOpenChange={(open) => !open && !choosing && onClose()}
-      title={onlyStreams ? t('Выберите поток go2rtc') : t('Выберите камеру')}
+      title={forSecond ? t('Вторая камера') : onlyStreams ? t('Выберите поток go2rtc') : t('Выберите камеру')}
       description={
-        onlyStreams
-          ? t('RTSP, ONVIF и другие источники, которые уже есть в go2rtc.')
-          : t('Нужна та, что смотрит на входную дверь. Видео идёт по локальной сети через go2rtc.')
+        forSecond
+          ? t('Чтобы видеть другую комнату: переключайтесь в верхней панели или Ctrl+1 / Ctrl+2. Запись, качество и режимы остаются у основной камеры.')
+          : onlyStreams
+            ? t('RTSP, ONVIF и другие источники, которые уже есть в go2rtc.')
+            : t('Нужна та, что смотрит на входную дверь. Видео идёт по локальной сети через go2rtc.')
       }
       width={800}
       height={onlyStreams ? 520 : 640}
@@ -250,12 +274,14 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-/// The first camera go2rtc already plays (or the first stream): a sensible default to confirm with Enter.
-function firstID(accounts: CatalogAccount[], others: Go2RTCStream[]): string | null {
-  const cameras = accounts.flatMap((account) => account.cameras)
+/// The first camera go2rtc already plays (or the first stream): a sensible default to confirm with Enter. `except`:
+/// the main camera, when choosing the second one.
+function firstID(accounts: CatalogAccount[], others: Go2RTCStream[], except: string | null = null): string | null {
+  const cameras = accounts.flatMap((account) => account.cameras).filter((item) => cameraID(item) !== except)
   const camera = cameras.find((item) => item.streamName !== null) ?? cameras[0]
   if (camera) return cameraID(camera)
-  return others[0] ? streamID(others[0].name) : null
+  const stream = others.find((item) => streamID(item.name) !== except)
+  return stream ? streamID(stream.name) : null
 }
 
 function Section({ title, detail, accessory, children }: { title: string; detail?: string; accessory?: ReactNode; children: ReactNode }) {

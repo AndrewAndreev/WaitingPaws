@@ -45,15 +45,6 @@ struct ReadoutContent {
         var tint: Color { self == .backInside ? Theme.info : Theme.accent }
     }
 
-    /// A line under the title: only what matters now.
-    enum Line: Hashable {
-        /// "План 1 мин" / "Следующий выход 4 — 45 с".
-        case main(String)
-        /// "собака встала — сразу возвращайтесь".
-        case standing(String)
-        case note(String)
-    }
-
     struct Timer {
         let text: String
         let caption: String
@@ -86,24 +77,24 @@ struct ReadoutContent {
         session.attempt > 1 && !isBreak ? String(localized: "попытка \(session.attempt)") : nil
     }
 
-    var lines: [Line] {
+    /// The line under the title: «План 1 мин» / «Следующий выход 4 — 45 с». The exit's conditions, triggers and
+    /// notes are in `brief`.
+    var line: String? {
         switch session.phase {
         case .ready, .leaving, .away:
-            guard let exit = session.currentExit else { return [] }
-            var lines = [Line.main(String(localized: "План \(exit.durationDescription)"))]
-            if exit.untilStanding { lines.append(.standing(session.plan.standingRule)) }
-            if let note = exit.note, !note.isEmpty { lines.append(.note(note)) }
-            return lines
+            guard let exit = session.currentExit else { return nil }
+            return String(localized: "План \(DurationText.short(exit.duration))")
         case .breakTime(_, _, _, let next):
             guard let next, session.plan.exits.indices.contains(next) else {
-                return [.main(String(localized: "Выходы закончились: после перерыва тренировка завершится"))]
+                return String(localized: "Выходы закончились: после перерыва тренировка завершится")
             }
             let exit = session.plan.exits[next]
-            return [.main(session.attempt > 1
-                ? String(localized: "Следующий выход \(exit.number) — \(exit.durationDescription) · попытка \(session.attempt)")
-                : String(localized: "Следующий выход \(exit.number) — \(exit.durationDescription)"))]
+            let duration = DurationText.short(exit.duration)
+            return session.attempt > 1
+                ? String(localized: "Следующий выход \(exit.number) — \(duration) · попытка \(session.attempt)")
+                : String(localized: "Следующий выход \(exit.number) — \(duration)")
         case .finished:
-            return []
+            return nil
         }
     }
 
@@ -152,9 +143,13 @@ struct SessionReadout: View {
         var info: CGFloat
         var spacing: CGFloat
         var button: CGFloat
+        /// The condition plates: their height and the size of their time.
+        var plate: CGFloat
+        var plateDigits: CGFloat
 
-        static let phone = Size(ring: 176, digits: 46, title: 22, info: 15, spacing: 14, button: 52)
-        static let phoneCompact = Size(ring: 140, digits: 38, title: 22, info: 14, spacing: 10, button: 52)
+        static let phone = Size(ring: 176, digits: 46, title: 22, info: 15, spacing: 14, button: 52, plate: 44, plateDigits: 22)
+        static let phoneCompact = Size(ring: 140, digits: 38, title: 22, info: 14, spacing: 10, button: 52, plate: 38,
+                                       plateDigits: 20)
     }
 
     var body: some View {
@@ -166,11 +161,12 @@ struct SessionReadout: View {
                 timer(content.timer(at: context.date))
             }
             info(content)
-            actions(content)
+            ReadoutActions(session: session, height: size.button, onFinish: onFinish)
         }
     }
 
-    /// "Выход 3" big, the attempt small and quiet next to it: the exit matters more.
+    /// "Выход 3" big, the attempt small and quiet next to it: the exit matters more. On the right ⚡ 🏃 📝 of the
+    /// exit (the next one in a break).
     private func header(_ content: ReadoutContent) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(content.title)
@@ -181,6 +177,9 @@ struct SessionReadout: View {
                     .foregroundStyle(.white.opacity(0.5))
             }
             Spacer(minLength: 0)
+            if let brief = content.brief {
+                ExitMarks(plan: session.plan, exit: brief.exit, size: size.info - 2)
+            }
         }
     }
 
@@ -202,31 +201,75 @@ struct SessionReadout: View {
     }
 
     private func info(_ content: ReadoutContent) -> some View {
-        VStack(spacing: 5) {
-            ForEach(content.lines, id: \.self) { line in
-                switch line {
-                case .main(let text):
-                    Text(text).foregroundStyle(.white.opacity(0.85))
-                case .standing(let text):
-                    Label(text, systemImage: "figure.stand").foregroundStyle(Theme.info)
-                case .note(let text):
-                    Label(text, systemImage: "text.bubble")
+        VStack(spacing: 8) {
+            if let line = content.line {
+                Text(line)
+                    .font(.system(size: size.info, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let brief = content.brief {
+                if content.isBreak {
+                    breakDetails(brief)
+                } else {
+                    outsideDetails(brief)
                 }
             }
         }
-        .font(.system(size: size.info, weight: .medium, design: .rounded))
-        .foregroundStyle(.white.opacity(0.6))
-        .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity)
     }
 
-    /// Always the same two buttons: the next step and the false start.
-    private func actions(_ content: ReadoutContent) -> some View {
+    /// Outside: when to come back early, big; when not to come in; the notes folded.
+    private func outsideDetails(_ brief: ExitBrief) -> some View {
+        VStack(spacing: 6) {
+            ForEach(brief.entries) { entry in
+                EarlyEntryPlate(entry: entry, height: size.plate, digits: size.plateDigits)
+            }
+            if let rule = brief.doNotEnter {
+                DoNotEnterPlate(rule: rule, height: size.plate, digits: size.plateDigits)
+            }
+            if !brief.notes.isEmpty {
+                FoldedNotes(notes: brief.notes, size: size.info - 2)
+                    .padding(.horizontal, 4)
+                    .id(brief.exit.id)
+            }
+        }
+    }
+
+    /// In a break: what to take for the next exit and its conditions in one line.
+    private func breakDetails(_ brief: ExitBrief) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(brief.exit.triggers.enumerated()), id: \.offset) { _, trigger in
+                TriggerRow(text: trigger, size: size.info)
+            }
+            if let summary = brief.entriesSummary {
+                Label {
+                    Text("На выходе: \(summary)")
+                } icon: {
+                    Image(systemName: "figure.run")
+                }
+                .font(.system(size: size.info - 2, design: .rounded))
+                .foregroundStyle(.white.opacity(0.55))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+}
+
+/// Always the same two buttons: the next step and the false start.
+struct ReadoutActions: View {
+    let session: TrainingSession
+    var height: CGFloat = 52
+    var onFinish: () -> Void
+
+    var body: some View {
+        let content = ReadoutContent(session: session)
         HStack(spacing: 8) {
             if let step = content.step {
                 BigButton(title: step.title, icon: step.icon, style: step == .backInside ? .rest : .primary,
-                          height: size.button) {
+                          height: height) {
                     switch step {
                     case .outside: session.markBehindDoor()
                     case .backInside: session.endExit()
@@ -236,7 +279,7 @@ struct SessionReadout: View {
             }
             if content.canFalseStart {
                 BigButton(title: String(localized: "Фальстарт"), systemImage: "arrow.uturn.backward", style: .destructive,
-                          height: size.button) {
+                          height: height) {
                     session.resetExit()
                 }
             }

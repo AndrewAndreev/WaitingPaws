@@ -60,6 +60,21 @@
 }
 
 /* ---------- Camera ---------- */
+/* The main camera and the second one on top of each other: the hidden one stays connected, unseen and untouchable. */
+.camera-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.camera-stack__layer {
+  position: absolute;
+  inset: 0;
+  transition: opacity var(--duration-fast) var(--ease);
+}
+.camera-stack__layer.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
 .camera {
   position: relative;
   width: 100%;
@@ -282,22 +297,34 @@
   font-weight: 500;
   color: var(--text-primary);
 }
-.readout__rule,
-.readout__note {
+/* ⚡2 🏃2 📝 at the right of «Выход 8». */
+.readout__cluster {
+  display: inline-flex;
+  align-self: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.cluster-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
+  justify-content: center;
+  gap: 2px;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 5px;
+  border-radius: 7px;
+  background: var(--bg-control-hover);
+  font-family: var(--font-text);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
-.readout__rule {
-  color: var(--info);
+.cluster-badge svg {
+  width: 14px;
+  height: 14px;
 }
-.readout__rule svg,
-.readout__note svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
+.cluster-badge.is-empty {
+  color: var(--text-disabled);
 }
 /* The timer: big digits in the phase's colour, the progress line, the caption. */
 .readout__timer {
@@ -424,6 +451,251 @@
 }
 .step--warn:hover {
   background: color-mix(in srgb, var(--bg-control-hover) 100%, var(--danger) 6%);
+}
+
+/* ---------- Under the buttons: the exit's conditions, what to prepare, the trainer's text ---------- */
+
+/* The trainer's colour of a condition: 🟡 / 🟢, grey without one. */
+.tone-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+.tone-dot--yellow {
+  background: var(--warning);
+}
+.tone-dot--green {
+  background: var(--success);
+}
+.brief {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: none;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+}
+.brief__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 2px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.brief__title > svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+/* A condition: the dot, what the dog does with the rest of the trainer's sentence under it, «через 2:00». */
+.plate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: var(--bg-control-hover);
+}
+.plate__lead {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--text-secondary);
+}
+.plate__what {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.plate__event {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 19px;
+}
+.plate__detail {
+  font-size: 12.5px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+.plate__then {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.plate__then small {
+  font-family: var(--font-text);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.plate__then--now,
+.plate__then--stop {
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+.plate--stop {
+  background: color-mix(in srgb, var(--danger) 13%, transparent);
+}
+.plate--stop .plate__lead,
+.plate__then--stop {
+  color: var(--danger);
+}
+.plate--trigger {
+  min-height: 38px;
+}
+.plate--trigger .plate__lead {
+  width: 16px;
+  height: 16px;
+  color: var(--warning);
+}
+.brief__then {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 2px 2px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.brief__then svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+/* «Заметка к выходу»: one line until clicked. */
+.brief--note {
+  width: 100%;
+  text-align: left;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.brief--note:hover {
+  border-color: var(--border-default);
+}
+.brief__chevron {
+  width: 15px;
+  height: 15px;
+  transition: transform var(--duration-fast) var(--ease);
+}
+.brief--note.is-open .brief__chevron {
+  transform: rotate(180deg);
+}
+.brief__note {
+  display: block;
+  margin: 0 2px;
+  font-size: 14px;
+  line-height: 19px;
+  white-space: pre-wrap;
+}
+.brief__note.ellipsis {
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+/* «Текст тренера»: takes what is left of the panel, scrolls inside. */
+.trainer-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 0;
+  min-height: 92px;
+  padding: 10px 6px 6px 10px;
+  border-radius: 14px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+}
+.trainer-text .brief__title {
+  margin-right: 0;
+}
+.trainer-text__expand.btn {
+  width: 26px;
+  height: 24px;
+  margin: -4px 0;
+}
+.trainer-text__expand svg {
+  width: 14px;
+  height: 14px;
+}
+.trainer-text__lines {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.trainer-text__lines--large {
+  font-size: 15px;
+  line-height: 22px;
+}
+.dialog__body.trainer-text__dialog {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 4px;
+}
+.trainer-line {
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: color-mix(in srgb, var(--text-primary) 82%, transparent);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.trainer-line--blank {
+  height: 6px;
+  padding: 0;
+}
+.trainer-line--header {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.trainer-line--note {
+  color: var(--text-secondary);
+}
+.trainer-line--exit {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.trainer-line--doNotEnter {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: color-mix(in srgb, var(--danger) 55%, var(--text-primary));
+}
+.trainer-line__label {
+  font-weight: 600;
+  color: var(--warning);
+}
+.trainer-line.is-past {
+  color: var(--text-tertiary);
+}
+.trainer-line.is-current {
+  background: color-mix(in srgb, var(--phase-outside) 9%, transparent);
+  box-shadow: inset 3px 0 0 var(--phase-outside);
+  color: var(--text-primary);
+}
+.trainer-line--exit.is-current {
+  background: color-mix(in srgb, var(--phase-outside) 15%, transparent);
+  font-weight: 600;
 }
 
 /* ---------- New training panel ---------- */

@@ -42,7 +42,16 @@ struct MacCameraArea: View {
         #if DEBUG
         if let image = DemoData.cameraImage {
             ZoomableView(zoom: ui.cameraZoom) {
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+                ZStack {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+                        .opacity(model.isShowingSecondCamera ? 0 : 1)
+                    if model.hasSecondCamera {
+                        // The second camera in demos: the same picture mirrored.
+                        Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+                            .scaleEffect(x: -1, y: 1)
+                            .opacity(model.isShowingSecondCamera ? 1 : 0)
+                    }
+                }
             }
         } else {
             stream
@@ -59,14 +68,30 @@ struct MacCameraArea: View {
         } else if model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
             CameraPlaceholder(text: embeddedStatusText)
         } else if let server = model.settings.server, !model.settings.streamName.isEmpty {
+            // Both cameras play all the time: the switcher only shows one, so switching never reconnects.
             ZoomableView(zoom: ui.cameraZoom, contentZooms: true) {
-                CameraStreamView(server: server,
-                                 stream: model.settings.streamName,
-                                 mode: model.settings.playerMode,
-                                 audioEnabled: model.settings.audioEnabled,
-                                 reloadToken: reloadToken + model.playerGeneration,
-                                 onVideoSize: { size in model.videoSize = size },
-                                 onDelay: { model.performance.notePlayerDelay(buffer: $0, network: $1) })
+                ZStack {
+                    CameraStreamView(server: server,
+                                     stream: model.settings.streamName,
+                                     mode: model.settings.playerMode,
+                                     audioEnabled: model.settings.audioEnabled && !model.isShowingSecondCamera,
+                                     reloadToken: reloadToken + model.playerGeneration,
+                                     onVideoSize: { size in model.videoSize = size },
+                                     onDelay: { model.performance.notePlayerDelay(buffer: $0, network: $1) })
+                        .opacity(model.isShowingSecondCamera ? 0 : 1)
+                        .allowsHitTesting(!model.isShowingSecondCamera)
+                    if model.hasSecondCamera {
+                        CameraStreamView(server: server,
+                                         stream: model.activeSecondStreamName,
+                                         mode: model.settings.playerMode,
+                                         audioEnabled: model.settings.audioEnabled && model.isShowingSecondCamera,
+                                         reloadToken: reloadToken + model.playerGeneration,
+                                         onVideoSize: { _ in },
+                                         onDelay: { _, _ in })
+                            .opacity(model.isShowingSecondCamera ? 1 : 0)
+                            .allowsHitTesting(model.isShowingSecondCamera)
+                    }
+                }
             }
         } else {
             CameraPlaceholder(text: String(localized: "Камера не выбрана"))

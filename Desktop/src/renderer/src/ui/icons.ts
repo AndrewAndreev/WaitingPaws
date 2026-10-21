@@ -132,3 +132,6 @@ export {
   Pause20Filled as BreakFilledIcon,
   Warning20Filled as WarningFilledIcon,
 } from '@fluentui/react-icons'
+
+// An exit's triggers, conditions for coming back early and note (drawn in conditionIcons.tsx).
+export { DoNotEnterIcon, EarlyEntryIcon, ExitNoteIcon, ExpandIcon, PrepIcon, TriggerIcon } from './conditionIcons'

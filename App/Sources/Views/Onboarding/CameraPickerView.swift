@@ -13,6 +13,8 @@ struct CameraPickerView: View {
     var onContinueWithoutCamera: (() -> Void)? = nil
     /// Opened as its own sheet (Settings, the main screen): a ✕ in the corner.
     var showsClose = false
+    /// The camera this picks: the app's one, or the second one to look at.
+    var target: SetupCameraCatalog.Target = .main
     var onDone: (String) -> Void
 
     @State private var catalog = SetupCameraCatalog()
@@ -221,9 +223,11 @@ struct CameraPickerView: View {
 
     private var openTitle: String {
         switch catalog.choice(for: selection) {
-        case .camera(let camera): return String(localized: "Смотреть камеру «\(camera.name)»")
-        case .stream(let stream): return String(localized: "Смотреть камеру «\(stream.name)»")
-        case nil: return String(localized: "Выберите камеру")
+        case .camera(let camera):
+            return target == .second ? String(localized: "Второй камерой — «\(camera.name)»") : String(localized: "Смотреть камеру «\(camera.name)»")
+        case .stream(let stream):
+            return target == .second ? String(localized: "Второй камерой — «\(stream.name)»") : String(localized: "Смотреть камеру «\(stream.name)»")
+        case nil: return target == .second ? String(localized: "Выберите вторую камеру") : String(localized: "Выберите камеру")
         }
     }
 
@@ -232,7 +236,7 @@ struct CameraPickerView: View {
     private func reload(force: Bool = false) async {
         await catalog.load(model, account: signedInAccount)
         if catalog.choice(for: selection) == nil {
-            selection = catalog.currentID(model) ?? firstID
+            selection = catalog.currentID(model, target: target) ?? firstID
         }
         guard force else { return }
         for stream in catalog.streams { SetupStillStore.shared.request(stream.name, model: model, force: true) }
@@ -260,8 +264,8 @@ struct CameraPickerView: View {
         Task {
             defer { opening = false }
             do {
-                try await catalog.choose(choice, model: model)
-                onDone(model.settings.streamName)
+                try await catalog.choose(choice, model: model, target: target)
+                onDone(target == .main ? model.settings.streamName : model.settings.secondStreamName)
             } catch {
                 openError = String(localized: "Не удалось добавить камеру: \(error.localizedDescription)")
             }

@@ -10,6 +10,7 @@ struct SessionScreen: View {
     @State private var showHistory = false
     @State private var showSettings = false
     @State private var showCameraPicker = false
+    @State private var showSecondCameraPicker = false
     /// «Подключить камеру…» after starting without one: the first-launch setup as a sheet.
     @State private var showCameraSetup = false
     @State private var confirmFinish = false
@@ -22,6 +23,8 @@ struct SessionScreen: View {
     /// «Только камера»: before a training, the picture on the whole screen without recording (someone else records,
     /// or the dog is just being watched). A training brings the cards back.
     @State private var cameraOnly = false
+    /// The trainer's text in a drawer over the training screen (the camera stays as it is).
+    @State private var showTrainerText = false
 
     var body: some View {
         @Bindable var model = model
@@ -73,6 +76,17 @@ struct SessionScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.smooth(duration: 0.35), value: clipMode)
+            .overlay(alignment: wide ? .bottomTrailing : .bottom) {
+                if showTrainerText, let session = model.session, !clipMode {
+                    TrainerTextDrawer(session: session, available: geometry.size.height,
+                                      onFinish: { confirmFinish = true },
+                                      onClose: { withAnimation(.smooth(duration: 0.3)) { showTrainerText = false } })
+                        .frame(maxWidth: wide ? min(420, geometry.size.width * 0.45) : 560)
+                        .padding(.horizontal, wide ? 12 : 0)
+                        .ignoresSafeArea(edges: .bottom)
+                        .transition(.move(edge: .bottom))
+                }
+            }
         }
         .background(Color.black.ignoresSafeArea())
         #if os(iOS)
@@ -87,7 +101,9 @@ struct SessionScreen: View {
         .onChange(of: model.canPanTilt) { _, can in if !can { model.panTilt.stop() } }
         // A finger still on an arrow when the app goes away would never lift.
         .onChange(of: scenePhase) { _, phase in if phase != .active { model.panTilt.stop() } }
-        .onChange(of: model.session != nil) { _, running in if running { cameraOnly = false } }
+        .onChange(of: model.session != nil) { _, running in
+            if running { cameraOnly = false } else { showTrainerText = false }
+        }
         .onChange(of: model.settings.isConfigured) { _, configured in
             if configured { showCameraSetup = false }
         }
@@ -111,8 +127,12 @@ struct SessionScreen: View {
                 default: break
                 }
             }
-            // `--demo-camera-only`: «Только камера»; `--demo-pan-tilt` (with `--demo-camera-modes`): the turning mode on.
+            // `--demo-camera-only`: «Только камера»; `--demo-pan-tilt` (with `--demo-camera-modes`): the turning mode on;
+            // `--demo-trainer-text`: the trainer's text open over the running training.
             if CommandLine.arguments.contains("--demo-camera-only") { cameraOnly = true }
+            if CommandLine.arguments.contains("--demo-trainer-text") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { showTrainerText = true }
+            }
             if CommandLine.arguments.contains("--demo-pan-tilt") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { model.panTilt.start() }
             }
@@ -169,6 +189,16 @@ struct SessionScreen: View {
             NavigationStack {
                 CameraPickerView(showsClose: true) { _ in
                     showCameraPicker = false
+                }
+            }
+            .environment(model)
+            .sheetFrame(width: 520, height: 560)
+        }
+        .sheet(isPresented: $showSecondCameraPicker) {
+            NavigationStack {
+                CameraPickerView(showsClose: true, target: .second) { _ in
+                    showSecondCameraPicker = false
+                    model.showCamera(second: true)
                 }
             }
             .environment(model)
@@ -276,9 +306,18 @@ struct SessionScreen: View {
     @ViewBuilder
     private var camera: some View {
         #if DEBUG && os(iOS)
-        // `--demo-camera=<path>`: a still picture instead of the stream (UI checks in the simulator).
+        // `--demo-camera=<path>`: a still picture instead of the stream (UI checks in the simulator); the second
+        // camera is the same picture mirrored.
         if let image = DemoData.cameraImage {
-            Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+            ZStack {
+                Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+                    .opacity(model.isShowingSecondCamera ? 0 : 1)
+                if model.hasSecondCamera {
+                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+                        .scaleEffect(x: -1, y: 1)
+                        .opacity(model.isShowingSecondCamera ? 1 : 0)
+                }
+            }
         } else {
             liveCamera
         }
@@ -299,13 +338,29 @@ struct SessionScreen: View {
         } else if !model.isLinkedToMac, model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
             CameraPlaceholder(text: embeddedStatusText)
         } else if let server = model.activeServer, !model.activeStreamName.isEmpty {
-            CameraStreamView(server: server,
-                             stream: model.activeStreamName,
-                             mode: model.activePlayerMode,
-                             audioEnabled: model.settings.audioEnabled,
-                             reloadToken: reloadToken + model.activePlayerGeneration,
-                             onVideoSize: { size in model.videoSize = size },
-                             onDelay: { model.performance.notePlayerDelay(buffer: $0, network: $1) })
+            // Both cameras play all the time: the switcher only shows one, so switching never reconnects.
+            ZStack {
+                CameraStreamView(server: server,
+                                 stream: model.activeStreamName,
+                                 mode: model.activePlayerMode,
+                                 audioEnabled: model.settings.audioEnabled && !model.isShowingSecondCamera,
+                                 reloadToken: reloadToken + model.activePlayerGeneration,
+                                 onVideoSize: { size in model.videoSize = size },
+                                 onDelay: { model.performance.notePlayerDelay(buffer: $0, network: $1) })
+                    .opacity(model.isShowingSecondCamera ? 0 : 1)
+                    .allowsHitTesting(!model.isShowingSecondCamera)
+                if model.hasSecondCamera {
+                    CameraStreamView(server: server,
+                                     stream: model.activeSecondStreamName,
+                                     mode: model.activePlayerMode,
+                                     audioEnabled: model.settings.audioEnabled && model.isShowingSecondCamera,
+                                     reloadToken: reloadToken + model.activePlayerGeneration,
+                                     onVideoSize: { _ in },
+                                     onDelay: { _, _ in })
+                        .opacity(model.isShowingSecondCamera ? 1 : 0)
+                        .allowsHitTesting(model.isShowingSecondCamera)
+                }
+            }
         } else {
             CameraPlaceholder(text: model.isLinkedToMac ? String(localized: "На \(model.linkedHostKind) не выбрана камера") : String(localized: "Камера не выбрана"))
         }
@@ -321,11 +376,25 @@ struct SessionScreen: View {
                 }
                 .buttonStyle(PressableButtonStyle())
             } else {
-                CameraMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true })
+                if model.hasSecondCamera {
+                    CameraSwitcher(onReconnect: { model.videoSize = nil; reloadToken += 1 },
+                                   onPickCamera: { showCameraPicker = true },
+                                   onPickSecondCamera: { showSecondCameraPicker = true })
+                } else {
+                    CameraMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true },
+                               onPickSecondCamera: { showSecondCameraPicker = true })
+                }
                 RecordingPill()
             }
             Spacer()
             LinkPill()
+            if let session = model.session, !session.plan.rawText.isEmpty {
+                IconButton(systemImage: showTrainerText ? "doc.text.fill" : "doc.text",
+                           tint: showTrainerText ? Theme.accent : .white) {
+                    withAnimation(.smooth(duration: 0.3)) { showTrainerText.toggle() }
+                }
+                .accessibilityLabel("Текст тренера")
+            }
             if model.session != nil {
                 Menu {
                     Button("Изменить расписание", systemImage: "slider.horizontal.3") {
@@ -435,10 +504,15 @@ struct PlanEntryCard: View {
 
 
 /// Camera name pill with its menu. Separate view so per-second updates elsewhere do not rebuild an open menu.
+/// As a segment of `CameraSwitcher` it is the selected camera's name; quality and camera modes are the first
+/// camera's, so they are there while it is on screen.
 private struct CameraMenu: View {
     @Environment(AppModel.self) private var model
     var onReconnect: () -> Void
     var onPickCamera: () -> Void
+    var onPickSecondCamera: () -> Void
+    /// In the switcher: the selected segment's look instead of the pill.
+    var segment: String? = nil
 
     var body: some View {
         Menu {
@@ -446,6 +520,13 @@ private struct CameraMenu: View {
                 Text("Камеру и качество выбирают на \(model.linkedHostKind)")
             } else {
                 Button("Выбрать камеру…", systemImage: "video.badge.plus", action: onPickCamera)
+                Button(model.hasSecondCamera ? "Другая вторая камера…" : "Вторая камера…", systemImage: "rectangle.on.rectangle",
+                       action: onPickSecondCamera)
+                if model.hasSecondCamera {
+                    Button("Убрать вторую камеру", systemImage: "rectangle.badge.minus", role: .destructive) {
+                        model.removeSecondCamera()
+                    }
+                }
                 #if os(iOS)
                 // Always here, unlike the «Рядом Mac» card (closed, or pushed out by a summary).
                 if model.session == nil {
@@ -454,7 +535,7 @@ private struct CameraMenu: View {
                 #endif
             }
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
-            if !model.isLinkedToMac, let quality = model.xiaomiQuality {
+            if !model.isLinkedToMac, !model.isShowingSecondCamera, let quality = model.xiaomiQuality {
                 Menu {
                     Picker("Качество", selection: Binding(
                         get: { quality },
@@ -473,25 +554,95 @@ private struct CameraMenu: View {
                     Label("Качество · \(quality.title)", systemImage: "sparkles.tv")
                 }
             }
-            CameraModeMenuItems()
+            if !model.isShowingSecondCamera {
+                CameraModeMenuItems()
+            }
             Toggle("Звук", systemImage: "speaker.wave.2", isOn: Binding(
                 get: { model.settings.audioEnabled },
                 set: { model.settings.audioEnabled = $0 }))
         } label: {
-            // The whole name, or just the icon when the bar is busy (REC, «Mac»): «Xi…» says nothing.
-            ViewThatFits(in: .horizontal) {
-                Pill(text: model.activeCameraName, systemImage: "video.fill")
-                Image(systemName: "video.fill")
-                    .font(.system(.footnote, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 34)
-                    .background(Theme.control, in: Capsule())
+            if let segment {
+                CameraSegmentLabel(title: segment, selected: true)
+            } else {
+                // The whole name, or just the icon when the bar is busy (REC, «Mac»): «Xi…» says nothing.
+                ViewThatFits(in: .horizontal) {
+                    Pill(text: model.activeCameraName, systemImage: "video.fill")
+                    Image(systemName: "video.fill")
+                        .font(.system(.footnote, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 34)
+                        .background(Theme.control, in: Capsule())
+                }
+                .accessibilityLabel(model.activeCameraName)
             }
-            .accessibilityLabel(model.activeCameraName)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
         .layoutPriority(-1)
+    }
+}
+
+/// «Прихожая · Комната»: which camera is on screen. The other one keeps playing (the green dot) and a tap brings it;
+/// a tap on the one on screen opens its menu. Recording is always the first camera's.
+private struct CameraSwitcher: View {
+    @Environment(AppModel.self) private var model
+    var onReconnect: () -> Void
+    var onPickCamera: () -> Void
+    var onPickSecondCamera: () -> Void
+
+    var body: some View {
+        HStack(spacing: 2) {
+            segment(second: false, title: model.activeCameraName, number: 1)
+            segment(second: true, title: model.activeSecondCameraName, number: 2)
+        }
+        .padding(2)
+        .background(Theme.control, in: Capsule())
+        .layoutPriority(-1)
+    }
+
+    /// The camera on screen keeps its name; the other one gives way to «● 2» when the bar is busy.
+    @ViewBuilder
+    private func segment(second: Bool, title: String, number: Int) -> some View {
+        if model.isShowingSecondCamera == second {
+            CameraMenu(onReconnect: onReconnect, onPickCamera: onPickCamera, onPickSecondCamera: onPickSecondCamera,
+                       segment: title)
+                .layoutPriority(1)
+        } else {
+            Button {
+                withAnimation(.smooth(duration: 0.2)) { model.showCamera(second: second) }
+            } label: {
+                ViewThatFits(in: .horizontal) {
+                    CameraSegmentLabel(title: title, selected: false)
+                    CameraSegmentLabel(title: "\(number)", selected: false)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Показать камеру «\(title)»"))
+        }
+    }
+}
+
+private struct CameraSegmentLabel: View {
+    let title: String
+    let selected: Bool
+
+    var body: some View {
+        HStack(spacing: 5) {
+            if selected {
+                Image(systemName: "video.fill").font(.system(size: 11, weight: .semibold))
+            } else {
+                // Still connected: switching back is instant.
+                Circle().fill(Color(red: 0.43, green: 0.91, blue: 0.63)).frame(width: 6, height: 6)
+            }
+            Text(title).lineLimit(1).truncationMode(.tail)
+        }
+        .fixedSize(horizontal: !selected, vertical: false)
+        .font(.system(.subheadline, design: .rounded, weight: selected ? .semibold : .medium))
+        .foregroundStyle(selected ? .white : .white.opacity(0.6))
+        .padding(.horizontal, 9)
+        .frame(height: 30)
+        .background(selected ? Color.white.opacity(0.16) : .clear, in: Capsule())
+        .contentShape(Capsule())
     }
 }
 

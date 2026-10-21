@@ -1,4 +1,5 @@
 import type { AppState } from '@shared/api'
+import type { CameraSlot } from './store'
 import type { Settings } from '@shared/settings'
 import { cameraDisplayName } from '@shared/settings'
 import { coreLocale } from '@core/localization'
@@ -16,6 +17,16 @@ export function isSetUp(settings: Settings): boolean {
 
 export function cameraName(app: AppState): string {
   return cameraDisplayName(app.settings)
+}
+
+/// A second camera to switch to: set, and the main one too (it only comes with a main camera).
+export function hasSecondCamera(settings: Settings): boolean {
+  return isConfigured(settings) && settings.secondStreamName !== '' && settings.secondStreamName !== settings.streamName
+}
+
+/// The camera on screen: the second one only while it exists.
+export function visibleCamera(settings: Settings, chosen: CameraSlot): CameraSlot {
+  return chosen === 'second' && hasSecondCamera(settings) ? 'second' : 'main'
 }
 
 export function isRecording(app: AppState): boolean {

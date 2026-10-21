@@ -693,12 +693,15 @@ export class AppBackend {
     const names = (await client.streams().catch(() => [])).map((stream) => stream.name)
     const sources = await client.configuredSourcesOf(names).catch(() => ({}) as Record<string, string[]>)
     let removedSelected = this.xiaomiSource?.startsWith(prefix) ?? false
+    let removedSecond = false
     for (const [name, list] of Object.entries(sources)) {
       if (!list.some((source) => source.startsWith(prefix))) continue
       await client.deleteStream(name).catch(() => undefined)
       if (name === this.settings.value.streamName) removedSelected = true
+      if (name === this.settings.value.secondStreamName) removedSecond = true
     }
     const patch: Partial<Settings> = {}
+    if (removedSecond) Object.assign(patch, { secondStreamName: '', secondCameraTitle: '' })
     if (this.settings.value.xiaomiAccountID === accountID) patch.xiaomiAccountID = ''
     if (removedSelected) Object.assign(patch, { streamName: '', cameraTitle: '', withoutCamera: true })
     this.settings.update(patch)
@@ -711,9 +714,11 @@ export class AppBackend {
     this.emit()
   }
 
-  /// The camera chosen in the picker: settings, then quality and modes of the new camera.
+  /// The camera chosen in the picker: settings, then quality and modes of the new camera. The second camera, made the
+  /// main one, is no longer a second camera.
   async selectStream(patch: Partial<Settings>): Promise<void> {
-    this.settings.update({ ...patch, withoutCamera: false })
+    const second = patch.streamName && patch.streamName === this.settings.value.secondStreamName ? { secondStreamName: '', secondCameraTitle: '' } : {}
+    this.settings.update({ ...patch, ...second, withoutCamera: false })
     this.videoSize = null
     this.playerGeneration += 1
     this.emit()
@@ -815,6 +820,8 @@ export class AppBackend {
       cameraReady: this.isConfigured && (value.connectionMode === 'external' || this.go2rtc.isRunning),
       cameraTitle: value.cameraTitle || value.streamName,
       streamName: value.streamName,
+      secondStreamName: value.secondStreamName || null,
+      secondCameraTitle: value.secondStreamName ? value.secondCameraTitle || value.secondStreamName : null,
       lastRecord: this.lastRecord,
       pendingPlan: this.session ? null : this.pendingPlan,
       cameraSource: this.xiaomiSource,

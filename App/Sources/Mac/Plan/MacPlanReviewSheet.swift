@@ -173,7 +173,11 @@ private struct PlanSourcePane: View {
         let exitLines = Set(selection.compactMap { lineOfExit[$0] })
         var result = exitLines
         for line in lines {
-            if case .ownBreak(let after) = line.kind, exitLines.contains(after) { result.insert(line.id) }
+            switch line.kind {
+            case .ownBreak(let after) where exitLines.contains(after): result.insert(line.id)
+            case .condition(let after?) where exitLines.contains(after): result.insert(line.id)
+            default: break
+            }
         }
         return result
     }
@@ -230,6 +234,9 @@ private struct PlanSourcePane: View {
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if case .condition(let after) = line.kind {
+                conditionTag(after)
+            }
         }
         .padding(.vertical, 2.5)
         .padding(.trailing, 14)
@@ -240,12 +247,32 @@ private struct PlanSourcePane: View {
         .help(help(line))
     }
 
-    /// Click an exit line (or its break) → select that exit in the table.
+    /// «→ выход 6» after a condition under an exit, «общее» after one for the whole training.
+    private func conditionTag(_ afterLine: Int?) -> some View {
+        let number = afterLine.flatMap { after in
+            lines.first { $0.id == after }.flatMap { line -> Int? in
+                if case .exit(let number, _) = line.kind { return number }
+                return nil
+            }
+        }
+        return Text(number.map { String(localized: "→ выход \($0)") } ?? String(localized: "общее"))
+            .font(.system(size: 10.5, weight: .semibold))
+            .foregroundStyle(number == nil ? MacPalette.orange : MacPalette.blue)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background((number == nil ? MacPalette.orange : MacPalette.blue).opacity(0.14), in: Capsule())
+            .fixedSize()
+            .padding(.leading, 6)
+            .padding(.top, 1)
+    }
+
+    /// Click an exit line (or its break, or a condition under it) → select that exit in the table.
     private func select(_ line: MacPlanTextLine) {
         let exitLine: Int
         switch line.kind {
         case .exit: exitLine = line.id
         case .ownBreak(let after): exitLine = after
+        case .condition(let after?): exitLine = after
         default: return
         }
         if let id = lineOfExit.first(where: { $0.value == exitLine })?.key, plan.exits.contains(where: { $0.id == id }) {
@@ -260,6 +287,10 @@ private struct PlanSourcePane: View {
         case .ownBreak: String(localized: "Свой перерыв после выхода выше")
         case .defaultBreak: String(localized: "Перерыв между выходами")
         case .rule: String(localized: "Правило фальстарта")
+        case .condition(let after): after == nil
+            ? String(localized: "Условие раннего входа для всей тренировки")
+            : String(localized: "Условие раннего входа выхода выше")
+        case .doNotEnter: String(localized: "Когда не входить")
         case .note: String(localized: "Заметка тренера")
         case .blank: ""
         }
@@ -273,6 +304,9 @@ private struct PlanSourcePane: View {
             legendItem(MacPlanTint.exit(scheme), MacPlanFormat.exits(exits))
             if breaks > 0 {
                 legendItem(MacPlanTint.pause(scheme), MacPlanFormat.breaks(breaks))
+            }
+            if lines.contains(where: { if case .condition = $0.kind { return true }; return false }) {
+                legendItem(MacPalette.blue, String(localized: "ранний вход"))
             }
             if lines.contains(where: { $0.kind == .rule }) {
                 legendItem(MacPlanTint.rule(scheme), String(localized: "фальстарт"))
@@ -329,13 +363,26 @@ private struct PlanTablePane: View {
     var body: some View {
         VStack(spacing: 0) {
             planForm
+            if !plan.notes.isEmpty || !plan.commonEarlyEntries.isEmpty {
+                Divider()
+                rulesBar
+            }
             Divider()
             table
             Divider()
             tableFooter
-            if let rule = ruleLine {
-                Divider()
+            Divider()
+            if selection.count == 1, let id = selection.first, plan.exits.contains(where: { $0.id == id }) {
+                MacExitInspector(plan: $plan, exitID: id)
+            } else if let rule = ruleLine {
                 ruleView(rule)
+            } else {
+                Text("Выберите выход: внизу появятся его триггеры, условия раннего входа и заметка.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
             }
         }
     }
@@ -463,14 +510,11 @@ private struct PlanTablePane: View {
                                isLast: exit.id == plan.exits.last?.id)
             }
             .width(min: 104, ideal: 112)
-            TableColumn("Заметка") { exit in
-                TextField("Заметка", text: Binding(get: { binding(exit).wrappedValue.note ?? "" },
-                                                   set: { binding(exit).wrappedValue.note = $0.isEmpty ? nil : $0 }),
-                          prompt: Text(""))
-                    .textFieldStyle(.plain)
-                    .foregroundStyle(.secondary)
+            TableColumn("Триггеры · ранний вход · заметка") { exit in
+                ExitSummaryText(plan: plan, exit: exit, size: 12)
+                    .help(summaryHelp(exit))
             }
-            .width(min: 100, ideal: 150)
+            .width(min: 150, ideal: 190)
             TableColumn("Строка") { exit in
                 lineCell(exit)
             }
@@ -572,6 +616,98 @@ private struct PlanTablePane: View {
         }
         .help(help)
         .accessibilityLabel(help)
+    }
+
+    /// The whole training's points by kind, and the common conditions with the exits they go to.
+    private var rulesBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !plan.commonEarlyEntries.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "figure.run").foregroundStyle(MacPalette.orange)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Условия раннего входа — для всей тренировки").fontWeight(.semibold)
+                        Text(plan.commonEarlyEntries.map(\.summary).joined(separator: " · "))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    Picker("К каким выходам", selection: Binding(
+                        get: { plan.commonEntriesScope.map { $0 == .all ? 0 : 1 } ?? 2 },
+                        set: { choice in
+                            withAnimation(.snappy) {
+                                if choice == 0 { plan.applyCommonEarlyEntries(to: .all) }
+                                if choice == 1 { plan.applyCommonEarlyEntries(to: .long) }
+                            }
+                        })) {
+                        Text("Ко всем").tag(0)
+                        Text("К длинным ≥ 1 мин").tag(1)
+                        Text("Выбрать").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .help("«Выбрать»: отметьте «Общие условия» у нужных выходов внизу")
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(MacPalette.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            if !plan.notes.isEmpty {
+                HStack(spacing: 6) {
+                    Text("Правила тренировки:").foregroundStyle(.secondary)
+                    ForEach(ruleChips, id: \.title) { chip in
+                        Label(chip.title, systemImage: chip.symbol)
+                            .foregroundStyle(chip.tint)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(chip.tint.opacity(0.12), in: Capsule())
+                            .help(chip.help)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .lineLimit(1)
+            }
+        }
+        .font(.system(size: 12))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+    }
+
+    private struct RuleChip {
+        let title: String
+        let symbol: String
+        let tint: Color
+        let help: String
+    }
+
+    /// «🚩 не входить», «🔖 фальстарт», «➡️ ещё 5»: the trainer's notes for the whole training.
+    private var ruleChips: [RuleChip] {
+        var chips: [RuleChip] = []
+        var others: [String] = []
+        for note in plan.notes {
+            if PlanParser.isDoNotEnterRule(note) {
+                chips.append(RuleChip(title: String(localized: "не входить"), symbol: "flag.fill", tint: MacPalette.red, help: note))
+            } else if PlanParser.isFalseStartRule(note.lowercased()) {
+                chips.append(RuleChip(title: String(localized: "фальстарт"), symbol: "bookmark.fill", tint: MacPlanTint.rule(scheme), help: note))
+            } else {
+                others.append(note)
+            }
+        }
+        if !others.isEmpty {
+            chips.append(RuleChip(title: MacPlanFormat.notes(others.count), symbol: "arrow.right.circle", tint: .secondary,
+                                  help: others.joined(separator: "\n")))
+        }
+        return chips
+    }
+
+    /// The summary in full, for the tooltip.
+    private func summaryHelp(_ exit: PlannedExit) -> String {
+        var parts: [String] = []
+        if !exit.triggers.isEmpty { parts.append("⚡ " + exit.triggers.joined(separator: " · ")) }
+        let entries = plan.earlyEntries(of: exit)
+        if !entries.isEmpty { parts.append("🏃 " + entries.map(\.summary).joined(separator: " · ")) }
+        if let note = exit.noteText { parts.append("📝 " + note) }
+        return parts.isEmpty ? String(localized: "Выберите строку, чтобы добавить триггеры, условия и заметку") : parts.joined(separator: "\n")
     }
 
     // MARK: Rule

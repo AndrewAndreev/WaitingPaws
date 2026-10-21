@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — заметки к выходам, текст тренера, вторая камера</title>
+<link rel="stylesheet" href="lab.css">
+<style>
+  .flank { display: grid; grid-template-columns: 1fr 130px 1fr; align-items: center; gap: 4px; }
+  .side { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; font-size: 13px; color: var(--t2); line-height: 1.15; padding: 0 2px; }
+  .side b { font: 700 30px/1 var(--rounded); color: #fff; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+  .side small { font-size: 12.5px; }
+  .side .sf { width: 20px; height: 20px; color: var(--yellow); }
+  .side .n { font-size: 22px; font-weight: 700; color: #fff; font-family: var(--rounded); }
+  .side.row { flex-direction: row; gap: 8px; text-align: left; }
+  .side.row b { font-size: 24px; }
+  .bigrow { display: flex; align-items: center; gap: 14px; }
+  .flankcol { display: flex; flex-direction: column; gap: 8px; margin-left: auto; align-items: flex-start; }
+  .feedwrap { position: relative; flex: none; }
+  .feedwrap .feed.small { position: absolute; right: 8px; bottom: 8px; }
+  .feed.half { aspect-ratio: 2 / 1; }
+  .hidden { display: none !important; }
+  .phone .topbar .pill.segp { padding: 0 4px; gap: 2px; }
+  .phone .topbar .pill.segp > span { height: 36px; border-radius: 18px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; color: var(--t2); font-weight: 600; font-size: 15px; }
+  .phone .topbar .pill.segp > span.on { background: var(--c3); color: #fff; }
+  .ldot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; }
+  .phone .camwrap.topalign { justify-content: flex-start; padding-top: 36px; }
+  .camwrap .overlay { top: 0; bottom: 0; }
+  .camwrap .overlay .feed.small { position: absolute; right: 10px; top: 10px; width: 120px; }
+  .k { display: inline-flex; align-items: center; gap: 4px; }
+  .tip { font-size: 12.5px; color: var(--t2); display: flex; align-items: center; gap: 6px; padding: 0 2px; }
+  .tip .sf { width: 14px; height: 14px; }
+  .mini-ts { font: 11px var(--mono); color: var(--t3); }
+  .dm { font-size: 13px; color: var(--t2); background: rgba(255,255,255,.05); border-radius: 12px; padding: 10px 12px; max-width: 980px; margin: 12px 0 0; line-height: 1.45; }
+  .dm b { color: #ececef; }
+  .pcs { font-size: 12px; color: var(--t3); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Waiting Paws · заметки к выходам</h1>
+  <nav><a href="#a">A · Проверка плана</a><a href="#b">B · Во время тренировки</a><a href="#c">C · Текст тренера</a><a href="#d">D · Вторая камера</a><a href="#model">Модель данных</a></nav>
+  <div class="leg"><span><i class="sf" data-icon="bolt"></i>триггер</span><span><i class="sf" data-icon="run"></i>ранний вход</span><span><i class="sf" data-icon="bubble"></i>заметка</span><span><i class="sf" data-icon="doc"></i>полный текст</span><span><i class="sf" data-icon="flag"></i>не входить</span><span><i class="sf" data-icon="bookmark"></i>фальстарт</span></div>
+</header>
+<main>
+<div class="intro">
+  <h2>Варианты: условия выходов, полный текст тренера, вторая камера</h2>
+  <p>Все макеты собраны руками в HTML, заполнены двумя настоящими расписаниями (триггеровка 19.10 и тренировка 19.10). iPhone — 393×852 в натуральную величину, Mac/Windows — окно «Пульт» или его часть в уменьшенном масштабе. Цвета, кнопки и карточки — как в приложении сейчас. Кнопки «Вышли/Вернулись» и «Фальстарт», таймер и камера нигде не трогаются.</p>
+  <p><b>Как читаются расписания в макетах.</b> ⚡ триггер — что делает/берёт хозяин при этом выходе («куртка», «обувь», «взять ключи, звякнуть ими», «закрыть дверь на один оборот»); у выхода их 0…n. 🏃 ранний вход — когда вернуться раньше плана: «встала и пошла → через 2:00», «легла → через 0:30», «до вставания → сразу». В триггеровке они написаны один раз после всех выходов → предлагаются ко всем выходам, в тренировке — только под выходами 6 и 8 с разным временем. 📝 заметка — свободный текст выхода (хвост 🟡-строки, скобки, свои пометки), по умолчанию свёрнут. Общие правила (➡️ подготовка, перерывы, ритуал «пошуршать», 🚩 «лает — не входить», 🔖 фальстарт) остаются на уровне тренировки: показываются при проверке плана, 🚩 — во время выхода, всё — в полном тексте.</p>
+  <div class="srcs">
+    <details class="src"><summary>Расписание 1 · триггеровка (условия общие, после выходов)</summary><pre>🐹 ТРИГГЕРОВКА на понедельник - 19.10.2026
+Делаем через 1-1,5 часа и позже после основной тренировки, но не не поздно вечером➡️ За 30 минут включить музыку, открыть дверь изнутри, положить лежанку в коридор, положить/повесить куртку на виду у Мии
+➡️ В перерывах сидите за столом, работаете
+➡️ Все перерывы 2 минуты
+
+1 выход - 5 секунд
+2 выход - 10 секунд + куртка
+3 выход - 20 секунд + куртка
+4 выход - выйти, закрыть дверь на один оборот, подождать 10 секунд и вернуться
+5 выход - 5 секунд
+6 выход - выйти, закрыть дверь на один оборот, подождать 20 секунд и вернуться
+7 выход - 3 минуты + куртка + взять ключи, звякнуть ими
+
+🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+🟢 Если легла - входим через 30 секунд от укладки</pre></details>
+    <details class="src"><summary>Расписание 2 · тренировка (условия под выходами 6 и 8 + общие правила)</summary><pre>🐹 Тренировка на понедельник - 19.10.2026
+
+➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
+➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
+➡️ В перерывах сидите за столом, работаете
+➡️ Все перерывы 2 минуты
+➡️ Если лежит в лежанке, особо не шевелится, засыпает - перед выходом сначала шуршим на кухне/перемещаемся по квартире пока Мия не поднимет голову, затем сразу идём на выход
+1 выход - 5 секунд
+
+2 выход - 10 секунд + обувь
+
+3 выход - 20 секунд + обувь
+
+4 выход - 1 минута ИЛИ до вставания
+
+5 выход - 20 секунд + обувь
+
+6 выход - 4 минуты
+🟡 Если встала и пошла - входим через 1 минуту от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+🟢 Если легла - входим через 20 секунд от укладки
+
+7 выход - 20 секунд + обувь
+
+8 выход - 7 минут
+🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+🟢 Если легла - входим через 40 секунд от укладки
+
+
+🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери
+
+🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку</pre></details>
+  </div>
+</div>
+
+<!-- ============================================================ A ============================================================ -->
+<section class="area" id="a">
+  <h2><span class="ab">A</span>Проверка плана перед тренировкой</h2>
+  <p class="lead">Строка выхода отвечает на три вопроса: что взять с собой (⚡), когда вернуться раньше (🏃), что ещё помнить (📝). Иконки видны всегда: пустая — приглушённая, заполненная — белая с числом. Заметки свёрнуты. Общие правила расписания 2 (🚩, 🔖, подготовка) живут в отдельной карточке над списком; общие 🟡/🟢 расписания 1 предлагаются ко всем выходам одним действием. Три варианта отличаются тем, <i>где</i> редактируются условия: прямо в строке, в сводной строке + листе, или отдельным шагом назначения.</p>
+
+  <!-- A1 -->
+  <article class="variant" id="A1">
+    <div class="vhead"><span class="vid">A1</span><h3>Строка выхода раскрывается на месте</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Строка остаётся прежней (номер, степпер, перерыв), справа — кластер ⚡ 🏃 📝. Тап по строке раскрывает под ней редактор: чипы триггеров с подсказками из прошлых тренировок, условия «событие → через N» с меню, заметка. Остальные строки не двигаются, контекст списка сохраняется. На Mac — та же таблица с тремя колонками-иконками и раскрывающейся строкой-редактором; общие условия триггеровки — жёлтая полоса «применить ко всем / к длинным» под таблицей.</p>
+      <ul><li class="pro">один экран, ничего не открывается поверх; видно соседние выходы — удобно копировать «как в выходе 6»</li><li class="pro">иконки с числом читаются как чек-лист: сразу видно, у каких выходов пусто</li><li class="con">раскрытая строка длинная (≈300 pt), список прыгает; на iPhone редактировать два условия + заметку в тесной вкладке не так удобно, как в листе</li><li class="con">кластер из трёх иконок + перерыв впритык по ширине 393 pt</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="nav"><span class="rb"><i class="sf" data-icon="chevL"></i></span><span class="ttl">Проверьте план</span><span class="edit">Править</span></div>
+          <div class="scroll">
+            <div class="grp">
+              <div class="row"><span class="sp"><div class="hd">Тренировка на понедельник</div><div class="meta">19.10.2026 · Таня/Андрей</div></span><i class="sf" data-icon="chevR" style="color:var(--t3)"></i></div>
+              <div class="row"><i class="sf lead" data-icon="pause"></i><span class="sp">Перерыв между выходами</span><span class="val">2 мин</span></div>
+            </div>
+            <div class="grp coll open">
+              <div class="row coll-h"><i class="sf lead" data-icon="text"></i><span class="sp"><div class="hd">Правила на всю тренировку</div><div class="meta">подготовка · не входить · фальстарт</div></span><i class="sf chev" data-icon="chevD" style="color:var(--t3)"></i></div>
+              <div class="body">
+                <div class="row sub"><span class="dot b"></span><span class="sp">Подготовка · 4 пункта: второго человека увести за 30–40 мин, музыка, отпереть дверь, закрыть окна…</span></div>
+                <div class="row sub"><span class="dot b"></span><span class="sp">Если лежит и засыпает — перед выходом пошуршать на кухне, пока не поднимет голову</span></div>
+                <div class="row sub"><i class="sf" data-icon="flag" style="color:var(--red)"></i><span class="sp">Лает, воет — не входить. Ждём 30 с тишины или отхода от двери</span></div>
+                <div class="row sub"><i class="sf" data-icon="bookmark" style="color:var(--yellow)"></i><span class="sp">Фальстарт: к двери в первые 20 с длинного выхода → сразу назад; третий фальстарт — конец</span></div>
+              </div>
+            </div>
+            <div class="hdr">Выходы · 8 <span>≈ 27 мин 15 с</span></div>
+            <div class="grp">
+              <div class="exit"><div class="main"><span class="num">1</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>5 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb off"><i class="sf" data-icon="run"></i></span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+              <div class="exit"><div class="main"><span class="num">2</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>10 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb"><i class="sf" data-icon="bolt"></i>1</span><span class="icb off"><i class="sf" data-icon="run"></i></span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+              <div class="exit"><div class="main"><span class="num">3</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>20 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb"><i class="sf" data-icon="bolt"></i>1</span><span class="icb off"><i class="sf" data-icon="run"></i></span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+              <div class="exit"><div class="main"><span class="num">4</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>1 мин</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>1</span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+              <div class="exit"><div class="main"><span class="num">5</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>20 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb"><i class="sf" data-icon="bolt"></i>1</span><span class="icb off"><i class="sf" data-icon="run"></i></span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+              <div class="exit"><div class="main"><span class="num">6</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>4 мин</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+            </div>
+          </div>
+          <div class="footer"><div class="rowt"><i class="sf" data-icon="rec"></i>Записывать видео<span class="sp"></span><span class="toggle"></span></div><div class="bigbtn">▶&nbsp; Начать тренировку и запись</div></div>
+        </div>
+        <figcaption><b>iPhone, верх экрана (расписание 2).</b> Карточка «Правила на всю тренировку» раскрыта: подготовка, ритуал, 🚩 и 🔖 — то, что не принадлежит ни одному выходу. В строках кластер ⚡ 🏃 📝: у выхода 4 «ИЛИ до вставания» стало условием 🏃 1, у выхода 6 — 🏃 2 и заметка.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="nav"><span class="rb"><i class="sf" data-icon="chevL"></i></span><span class="ttl">Проверьте план</span><span class="edit">Править</span></div>
+          <div class="scroll">
+            <div class="grp" style="margin-top:-6px">
+              <div class="exit"><div class="main"><span class="num">5</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>20 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb"><i class="sf" data-icon="bolt"></i>1</span><span class="icb off"><i class="sf" data-icon="run"></i></span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+              <div class="exit"><div class="main"><span class="num">6</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>4 мин</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+              <div class="exit"><div class="main"><span class="num">7</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>20 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb"><i class="sf" data-icon="bolt"></i>1</span><span class="icb off"><i class="sf" data-icon="run"></i></span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div></div>
+              <div class="exit cur">
+                <div class="main"><span class="num">8</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>7 мин</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>конец</span></div>
+                <div class="ed">
+                  <h5><i class="sf" data-icon="bolt"></i>Триггеры<span class="sp"></span></h5>
+                  <div class="tgs"><span class="tg add"><i class="sf" data-icon="plus"></i>Добавить</span><span class="tg sug">обувь</span><span class="tg sug">куртка</span><span class="tg sug">ключи</span></div>
+                  <h5><i class="sf" data-icon="run"></i>Ранний вход<span class="sp"></span><span class="lnk">Как в выходе 6</span></h5>
+                  <div class="cond"><span class="dot y"></span>Встала и пошла<span class="arrow">→</span><span class="val"><i class="sf" data-icon="timer"></i>через 2:00<i class="sf" data-icon="chevD"></i></span></div>
+                  <div class="cond"><span class="dot g"></span>Легла<span class="arrow">→</span><span class="val"><i class="sf" data-icon="timer"></i>через 0:40<i class="sf" data-icon="chevD"></i></span></div>
+                  <div class="cond add"><i class="sf" data-icon="plus"></i>Условие: до вставания · встала · легла · своё</div>
+                  <h5><i class="sf" data-icon="bubble"></i>Заметка</h5>
+                  <div class="notef">…когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="footer"><div class="rowt"><i class="sf" data-icon="rec"></i>Записывать видео<span class="sp"></span><span class="toggle"></span></div><div class="bigbtn">▶&nbsp; Начать тренировку и запись</div></div>
+        </div>
+        <figcaption><b>iPhone, список прокручен, выход 8 раскрыт.</b> Триггеров нет — пунктирный «Добавить» и подсказки из прошлых тренировок. Условия «событие → через N»: тап по значению — колесо времени, «Как в выходе 6» копирует соседа. Хвост 🟡-строки тренера ушёл в заметку.</figcaption>
+      </figure>
+      <figure>
+        <div class="fit" style="--w:1290px;--h:790px;--s:.72">
+        <div class="sheet">
+          <div class="sh-head"><span class="ok"><i class="sf" data-icon="check"></i></span><div><b>Расписание разобрано</b><span>7 выходов, 10 триггеров, 2 условия раннего входа после всех выходов, 3 заметки. Проверьте и поправьте, если что-то прочитано не так.</span></div></div>
+          <div class="sh-body">
+            <div class="txt">
+              <div class="bar"><b><i class="sf" data-icon="doc"></i>Текст тренера</b><span>разобран автоматически ✓</span></div>
+              <div class="lines">
+                <div class="ln"><span class="n">1</span><span class="m"></span><span class="s">🐹 ТРИГГЕРОВКА на понедельник - 19.10.2026</span></div>
+                <div class="ln prep"><span class="n">2</span><span class="m"></span><span class="s">Делаем через 1-1,5 часа и позже после основной тренировки, но не не поздно вечером➡️ За 30 минут включить музыку, открыть дверь изнутри, положить лежанку в коридор, положить/повесить куртку на виду у Мии</span></div>
+                <div class="ln prep"><span class="n">3</span><span class="m"></span><span class="s">➡️ В перерывах сидите за столом, работаете</span></div>
+                <div class="ln prep"><span class="n">4</span><span class="m"></span><span class="s">➡️ Все перерывы <span class="d" style="color:var(--blue)">2 минуты</span></span></div>
+                <div class="ln"><span class="n">5</span><span class="m"></span><span class="s"> </span></div>
+                <div class="ln lx"><span class="n">6</span><span class="m"></span><span class="s">1 выход - <span class="d">5 секунд</span></span></div>
+                <div class="ln lx"><span class="n">7</span><span class="m"></span><span class="s">2 выход - <span class="d">10 секунд</span> + <span class="tg"><i class="sf" data-icon="bolt"></i>куртка</span></span></div>
+                <div class="ln lx"><span class="n">8</span><span class="m"></span><span class="s">3 выход - <span class="d">20 секунд</span> + <span class="tg"><i class="sf" data-icon="bolt"></i>куртка</span></span></div>
+                <div class="ln lx"><span class="n">9</span><span class="m"></span><span class="s">4 выход - выйти, <span class="tg"><i class="sf" data-icon="bolt"></i>закрыть дверь на один оборот</span>, подождать <span class="d">10 секунд</span> и вернуться</span></div>
+                <div class="ln lx"><span class="n">10</span><span class="m"></span><span class="s">5 выход - <span class="d">5 секунд</span></span></div>
+                <div class="ln lx"><span class="n">11</span><span class="m"></span><span class="s">6 выход - выйти, <span class="tg"><i class="sf" data-icon="bolt"></i>закрыть дверь на один оборот</span>, подождать <span class="d">20 секунд</span> и вернуться</span></div>
+                <div class="ln lx sel"><span class="n">12</span><span class="m"></span><span class="s">7 выход - <span class="d">3 минуты</span> + <span class="tg"><i class="sf" data-icon="bolt"></i>куртка</span> + <span class="tg"><i class="sf" data-icon="bolt"></i>взять ключи, звякнуть ими</span></span></div>
+                <div class="ln"><span class="n">13</span><span class="m"></span><span class="s"> </span></div>
+                <div class="ln cond"><span class="n">14</span><span class="m"></span><span class="s">🟡 Если встала и пошла - входим через <span class="d" style="color:var(--yellow)">2 минуты</span> от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</span><span class="bdg">→ все выходы</span></div>
+                <div class="ln cond g"><span class="n">15</span><span class="m"></span><span class="s">🟢 Если легла - входим через <span class="d" style="color:var(--green)">30 секунд</span> от укладки</span><span class="bdg g">→ все выходы</span></div>
+              </div>
+              <div class="sum"><span><i style="background:var(--pink)"></i>7 выходов</span><span><i style="background:var(--yellow)"></i>2 условия</span><span><i style="background:#5b7799"></i>3 заметки</span><span style="margin-left:auto">15 строк</span></div>
+            </div>
+            <div class="tbl">
+              <div class="form"><label>Название:</label><span class="field">Триггеровка на понедельник</span><label>Дата:</label><span class="field">19.10.2026</span><label>Тренеры:</label><span class="field">Таня/Андрей</span><label>Перерыв:</label><span class="inl"><span class="field" style="width:90px">2 мин<i class="sf" data-icon="chevD"></i></span><span class="mbtn">Сделать везде 2 мин</span></span></div>
+              <table class="ex">
+                <thead><tr><th>№</th><th>Начало</th><th>За дверью</th><th><i class="sf" data-icon="bolt"></i></th><th><i class="sf" data-icon="run"></i></th><th><i class="sf" data-icon="bubble"></i></th><th>Перерыв после</th><th style="text-align:right">Строка</th></tr></thead>
+                <tbody>
+                  <tr><td class="n"><span class="tri"></span>1</td><td class="start">+0:00</td><td class="d">5 с</td><td><span class="icb off"><i class="sf" data-icon="bolt"></i></span></td><td><span class="icb"><i class="sf" data-icon="run"></i>2</span></td><td><span class="icb off"><i class="sf" data-icon="bubble"></i></span></td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">6</td></tr>
+                  <tr class="alt"><td class="n"><span class="tri"></span>2</td><td class="start">+2:05</td><td class="d">10 с</td><td><span class="icb"><i class="sf" data-icon="bolt"></i>1</span></td><td><span class="icb"><i class="sf" data-icon="run"></i>2</span></td><td><span class="icb off"><i class="sf" data-icon="bubble"></i></span></td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">7</td></tr>
+                  <tr><td class="n"><span class="tri"></span>3</td><td class="start">+4:15</td><td class="d">20 с</td><td><span class="icb"><i class="sf" data-icon="bolt"></i>1</span></td><td><span class="icb"><i class="sf" data-icon="run"></i>2</span></td><td><span class="icb off"><i class="sf" data-icon="bubble"></i></span></td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">8</td></tr>
+                  <tr class="alt"><td class="n"><span class="tri"></span>4</td><td class="start">+6:35</td><td class="d">10 с</td><td><span class="icb"><i class="sf" data-icon="bolt"></i>1</span></td><td><span class="icb"><i class="sf" data-icon="run"></i>2</span></td><td><span class="icb"><i class="sf" data-icon="bubble"></i></span></td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">9</td></tr>
+                  <tr><td class="n"><span class="tri"></span>5</td><td class="start">+8:45</td><td class="d">5 с</td><td><span class="icb off"><i class="sf" data-icon="bolt"></i></span></td><td><span class="icb"><i class="sf" data-icon="run"></i>2</span></td><td><span class="icb off"><i class="sf" data-icon="bubble"></i></span></td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">10</td></tr>
+                  <tr class="alt"><td class="n"><span class="tri"></span>6</td><td class="start">+10:50</td><td class="d">20 с</td><td><span class="icb"><i class="sf" data-icon="bolt"></i>1</span></td><td><span class="icb"><i class="sf" data-icon="run"></i>2</span></td><td><span class="icb"><i class="sf" data-icon="bubble"></i></span></td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">11</td></tr>
+                  <tr class="sel"><td class="n"><span class="tri"></span>7</td><td class="start">+13:10</td><td class="d">3 мин</td><td><span class="icb"><i class="sf" data-icon="bolt"></i>2</span></td><td><span class="icb"><i class="sf" data-icon="run"></i>2</span></td><td><span class="icb off"><i class="sf" data-icon="bubble"></i></span></td><td>конец</td><td style="text-align:right;color:var(--t2)">12</td></tr>
+                  <tr class="sel"><td class="ed-cell" colspan="8">
+                    <div class="med">
+                      <div><h6><i class="sf" data-icon="bolt"></i>Триггеры</h6><div class="tgs"><span class="tg"><i class="sf" data-icon="bolt"></i>куртка<i class="sf x" data-icon="xmark"></i></span><span class="tg"><i class="sf" data-icon="bolt"></i>взять ключи, звякнуть ими<i class="sf x" data-icon="xmark"></i></span><span class="tg add"><i class="sf" data-icon="plus"></i></span></div></div>
+                      <div><h6><i class="sf" data-icon="run"></i>Ранний вход <span class="pcs">· из общих правил, стр. 14–15</span></h6><div class="cond"><span class="dot y"></span>Встала и пошла<span class="arrow">→</span><span class="val">через 2:00 ⌄</span></div><div class="cond"><span class="dot g"></span>Легла<span class="arrow">→</span><span class="val">через 0:30 ⌄</span></div></div>
+                      <div><h6><i class="sf" data-icon="bubble"></i>Заметка</h6><div class="notef"><span class="ph">Своя заметка к выходу 7…</span></div></div>
+                    </div>
+                  </td></tr>
+                </tbody>
+              </table>
+              <div class="tools"><i class="sf" data-icon="plus"></i><i class="sf" data-icon="minus"></i><span class="sp"></span>Перетащите строку, чтобы изменить порядок · ⌘D дублировать · ⌫ удалить</div>
+            </div>
+          </div>
+          <div class="rulebar"><div class="h"><i class="sf" data-icon="run"></i>Условия раннего входа написаны один раз после всех выходов (строки 14–15)<span class="sp"></span><span class="macseg"><span class="on">Ко всем 7</span><span>К длинным ≥ 1 мин · 1</span><span>Не применять</span></span></div><div class="d">🟡 встала и пошла → через 2:00 · 🟢 легла → через 0:30. У каждого выхода их потом можно поправить отдельно.</div></div>
+          <div class="sh-foot"><div><b>7 выходов · ≈ 17 мин</b> <span style="color:var(--t2)">за дверью 4 мин 10 с, перерывы 12 мин</span><div class="mini"><i class="e" style="width:4px"></i><i class="b" style="width:22px"></i><i class="e" style="width:5px"></i><i class="b" style="width:22px"></i><i class="e" style="width:7px"></i><i class="b" style="width:22px"></i><i class="e" style="width:5px"></i><i class="b" style="width:22px"></i><i class="e" style="width:4px"></i><i class="b" style="width:22px"></i><i class="e" style="width:7px"></i><i class="b" style="width:22px"></i><i class="e" style="width:34px"></i></div></div><span class="sp"></span><span><span class="chk on" style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#e8e8ea;vertical-align:-2px;margin-right:6px"></span>Записывать видео</span><span class="mbtn">Готово</span><span class="mbtn pri">▶ Начать тренировку и запись <span class="key">⌘↩</span></span></div>
+        </div>
+        </div>
+        <figcaption><b>Mac/Windows, лист разбора (расписание 1).</b> В тексте слева триггеры подсвечены чипами ⚡, 🟡/🟢-строки помечены «→ все выходы». В таблице три колонки-иконки; строка 7 раскрыта в редактор. Жёлтая полоса внизу — общие условия и выбор «ко всем / к длинным / не применять» (по умолчанию ко всем: для 5-секундного выхода условие просто не успеет сработать).</figcaption>
+      </figure>
+    </div>
+  </article>
+
+  <!-- A2 -->
+  <article class="variant" id="A2">
+    <div class="vhead"><span class="vid">A2</span><h3>Сводная строка под выходом + лист редактирования</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Каждый выход занимает две строки: первая — как сейчас, вторая — сводка словами: «⚡ куртка · ключи  🏃 встала → 2:00 · легла → 0:30  📝». Пустые категории остаются приглушёнными иконками с прочерком, поэтому список читается как текст тренера, только построчно. Тап по сводке открывает лист «Выход 7» со всеми полями. На Mac — вторая строка в таблице и инспектор выбранного выхода внизу листа (там, где сейчас показывается правило фальстарта).</p>
+      <ul><li class="pro">перед тренировкой видно всё без тапов — можно проверить разбор одним взглядом</li><li class="pro">редактор в листе просторный: степпер времени, чипы, условия, заметка, перерыв</li><li class="con">список длиннее в полтора раза; на 8 выходах придётся листать</li><li class="con">лист — ещё один экран (до тренировки это допустимо, камера ещё не запущена)</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="nav"><span class="rb"><i class="sf" data-icon="chevL"></i></span><span class="ttl">Проверьте план</span><span class="edit">Править</span></div>
+          <div class="scroll">
+            <div class="grp">
+              <div class="row"><span class="sp"><div class="hd">Триггеровка на понедельник</div><div class="meta">19.10.2026 · Таня/Андрей · перерывы 2 мин</div></span><i class="sf" data-icon="chevR" style="color:var(--t3)"></i></div>
+              <div class="row sub"><i class="sf" data-icon="text" style="color:var(--pink);width:22px;height:22px"></i><span class="sp">Правила на всю тренировку · 3</span><i class="sf" data-icon="chevR" style="color:var(--t3)"></i></div>
+            </div>
+            <div class="banner">
+              <div class="h"><i class="sf" data-icon="run"></i>Условия раннего входа — после всех выходов</div>
+              <div class="d">🟡 встала и пошла → через 2:00 · 🟢 легла → через 0:30. К каким выходам применить?</div>
+              <div class="seg"><span class="on">Ко всем</span><span>К длинным ≥ 1 мин</span><span>Выбрать</span></div>
+            </div>
+            <div class="hdr">Выходы · 7 <span>≈ 17 мин</span></div>
+            <div class="grp">
+              <div class="exit"><div class="main"><span class="num">1</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>5 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div>
+                <div class="sum"><span class="k off"><i class="sf" data-icon="bolt"></i>—</span><span class="k"><i class="sf" data-icon="run"></i>встала → 2:00 · легла → 0:30</span><span class="k off"><i class="sf" data-icon="bubble"></i></span></div></div>
+              <div class="exit"><div class="main"><span class="num">2</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>10 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div>
+                <div class="sum"><span class="k"><i class="sf" data-icon="bolt"></i>куртка</span><span class="k"><i class="sf" data-icon="run"></i>встала → 2:00 · легла → 0:30</span><span class="k off"><i class="sf" data-icon="bubble"></i></span></div></div>
+              <div class="exit"><div class="main"><span class="num">3</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>20 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div>
+                <div class="sum"><span class="k"><i class="sf" data-icon="bolt"></i>куртка</span><span class="k"><i class="sf" data-icon="run"></i>встала → 2:00 · легла → 0:30</span><span class="k off"><i class="sf" data-icon="bubble"></i></span></div></div>
+              <div class="exit"><div class="main"><span class="num">4</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>10 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div>
+                <div class="sum"><span class="k"><i class="sf" data-icon="bolt"></i>закрыть дверь на один оборот</span><span class="k"><i class="sf" data-icon="run"></i>встала → 2:00 · легла → 0:30</span><span class="k"><i class="sf" data-icon="bubble"></i>1</span></div></div>
+              <div class="exit"><div class="main"><span class="num">5</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>5 с</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span><span class="brk"><i class="sf" data-icon="pause"></i>2 мин</span></div>
+                <div class="sum"><span class="k off"><i class="sf" data-icon="bolt"></i>—</span><span class="k"><i class="sf" data-icon="run"></i>встала → 2:00 · легла → 0:30</span><span class="k off"><i class="sf" data-icon="bubble"></i></span></div></div>
+            </div>
+          </div>
+          <div class="footer"><div class="rowt"><i class="sf" data-icon="rec"></i>Записывать видео<span class="sp"></span><span class="toggle"></span></div><div class="bigbtn">▶&nbsp; Начать тренировку и запись</div></div>
+        </div>
+        <figcaption><b>iPhone (расписание 1).</b> Жёлтая карточка — общие 🟡/🟢 с выбором «ко всем / к длинным / выбрать»; после выбора условия появляются в сводках. У выхода 4 заметка «выйти… подождать… и вернуться» и триггер «закрыть дверь на один оборот».</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="nav"><span class="edit" style="background:transparent;padding:0">Отмена</span><span class="ttl">Выход 7</span><span class="edit" style="background:transparent;padding:0;font-weight:600">Готово</span></div>
+          <div class="scroll">
+            <div class="grp">
+              <div class="row"><span class="sp">За дверью</span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>3 мин</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span></div>
+              <div class="row"><span class="sp">Перерыв после</span><span class="val">2 мин · общий</span><i class="sf" data-icon="chevR" style="color:var(--t3)"></i></div>
+            </div>
+            <div class="sec-h"><i class="sf" data-icon="bolt"></i>Триггеры на выходе</div>
+            <div class="grp"><div class="row" style="flex-wrap:wrap;gap:8px"><div class="tgs"><span class="tg"><i class="sf" data-icon="bolt"></i>куртка<i class="sf x" data-icon="xmark"></i></span><span class="tg"><i class="sf" data-icon="bolt"></i>взять ключи, звякнуть ими<i class="sf x" data-icon="xmark"></i></span><span class="tg add"><i class="sf" data-icon="plus"></i>Добавить</span></div></div></div>
+            <div class="sec-h"><i class="sf" data-icon="run"></i>Ранний вход<span class="sp"></span><span class="lnk">Ко всем выходам</span></div>
+            <div class="grp">
+              <div class="row"><span class="dot y"></span><span class="sp">Встала и пошла <span class="cond" style="display:inline-flex;min-height:0;gap:0"><span class="src">общее</span></span></span><span class="val" style="color:#fff;font-weight:600">через 2:00</span><i class="sf" data-icon="chevR" style="color:var(--t3)"></i></div>
+              <div class="row"><span class="dot g"></span><span class="sp">Легла</span><span class="val" style="color:#fff;font-weight:600">через 0:30</span><i class="sf" data-icon="chevR" style="color:var(--t3)"></i></div>
+              <div class="row"><i class="sf" data-icon="stand" style="color:var(--t2);width:22px;height:22px"></i><span class="sp">До вставания — сразу</span><span class="toggle off"></span></div>
+              <div class="row" style="color:var(--pink)"><i class="sf" data-icon="plus"></i>Своё условие</div>
+            </div>
+            <div class="sec-h"><i class="sf" data-icon="bubble"></i>Заметка</div>
+            <div class="grp"><div class="row"><div class="notef" style="background:transparent;padding:0;width:100%">Когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру. Ключами звякнуть уже за дверью.</div></div></div>
+            <div class="sec-h"><i class="sf" data-icon="flag"></i>На всю тренировку</div>
+            <div class="grp"><div class="row sub"><span class="sp">🚩 Лает, воет — не входить · 🔖 фальстарт</span><i class="sf" data-icon="chevR" style="color:var(--t3)"></i></div></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, лист «Выход 7».</b> Открывается тапом по сводной строке. Условия — строки «событие → через N» с меткой «общее», если пришли из общих правил; «До вставания — сразу» стало переключателем-условием (нынешний флажок ИЛИ до вставания). Внизу напоминание про правила тренировки.</figcaption>
+      </figure>
+      <figure>
+        <div class="fit" style="--w:1290px;--h:790px;--s:.72">
+        <div class="sheet">
+          <div class="sh-head"><span class="ok"><i class="sf" data-icon="check"></i></span><div><b>Расписание разобрано</b><span>8 выходов, 4 триггера, условия раннего входа у выходов 4, 6 и 8, правило фальстарта, 5 заметок. Проверьте и поправьте, если что-то прочитано не так.</span></div></div>
+          <div class="sh-body">
+            <div class="txt">
+              <div class="bar"><b><i class="sf" data-icon="doc"></i>Текст тренера</b><span>разобран автоматически ✓</span></div>
+              <div class="lines">
+                <div class="ln prep"><span class="n">7</span><span class="m"></span><span class="s">➡️ Если лежит в лежанке, особо не шевелится, засыпает - перед выходом сначала шуршим на кухне/перемещаемся по квартире пока Мия не поднимет голову, затем сразу идём на выход</span><span class="bdg p">перерыв</span></div>
+                <div class="ln lx"><span class="n">8</span><span class="m"></span><span class="s">1 выход - <span class="d">5 секунд</span></span></div>
+                <div class="ln lx"><span class="n">10</span><span class="m"></span><span class="s">2 выход - <span class="d">10 секунд</span> + <span class="tg"><i class="sf" data-icon="bolt"></i>обувь</span></span></div>
+                <div class="ln lx"><span class="n">12</span><span class="m"></span><span class="s">3 выход - <span class="d">20 секунд</span> + <span class="tg"><i class="sf" data-icon="bolt"></i>обувь</span></span></div>
+                <div class="ln lx"><span class="n">14</span><span class="m"></span><span class="s">4 выход - <span class="d">1 минута</span> ИЛИ до вставания <span class="cd">🏃 сразу</span></span></div>
+                <div class="ln lx"><span class="n">16</span><span class="m"></span><span class="s">5 выход - <span class="d">20 секунд</span> + <span class="tg"><i class="sf" data-icon="bolt"></i>обувь</span></span></div>
+                <div class="ln lx"><span class="n">18</span><span class="m"></span><span class="s">6 выход - <span class="d">4 минуты</span></span></div>
+                <div class="ln cond"><span class="n">19</span><span class="m"></span><span class="s">🟡 Если встала и пошла - входим через <span class="d" style="color:var(--yellow)">1 минуту</span> от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</span><span class="bdg">→ выход 6</span></div>
+                <div class="ln cond g"><span class="n">20</span><span class="m"></span><span class="s">🟢 Если легла - входим через <span class="d" style="color:var(--green)">20 секунд</span> от укладки</span><span class="bdg g">→ выход 6</span></div>
+                <div class="ln lx"><span class="n">22</span><span class="m"></span><span class="s">7 выход - <span class="d">20 секунд</span> + <span class="tg"><i class="sf" data-icon="bolt"></i>обувь</span></span></div>
+                <div class="ln lx sel"><span class="n">24</span><span class="m"></span><span class="s">8 выход - <span class="d">7 минут</span></span></div>
+                <div class="ln cond sel"><span class="n">25</span><span class="m"></span><span class="s">🟡 Если встала и пошла - входим через <span class="d" style="color:var(--yellow)">2 минуты</span> от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</span><span class="bdg">→ выход 8</span></div>
+                <div class="ln cond g sel"><span class="n">26</span><span class="m"></span><span class="s">🟢 Если легла - входим через <span class="d" style="color:var(--green)">40 секунд</span> от укладки</span><span class="bdg g">→ выход 8</span></div>
+                <div class="ln rule"><span class="n">29</span><span class="m"></span><span class="s">🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери</span><span class="bdg r">все выходы</span></div>
+                <div class="ln fs"><span class="n">31</span><span class="m"></span><span class="s">🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку</span><span class="bdg">правило</span></div>
+              </div>
+              <div class="sum"><span><i style="background:var(--pink)"></i>8 выходов</span><span><i style="background:var(--yellow)"></i>5 условий</span><span><i style="background:var(--red)"></i>не входить</span><span><i style="background:#5b7799"></i>5 правил</span><span style="margin-left:auto">31 строка</span></div>
+            </div>
+            <div class="tbl">
+              <div class="form"><label>Название:</label><span class="field">Тренировка на понедельник</span><label>Дата:</label><span class="field">19.10.2026</span><label>Тренеры:</label><span class="field">Таня/Андрей</span><label>Перерыв:</label><span class="inl"><span class="field" style="width:90px">2 мин<i class="sf" data-icon="chevD"></i></span><span class="mbtn">Сделать везде 2 мин</span></span></div>
+              <div class="rulechips"><span class="pcs" style="align-self:center">Правила тренировки:</span><span class="rc b"><i class="sf" data-icon="text"></i>Подготовка · 4</span><span class="rc b"><i class="sf" data-icon="pause"></i>В перерывах — за столом</span><span class="rc g"><i class="sf" data-icon="dog"></i>Если засыпает — пошуршать</span><span class="rc r"><i class="sf" data-icon="flag"></i>Лает — не входить</span><span class="rc y"><i class="sf" data-icon="bookmark"></i>Фальстарт</span></div>
+              <table class="ex">
+                <thead><tr><th>№</th><th>Начало</th><th>За дверью</th><th>Перерыв после</th><th style="text-align:right">Строка</th></tr></thead>
+                <tbody>
+                  <tr><td class="n">4</td><td class="start">+4:45</td><td class="d">1 мин</td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">14</td></tr>
+                  <tr><td class="sumrow" colspan="5"><span class="k off"><i class="sf" data-icon="bolt"></i>—</span><span class="k"><i class="sf" data-icon="run"></i>до вставания → сразу</span><span class="k off"><i class="sf" data-icon="bubble"></i></span></td></tr>
+                  <tr class="alt"><td class="n">5</td><td class="start">+7:45</td><td class="d">20 с</td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">16</td></tr>
+                  <tr class="alt"><td class="sumrow" colspan="5"><span class="k"><i class="sf" data-icon="bolt"></i>обувь</span><span class="k off"><i class="sf" data-icon="run"></i>—</span><span class="k off"><i class="sf" data-icon="bubble"></i></span></td></tr>
+                  <tr><td class="n">6</td><td class="start">+10:05</td><td class="d">4 мин</td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">18</td></tr>
+                  <tr><td class="sumrow" colspan="5"><span class="k off"><i class="sf" data-icon="bolt"></i>—</span><span class="k"><i class="sf" data-icon="run"></i>встала → 1:00 · легла → 0:20</span><span class="k"><i class="sf" data-icon="bubble"></i>1</span></td></tr>
+                  <tr class="alt"><td class="n">7</td><td class="start">+16:05</td><td class="d">20 с</td><td>2 мин ⌄</td><td style="text-align:right;color:var(--t2)">22</td></tr>
+                  <tr class="alt"><td class="sumrow" colspan="5"><span class="k"><i class="sf" data-icon="bolt"></i>обувь</span><span class="k off"><i class="sf" data-icon="run"></i>—</span><span class="k off"><i class="sf" data-icon="bubble"></i></span></td></tr>
+                  <tr class="sel"><td class="n">8</td><td class="start">+18:25</td><td class="d">7 мин</td><td>конец</td><td style="text-align:right;color:var(--t2)">24</td></tr>
+                  <tr class="sel"><td class="sumrow" colspan="5"><span class="k off"><i class="sf" data-icon="bolt"></i>—</span><span class="k"><i class="sf" data-icon="run"></i>встала → 2:00 · легла → 0:40</span><span class="k"><i class="sf" data-icon="bubble"></i>1</span></td></tr>
+                </tbody>
+              </table>
+              <div class="tools"><i class="sf" data-icon="plus"></i><i class="sf" data-icon="minus"></i><span class="sp"></span>Перетащите строку, чтобы изменить порядок · ⌘D дублировать · ⌫ удалить</div>
+            </div>
+          </div>
+          <div class="inspector">
+            <div class="h">Выход 8 · 7 мин <span class="pcs">строки 24–26</span><span class="sp"></span><span class="mbtn">Скопировать условия в… ⌄</span></div>
+            <div class="med" style="padding-top:0">
+              <div><h6><i class="sf" data-icon="bolt"></i>Триггеры</h6><div class="tgs"><span class="tg add"><i class="sf" data-icon="plus"></i>Добавить</span><span class="tg sug">обувь</span><span class="tg sug">куртка</span><span class="tg sug">ключи</span></div></div>
+              <div><h6><i class="sf" data-icon="run"></i>Ранний вход</h6><div class="cond"><span class="dot y"></span>Встала и пошла<span class="arrow">→</span><span class="val">через 2:00 ⌄</span></div><div class="cond"><span class="dot g"></span>Легла<span class="arrow">→</span><span class="val">через 0:40 ⌄</span></div><div class="cond add" style="font-size:12px"><i class="sf" data-icon="plus"></i>Условие</div></div>
+              <div><h6><i class="sf" data-icon="bubble"></i>Заметка</h6><div class="notef">Когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</div></div>
+            </div>
+          </div>
+          <div class="sh-foot"><div><b>8 выходов · ≈ 27 мин</b> <span style="color:var(--t2)">за дверью 13 мин 15 с, перерывы 14 мин</span></div><span class="sp"></span><span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#e8e8ea;vertical-align:-2px;margin-right:6px"></span>Записывать видео</span><span class="mbtn">Готово</span><span class="mbtn pri">▶ Начать тренировку и запись <span class="key">⌘↩</span></span></div>
+        </div>
+        </div>
+        <figcaption><b>Mac/Windows (расписание 2).</b> Таблица двухстрочная, как Finder в режиме списка; строка-сводка под каждым выходом. Над таблицей чипы общих правил (клик подсвечивает строку в тексте). Внизу инспектор выбранного выхода 8 — редактор на месте сегодняшней плашки «Правило фальстарта». В тексте 🟡/🟢 под выходами помечены «→ выход 6», «→ выход 8».</figcaption>
+      </figure>
+    </div>
+  </article>
+
+  <!-- A3 -->
+  <article class="variant" id="A3">
+    <div class="vhead"><span class="vid">A3</span><h3>Назначение условий отдельным шагом</h3><span class="plat">iPhone (на Mac — та же полоса, что в A1)</span></div>
+    <div class="why">
+      <p>Если парсер нашёл условия раннего входа, которые не стоят под конкретным выходом (расписание 1), перед «Проверьте план» показывается шаг «Ранний вход»: сами условия крупно с редактируемым временем, быстрый выбор «ко всем / к длинным / вручную» и сетка выходов, где можно снять или поставить галочку. Для расписания 2 шаг пропускается — условия уже привязаны. Сам список выходов дальше — как в A2.</p>
+      <ul><li class="pro">явно отвечает на главный вопрос «к чему относится правило», неоднозначность не прячется в таблице</li><li class="pro">сетка выходов — самый быстрый способ сделать «ко всем, кроме 1 и 5»</li><li class="con">лишний экран, когда расписание простое; придётся объяснять, почему он то есть, то нет</li><li class="con">условия всё равно потом редактируются во второй раз в списке — две точки правды</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="nav"><span class="rb"><i class="sf" data-icon="chevL"></i></span><span class="ttl">Ранний вход</span><span class="edit" style="background:transparent;padding:0">Пропустить</span></div>
+          <div class="scroll">
+            <div class="tip" style="font-size:14px;line-height:1.3;padding:0 4px">Тренер написал условия один раз, после всех выходов. К каким выходам они относятся?</div>
+            <div class="grp">
+              <div class="row"><span class="dot y"></span><span class="sp">Встала и пошла<div class="meta">входим, когда сняла фокус с двери</div></span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>2:00</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span></div>
+              <div class="row"><span class="dot g"></span><span class="sp">Легла<div class="meta">от укладки</div></span><span class="stepper"><span class="sb"><i class="sf" data-icon="minus"></i></span><b>0:30</b><span class="sb"><i class="sf" data-icon="plus"></i></span></span></div>
+            </div>
+            <div class="seg"><span class="on">Ко всем</span><span>К длинным ≥ 1 мин</span><span>Вручную</span></div>
+            <div class="ex-grid">
+              <div class="e on"><b>1</b><span>5 с</span><span class="ck"><i class="sf" data-icon="check"></i></span></div>
+              <div class="e on"><b>2</b><span>10 с <i class="sf" data-icon="bolt"></i></span><span class="ck"><i class="sf" data-icon="check"></i></span></div>
+              <div class="e on"><b>3</b><span>20 с <i class="sf" data-icon="bolt"></i></span><span class="ck"><i class="sf" data-icon="check"></i></span></div>
+              <div class="e on"><b>4</b><span>10 с <i class="sf" data-icon="bolt"></i></span><span class="ck"><i class="sf" data-icon="check"></i></span></div>
+              <div class="e on"><b>5</b><span>5 с</span><span class="ck"><i class="sf" data-icon="check"></i></span></div>
+              <div class="e on"><b>6</b><span>20 с <i class="sf" data-icon="bolt"></i></span><span class="ck"><i class="sf" data-icon="check"></i></span></div>
+              <div class="e on"><b>7</b><span>3 мин <i class="sf" data-icon="bolt"></i><i class="sf" data-icon="bolt"></i></span><span class="ck"><i class="sf" data-icon="check"></i></span></div>
+            </div>
+            <div class="sec-h" style="margin-top:6px"><i class="sf" data-icon="flag"></i>На всю тренировку</div>
+            <div class="grp">
+              <div class="row"><i class="sf" data-icon="flag" style="color:var(--red);width:22px;height:22px"></i><span class="sp">Лает, воет — не входить<div class="meta">показывать во время каждого выхода</div></span><span class="toggle"></span></div>
+              <div class="row"><i class="sf" data-icon="pause" style="color:var(--blue);width:22px;height:22px"></i><span class="sp">В перерывах — сидите за столом<div class="meta">показывать в перерыве</div></span><span class="toggle"></span></div>
+            </div>
+            <div class="bigbtn" style="margin-top:4px">Далее — проверить план</div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, шаг между вставкой текста и «Проверьте план» (расписание 1).</b> Условия с шагом времени, быстрый выбор, сетка выходов с галочками. Ниже — какие общие правила показывать во время тренировки (🚩 на выходе, «в перерывах» — в перерыве).</figcaption>
+      </figure>
+    </div>
+  </article>
+</section>
+
+<!-- ============================================================ B ============================================================ -->
+<section class="area" id="b">
+  <h2><span class="ab">B</span>Во время тренировки — карточка под камерой</h2>
+  <p class="lead">Снаружи, за дверью, важны три вещи: условия раннего входа текущего выхода (крупно и коротко), 🚩 «лает — не входить» и, по желанию, заметка. В перерыве — что подготовить к следующему выходу (⚡ триггеры чек-листом) и правило перерыва/ритуал. Таймер и две большие кнопки не двигаются. Состояния: за дверью на выходе 8 расписания 2 (7 мин, 🟡 2:00, 🟢 0:40) и перерыв перед выходом 7 расписания 1 (3 мин + куртка + ключи).</p>
+
+  <!-- B1 -->
+  <article class="variant" id="B1">
+    <div class="vhead"><span class="vid">B1</span><h3>Список условий под таймером</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Под строкой «План 7 мин» появляются строки-плашки: цветная точка тренера (🟡/🟢), событие, справа крупно «через 2:00». Красная плашка — 🚩 «не входить». Заметка — свёрнутая строка с первой фразой. В перерыве те же плашки становятся чек-листом триггеров следующего выхода и напоминанием «в перерыве — за столом». В заголовке карточки — мини-кластер ⚡ 🏃 📝 текущего выхода. На Mac раздел «Ранний вход» встаёт под кнопками, в пустую сейчас часть панели.</p>
+      <ul><li class="pro">читается сверху вниз, как написал тренер; плашки большие, видны с расстояния вытянутой руки</li><li class="pro">карточка растёт только на то, что есть у выхода: у «5 с без условий» она как сегодня</li><li class="con">карточка выше примерно на 150 pt — камера поднимается вверх, пустого чёрного поля над ней почти не остаётся</li><li class="con">три плашки одной формы — цвета точек должны тянуть всю разницу</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="24:12" data-doc="1"></div>
+          <div class="camwrap"><div class="feed" data-ts="2026/10/19 18:41:08"></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="ttl">Выход 8<span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="ring" data-pct="40" data-time="4:12" data-color="pink"></div>
+            <div class="plan">План 7 мин</div>
+            <div class="cl-list">
+              <div class="cl"><span class="dot y"></span><span class="when">Встала и пошла</span><span class="then"><small>через</small>2:00</span></div>
+              <div class="cl"><span class="dot g"></span><span class="when">Легла</span><span class="then"><small>через</small>0:40</span></div>
+              <div class="cl stop"><i class="sf lead" data-icon="flag" style="color:var(--red)"></i><span class="when">Лает, воет</span><span class="then">не входить</span></div>
+            </div>
+            <div class="rowline coll-h coll"><i class="sf" data-icon="bubble"></i><span class="sp">…когда сняла фокус внимания с двери: села, исследует</span><i class="sf chev" data-icon="chevD"></i></div>
+            <div class="btns" data-state="outside"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, за дверью, выход 8 (расписание 2).</b> Две плашки условий + красная 🚩. Заметка свёрнута в одну строку; тап раскрывает её над кнопками. Кнопка <i class="sf" data-icon="doc"></i> в верхней панели — полный текст (раздел C).</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="13:02" data-doc="1"></div>
+          <div class="camwrap"><div class="feed" data-ts="2026/10/19 20:13:40"></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div>
+            <div class="ttl">Перерыв<span class="sub">до выхода 7</span><span class="ic3"><span class="icb"><i class="sf" data-icon="bolt"></i>2</span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="ring" data-pct="92" data-time="1:51" data-color="blue"></div>
+            <div class="plan">Следующий выход 7 — 3 мин</div>
+            <div class="cl-list">
+              <div class="cl tg"><i class="sf lead" data-icon="bolt"></i><span class="when">Надеть куртку</span><span class="chk"></span></div>
+              <div class="cl tg"><i class="sf lead" data-icon="bolt"></i><span class="when">Взять ключи, звякнуть ими</span><span class="chk"></span></div>
+              <div class="cl dim"><i class="sf lead" data-icon="pause"></i><span class="when">В перерыве сидите за столом, работаете</span></div>
+            </div>
+            <div class="rowline"><i class="sf" data-icon="run"></i><span class="sp">На выходе: встала → 2:00 · легла → 0:30</span></div>
+            <div class="btns" data-state="break"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, перерыв перед выходом 7 (расписание 1).</b> Триггеры следующего выхода — чек-лист (кружки можно отмечать, но «Вышли» это не блокирует), правило перерыва приглушено, условия будущего выхода одной строкой.</figcaption>
+      </figure>
+      <figure>
+        <div class="panel" style="height:760px">
+          <div class="ro">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="t">Выход 8<span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="s">План 7 мин</div>
+            <div class="big pink">4:12</div>
+            <div class="bar"><i class="pink" style="width:40%"></i></div>
+            <div class="cap">осталось</div>
+          </div>
+          <div class="mbtns" data-state="outside"></div>
+          <div class="psec">
+            <h4><i class="sf" data-icon="run"></i>Ранний вход</h4>
+            <div class="cl"><span class="dot y"></span><span class="when">Встала и пошла<small>когда сняла фокус внимания с двери</small></span><span class="then"><small>через</small>2:00</span></div>
+            <div class="cl"><span class="dot g"></span><span class="when">Легла<small>от укладки</small></span><span class="then"><small>через</small>0:40</span></div>
+            <div class="cl stop"><i class="sf lead" data-icon="flag" style="color:var(--red)"></i><span class="when">Лает, воет, скребёт дверь<small>ждём 30 с тишины или отхода от двери</small></span><span class="then">не входить</span></div>
+          </div>
+          <div class="psec coll"><h4 class="coll-h"><i class="sf" data-icon="bubble"></i>Заметка к выходу<span class="sp"></span><i class="sf chev" data-icon="chevD"></i></h4><div class="body notebox" style="margin:0">Когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</div></div>
+          <div class="psec coll"><h4 class="coll-h"><i class="sf" data-icon="text"></i>Правила тренировки · 5<span class="sp"></span><i class="sf chev" data-icon="chevD"></i></h4><div class="body notebox" style="margin:0">🔖 Фальстарт: к двери в первые 20 с длинного выхода → сразу назад, третий фальстарт — конец<br>➡️ В перерывах сидите за столом<br>➡️ Если засыпает — пошуршать перед выходом</div></div>
+        </div>
+        <figcaption><b>Mac/Windows, правая панель «Пульта».</b> Карточка таймера и кнопки без изменений; ниже секция «Ранний вход» с подстрочниками, свёрнутые «Заметка» и «Правила тренировки» (раскрываются кликом — попробуйте).</figcaption>
+      </figure>
+    </div>
+  </article>
+
+  <!-- B2 -->
+  <article class="variant" id="B2">
+    <div class="vhead"><span class="vid">B2</span><h3>Условия по бокам от кольца</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Слева и справа от кольца таймера сейчас пусто — туда встают два условия: точка, короткое событие, время крупно. Под кольцом одна строка: «План 7 мин · 🚩 лает — не входить», ниже свёрнутая заметка. В перерыве слева «следующий 7 · 3 мин», справа триггеры. Карточка почти не вырастает (+30 pt), камера остаётся на своём месте. На Mac условия встают справа от больших цифр внутри карточки таймера.</p>
+      <ul><li class="pro">самое компактное: карточка и камера практически как сегодня</li><li class="pro">глаз уже смотрит на кольцо — условия в том же поле зрения</li><li class="con">вмещает ровно два условия; третье (своё) уходит в свёрнутую заметку</li><li class="con">по 100 pt на сторону: «взять ключи, звякнуть ими» приходится сокращать до «ключи»</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="24:12" data-doc="1"></div>
+          <div class="camwrap"><div class="feed" data-ts="2026/10/19 18:41:08"></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="ttl">Выход 8<span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="flank">
+              <div class="side"><span class="dot y"></span><small>встала и пошла</small><b>2:00</b></div>
+              <div class="ring" data-pct="40" data-time="4:12" data-color="pink"></div>
+              <div class="side"><span class="dot g"></span><small>легла</small><b>0:40</b></div>
+            </div>
+            <div class="plan">План 7 мин · <span style="color:var(--red)"><i class="sf" data-icon="flag"></i> лает — не входить</span></div>
+            <div class="rowline coll-h coll"><i class="sf" data-icon="bubble"></i><span class="sp">…когда сняла фокус внимания с двери: села, исследует</span><i class="sf chev" data-icon="chevD"></i></div>
+            <div class="btns" data-state="outside"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, за дверью, выход 8.</b> Условия в «ушах» кольца, 🚩 в строке плана красным. Если условий нет — «уши» пустые, карточка выглядит как сегодня.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="13:02" data-doc="1"></div>
+          <div class="camwrap"><div class="feed" data-ts="2026/10/19 20:13:40"></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div>
+            <div class="ttl">Перерыв<span class="ic3"><span class="icb"><i class="sf" data-icon="bolt"></i>2</span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb off"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="flank">
+              <div class="side"><small>следующий</small><span class="n">7 · 3 мин</span><small>встала 2:00 · легла 0:30</small></div>
+              <div class="ring" data-pct="92" data-time="1:51" data-color="blue"></div>
+              <div class="side"><i class="sf" data-icon="bolt"></i><small>надеть куртку</small><small>взять ключи, звякнуть</small></div>
+            </div>
+            <div class="plan"><small>В перерыве сидите за столом, работаете</small></div>
+            <div class="rowline coll-h coll"><i class="sf" data-icon="bubble"></i><span class="sp">Заметок к выходу 7 нет</span><i class="sf" data-icon="plus"></i></div>
+            <div class="btns" data-state="break"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, перерыв перед выходом 7.</b> Слева — следующий выход и его условия мелко, справа — что подготовить. Правило перерыва — строкой под кольцом.</figcaption>
+      </figure>
+      <figure>
+        <div class="panel" style="height:760px">
+          <div class="ro">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="t">Выход 8<span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="s">План 7 мин</div>
+            <div class="bigrow"><div class="big pink">4:12</div><div class="flankcol"><div class="side row"><span class="dot y"></span><span style="text-align:left">встала и пошла<br><b>через 2:00</b></span></div><div class="side row"><span class="dot g"></span><span style="text-align:left">легла<br><b>через 0:40</b></span></div></div></div>
+            <div class="bar"><i class="pink" style="width:40%"></i></div>
+            <div class="cap">осталось · <span style="color:var(--red)"><i class="sf" data-icon="flag"></i> лает, воет — не входить</span></div>
+          </div>
+          <div class="mbtns" data-state="outside"></div>
+          <div class="psec coll"><h4 class="coll-h"><i class="sf" data-icon="bubble"></i>Заметка к выходу<span class="sp"></span><i class="sf chev" data-icon="chevD"></i></h4><div class="body notebox" style="margin:0">Когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</div></div>
+          <div class="psec coll"><h4 class="coll-h"><i class="sf" data-icon="text"></i>Правила тренировки · 5<span class="sp"></span><i class="sf chev" data-icon="chevD"></i></h4><div class="body notebox" style="margin:0">🔖 Фальстарт: к двери в первые 20 с длинного выхода → сразу назад<br>➡️ В перерывах сидите за столом<br>➡️ Если засыпает — пошуршать перед выходом</div></div>
+        </div>
+        <figcaption><b>Mac/Windows.</b> Условия справа от цифр внутри карточки; 🚩 в подписи под полосой. Кнопки на прежнем месте, ниже свёрнутые заметка и правила.</figcaption>
+      </figure>
+    </div>
+  </article>
+
+  <!-- B3 -->
+  <article class="variant" id="B3">
+    <div class="vhead"><span class="vid">B3</span><h3>Условия-кнопки: тап запускает отсчёт «входим через»</h3><span class="plat">iPhone · Mac/Windows</span><span class="tag idea">доп. идея</span></div>
+    <div class="why">
+      <p>Условия — две крупные плитки. Когда собака встала, хозяин тапает 🟡 — плитка превращается в отсчёт «входим через 1:37», внутри кольца появляется второе, жёлтое кольцо, а в центре вместо остатка плана — время до входа (план уходит в подпись). Тап по 🚩 запускает «30 с тишины», сброс при новом лае. По нулю плитка вспыхивает, «Вернулись» подсвечивается. Момент «встала»/«легла» пишется на таймлайн и в запись — тренеру потом это ценно. В перерыве плитки — чек-лист триггеров.</p>
+      <ul><li class="pro">снимает счёт в голове («встала в 18:43:30, значит входим в 18:45:30») — главный источник ошибок снаружи</li><li class="pro">бесплатно даёт разметку событий для истории и тренера</li><li class="con">новый элемент управления рядом с большими кнопками; случайный тап — ложный отсчёт (нужен «отменить»)</li><li class="con">самая большая карточка из трёх; два кольца в одном — надо проверять читаемость</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="24:12" data-doc="1"></div>
+          <div class="camwrap"><div class="feed" data-ts="2026/10/19 18:43:53"></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="ttl">Выход 8<span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb y"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="ring" data-pct="38" data-time="1:37" data-sub="входим через" data-color="pink" data-inner="80" data-inner-color="yellow" data-warn="1"></div>
+            <div class="plan">План 7 мин · осталось 4:12</div>
+            <div class="cl-grid">
+              <div class="cl tile active"><span class="rowline" style="padding:0;color:#fff"><span class="dot y"></span>Встала и пошла</span><span class="then">1:37</span><span class="tip" style="padding:0"><span class="mini-ts">18:43:30</span> · <i class="sf" data-icon="xmark"></i>отменить</span></div>
+              <div class="cl tile"><span class="rowline" style="padding:0;color:#fff"><span class="dot g"></span>Легла</span><span class="then"><small>через</small>0:40</span><span class="tip" style="padding:0">тап — пошёл отсчёт</span></div>
+            </div>
+            <div class="cl stop"><i class="sf lead" data-icon="flag" style="color:var(--red)"></i><span class="when">Лает, воет — не входить</span><span class="then" style="font-size:13px;color:var(--t2)">тап: 30 с тишины</span></div>
+            <div class="btns" data-state="outside"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, за дверью, выход 8, 🟡 запущено в 18:43:30.</b> Центр кольца показывает «входим через 1:37», жёлтое внутреннее кольцо — ход отсчёта, розовое — план. Заметка здесь скрыта под плиткой (долгий тап) — из-за высоты.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="13:02" data-doc="1"></div>
+          <div class="camwrap"><div class="feed" data-ts="2026/10/19 20:13:40"></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div>
+            <div class="ttl">Перерыв<span class="sub">до выхода 7</span></div>
+            <div class="ring" data-pct="92" data-time="1:51" data-color="blue"></div>
+            <div class="plan">Следующий выход 7 — 3 мин</div>
+            <div class="cl-grid">
+              <div class="cl tile ok"><span class="rowline" style="padding:0;color:#fff"><i class="sf" data-icon="bolt" style="color:var(--yellow)"></i>Куртка<span class="sp"></span><span class="chk on"><i class="sf" data-icon="check"></i></span></span><span class="tip" style="padding:0">надета</span></div>
+              <div class="cl tile"><span class="rowline" style="padding:0;color:#fff"><i class="sf" data-icon="bolt" style="color:var(--yellow)"></i>Ключи<span class="sp"></span><span class="chk"></span></span><span class="tip" style="padding:0">взять, звякнуть ими</span></div>
+            </div>
+            <div class="rowline"><i class="sf" data-icon="run"></i><span class="sp">На выходе: встала → 2:00 · легла → 0:30</span></div>
+            <div class="btns" data-state="break"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, перерыв перед выходом 7.</b> Плитки-триггеры отмечаются тапом; отметки тоже уходят в журнал («куртка надета в 20:13»).</figcaption>
+      </figure>
+      <figure>
+        <div class="panel" style="height:760px">
+          <div class="ro">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="t">Выход 8<span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb y"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="s">План 7 мин · осталось 4:12</div>
+            <div class="big" style="color:var(--yellow)">1:37</div>
+            <div class="bar"><i class="yellow" style="width:80%"></i></div>
+            <div class="cap">входим через · встала в 18:43:30 <span style="color:var(--pink);margin-left:8px">⏎ отменить</span></div>
+          </div>
+          <div class="mbtns" data-state="outside"></div>
+          <div class="psec">
+            <h4><i class="sf" data-icon="run"></i>Ранний вход <span class="sp"></span><span style="text-transform:none;letter-spacing:0;font-weight:500">клик или 1 / 2</span></h4>
+            <div class="cl-grid">
+              <div class="cl tile active"><span class="rowline" style="padding:0;color:#fff"><span class="dot y"></span>Встала и пошла<span class="sp"></span><span class="mini-ts">1</span></span><span class="then">1:37</span></div>
+              <div class="cl tile"><span class="rowline" style="padding:0;color:#fff"><span class="dot g"></span>Легла<span class="sp"></span><span class="mini-ts">2</span></span><span class="then"><small>через</small>0:40</span></div>
+            </div>
+            <div class="cl stop"><i class="sf lead" data-icon="flag" style="color:var(--red)"></i><span class="when">Лает, воет — не входить</span><span class="then" style="font-size:13px;color:var(--t2)">3 · 30 с тишины</span></div>
+          </div>
+          <div class="psec coll"><h4 class="coll-h"><i class="sf" data-icon="bubble"></i>Заметка к выходу<span class="sp"></span><i class="sf chev" data-icon="chevD"></i></h4><div class="body notebox" style="margin:0">Когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</div></div>
+        </div>
+        <figcaption><b>Mac/Windows.</b> Большие цифры переключаются на отсчёт входа (жёлтые), план уходит в подзаголовок. Плитки нажимаются мышью или клавишами 1/2/3. На таймлайне появляется жёлтая метка «встала».</figcaption>
+      </figure>
+    </div>
+  </article>
+</section>
+
+<!-- ============================================================ C ============================================================ -->
+<section class="area" id="c">
+  <h2><span class="ab">C</span>Полный текст тренера, не уходя с экрана тренировки</h2>
+  <p class="lead">Ограничение: камера должна оставаться смонтированной и играть — никаких переходов и полноэкранных обложек (переподключение теряет кадры). Кнопка <i class="sf" data-icon="doc"></i> в верхней панели (чтобы она поместилась рядом с «…», у пилюли REC остаётся только время). Строки текущего выхода подсвечены и прокручены в вид; строки выходов можно тапать — под ними раскрывается разбор (⚡ 🏃). Три варианта отличаются тем, что они закрывают: карточку (C1), ничего (C2) или камеру (C3).</p>
+
+  <!-- C1 -->
+  <article class="variant" id="C1">
+    <div class="vhead"><span class="vid">C1</span><h3>Шторка снизу на полэкрана</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Шторка с двумя положениями (половина / почти весь экран) выезжает поверх карточки; камера в верхней половине продолжает играть. В шапке шторки — живой пилюля-таймер «Выход 8 · 4:12», внизу шторки компактные «Вернулись»/«Фальстарт», чтобы не закрывать её ради нажатия. Свайп вниз или ✕ — закрыть. На Mac/Windows — вкладки в правой панели «Пульт · Текст»: таймер сжимается в полоску, текст занимает панель.</p>
+      <ul><li class="pro">знакомый паттерн iOS (Карты, Погода), не ломает иерархию: камера сверху, всё остальное — под ней</li><li class="pro">текст большой: половина экрана ≈ 14 строк, верхнее положение — почти всё</li><li class="con">большие кнопки закрыты; дублируем их компактно — две версии одних кнопок</li><li class="con">камера частично уходит под шторку в верхнем положении</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="24:12" data-doc="on"></div>
+          <div class="camwrap topalign"><div class="feed" data-ts="2026/10/19 18:41:08"></div></div>
+          <div class="card" style="opacity:.5">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="ttl">Выход 8</div>
+            <div class="ring" data-pct="40" data-time="4:12" data-color="pink"></div>
+            <div class="plan">План 7 мин</div>
+            <div class="btns" data-state="outside"></div>
+          </div>
+          <div class="drawer" style="height:432px">
+            <div class="grab"></div>
+            <div class="dh"><span class="t">Текст тренера</span><span class="livepill"><span class="mini"></span>Выход 8 · 4:12</span><span class="x"><i class="sf" data-icon="xmark"></i></span></div>
+            <div class="ttext">
+              <p class="dimmed">7 выход - 20 секунд + обувь</p>
+              <p class="ex cur exrow">8 выход - 7 минут<span class="pc"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span></span></p>
+              <p class="cur c">🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+              <p class="cur c">🟢 Если легла - входим через 40 секунд от укладки</p>
+              <p>🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери</p>
+              <p>🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход…</p>
+              <div class="fade"></div>
+            </div>
+            <div class="btns compact" data-state="outside" style="padding:0 14px 14px"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, шторка в нижнем положении.</b> Камера видна целиком, карточка под шторкой. Строки выхода 8 подсвечены розовой полосой, строка выхода — с чипами разбора. Компактные кнопки в самой шторке.</figcaption>
+      </figure>
+      <figure>
+        <div class="panel" style="height:760px">
+          <div class="ptabs"><span><i class="sf" data-icon="timer"></i>Пульт</span><span class="on"><i class="sf" data-icon="doc"></i>Текст</span><span><i class="sf" data-icon="text"></i>Правила</span></div>
+          <div class="ro compact"><div><div class="t">Выход 8</div><div class="s">План 7 мин · осталось</div></div><div class="big pink" style="margin-left:auto">4:12</div></div>
+          <div class="mbtns compact" data-state="outside"></div>
+          <div class="psec" style="flex:1;min-height:0">
+            <div class="ptext">
+              <p class="dimmed">➡️ Все перерывы 2 минуты</p>
+              <p class="dimmed">➡️ Если лежит в лежанке, особо не шевелится, засыпает - перед выходом сначала шуршим на кухне/перемещаемся по квартире пока Мия не поднимет голову, затем сразу идём на выход</p>
+              <p class="dimmed">1 выход - 5 секунд</p>
+              <p class="dimmed">2 выход - 10 секунд + обувь</p>
+              <p class="dimmed">3 выход - 20 секунд + обувь</p>
+              <p class="dimmed">4 выход - 1 минута ИЛИ до вставания</p>
+              <p class="dimmed">5 выход - 20 секунд + обувь</p>
+              <p class="dimmed">6 выход - 4 минуты</p>
+              <p class="dimmed">🟡 Если встала и пошла - входим через 1 минуту от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+              <p class="dimmed">🟢 Если легла - входим через 20 секунд от укладки</p>
+              <p class="dimmed">7 выход - 20 секунд + обувь</p>
+              <p class="ex cur">8 выход - 7 минут</p>
+              <p class="cur c">🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+              <p class="cur c">🟢 Если легла - входим через 40 секунд от укладки</p>
+              <p>🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери</p>
+              <p>🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку</p>
+              <div class="fade"></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>Mac/Windows, вкладка «Текст» правой панели.</b> Таймер — полоска с цифрами, кнопки компактные (горячие клавиши работают как прежде), пройденные выходы приглушены, текущий подсвечен и прокручен в вид. Вкладка «Правила» — только общие ➡️/🚩/🔖.</figcaption>
+      </figure>
+    </div>
+  </article>
+
+  <!-- C2 -->
+  <article class="variant" id="C2">
+    <div class="vhead"><span class="vid">C2</span><h3>Текст внутри карточки: переключатель «Таймер · Текст»</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Ничего не всплывает: в карточке появляется маленький переключатель. В режиме «Текст» кольцо сжимается в пилюлю «Выход 8 · 4:12» в шапке карточки, середина карточки отдаётся тексту, а большие кнопки остаются ровно там же, где были. Карточка может вырасти вверх до камеры (камера не двигается — она и так выше). На Mac — раздел «Текст тренера» прямо в панели под кнопками, развёрнут всегда: там и так пусто.</p>
+      <ul><li class="pro">большие кнопки и камера не трогаются вообще; один тап туда, один обратно</li><li class="pro">на Mac это просто заполнение пустоты в панели — самый дешёвый вариант</li><li class="con">места для текста на iPhone меньше всего (≈ 12 строк) — длинные 🚩/🔖 надо листать внутри карточки</li><li class="con">кольцо-таймер исчезает, пока читаешь; остаётся мелкая пилюля</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="24:12" data-doc="on"></div>
+          <div class="camwrap"><div class="feed" data-ts="2026/10/19 18:41:08"></div></div>
+          <div class="card">
+            <div class="cardseg"><div class="seg sm"><span>Таймер</span><span class="on">Текст</span></div><span class="sp"></span><span class="livepill"><span class="mini"></span>Выход 8 · 4:12</span></div>
+            <div class="ttext" style="height:226px;padding:0;flex:none">
+              <p class="dimmed">7 выход - 20 секунд + обувь</p>
+              <p class="ex cur exrow">8 выход - 7 минут<span class="pc"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span></span></p>
+              <p class="cur c">🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+              <p class="cur c">🟢 Если легла - входим через 40 секунд от укладки</p>
+              <p>🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери…</p>
+              <div class="fade"></div>
+            </div>
+            <div class="btns" data-state="outside"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, карточка в режиме «Текст».</b> Камера и кнопки на своих местах; текст прокручивается внутри карточки, текущий выход подсвечен.</figcaption>
+      </figure>
+      <figure>
+        <div class="panel" style="height:760px">
+          <div class="ro">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="t">Выход 8</div>
+            <div class="s">План 7 мин</div>
+            <div class="big pink">4:12</div>
+            <div class="bar"><i class="pink" style="width:40%"></i></div>
+            <div class="cap">осталось</div>
+          </div>
+          <div class="mbtns" data-state="outside"></div>
+          <div class="psec" style="flex:1;min-height:0">
+            <h4><i class="sf" data-icon="doc"></i>Текст тренера<span class="sp"></span><i class="sf" data-icon="expand"></i></h4>
+            <div class="ptext">
+              <p class="dimmed">6 выход - 4 минуты</p>
+              <p class="dimmed">🟡 Если встала и пошла - входим через 1 минуту от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+              <p class="dimmed">🟢 Если легла - входим через 20 секунд от укладки</p>
+              <p class="dimmed">7 выход - 20 секунд + обувь</p>
+              <p class="ex cur">8 выход - 7 минут</p>
+              <p class="cur c">🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+              <p class="cur c">🟢 Если легла - входим через 40 секунд от укладки</p>
+              <p>🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери</p>
+              <p>🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся…</p>
+              <div class="fade"></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><b>Mac/Windows.</b> Текст всегда виден под кнопками, автопрокрутка к текущему выходу; значок <i class="sf" data-icon="expand"></i> открывает его отдельным окном-инспектором.</figcaption>
+      </figure>
+    </div>
+  </article>
+
+  <!-- C3 -->
+  <article class="variant" id="C3">
+    <div class="vhead"><span class="vid">C3</span><h3>Оверлей поверх камеры, карточка нетронута</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Текст выезжает сверху и ложится на область камеры полупрозрачной матовой панелью; камера под ним продолжает играть, а её уменьшенная живая копия (120×68) держится в углу оверлея, чтобы собака не пропадала из вида. Карточка с кольцом и большими кнопками не меняется ни на пиксель. Тап вне панели или ✕ — закрыть. На Mac/Windows — поповер от кнопки «Текст» в тулбаре, с теми же подсветками.</p>
+      <ul><li class="pro">единственный вариант, где таймер, кольцо и обе кнопки остаются в полном размере</li><li class="pro">самая большая область под текст на iPhone (≈ 330 pt)</li><li class="con">собаку видно только миниатюрой; оверлей над видео — нетипично для iOS, надо аккуратно с блюром</li><li class="con">на Mac поповер закрывается при любом клике — для чтения во время выхода это раздражает (альтернатива — третья колонка-инспектор)</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="24:12" data-doc="on"></div>
+          <div class="camwrap">
+            <div class="feed" data-ts="2026/10/19 18:41:08"></div>
+            <div class="overlay">
+              <div class="dh"><span class="t">Текст тренера</span><span class="x"><i class="sf" data-icon="xmark"></i></span></div>
+              <div class="feed small" data-label="Прихожая" data-live="1"></div>
+              <div class="ttext ov">
+                <p class="dimmed">7 выход - 20 секунд + обувь</p>
+                <p class="ex cur exrow">8 выход - 7 минут<span class="pc"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span></span></p>
+                <p class="cur c">🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+                <p class="cur c">🟢 Если легла - входим через 40 секунд от укладки</p>
+                <p>🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд…</p>
+                <div class="fade"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+            <div class="ttl">Выход 8<span class="ic3"><span class="icb off"><i class="sf" data-icon="bolt"></i></span><span class="icb"><i class="sf" data-icon="run"></i>2</span><span class="icb"><i class="sf" data-icon="bubble"></i></span></span></div>
+            <div class="ring" data-pct="40" data-time="4:12" data-color="pink"></div>
+            <div class="plan">План 7 мин</div>
+            <div class="btns" data-state="outside"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone, оверлей открыт.</b> Текст над камерой, миниатюра живого видео в углу, карточка в исходном виде.</figcaption>
+      </figure>
+      <figure>
+        <div class="fit" style="--w:1440px;--h:900px;--s:.55">
+        <div class="macwin" style="position:relative">
+          <div class="tbar" data-auto="1" data-extra='<span class="tbtn on"><i class="sf" data-icon="doc"></i>Текст</span>'></div>
+          <div class="campane"><div class="feed" data-ts="2026/10/19 18:41:08"></div></div>
+          <div class="rpanel">
+            <div class="ro">
+              <div class="chips tail" data-plan="5с,10с,20с,1м*,20с,4м,20с,7м" data-cur="8" data-mode="outside"></div>
+              <div class="t">Выход 8</div><div class="s">План 7 мин</div><div class="big pink">4:12</div><div class="bar"><i class="pink" style="width:40%"></i></div><div class="cap">осталось</div>
+            </div>
+            <div class="mbtns" data-state="outside"></div>
+            <div class="psec"><h4><i class="sf" data-icon="run"></i>Ранний вход</h4><div class="cl"><span class="dot y"></span><span class="when">Встала и пошла</span><span class="then"><small>через</small>2:00</span></div><div class="cl"><span class="dot g"></span><span class="when">Легла</span><span class="then"><small>через</small>0:40</span></div></div>
+          </div>
+          <div class="tl" data-auto="1"></div>
+          <div class="popover" style="top:58px;right:430px">
+            <div class="ph"><i class="sf" data-icon="doc"></i>Текст тренера<span class="sp"></span><span class="pcs">выход 8 · строки 24–26</span></div>
+            <div class="ptext">
+              <p class="dimmed">4 выход - 1 минута ИЛИ до вставания</p>
+              <p class="dimmed">5 выход - 20 секунд + обувь</p>
+              <p class="dimmed">6 выход - 4 минуты</p>
+              <p class="dimmed">🟡 Если встала и пошла - входим через 1 минуту от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+              <p class="dimmed">🟢 Если легла - входим через 20 секунд от укладки</p>
+              <p class="dimmed">7 выход - 20 секунд + обувь</p>
+              <p class="ex cur">8 выход - 7 минут</p>
+              <p class="cur c">🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</p>
+              <p class="cur c">🟢 Если легла - входим через 40 секунд от укладки</p>
+              <p>🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери</p>
+              <p>🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку</p>
+              <div class="fade"></div>
+            </div>
+          </div>
+        </div>
+        </div>
+        <figcaption><b>Mac/Windows, поповер от кнопки «Текст» в тулбаре.</b> Висит над камерой, панель справа не меняется. Можно «оторвать» в отдельное окно, чтобы не закрывался.</figcaption>
+      </figure>
+    </div>
+  </article>
+</section>
+
+<!-- ============================================================ D ============================================================ -->
+<section class="area" id="d">
+  <h2><span class="ab">D</span>Вторая камера</h2>
+  <p class="lead">Две камеры Xiaomi: «Прихожая» (дверь) и «Комната» (лежанка). Карточка тренировки и кнопки на iPhone не меняются; меняется только область камеры и подпись в верхней панели. Про запись — в каждом варианте отдельной строкой, как заметка: осуществимость оценивается отдельно.</p>
+
+  <!-- D1 -->
+  <article class="variant" id="D1">
+    <div class="vhead"><span class="vid">D1</span><h3>Картинка в картинке с обменом по тапу</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Главная камера как сегодня, вторая — живая миниатюра 128×72 в углу кадра. Тап по миниатюре меняет камеры местами, долгое нажатие — спрятать/показать, можно перетащить в другой угол. На Mac — миниатюра 280×158 в углу области камеры с теми же жестами.</p>
+      <ul><li class="pro">ничего не ужимается: главная камера в полный размер, собаку в комнате видно «краем глаза»</li><li class="pro">минимальные изменения в раскладке обоих приложений</li><li class="con">миниатюра закрывает угол главного кадра; на 128 pt детали в комнате не разглядеть</li><li class="note">запись: два отдельных файла (main + second), миниатюра не впечатывается; на таймлайне две полосы «Запись»</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="Прихожая" data-rec="13:02" data-extra='<span class="pill ic"><i class="sf" data-icon="pip"></i></span>'></div>
+          <div class="camwrap"><div class="feedwrap"><div class="feed" data-ts="2026/10/19 20:13:40"></div><div class="feed small" data-label="Комната" data-live="1"></div></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div>
+            <div class="ttl">Перерыв</div>
+            <div class="ring" data-pct="92" data-time="1:51" data-color="blue"></div>
+            <div class="plan">Следующий выход 7 — 3 мин · <i class="sf" data-icon="bolt" style="color:var(--yellow)"></i> куртка, ключи</div>
+            <div class="btns" data-state="break"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone.</b> Миниатюра «Комната» поверх «Прихожей»; кнопка <i class="sf" data-icon="pip"></i> в верхней панели прячет/показывает её. Тап по миниатюре — обмен.</figcaption>
+      </figure>
+      <figure>
+        <div class="fit" style="--w:1440px;--h:900px;--s:.5">
+        <div class="macwin">
+          <div class="tbar" data-auto="1" data-sub="Таня/Андрей · с 20:00" data-cam='<span class="tbtn seg"><span class="on"><i class="sf" data-icon="video"></i>Прихожая</span><span><span class="ldot"></span>Комната</span><span><i class="sf" data-icon="pip"></i></span></span>' data-rec="13:02"></div>
+          <div class="campane"><div class="feed" data-ts="2026/10/19 20:13:40"></div><div class="feed small pip" data-label="Комната" data-live="1"></div></div>
+          <div class="rpanel">
+            <div class="ro"><div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div><div class="t">Перерыв</div><div class="s">Следующий выход 7 — 3 мин</div><div class="big blue">1:51</div><div class="bar"><i class="blue" style="width:92%"></i></div><div class="cap">осталось</div></div>
+            <div class="mbtns" data-state="break"></div>
+            <div class="psec"><h4><i class="sf" data-icon="bolt"></i>Подготовить к выходу 7</h4><div class="cl tg"><i class="sf lead" data-icon="bolt"></i><span class="when">Надеть куртку</span><span class="chk"></span></div><div class="cl tg"><i class="sf lead" data-icon="bolt"></i><span class="when">Взять ключи, звякнуть ими</span><span class="chk"></span></div></div>
+          </div>
+          <div class="tl" data-auto="1" data-two="1"></div>
+        </div>
+        </div>
+        <figcaption><b>Mac/Windows.</b> Выпадающий список камеры в тулбаре стал переключателем «Прихожая · Комната · <i class="sf" data-icon="pip"></i>»; миниатюра в углу; на таймлайне две полосы записи.</figcaption>
+      </figure>
+    </div>
+  </article>
+
+  <!-- D2 -->
+  <article class="variant" id="D2">
+    <div class="vhead"><span class="vid">D2</span><h3>Две камеры одновременно: стопкой на iPhone, рядом на Mac</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Обе камеры одинакового размера. На iPhone они стоят друг над другом в области над карточкой (каждая 365×182, кадр подрезан до 2:1); с карточкой сегодняшней высоты помещаются обе, с карточкой B1 — придётся резать сильнее или прятать подпись. На Mac область камеры делится пополам по горизонтали (или по вертикали в высоком окне).</p>
+      <ul><li class="pro">обе комнаты видно всегда и одинаково — не надо ничего переключать за дверью</li><li class="pro">на широком Mac-окне две 16:9 рядом — естественная раскладка</li><li class="con">на iPhone каждая картинка в 1,1 раза меньше по площади и подрезана; с высокой карточкой B1 тесно</li><li class="note">запись: два файла; просмотр истории тоже должен уметь показывать две дорожки синхронно</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" data-label="2 камеры" data-rec="13:02" data-extra='<span class="pill ic on"><i class="sf" data-icon="stack"></i></span>'></div>
+          <div class="camwrap"><div class="feed half" data-ts="2026/10/19 20:13:40" data-label="Прихожая"></div><div class="feed half" data-ts="2026/10/19 20:13:40" data-label="Комната"></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div>
+            <div class="ttl">Перерыв</div>
+            <div class="ring" data-pct="92" data-time="1:51" data-color="blue"></div>
+            <div class="plan">Следующий выход 7 — 3 мин · <i class="sf" data-icon="bolt" style="color:var(--yellow)"></i> куртка, ключи</div>
+            <div class="btns" data-state="break"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone.</b> Две камеры стопкой, подписи в кадре. Кнопка <i class="sf" data-icon="stack"></i> переключает «две / одна».</figcaption>
+      </figure>
+      <figure>
+        <div class="fit" style="--w:1440px;--h:900px;--s:.5">
+        <div class="macwin">
+          <div class="tbar" data-auto="1" data-sub="Таня/Андрей · с 20:00" data-cam='<span class="tbtn seg"><span><i class="sf" data-icon="video"></i>Прихожая</span><span><span class="ldot"></span>Комната</span><span class="on"><i class="sf" data-icon="split"></i>Обе</span></span>' data-rec="13:02"></div>
+          <div class="campane split"><div class="feed" data-ts="2026/10/19 20:13:40" data-label="Прихожая"></div><div class="feed" data-ts="2026/10/19 20:13:40" data-label="Комната"></div></div>
+          <div class="rpanel">
+            <div class="ro"><div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div><div class="t">Перерыв</div><div class="s">Следующий выход 7 — 3 мин</div><div class="big blue">1:51</div><div class="bar"><i class="blue" style="width:92%"></i></div><div class="cap">осталось</div></div>
+            <div class="mbtns" data-state="break"></div>
+            <div class="psec"><h4><i class="sf" data-icon="bolt"></i>Подготовить к выходу 7</h4><div class="cl tg"><i class="sf lead" data-icon="bolt"></i><span class="when">Надеть куртку</span><span class="chk"></span></div><div class="cl tg"><i class="sf lead" data-icon="bolt"></i><span class="when">Взять ключи, звякнуть ими</span><span class="chk"></span></div></div>
+          </div>
+          <div class="tl" data-auto="1" data-two="1"></div>
+        </div>
+        </div>
+        <figcaption><b>Mac/Windows.</b> Переключатель «Прихожая · Комната · Обе»; в режиме «Обе» область камеры делится пополам.</figcaption>
+      </figure>
+    </div>
+  </article>
+
+  <!-- D3 -->
+  <article class="variant" id="D3">
+    <div class="vhead"><span class="vid">D3</span><h3>Переключатель: одна камера на экране, вторая на связи</h3><span class="plat">iPhone · Mac/Windows</span></div>
+    <div class="why">
+      <p>Пилюля «Прихожая» в верхней панели становится сегментом «Прихожая · Комната» с зелёной точкой «на связи» у скрытой камеры; свайп по кадру тоже переключает. Скрытая камера не отключается: соединение держится, запись идёт. На Mac это то же самое, что выпадающий список сейчас, только в виде сегмента.</p>
+      <ul><li class="pro">картинка всегда в полный размер; самая простая раскладка</li><li class="pro">честно показывает, что обе камеры живы (точка), без лишних окон</li><li class="con">за дверью приходится переключать руками; то, что происходит на второй камере, не видно</li><li class="note">запись: два файла независимо от того, какая камера на экране; либо только одна (главная) — тогда переключатель только для просмотра</li></ul>
+    </div>
+    <div class="mocks">
+      <figure>
+        <div class="phone">
+          <div class="topbar" style="gap:8px"><span class="pill segp" style="font-size:14px"><span class="on" style="font-size:14px;padding:0 8px"><i class="sf" data-icon="video"></i>Прихожая</span><span style="font-size:14px;padding:0 8px"><span class="ldot"></span>Комната</span></span><span class="pill rec" style="padding:0 11px"><span class="dot"></span>13:02</span><span class="sp"></span><span class="pill ic"><i class="sf" data-icon="ellipsis"></i></span></div>
+          <div class="camwrap"><div class="feed" data-ts="2026/10/19 20:13:40"></div><div class="tip" style="position:absolute;bottom:14px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff"></span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--t3)"></span></div></div>
+          <div class="card">
+            <div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div>
+            <div class="ttl">Перерыв</div>
+            <div class="ring" data-pct="92" data-time="1:51" data-color="blue"></div>
+            <div class="plan">Следующий выход 7 — 3 мин · <i class="sf" data-icon="bolt" style="color:var(--yellow)"></i> куртка, ключи</div>
+            <div class="btns" data-state="break"></div>
+          </div>
+        </div>
+        <figcaption><b>iPhone.</b> Сегмент в верхней панели вместо пилюли; точки-индикаторы страниц под кадром; свайп по кадру переключает камеру.</figcaption>
+      </figure>
+      <figure>
+        <div class="fit" style="--w:1440px;--h:900px;--s:.5">
+        <div class="macwin">
+          <div class="tbar" data-auto="1" data-sub="Таня/Андрей · с 20:00" data-cam='<span class="tbtn seg"><span class="on"><i class="sf" data-icon="video"></i>Прихожая</span><span><span class="ldot"></span>Комната</span></span>' data-rec="13:02"></div>
+          <div class="campane"><div class="feed" data-ts="2026/10/19 20:13:40"></div></div>
+          <div class="rpanel">
+            <div class="ro"><div class="chips tail" data-plan="5с,10с,20с,10с,5с,20с,3м" data-cur="7" data-mode="break"></div><div class="t">Перерыв</div><div class="s">Следующий выход 7 — 3 мин</div><div class="big blue">1:51</div><div class="bar"><i class="blue" style="width:92%"></i></div><div class="cap">осталось</div></div>
+            <div class="mbtns" data-state="break"></div>
+            <div class="psec"><h4><i class="sf" data-icon="bolt"></i>Подготовить к выходу 7</h4><div class="cl tg"><i class="sf lead" data-icon="bolt"></i><span class="when">Надеть куртку</span><span class="chk"></span></div><div class="cl tg"><i class="sf lead" data-icon="bolt"></i><span class="when">Взять ключи, звякнуть ими</span><span class="chk"></span></div></div>
+          </div>
+          <div class="tl" data-auto="1" data-two="1"></div>
+        </div>
+        </div>
+        <figcaption><b>Mac/Windows.</b> Сегмент «Прихожая · Комната» на месте нынешнего выпадающего списка; ⌘1/⌘2 переключают.</figcaption>
+      </figure>
+    </div>
+  </article>
+</section>
+
+<!-- ============================================================ model ============================================================ -->
+<section class="area" id="model">
+  <h2><span class="ab" style="background:var(--blue)">Σ</span>Что это значит для модели данных и парсера</h2>
+  <div class="dm">
+    <b>Выход (PlannedExit)</b> получает: <code>triggers: [String]</code> (⚡, из «+ куртка», «+ взять ключи, звякнуть ими», глагольных кусков «закрыть дверь на один оборот»); <code>earlyEntry: [EarlyEntryRule]</code> где правило = <code>{event: .stoodUp | .layDown | .custom(String), delay: TimeInterval?, note: String?}</code> — «ИЛИ до вставания» превращается в <code>{.stoodUp, delay: nil}</code>, 🟡 — в <code>{.stoodUp, 120, "когда сняла фокус…"}</code>, 🟢 — в <code>{.layDown, 30}</code>; <code>note</code> остаётся свободным текстом (скобки, хвосты). <code>untilStanding</code> и <code>standingDelay</code> уходят, остаётся совместимость при чтении старых планов.<br><br>
+    <b>План (TrainingPlan)</b> получает структурированные общие правила: <code>rules: [PlanRule]</code> с видом <code>.preparation</code> (➡️ до начала), <code>.breakBehaviour</code> («в перерывах — за столом»), <code>.preExitRitual</code> («если засыпает — пошуршать»), <code>.doNotEnter</code> (🚩 с временем тишины 30 с), <code>.falseStart</code> (🔖), <code>.other</code>; плюс <code>sourceLine</code> у каждого выхода и правила — для подсветки в тексте (раздел C).<br><br>
+    <b>Парсер.</b> 🟡/🟢-строки привязываются к ближайшему выходу <i>выше</i>, если между ними нет пустой строки/другого выхода (расписание 2: выходы 6 и 8); если такого выхода нет (расписание 1 — после всех выходов, или до них) — это «общие условия», и UI предлагает «ко всем / к длинным ≥ 1 мин / выбрать» (по умолчанию «ко всем»). Триггеры: всё после «+» в строке выхода, разделители «+» и «,»; в строках вида «выйти, закрыть дверь на один оборот, подождать 10 секунд и вернуться» длительность — число с единицей, триггер — глагольная группа до него, а остаток уходит в заметку. Иконка 🏃 считает правила, ⚡ — триггеры, 📝 — непустую заметку.
+  </div>
+</section>
+<p class="note" style="padding:24px 0 0;opacity:.55;font-size:12.5px">Design/training-notes-lab · запуск: <code>node serve.js 8768</code> · макеты статичные, раскрытие заметок/правил и свёртки — кликабельны.</p>
+</main>
+<script src="lab.js"></script>
+</body>
+</html>

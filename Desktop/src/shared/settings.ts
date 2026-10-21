@@ -15,6 +15,10 @@ export interface Settings {
   serverPassword: string
   streamName: string
   cameraTitle: string
+  /// A second camera to look at during the training (another room): view-only — recording, quality and the camera's
+  /// modes stay with the main one. Empty: none.
+  secondStreamName: string
+  secondCameraTitle: string
   xiaomiAccountID: string
   xiaomiRegion: XiaomiRegion
   /// Explicit player choice; null means the best default for the connection mode.
@@ -42,6 +46,8 @@ export const defaultSettings: Settings = {
   serverPassword: '',
   streamName: '',
   cameraTitle: '',
+  secondStreamName: '',
+  secondCameraTitle: '',
   xiaomiAccountID: '',
   xiaomiRegion: 'de',
   playerMode: null,
@@ -83,4 +89,8 @@ export function go2rtcModes(mode: PlayerMode): string {
 
 export function cameraDisplayName(settings: Settings): string {
   return settings.cameraTitle || settings.streamName
+}
+
+export function secondCameraDisplayName(settings: Settings): string {
+  return settings.secondCameraTitle || settings.secondStreamName
 }

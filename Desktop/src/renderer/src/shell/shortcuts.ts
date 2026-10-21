@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { call, ui } from '../store'
 import { falseStart, pasteSchedule, primaryStep, startPending } from '../actions'
-import { isConfigured, isRecording } from '../model'
+import { hasSecondCamera, isConfigured, isRecording } from '../model'
 
 /// Keyboard shortcuts of the window (Windows conventions: Ctrl, not ⌘; F11 full screen is handled by the main
 /// process). Space and Backspace drive the training only on the training page and never inside text fields.
@@ -19,10 +19,14 @@ export function useGlobalShortcuts(): void {
 
       if (ctrl && !event.shiftKey && !event.altKey) {
         switch (key) {
+          // Ctrl+1 / Ctrl+2: the main or the second camera on the training page (Ctrl+2 is history without a second
+          // camera, as before).
           case '1':
             event.preventDefault()
-            return ui.set({ route: 'training' })
+            return ui.set({ route: 'training', camera: 'main' })
           case '2':
+            event.preventDefault()
+            return hasSecondCamera(app.settings) ? ui.set({ route: 'training', camera: 'second' }) : ui.set({ route: 'history' })
           case 'h':
             event.preventDefault()
             return ui.set({ route: 'history' })

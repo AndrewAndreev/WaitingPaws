@@ -21,23 +21,30 @@ camera while you are behind the door, and send the trainer a ready log afterward
 ## How it works
 
 1. **Paste the schedule** your trainer sent. The app understands exits and their durations, "or until the dog stands
-   up", breaks after a particular exit or for all of them, in English or Russian:
+   up", breaks after a particular exit or for all of them, triggers of an exit ("+ jacket", "+ take the keys") and
+   conditions for coming back early ("🟡 If she lies down - come back in 30 seconds"), in English or Russian:
 
    ```
    Sunday training - Anna/Mark - 25.10.2026
    All breaks 2 minutes
    Exit 1 - 5 seconds
-   Exit 2 - 10 seconds
+   Exit 2 - 10 seconds + jacket
    Break 5 minutes
-   Exit 3 - 30 seconds OR until the dog stands up
+   Exit 3 - 3 minutes OR until the dog stands up
+   🟡 If she stands up and walks off - come back in 1 minute
+   🟢 If she lies down - come back in 20 seconds
    ```
 
-   Check the exits before the start: any exit or break can be changed with a tap. The schedule can be corrected
+   Conditions right under an exit are its own; ones written once for the whole training go to every exit or only the
+   long ones. Check the exits before the start: any exit or break can be changed with a tap, and under each exit you
+   see its ⚡ triggers, 🏃 conditions for coming back early and 📝 note, all editable for that exit. The schedule can be corrected
    during the training too, say when every break turns out longer than the app read it: on the Mac right on the
    timeline (click an exit or a break to type its length, or drag its edge; ⇧ snaps to 5 s) or with **Schedule…**,
    on the iPhone with ••• → **Edit Schedule**. The timers follow at once.
 2. Two buttons, the same on the iPhone and the Mac. **Outside** once the door is closed behind you: a countdown to
-   the planned time, and the live camera shows the dog. Going over the plan is highlighted.
+   the planned time, and the live camera shows the dog. Going over the plan is highlighted. Under the timer: when to
+   come back early ("Lies down — in 0:40") and when not to come in; in a break, what to take for the next exit. The
+   trainer's whole text opens right on the training screen without reconnecting the camera.
 3. **Back Inside**: the break counts down to the next exit. A break that runs longer turns yellow and counts up, so you
    always see how long it really was. If the dog got up or barked too early — or went to the door during the break —
    **False Start** repeats the same exit after a break.
@@ -57,8 +64,10 @@ camera while you are behind the door, and send the trainer a ready log afterward
 
 - **The trainer's schedule, read for you.** Paste it from Telegram, WhatsApp or notes and fix anything before the start.
 - **One big button per step.** Exit and break timers, overrun warnings, the next exit starts on its own, false starts
-  are counted as attempts.
-- **Live camera** while you are outside: full screen, pinch to zoom. Picture quality and the camera's own settings
+  are counted as attempts. Under the timer: when to come back early and when not to come in; in a break, what to take
+  for the next exit. The trainer's whole text opens right on the training screen.
+- **Live camera** while you are outside: full screen, pinch to zoom. Add a second camera (another room, say) and switch
+  between them without reconnecting; the first one is recorded. Picture quality and the camera's own settings
   (night mode, image flip, status light and whatever else the model supports) are right in the app.
 - **Video recording** of every training, or a recording without one. Saved as a regular MP4 with sound, ready to share;
   on iPhone also copied to Photos.

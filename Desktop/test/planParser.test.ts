@@ -1,6 +1,6 @@
 // Port of PlanParserTests.swift.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { DurationText, PlanParser, TrainingPlan, setCoreLanguage, setCoreRegion } from '@core/index'
+import { DurationText, EarlyEntry, PlanParser, TrainingPlan, setCoreLanguage, setCoreRegion } from '@core/index'
 
 const sampleWithDefaultBreaks = `🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
 
@@ -112,6 +112,121 @@ describe('PlanParser (Russian)', () => {
     expect(plan.exits[1].untilStanding).toBe(true)
   })
 
+  // The triggering session of 19.10.2026: triggers after «+», an exit written as a sentence, the conditions once
+  // after all exits, two notes in one line.
+  it('parses the triggering schedule', () => {
+    const plan = PlanParser.parse(`🐹 ТРИГГЕРОВКА на понедельник - 19.10.2026
+Делаем через 1-1,5 часа и позже после основной тренировки, но не не поздно вечером➡️ За 30 минут включить музыку, открыть дверь изнутри, положить лежанку в коридор, положить/повесить куртку на виду у Мии
+➡️ В перерывах сидите за столом, работаете
+➡️ Все перерывы 2 минуты
+
+1 выход - 5 секунд
+2 выход - 10 секунд + куртка
+3 выход - 20 секунд + куртка
+4 выход - выйти, закрыть дверь на один оборот, подождать 10 секунд и вернуться
+5 выход - 5 секунд
+6 выход - выйти, закрыть дверь на один оборот, подождать 20 секунд и вернуться
+7 выход - 3 минуты + куртка + взять ключи, звякнуть ими
+
+🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+🟢 Если легла - входим через 30 секунд от укладки`)
+    expect(plan.title).toBe('ТРИГГЕРОВКА на понедельник')
+    expect(plan.defaultBreak).toBe(120)
+    expect(plan.exits.map((e) => e.duration)).toEqual([5, 10, 20, 10, 5, 20, 180])
+    expect(plan.exits.map((e) => e.triggers)).toEqual([
+      [],
+      ['куртка'],
+      ['куртка'],
+      ['закрыть дверь на один оборот'],
+      [],
+      ['закрыть дверь на один оборот'],
+      ['куртка', 'взять ключи, звякнуть ими'],
+    ])
+    expect(plan.exits[3].note).toBe('выйти, закрыть дверь на один оборот, подождать 10 секунд и вернуться')
+    expect(plan.exits[0].note).toBeNull()
+    expect(plan.notes).toHaveLength(4)
+    expect(plan.notes[0].endsWith('поздно вечером')).toBe(true)
+    expect(plan.notes[1].startsWith('За 30 минут включить музыку')).toBe(true)
+
+    expect(plan.commonEarlyEntries.map((e) => e.event)).toEqual(['Встала и пошла', 'Легла'])
+    expect(plan.commonEarlyEntries.map((e) => e.delay)).toEqual([120, 30])
+    expect(plan.commonEarlyEntries.map((e) => e.tone)).toEqual(['yellow', 'green'])
+    expect(plan.commonEarlyEntries[0].detail).toBe(
+      'от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру',
+    )
+    expect(plan.commonEarlyEntries[1].detail).toBe('от укладки')
+    expect(plan.exits.every((e) => e.earlyEntries.length === 0)).toBe(true)
+    expect(TrainingPlan.commonEntriesScope(plan)).toBe('all')
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[6]).map(EarlyEntry.summary)).toEqual(['встала и пошла → 2:00', 'легла → 0:30'])
+  })
+
+  // The training of 19.10.2026: conditions under exits 6 and 8 with their own times, rules for the whole training.
+  it('attaches conditions to the exits right above them', () => {
+    const plan = PlanParser.parse(`🐹 Тренировка на понедельник - 19.10.2026
+
+➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
+➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
+➡️ В перерывах сидите за столом, работаете
+➡️ Все перерывы 2 минуты
+➡️ Если лежит в лежанке, особо не шевелится, засыпает - перед выходом сначала шуршим на кухне/перемещаемся по квартире пока Мия не поднимет голову, затем сразу идём на выход
+1 выход - 5 секунд
+
+2 выход - 10 секунд + обувь
+
+3 выход - 20 секунд + обувь
+
+4 выход - 1 минута ИЛИ до вставания
+
+5 выход - 20 секунд + обувь
+
+6 выход - 4 минуты
+🟡 Если встала и пошла - входим через 1 минуту от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+🟢 Если легла - входим через 20 секунд от укладки
+
+7 выход - 20 секунд + обувь
+
+8 выход - 7 минут
+🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+🟢 Если легла - входим через 40 секунд от укладки
+
+
+🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери
+
+🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку`)
+    expect(plan.exits).toHaveLength(8)
+    expect(plan.exits.map((e) => e.duration)).toEqual([5, 10, 20, 60, 20, 240, 20, 420])
+    expect(plan.exits.map((e) => e.triggers.length)).toEqual([0, 1, 1, 0, 1, 0, 1, 0])
+    expect(plan.exits[1].triggers).toEqual(['обувь'])
+    expect(plan.commonEarlyEntries).toEqual([])
+    expect(plan.exits[5].earlyEntries.map(EarlyEntry.summary)).toEqual(['встала и пошла → 1:00', 'легла → 0:20'])
+    expect(plan.exits[7].earlyEntries.map(EarlyEntry.summary)).toEqual(['встала и пошла → 2:00', 'легла → 0:40'])
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[3]).map(EarlyEntry.summary)).toEqual(['встала → сразу'])
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[6])).toEqual([])
+    expect(plan.notes).toHaveLength(7)
+    expect(TrainingPlan.doNotEnterRule(plan)?.title).toBe('Залаяла, завыла')
+    expect(TrainingPlan.doNotEnterRule(plan)?.detail.startsWith('ни в коем случае не входить')).toBe(true)
+
+    const lines = PlanParser.sourceLines(plan.rawText)
+    expect(lines[0]?.kind).toBe('header')
+    const exit8 = lines.filter((line) => line.exitNumber === 8)
+    expect(exit8.map((line) => line.kind)).toEqual(['exit', 'earlyEntry', 'earlyEntry'])
+    expect(exit8[1].text.startsWith('🟡')).toBe(true)
+    expect(lines.filter((line) => line.kind === 'doNotEnter')).toHaveLength(1)
+    expect(lines.filter((line) => line.kind === 'falseStart')).toHaveLength(1)
+  })
+
+  it('reads early entry lines', () => {
+    const english = PlanParser.parseEarlyEntry('If she lies down - come back in 30 seconds')
+    expect(english?.event).toBe('She lies down')
+    expect(english?.delay).toBe(30)
+    const rightAway = PlanParser.parseEarlyEntry('Если встала, сразу входим')
+    expect(rightAway?.event).toBe('Встала')
+    expect(rightAway?.delay).toBeNull()
+    expect(PlanParser.parseEarlyEntry('🚩 Если залаяла - ни в коем случае не входить, входим когда молчала 30 секунд')).toBeNull()
+    expect(PlanParser.parseEarlyEntry('Если лежит в лежанке - перед выходом сначала шуршим на кухне')).toBeNull()
+    expect(PlanParser.parseEarlyEntry('Вернуться можно минимум через 20-30 минут после окончания тренировки')).toBeNull()
+  })
+
   it('formats and parses durations', () => {
     expect(DurationText.parse('15 с')).toBe(15)
     expect(DurationText.parse('2 минуты')).toBe(120)
@@ -200,6 +315,38 @@ describe('PlanParser details', () => {
     expect(PlanParser.commonBreak('Фальстарт: возвращаемся, перерыв 5 минут и снова на длинный выход')).toBeNull()
     expect(PlanParser.commonBreak('В перерывах сидите за столом, работаете')).toBeNull()
     expect(PlanParser.commonBreak('Breakfast 30 minutes before the training')).toBeNull()
+  })
+
+  it('finds Russian words like ICU word boundaries', () => {
+    // JS's `\\b` does not see Cyrillic letters: «входим» inside «подвходим» is not the verb.
+    expect(PlanParser.parseEarlyEntry('Если легла - подвходим через 5 секунд')).toBeNull()
+    expect(PlanParser.parseEarlyEntry('Если легла – входим через 5 секунд')?.delay).toBe(5)
+    expect(PlanParser.isDoNotEnterRule('Если лает — не входим, ждём')).toBe(true)
+    expect(PlanParser.isDoNotEnterRule('Если лает — не входимость')).toBe(false)
+    expect(PlanParser.parseEarlyEntry('Если встала, входим сразу')?.delay).toBeNull()
+  })
+
+  it('reads a Windows line break (CRLF) as one', () => {
+    const text = '6 выход - 4 минуты\r\n🟡 Если встала - входим через 1 минуту\r\n\r\n🟢 Если легла - входим через 20 секунд'
+    const plan = PlanParser.parse(text)
+    expect(plan.exits[0].earlyEntries.map((entry) => entry.event)).toEqual(['Встала'])
+    expect(plan.commonEarlyEntries.map((entry) => entry.event)).toEqual(['Легла'])
+    expect(PlanParser.sourceLines(text).map((line) => line.kind)).toEqual(['exit', 'earlyEntry', 'blank', 'earlyEntry'])
+  })
+
+  it('writes triggers and conditions with the Swift keys', () => {
+    const plan = PlanParser.parse('2 выход - 10 секунд + куртка\n🟢 Если легла - входим через 30 секунд от укладки\n\n🟡 Если встала - сразу входим')
+    const json = TrainingPlan.encode(plan, 'iso8601')
+    expect(Object.keys(json)).toContain('commonEarlyEntries')
+    const exit = (json.exits as Record<string, unknown>[])[0]
+    expect(exit.triggers).toEqual(['куртка'])
+    expect(exit.usesCommonEarlyEntries).toBe(false)
+    const entry = (exit.earlyEntries as Record<string, unknown>[])[0]
+    expect(Object.keys(entry).sort()).toEqual(['delay', 'detail', 'event', 'id', 'tone'])
+    expect(entry.tone).toBe('green')
+    // «сразу»: no delay key, as Swift's encodeIfPresent leaves it out.
+    expect(Object.keys((json.commonEarlyEntries as Record<string, unknown>[])[0]).sort()).toEqual(['event', 'id', 'tone'])
+    expect(TrainingPlan.decode(JSON.parse(JSON.stringify(json)), 'iso8601')).toEqual(plan)
   })
 
   it('rounds half away from zero like Swift', () => {

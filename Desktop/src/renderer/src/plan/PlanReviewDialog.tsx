@@ -2,14 +2,14 @@ import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as Rea
 import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { TrainingPlan } from '@core/models'
-import { PlanParser } from '@core/planParser'
 import { TrainingSession, type TrainingSessionSnapshot } from '@core/trainingSession'
 import { startPending, startTitle } from '../actions'
 import { isConfigured } from '../model'
 import { call, toast, ui, useApp } from '../store'
-import { CalendarIcon, CheckIcon, ChevronDownIcon, EditIcon, PlayFilledIcon, RuleIcon, SuccessFilledIcon, WarningFilledIcon } from '../ui/icons'
+import { CalendarIcon, CheckIcon, ChevronDownIcon, EditIcon, PlayFilledIcon, SuccessFilledIcon, WarningFilledIcon } from '../ui/icons'
 import { Button, Checkbox, Dialog, Tooltip } from '../ui/kit'
 import { DurationPopover } from './DurationEditor'
+import { CommonEntriesBar, ExitInspector, PlanRuleChips } from './PlanConditions'
 import { PlanExitTable, type ExitTableCommands } from './PlanExitTable'
 import { PlanMiniBar } from './PlanMiniBar'
 import { PlanSourcePane } from './PlanSourcePane'
@@ -32,8 +32,10 @@ import '../styles/plan.css'
 
 /// «Расписание разобрано» — the dialog over the training page right after a paste (port of `MacPlanReviewSheet`):
 /// the trainer's text on the left as a read-only source view (recognised lines marked in the gutter), the parsed
-/// exits as an editable table on the right, the summary and the start in the footer. Selecting a row highlights
-/// its lines in the text; clicking an exit line selects its row. Every edit goes straight to the waiting plan.
+/// exits as an editable table on the right — the rules of the whole training as chips and the common conditions
+/// above it, the selected exit's triggers, conditions and note in the inspector below — the summary and the start in
+/// the footer. Selecting a row highlights its lines in the text; clicking an exit line selects its row. Every edit
+/// goes straight to the waiting plan.
 export function PlanReviewDialog() {
   const { plan, setPlan } = usePendingPlan()
   if (!plan) return null
@@ -53,10 +55,13 @@ export function SessionPlanDialog() {
   const [draft, setDraft] = useState<TrainingPlan | null>(() => (session?.plan as TrainingPlan | undefined) ?? null)
   if (!session || !draft) return null
   const close = () => ui.set({ editingSessionPlan: false })
-  const setPlan = (next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) => {
-    const value = typeof next === 'function' ? next(draft) : next
-    if (TrainingSession.canUpdatePlan(session, value)) setDraft(value)
-  }
+  // Functional: the inspector may send two edits from one event (a trigger typed in, then the note).
+  const setPlan = (next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) =>
+    setDraft((current) => {
+      if (!current) return current
+      const value = typeof next === 'function' ? next(current) : next
+      return TrainingSession.canUpdatePlan(session, value) ? value : current
+    })
   const save = async () => {
     if (await call('session.updatePlan', draft)) close()
     else toast({ title: t('Прошедшие выходы и текущий нельзя удалить или переставить.'), kind: 'warning' })
@@ -79,7 +84,15 @@ function PlanDialog({
   onDone: () => void
 }) {
   const running = fixedExits !== undefined
-  const [rawSelection, setSelection] = useState<string[]>([])
+  const [rawSelection, setRawSelection] = useState<string[]>([])
+  // A rule chip above the table marks its lines in the text until a row is picked.
+  const [focus, setFocus] = useState<{ key: string | null; lines: number[] }>({ key: null, lines: [] })
+  // «Выбрать» in the common conditions bar: the exits are ticked one by one in the inspector.
+  const [picking, setPicking] = useState(false)
+  const setSelection = (ids: string[]) => {
+    setRawSelection(ids)
+    setFocus({ key: null, lines: [] })
+  }
   const [sourceWidth, setSourceWidth] = useState<number | null>(null)
   const splitRef = useRef<HTMLDivElement>(null)
   const rawText = plan?.rawText ?? ''
@@ -90,7 +103,6 @@ function PlanDialog({
   const selection = rawSelection.filter((id) => ids.has(id))
   const valid = TrainingPlan.isValid(plan)
   const hasSource = lines.some((line) => line.kind.kind !== 'blank')
-  const rule = lines.find((line) => line.kind.kind === 'rule')
 
   const done = onDone
   const start = () => {
@@ -148,7 +160,8 @@ function PlanDialog({
         return setSelection(plan.exits.map((exit) => exit.id))
       }
     }
-    if (typing || ctrl || event.shiftKey || target.closest('.popover, [role="menu"]')) return
+    // Keys in the inspector (a chip's ✕ focused, the colour dot) are not about the table's rows.
+    if (typing || ctrl || event.shiftKey || target.closest('.popover, [role="menu"], .plan-inspector, .plan-common, .plan-rules')) return
     if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
       handled()
       return commands.shift(event.key === 'ArrowUp' ? -1 : 1)
@@ -217,21 +230,31 @@ function PlanDialog({
       <div className="plan-review__split" ref={splitRef} onKeyDown={onKeyDown}>
         {hasSource && (
           <>
-            <PlanSourcePane lines={lines} plan={plan} lineOfExit={lineOfExit} selection={selection} onSelect={(id) => setSelection([id])} width={sourceWidth} />
+            <PlanSourcePane
+              lines={lines}
+              plan={plan}
+              lineOfExit={lineOfExit}
+              selection={selection}
+              focus={focus.lines}
+              onSelect={(id) => setSelection([id])}
+              width={sourceWidth}
+            />
             <div className="plan-splitter" role="separator" aria-orientation="vertical" onPointerDown={onSplitterDown} />
           </>
         )}
         <section className="plan-editor">
           <PlanForm plan={plan} setPlan={setPlan} />
+          <PlanRuleChips plan={plan} lines={lines} focused={focus.key} onFocus={(key, ids) => setFocus({ key, lines: ids })} />
+          {plan.commonEarlyEntries.length > 0 && <CommonEntriesBar plan={plan} setPlan={setPlan} lines={lines} picking={picking} setPicking={setPicking} />}
           <PlanExitTable plan={plan} setPlan={setPlan} selection={selection} setSelection={setSelection} lineOfExit={hasSource ? lineOfExit : null} commands={commands} />
-          {rule && <RuleView line={rule} />}
+          <ExitInspector plan={plan} setPlan={setPlan} selection={selection} lines={lines} lineOfExit={hasSource ? lineOfExit : null} />
         </section>
       </div>
     </Dialog>
   )
 }
 
-/// «9 выходов, 2 перерыва, правило фальстарта и 3 заметки. Проверьте…».
+/// «8 выходов, 4 триггера, условия раннего входа у выходов 4, 6 и 8, правило фальстарта и 5 заметок. Проверьте…».
 function summary(plan: TrainingPlan, lines: PlanTextLine[]): string {
   if (plan.rawText === '') {
     return t('%@. Проверьте длительности и перерывы перед стартом.', PlanFormat.exits(plan.exits.length))
@@ -239,6 +262,13 @@ function summary(plan: TrainingPlan, lines: PlanTextLine[]): string {
   const parts = [PlanFormat.exits(lines.filter(PlanLine.isExit).length)]
   const breaks = lines.filter(PlanLine.isBreak).length
   if (breaks > 0) parts.push(PlanFormat.breaks(breaks))
+  const triggers = plan.exits.reduce((sum, exit) => sum + exit.triggers.length, 0)
+  if (triggers > 0) parts.push(PlanFormat.triggers(triggers))
+  const early = plan.exits.filter((exit) => TrainingPlan.earlyEntries(plan, exit).length > 0)
+  if (early.length > 0 && early.length === plan.exits.length) parts.push(t('условия раннего входа у всех выходов'))
+  else if (early.length === 1) parts.push(t('условия раннего входа у выхода %lld', early[0].number))
+  else if (early.length > 1) parts.push(t('условия раннего входа у выходов %@', PlanFormat.list(early.map((exit) => String(exit.number)))))
+  if (lines.some((line) => line.kind.kind === 'doNotEnter')) parts.push(t('правило «не входить»'))
   if (lines.some((line) => line.kind.kind === 'rule')) parts.push(t('правило фальстарта'))
   const notes = lines.filter((line) => line.kind.kind === 'note').length
   if (notes > 0) parts.push(PlanFormat.notes(notes))
@@ -329,23 +359,6 @@ function DateField({ id, value, onChange }: { id: string; value: number | null; 
         </span>
         <CalendarIcon />
       </button>
-    </div>
-  )
-}
-
-// MARK: - False start rule
-
-function RuleView({ line }: { line: PlanTextLine }) {
-  return (
-    <div className="plan-rule">
-      <RuleIcon className="plan-rule__icon" />
-      <div className="col" style={{ gap: 2, minWidth: 0 }}>
-        <div className="row" style={{ gap: 6 }}>
-          <span className="plan-rule__title">{t('Правило фальстарта')}</span>
-          <span className="faint plan-rule__line">{t('строка %lld', line.id)}</span>
-        </div>
-        <div className="plan-rule__body selectable">{PlanFormat.ruleBody(PlanParser.stripDecorations(line.text))}</div>
-      </div>
     </div>
   )
 }

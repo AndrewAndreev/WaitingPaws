@@ -8,25 +8,33 @@ import Foundation
 ///           `Exit 3 - 5 seconds`, `Exit 5 - 30 seconds OR until the dog stands up`
 /// - break:  `Перерыв 5 минут`, `Break 5 minutes` (applies to the preceding exit)
 /// - default break inside the notes: `➡️ Все перерывы 2 минуты`, `All breaks 2 minutes`
+/// - a condition for coming back early: `🟡 Если встала и пошла - входим через 2 минуты от начала движения`,
+///   `If she lies down - come back in 30 seconds`. Right under an exit (no blank line between) it is that exit's,
+///   anywhere else it is common to the training.
 /// - anything else becomes a note.
 public enum PlanParser {
     public static func parse(_ text: String) -> TrainingPlan {
         var plan = TrainingPlan(rawText: text)
         var exits: [PlannedExit] = []
         var notes: [String] = []
+        var common: [EarlyEntry] = []
         var defaultFromText = false
+        /// The exit the next condition belongs to: the last one, while no blank line has come after it.
+        var attachedExit: Int?
+        var contentIndex = 0
 
-        let lines = text
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-
-        for (index, rawLine) in lines.enumerated() {
+        for rawLine in lines(of: text) {
+            if rawLine.isEmpty {
+                attachedExit = nil
+                continue
+            }
             let line = stripDecorations(rawLine)
             if line.isEmpty { continue }
+            defer { contentIndex += 1 }
 
             if let exit = parseExit(line) {
                 exits.append(exit)
+                attachedExit = exits.count - 1
                 continue
             }
 
@@ -37,6 +45,17 @@ public enum PlanParser {
                 continue
             }
 
+            if let entry = parseEarlyEntry(rawLine) {
+                if let attachedExit {
+                    exits[attachedExit].earlyEntries.append(entry)
+                    exits[attachedExit].usesCommonEarlyEntries = false
+                } else {
+                    common.append(entry)
+                }
+                continue
+            }
+            attachedExit = nil
+
             if let duration = commonBreak(in: line) {
                 plan.defaultBreak = duration
                 defaultFromText = true
@@ -44,7 +63,7 @@ public enum PlanParser {
                 continue
             }
 
-            if index == 0 {
+            if contentIndex == 0 {
                 parseHeader(line, into: &plan)
                 continue
             }
@@ -54,8 +73,143 @@ public enum PlanParser {
 
         plan.exits = exits
         plan.notes = notes
+        plan.commonEarlyEntries = common
         normalizeBreaks(&plan, defaultFromText: defaultFromText)
         return plan
+    }
+
+    /// Trimmed lines, with blank ones kept (they end an exit's block). A line that runs into the next point without a
+    /// line break («…поздно вечером➡️ За 30 минут…») is split there. A Windows line end (\r\n) is one break, not a
+    /// line and a blank one.
+    static func lines(of text: String) -> [String] {
+        text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: .newlines).flatMap { line -> [String] in
+            let range = NSRange(line.startIndex..., in: line)
+            return inlineBulletRegex.stringByReplacingMatches(in: line, range: range, withTemplate: "\n$1")
+                .components(separatedBy: "\n")
+        }
+        .map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
+    // MARK: - Conditions
+
+    /// «🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери»,
+    /// «🟢 Если легла - входим через 30 секунд от укладки», "If she lies down — come back in 30 seconds". A rule about
+    /// not coming in («🚩 Если залаяла - ни в коем случае не входить…») is not one.
+    public static func parseEarlyEntry(_ rawLine: String) -> EarlyEntry? {
+        let line = stripDecorations(rawLine)
+        let lower = line.lowercased()
+        guard lower.hasPrefix("если ") || lower.hasPrefix("if "), !isDoNotEnterRule(line) else { return nil }
+        let range = NSRange(line.startIndex..., in: line)
+        guard let verb = comeBackRegex.firstMatch(in: line, range: range), let verbRange = Range(verb.range, in: line)
+        else { return nil }
+
+        let (event, _) = splitCondition(String(line[..<verbRange.lowerBound]))
+        guard let event, !event.isEmpty else { return nil }
+
+        var tail = String(line[verbRange.upperBound...])
+        var delay: TimeInterval?
+        let tailRange = NSRange(tail.startIndex..., in: tail)
+        if let after = afterRegex.firstMatch(in: tail, range: tailRange), let afterRange = Range(after.range, in: tail) {
+            // The time right after «через» / "in", up to the end of its part of the sentence.
+            let rest = String(tail[afterRange.upperBound...])
+            let clauseEnd = rest.firstIndex(where: { ",;:".contains($0) }) ?? rest.endIndex
+            let clause = String(rest[..<clauseEnd])
+            let clauseRange = NSRange(clause.startIndex..., in: clause)
+            if let last = durationRegex.matches(in: clause, range: clauseRange).last,
+               let end = Range(last.range, in: clause)?.upperBound {
+                delay = DurationText.sumOfUnits(in: String(clause[..<end]))
+                tail = String(clause[end...]) + String(rest[clauseEnd...])
+            }
+        } else if let now = rightAwayRegex.firstMatch(in: tail, range: tailRange), let nowRange = Range(now.range, in: tail) {
+            tail = String(tail[nowRange.upperBound...])
+        }
+        let detail = tail.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: ",;:.-–—")))
+
+        let tone: EarlyEntry.Tone = rawLine.hasPrefix("🟡") || rawLine.hasPrefix("🟠") ? .yellow
+            : rawLine.hasPrefix("🟢") ? .green : .plain
+        return EarlyEntry(event: event, delay: delay, detail: detail.isEmpty ? nil : detail, tone: tone)
+    }
+
+    /// «🚩 Если залаяла, завыла - ни в коем случае не входить, ждём…», "If she barks — do not come in".
+    public static func isDoNotEnterRule(_ line: String) -> Bool {
+        let range = NSRange(line.startIndex..., in: line)
+        return line.hasPrefix("🚩") || doNotEnterRegex.firstMatch(in: line, range: range) != nil
+    }
+
+    /// «Если залаяла, завыла - ни в коем случае не входить» → («Залаяла, завыла», «ни в коем случае не входить»):
+    /// what the dog does (after «если», up to the dash) and the rest. No «если» at the start: no title.
+    public static func splitCondition(_ line: String) -> (title: String?, detail: String) {
+        let text = stripDecorations(line)
+        let lower = text.lowercased()
+        let prefix = lower.hasPrefix("если ") ? "если ".count : lower.hasPrefix("if ") ? "if ".count : 0
+        guard prefix > 0 else { return (nil, text) }
+        let body = text.dropFirst(prefix)
+        let separator = [" - ", " – ", " — ", "- ", "— "].compactMap { body.range(of: $0) }.min { $0.lowerBound < $1.lowerBound }
+            ?? body.range(of: ", ")
+        let head = separator.map { body[..<$0.lowerBound] } ?? body
+        let rest = separator.map { body[$0.upperBound...] } ?? ""
+        let title = head.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: ",;:-–—")))
+        let detail = rest.trimmingCharacters(in: .whitespaces)
+        return (title.prefix(1).uppercased() + title.dropFirst(), detail)
+    }
+
+    // MARK: - The trainer's text, line by line
+
+    /// One line of the trainer's text, for showing it during the training with the current exit marked.
+    public struct SourceLine: Equatable, Identifiable {
+        public enum Kind: Equatable {
+            case blank, header, note, exit, earlyEntry, breakTime, doNotEnter, falseStart
+        }
+
+        /// 0-based line index.
+        public let id: Int
+        public let text: String
+        public let kind: Kind
+        /// The exit the line is about: the exit's own line, its conditions and break right under it.
+        public let exitNumber: Int?
+    }
+
+    public static func sourceLines(_ text: String) -> [SourceLine] {
+        var result: [SourceLine] = []
+        var attachedExit: Int?
+        var contentIndex = 0
+        var rows = lines(of: text)
+        while rows.last?.isEmpty == true { rows.removeLast() }
+        while rows.first?.isEmpty == true { rows.removeFirst() }
+        for (index, rawLine) in rows.enumerated() {
+            if rawLine.isEmpty {
+                attachedExit = nil
+                result.append(SourceLine(id: index, text: "", kind: .blank, exitNumber: nil))
+                continue
+            }
+            defer { contentIndex += 1 }
+            let line = stripDecorations(rawLine)
+            let lower = line.lowercased()
+            var kind: SourceLine.Kind = .note
+            var number: Int?
+            if let exit = parseExit(line) {
+                kind = .exit
+                number = exit.number
+                attachedExit = exit.number
+            } else if isExitBreak(lower), attachedExit != nil, DurationText.sumOfUnits(in: line) != nil {
+                kind = .breakTime
+                number = attachedExit
+            } else if parseEarlyEntry(rawLine) != nil {
+                kind = .earlyEntry
+                number = attachedExit
+            } else {
+                attachedExit = nil
+                if contentIndex == 0 {
+                    kind = .header
+                } else if isDoNotEnterRule(rawLine) {
+                    kind = .doNotEnter
+                } else if rawLine.hasPrefix("🔖") || isFalseStartRule(lower) {
+                    kind = .falseStart
+                }
+            }
+            result.append(SourceLine(id: index, text: rawLine, kind: kind, exitNumber: number))
+        }
+        return result
     }
 
     /// "Перерыв 5 минут" / "Break 5 minutes" right after an exit: that exit's own break.
@@ -156,6 +310,11 @@ public enum PlanParser {
             rest = parenthesesRegex.stringByReplacingMatches(in: rest, range: restRange, withTemplate: "")
         }
 
+        // «10 секунд + куртка + взять ключи, звякнуть ими»: what follows a plus sign is a trigger.
+        var parts = rest.components(separatedBy: "+").map { $0.trimmingCharacters(in: .whitespaces) }
+        rest = parts.removeFirst()
+        var triggers = parts.filter { !$0.isEmpty }
+
         let lower = rest.lowercased()
         let untilStanding = lower.contains("до вставания") || lower.contains("пока не встанет")
             || (lower.contains("until") && lower.contains("stand"))
@@ -168,7 +327,21 @@ public enum PlanParser {
         }
         let duration = DurationText.sumOfUnits(in: durationPart) ?? 0
 
-        return PlannedExit(number: number, duration: duration, untilStanding: untilStanding, note: note)
+        // «выйти, закрыть дверь на один оборот, подождать 10 секунд и вернуться»: a sentence instead of a time. What
+        // is done before the waiting is a trigger, the sentence itself stays as the exit's note.
+        if let first = rest.first, !first.isNumber, rest.contains(",") {
+            let clauses = rest.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            if let timed = clauses.firstIndex(where: { DurationText.sumOfUnits(in: $0) != nil }) {
+                let actions = clauses[..<timed].filter { clause in
+                    let range = NSRange(clause.startIndex..., in: clause)
+                    return !clause.isEmpty && goingOutRegex.firstMatch(in: clause, range: range) == nil
+                }
+                triggers.insert(contentsOf: actions, at: 0)
+                note = [rest, note].compactMap { $0 }.joined(separator: " · ")
+            }
+        }
+
+        return PlannedExit(number: number, duration: duration, untilStanding: untilStanding, note: note, triggers: triggers)
     }
 
     static func parseHeader(_ line: String, into plan: inout TrainingPlan) {
@@ -237,6 +410,35 @@ public enum PlanParser {
     )
 
     private static let parenthesesRegex = try! NSRegularExpression(pattern: #"\(([^)]*)\)"#)
+
+    /// «выйти», «выходим», «выйти из квартиры», "go out", "leave": the exit itself, not a trigger.
+    private static let goingOutRegex = try! NSRegularExpression(
+        pattern: #"^(?:выйти|выходим|выйдите|выход)(?:\s+(?:из|за)\s+\p{L}+)?$|^(?:go out|leave|step out)(?:\s+\p{L}+)?$"#,
+        options: [.caseInsensitive])
+
+    /// A bullet in the middle of a line: «…поздно вечером➡️ За 30 минут…».
+    private static let inlineBulletRegex = try! NSRegularExpression(pattern: #"(?<=\S)\s*(➡️|➡|🔖|🚩|🟡|🟢)"#)
+
+    /// «входим», «заходим», «возвращаемся», "come back", "come in", "go back", "return".
+    private static let comeBackRegex = try! NSRegularExpression(
+        pattern: #"\b(?:входим|заходим|возвращаемся|возвращайтесь|входите|заходите|come back|come in|go back|go in|return)\b"#,
+        options: [.caseInsensitive])
+
+    /// «через», "in", "after" in front of the delay.
+    private static let afterRegex = try! NSRegularExpression(pattern: #"\b(?:через|спустя|in|after)\s+"#, options: [.caseInsensitive])
+
+    private static let rightAwayRegex = try! NSRegularExpression(
+        pattern: #"\b(?:сразу|немедленно|right away|immediately|at once)\b"#, options: [.caseInsensitive])
+
+    /// «не входить», «не входим», «не заходить», "do not come in", "don't go in".
+    private static let doNotEnterRegex = try! NSRegularExpression(
+        pattern: #"\bне\s+(?:входить|входим|заходить|заходим|возвращаться|возвращаемся)\b|\b(?:do not|don't|never)\s+(?:come|go)\s+(?:in|back)\b"#,
+        options: [.caseInsensitive])
+
+    /// "<number> <unit>" (`DurationText`'s units).
+    private static let durationRegex = try! NSRegularExpression(
+        pattern: #"\d+(?:[.,]\d+)?\s*(?:час\p{L}*|hour\p{L}*|hr\p{L}*|мин\p{L}*|min\p{L}*|сек\p{L}*|sec\p{L}*|ч|h|м|m|с|s)(?![\p{L}])"#,
+        options: [.caseInsensitive])
 
     private static let breakWordRegex = try! NSRegularExpression(
         pattern: #"перерыв\p{L}*|\b(?:break|breaks|pause|pauses)\b"#, options: [.caseInsensitive])

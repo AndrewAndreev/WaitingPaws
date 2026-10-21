@@ -47,6 +47,8 @@ final class AppSettings {
         static let password = "go2rtc.password"
         static let streamName = "streamName"
         static let cameraTitle = "cameraTitle"
+        static let secondStreamName = "secondStreamName"
+        static let secondCameraTitle = "secondCameraTitle"
         static let xiaomiAccountID = "xiaomiAccountID"
         static let xiaomiRegion = "xiaomiRegion"
         static let playerMode = "playerMode"
@@ -68,6 +70,9 @@ final class AppSettings {
     var serverPassword: String { didSet { KeychainStore.set(serverPassword, for: Key.password) } }
     var streamName: String { didSet { Self.defaults.set(streamName, forKey: Key.streamName) } }
     var cameraTitle: String { didSet { Self.defaults.set(cameraTitle, forKey: Key.cameraTitle) } }
+    /// A second camera to look at (another room): shown instead of the first one by the switcher, never recorded.
+    var secondStreamName: String { didSet { Self.defaults.set(secondStreamName, forKey: Key.secondStreamName) } }
+    var secondCameraTitle: String { didSet { Self.defaults.set(secondCameraTitle, forKey: Key.secondCameraTitle) } }
     var xiaomiAccountID: String { didSet { Self.defaults.set(xiaomiAccountID, forKey: Key.xiaomiAccountID) } }
     var xiaomiRegion: XiaomiRegion { didSet { Self.defaults.set(xiaomiRegion.rawValue, forKey: Key.xiaomiRegion) } }
     /// Explicit player choice; `nil` means the best default for the connection mode.
@@ -117,6 +122,8 @@ final class AppSettings {
         serverPassword = KeychainStore.get(Key.password) ?? ""
         streamName = d.string(forKey: Key.streamName) ?? ""
         cameraTitle = d.string(forKey: Key.cameraTitle) ?? ""
+        secondStreamName = d.string(forKey: Key.secondStreamName) ?? ""
+        secondCameraTitle = d.string(forKey: Key.secondCameraTitle) ?? ""
         xiaomiAccountID = d.string(forKey: Key.xiaomiAccountID) ?? ""
         xiaomiRegion = XiaomiRegion(rawValue: d.string(forKey: Key.xiaomiRegion) ?? "") ?? .suggested
         playerModeOverride = PlayerMode(rawValue: d.string(forKey: Key.playerMode) ?? "")
@@ -174,4 +181,6 @@ final class AppSettings {
     var isSetUp: Bool { isConfigured || withoutCamera }
 
     var cameraDisplayName: String { cameraTitle.isEmpty ? streamName : cameraTitle }
+    var hasSecondCamera: Bool { server != nil && !secondStreamName.isEmpty && secondStreamName != streamName }
+    var secondCameraDisplayName: String { secondCameraTitle.isEmpty ? secondStreamName : secondCameraTitle }
 }
