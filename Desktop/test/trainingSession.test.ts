@@ -82,8 +82,12 @@ describe('TrainingSession', () => {
     expect(SessionPhase.canGoOutside(last)).toBe(false)
     expect(SessionPhase.canFalseStart(last)).toBe(false)
 
-    advance(300)
+    // The last break runs over too: only «Завершить» ends the training (and its recording).
+    advance(400)
     session.tick(now)
+    expect(session.isFinished).toBe(false)
+    expect(session.remaining(now)).toBe(-100)
+    session.finish()
     expect(session.isFinished).toBe(true)
     expect(session.completedExitsCount).toBe(2)
     expect(session.events.at(-1)?.kind).toBe('sessionFinished')

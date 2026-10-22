@@ -74,7 +74,6 @@ export function createBrowserBridge(): PlatformBridge {
     },
     'session.start': (plan) => {
       session = new TrainingSession(TrainingPlan.renumbered(plan as TrainingPlan))
-      session.autoFinishAfterLastBreak = settings.autoFinishAfterLastBreak
       session.subscribe(() => emit())
       pendingPlan = null
       pendingOriginal = null

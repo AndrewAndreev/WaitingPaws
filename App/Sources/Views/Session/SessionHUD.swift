@@ -86,7 +86,7 @@ struct ReadoutContent {
             return String(localized: "План \(DurationText.short(exit.duration))")
         case .breakTime(_, _, _, let next):
             guard let next, session.plan.exits.indices.contains(next) else {
-                return String(localized: "Выходы закончились: после перерыва тренировка завершится")
+                return String(localized: "Выходы закончились — нажмите «Завершить»")
             }
             let exit = session.plan.exits[next]
             let duration = DurationText.short(exit.duration)
@@ -200,22 +200,32 @@ struct SessionReadout: View {
         .frame(width: size.ring, height: size.ring)
     }
 
+    /// The line and the exit's details. The card keeps one height for the whole training: under the details lie,
+    /// hidden, the tallest of every exit's (outside and in a break), so a press never resizes it — the camera above
+    /// and the buttons below stay where they are. Only unfolding the notes makes it taller.
     private func info(_ content: ReadoutContent) -> some View {
         VStack(spacing: 8) {
-            if let line = content.line {
-                Text(line)
-                    .font(.system(size: size.info, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if let brief = content.brief {
-                if content.isBreak {
-                    breakDetails(brief)
-                } else {
-                    outsideDetails(brief)
+            Text(content.line ?? " ")
+                .font(.system(size: size.info, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.85))
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            ZStack(alignment: .top) {
+                ForEach(session.plan.exits) { exit in
+                    let brief = ExitBrief(plan: session.plan, exit: exit)
+                    outsideDetails(brief).hidden()
+                    breakDetails(brief).hidden()
+                }
+                if let brief = content.brief {
+                    if content.isBreak {
+                        breakDetails(brief)
+                    } else {
+                        outsideDetails(brief)
+                    }
                 }
             }
+            .accessibilityElement(children: .contain)
         }
         .frame(maxWidth: .infinity)
     }

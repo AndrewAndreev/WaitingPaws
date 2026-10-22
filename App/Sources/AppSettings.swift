@@ -54,7 +54,6 @@ final class AppSettings {
         static let playerMode = "playerMode"
         static let audioEnabled = "audioEnabled"
         static let autoRecord = "autoRecord"
-        static let autoFinish = "autoFinishAfterLastBreak"
         static let saveToPhotos = "saveToPhotos"
         static let showPerformance = "showPerformance"
         static let shareWithIPhone = "shareWithIPhone"
@@ -79,7 +78,6 @@ final class AppSettings {
     var playerModeOverride: PlayerMode? { didSet { Self.defaults.set(playerModeOverride?.rawValue, forKey: Key.playerMode) } }
     var audioEnabled: Bool { didSet { Self.defaults.set(audioEnabled, forKey: Key.audioEnabled) } }
     var autoRecord: Bool { didSet { Self.defaults.set(autoRecord, forKey: Key.autoRecord) } }
-    var autoFinishAfterLastBreak: Bool { didSet { Self.defaults.set(autoFinishAfterLastBreak, forKey: Key.autoFinish) } }
     /// Copy finished recordings to the Photos library.
     var saveToPhotos: Bool { didSet { Self.defaults.set(saveToPhotos, forKey: Key.saveToPhotos) } }
     /// Diagnostics overlay (CPU, memory, main-thread hangs) on the main screen.
@@ -129,7 +127,6 @@ final class AppSettings {
         playerModeOverride = PlayerMode(rawValue: d.string(forKey: Key.playerMode) ?? "")
         audioEnabled = d.object(forKey: Key.audioEnabled) as? Bool ?? false
         autoRecord = d.object(forKey: Key.autoRecord) as? Bool ?? true
-        autoFinishAfterLastBreak = d.object(forKey: Key.autoFinish) as? Bool ?? true
         showPerformance = d.object(forKey: Key.showPerformance) as? Bool ?? false
         #if os(iOS)
         saveToPhotos = d.object(forKey: Key.saveToPhotos) as? Bool ?? true

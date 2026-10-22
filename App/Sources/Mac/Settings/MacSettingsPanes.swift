@@ -603,15 +603,11 @@ private struct SettingsTrainingPane: View {
 
     var body: some View {
         @Bindable var settings = model.settings
-        SettingsPaneHeader(pane: .training, text: String(localized: "Что происходит в начале и в конце тренировки."))
+        SettingsPaneHeader(pane: .training, text: String(localized: "Что происходит в начале тренировки. Заканчивается она только кнопкой «Завершить»."))
         Section {
             Toggle(isOn: $settings.autoRecord) {
                 Text("Включать запись вместе с тренировкой")
                 Text("Видео с камеры пишется от начала тренировки до конца.")
-            }
-            Toggle(isOn: $settings.autoFinishAfterLastBreak) {
-                Text("Завершать автоматически")
-                Text("После перерыва за последним выходом: запись и лог сохраняются сами.")
             }
         }
     }

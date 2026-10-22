@@ -83,7 +83,6 @@ struct SettingsView: View {
 
                 Section("Тренировка") {
                     Toggle("Включать запись вместе с тренировкой", isOn: $settings.autoRecord)
-                    Toggle("Завершать автоматически после перерыва за последним выходом", isOn: $settings.autoFinishAfterLastBreak)
                     Toggle("Сохранять видео в Фото", isOn: $settings.saveToPhotos)
                 }
 

@@ -79,11 +79,13 @@ struct SessionScreen: View {
             .overlay(alignment: wide ? .bottomTrailing : .bottom) {
                 if showTrainerText, let session = model.session, !clipMode {
                     TrainerTextDrawer(session: session, available: geometry.size.height,
+                                      bottomInset: geometry.safeAreaInsets.bottom,
                                       onFinish: { confirmFinish = true },
                                       onClose: { withAnimation(.smooth(duration: 0.3)) { showTrainerText = false } })
                         .frame(maxWidth: wide ? min(420, geometry.size.width * 0.45) : 560)
                         .padding(.horizontal, wide ? 12 : 0)
-                        .ignoresSafeArea(edges: .bottom)
+                        // Down to the screen's edge, under the home indicator.
+                        .padding(.bottom, -geometry.safeAreaInsets.bottom)
                         .transition(.move(edge: .bottom))
                 }
             }

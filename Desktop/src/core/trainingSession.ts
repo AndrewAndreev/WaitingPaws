@@ -145,7 +145,10 @@ export interface TrainingSessionSnapshot {
   /** Attempt number of the current exit (increments after a false start). */
   attempt: number
   finishedAt: number | null
-  /** Finish the session automatically when the break after the last exit runs out. */
+  /**
+   * Always false: a training ends only with «Завершить» (it used to end itself after the last break). Kept because
+   * iPhones of earlier builds can't read a snapshot without it.
+   */
   autoFinishAfterLastBreak: boolean
   currentBreakStart: number | null
 }
@@ -220,7 +223,7 @@ export class TrainingSession {
       results: [],
       attempt: 1,
       finishedAt: null,
-      autoFinishAfterLastBreak: true,
+      autoFinishAfterLastBreak: false,
       currentBreakStart: null,
     }
     this.log('sessionStarted', now)
@@ -296,7 +299,6 @@ export class TrainingSession {
       results: snapshot.results,
       attempt: snapshot.attempt,
       finishedAt: snapshot.finishedAt,
-      autoFinishAfterLastBreak: snapshot.autoFinishAfterLastBreak,
       currentBreakStart: snapshot.currentBreakStart,
     }
     if (!deepEqual(next, this.state)) this.update(next)
@@ -324,12 +326,6 @@ export class TrainingSession {
   }
   get finishedAt(): number | null {
     return this.state.finishedAt
-  }
-  get autoFinishAfterLastBreak(): boolean {
-    return this.state.autoFinishAfterLastBreak
-  }
-  set autoFinishAfterLastBreak(value: boolean) {
-    if (value !== this.state.autoFinishAfterLastBreak) this.update({ autoFinishAfterLastBreak: value })
   }
 
   // MARK: - Derived state
@@ -664,16 +660,11 @@ export class TrainingSession {
   }
 
   /**
-   * Called periodically. Finishes the session when the break after the last exit runs out; other breaks go on past
-   * their plan until "Вышли" (the views count the extra time up). `now` defaults to the clock.
+   * Called periodically. Breaks go on past their plan until a press (the views count the extra time up), the one
+   * after the last exit too: a training — and its recording — ends only with «Завершить». Nothing to do here now;
+   * kept for its callers (`now` defaults to the clock).
    */
-  tick(now: number = this.clock()): void {
-    if (this.commandHandler || !this.state.autoFinishAfterLastBreak) return
-    const phase = this.state.phase
-    if (phase.kind !== 'breakTime' || phase.nextExitIndex !== null) return
-    if ((now - phase.since) / 1000 < phase.duration) return
-    this.finish()
-  }
+  tick(_now: number = this.clock()): void {}
 
   addNote(text: string): void {
     this.log('note', this.clock(), { exitNumber: this.currentExit?.number ?? null, detail: text })

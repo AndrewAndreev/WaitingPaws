@@ -3547,18 +3547,18 @@
         }
       }
     },
-    "Выходы закончились: после перерыва тренировка завершится" : {
+    "Выходы закончились — нажмите «Завершить»" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No exits left: the training ends after this break"
+            "value" : "No exits left — press “Finish”"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выходы закончились: после перерыва тренировка завершится"
+            "value" : "Выходы закончились — нажмите «Завершить»"
           }
         }
       }
@@ -4583,38 +4583,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Забыть"
-          }
-        }
-      }
-    },
-    "Завершать автоматически" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finish automatically"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Завершать автоматически"
-          }
-        }
-      }
-    },
-    "Завершать автоматически после перерыва за последним выходом" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finish automatically after the break following the last exit"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Завершать автоматически после перерыва за последним выходом"
           }
         }
       }
@@ -10475,22 +10443,6 @@
         }
       }
     },
-    "После перерыва за последним выходом: запись и лог сохраняются сами." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ends after the break following the last exit; the recording and log are saved automatically."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "После перерыва за последним выходом: запись и лог сохраняются сами."
-          }
-        }
-      }
-    },
     "После последнего выхода тренировка заканчивается" : {
       "localizations" : {
         "en" : {
@@ -14075,18 +14027,18 @@
         }
       }
     },
-    "Что происходит в начале и в конце тренировки." : {
+    "Что происходит в начале тренировки. Заканчивается она только кнопкой «Завершить»." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "What happens at the start and end of a training."
+            "value" : "What happens when a training starts. It ends only with the Finish button."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Что происходит в начале и в конце тренировки."
+            "value" : "Что происходит в начале тренировки. Заканчивается она только кнопкой «Завершить»."
           }
         }
       }

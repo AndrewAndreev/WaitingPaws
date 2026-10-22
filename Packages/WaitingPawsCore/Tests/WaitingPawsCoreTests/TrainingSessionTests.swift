@@ -64,8 +64,12 @@ final class TrainingSessionTests: XCTestCase {
         XCTAssertFalse(session.phase.canGoOutside)
         XCTAssertFalse(session.phase.canFalseStart)
 
-        advance(300)
+        // The last break runs over too: only «Завершить» ends the training (and its recording).
+        advance(400)
         session.tick(at: now)
+        XCTAssertFalse(session.isFinished)
+        XCTAssertEqual(session.remaining(at: now), -100)
+        session.finish()
         XCTAssertTrue(session.isFinished)
         XCTAssertEqual(session.completedExitsCount, 2)
         XCTAssertEqual(session.events.last?.kind, .sessionFinished)

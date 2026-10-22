@@ -25,7 +25,6 @@ export interface Settings {
   playerMode: PlayerMode | null
   audioEnabled: boolean
   autoRecord: boolean
-  autoFinishAfterLastBreak: boolean
   showPerformance: boolean
   /// Let iPhones on the same network find this computer, watch its camera and drive its training.
   shareWithIPhone: boolean
@@ -53,7 +52,6 @@ export const defaultSettings: Settings = {
   playerMode: null,
   audioEnabled: false,
   autoRecord: true,
-  autoFinishAfterLastBreak: true,
   showPerformance: false,
   // Off by default on Windows: opening go2rtc to the LAN brings up the firewall prompt, which only makes sense once
   // the user asks for the iPhone link (Settings → iPhone).

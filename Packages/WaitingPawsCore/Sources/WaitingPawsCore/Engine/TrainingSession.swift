@@ -52,8 +52,6 @@ public final class TrainingSession {
     /// Attempt number of the current exit (increments after a false start).
     public private(set) var attempt: Int = 1
     public private(set) var finishedAt: Date?
-    /// Finish the session automatically when the break after the last exit runs out.
-    public var autoFinishAfterLastBreak = true
     /// Set on a mirror of a session that runs on another device (iPhone connected to a Mac): the buttons
     /// call the usual actions, and they are forwarded here. The owner applies the command and sends back a new
     /// `Snapshot` (`restore`); this copy shows the press at once meanwhile (see `predictions`), and `tick` never
@@ -104,13 +102,15 @@ public final class TrainingSession {
         public var results: [ExitResult]
         public var attempt: Int
         public var finishedAt: Date?
+        /// Always false: a training ends only with «Завершить» (it used to end itself after the last break). Kept
+        /// because iPhones of earlier builds can't read a snapshot without it.
         public var autoFinishAfterLastBreak: Bool
         public var currentBreakStart: Date?
     }
 
     public var snapshot: Snapshot {
         Snapshot(plan: plan, startedAt: startedAt, phase: phase, events: events, results: results, attempt: attempt,
-                 finishedAt: finishedAt, autoFinishAfterLastBreak: autoFinishAfterLastBreak,
+                 finishedAt: finishedAt, autoFinishAfterLastBreak: false,
                  currentBreakStart: currentBreakStart)
     }
 
@@ -194,7 +194,6 @@ public final class TrainingSession {
         if results != snapshot.results { results = snapshot.results }
         if attempt != snapshot.attempt { attempt = snapshot.attempt }
         if finishedAt != snapshot.finishedAt { finishedAt = snapshot.finishedAt }
-        autoFinishAfterLastBreak = snapshot.autoFinishAfterLastBreak
         currentBreakStart = snapshot.currentBreakStart
     }
 
@@ -419,9 +418,10 @@ public final class TrainingSession {
                                                   "exits \(completedExitsCount) of \(plan.exits.count)"))
     }
 
-    /// Called periodically. Finishes the session when the break after the last exit runs out; other breaks
-    /// go on past their plan until "Вышли" (the views count the extra time up). On a mirror it only drops presses
-    /// the owner has not confirmed within `predictionLifetime` (later ones went on top of them, so they go too).
+    /// Called periodically. Breaks go on past their plan until a press (the views count the extra time up), the one
+    /// after the last exit too: a training — and its recording — ends only with «Завершить». On a mirror it only
+    /// drops presses the owner has not confirmed within `predictionLifetime` (later ones went on top of them, so they
+    /// go too).
     public func tick(at now: Date? = nil) {
         let now = now ?? clock()
         if commandHandler != nil {
@@ -431,9 +431,6 @@ public final class TrainingSession {
             }
             return
         }
-        guard autoFinishAfterLastBreak else { return }
-        guard case .breakTime(_, let since, let duration, nil) = phase, now.timeIntervalSince(since) >= duration else { return }
-        finish()
     }
 
     public func addNote(_ text: String) {

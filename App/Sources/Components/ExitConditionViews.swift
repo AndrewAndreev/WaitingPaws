@@ -224,7 +224,9 @@ struct FoldedNotes: View {
 }
 
 /// The trainer's text line by line: the lines of `exitNumber` (the exit and its conditions under it) marked pink and
-/// kept in view, exits before it dimmed, the rule against coming in red.
+/// brought into view when it changes (not otherwise: the reader's own scrolling stays where it is), exits before it
+/// dimmed, the rule against coming in red. A plain stack: a lazy one measured the long lines only as they came into
+/// view, and the text jumped under the finger.
 struct TrainerTextView: View {
     let text: String
     let exitNumber: Int?
@@ -234,7 +236,7 @@ struct TrainerTextView: View {
         let lines = PlanParser.sourceLines(text)
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 2) {
                     ForEach(lines) { line in
                         row(line).id(line.id)
                     }

@@ -277,7 +277,6 @@ export class AppBackend {
     // A recording that broke off earlier must not end up attached to this session.
     if (!this.isRecordingLocally) this.currentRecordingPath = null
     const session = new TrainingSession(renumbered)
-    session.autoFinishAfterLastBreak = this.settings.value.autoFinishAfterLastBreak
     this.session = session
     this.sessionUnsubscribe = session.subscribe(() => this.emit())
     this.lastRecord = null
@@ -939,7 +938,6 @@ export class AppBackend {
     'settings.update': (patch: Partial<Settings>) => {
       const previous = this.settings.value
       this.settings.update(patch)
-      if (patch.autoFinishAfterLastBreak !== undefined && this.session) this.session.autoFinishAfterLastBreak = patch.autoFinishAfterLastBreak
       if (patch.shareWithIPhone !== undefined && patch.shareWithIPhone !== previous.shareWithIPhone) void this.setSharing(patch.shareWithIPhone)
       const serverChanged = ['connectionMode', 'serverURL', 'serverUsername', 'serverPassword', 'streamName'].some((key) => key in patch)
       if (serverChanged) {

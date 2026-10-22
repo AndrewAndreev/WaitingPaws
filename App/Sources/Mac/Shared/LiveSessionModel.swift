@@ -82,7 +82,7 @@ struct LiveSessionModel {
                     ? String(localized: "Следующий выход \(exit.number) — \(exit.durationDescription) · попытка \(session.attempt)")
                     : String(localized: "Следующий выход \(exit.number) — \(exit.durationDescription)")
             }
-            return String(localized: "Выходы закончились: после перерыва тренировка завершится")
+            return String(localized: "Выходы закончились — нажмите «Завершить»")
         case .finished:
             return String(localized: "выходов \(session.completedExitsCount) из \(plan.exits.count) · фальстартов \(session.falseStartsCount)")
         }

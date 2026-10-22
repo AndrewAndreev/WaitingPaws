@@ -375,7 +375,6 @@ final class AppModel {
         // A recording that broke off earlier must not end up attached to this session.
         if !isRecordingLocally { currentRecordingURL = nil }
         let session = TrainingSession(plan: plan)
-        session.autoFinishAfterLastBreak = settings.autoFinishAfterLastBreak
         self.session = session
         lastRecord = nil
         // Without a camera the training is the timer and the log only.

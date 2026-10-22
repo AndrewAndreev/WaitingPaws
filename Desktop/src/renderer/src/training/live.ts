@@ -156,7 +156,7 @@ export class LiveSession {
             ? t('Следующий выход %lld — %@ · попытка %lld', next.number, description, attempt)
             : t('Следующий выход %lld — %@', next.number, description)
         }
-        return t('Выходы закончились: после перерыва тренировка завершится')
+        return t('Выходы закончились — нажмите «Завершить»')
       case 'finished':
         return t('выходов %lld из %lld · фальстартов %lld', this.completedExits, this.plan.exits.length, this.falseStarts)
     }
