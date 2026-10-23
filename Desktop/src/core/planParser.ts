@@ -11,6 +11,9 @@
 // - a condition for coming back early: `🟡 Если встала и пошла - входим через 2 минуты от начала движения`,
 //   `If she lies down - come back in 30 seconds`. Right under an exit (no blank line between) it is that exit's,
 //   anywhere else it is common to the training.
+// - a line that goes on from an exit's conditions (no blank line between) and is none of these: the exit's own note
+//   («🟡 Если встала за это время: …» under its 🟡/🟢); the rules against coming in and about false starts stay the
+//   training's, and so does a line right under the exit line itself.
 // - anything else becomes a note.
 //
 // NSRegularExpression's `\b` knows Unicode letters; JS's `\b` is ASCII-only even with the `u` flag, so the word
@@ -70,6 +73,12 @@ const durationRegex =
 /** "2 minute " / "2-minute " / «2 минуты » right before the break word. */
 const durationBeforeWordRegex = /\d+(?:[.,]\d+)?[\s-]*\p{L}+[\s-]*$/u
 
+/** «после перерыва», «через перерыв», "after the break": when, not how long. */
+const timePrepositions = new Set(['после', 'через', 'до', 'перед', 'after', 'before', 'following'])
+
+/** «выход», «выхода», "exit", "departure": a time behind it is the exit's. */
+const exitWordRegex = /^(?:выход\p{L}*|exit\p{L}*|departure\p{L}*)$/iu
+
 const clauseBreakRegex = /[.!?…](?=\s+[^\s\d]|\s*$)|[,;](?=\s)/u
 
 /** Whether English dates with slashes are month-first in the device's region (`dMy` → "M/d/y"). */
@@ -91,6 +100,8 @@ export const PlanParser = {
     let defaultFromText = false
     /** The exit the next condition belongs to: the last one, while no blank line has come after it. */
     let attachedExit: number | null = null
+    /** The lines under `attachedExit` have reached its conditions: what follows them is the exit's too. */
+    let inConditions = false
     let contentIndex = 0
 
     for (const rawLine of PlanParser.lines(text)) {
@@ -106,6 +117,7 @@ export const PlanParser = {
       if (exit) {
         exits.push(exit)
         attachedExit = exits.length - 1
+        inConditions = false
         continue
       }
 
@@ -124,17 +136,28 @@ export const PlanParser = {
         if (attachedExit !== null) {
           const owner = exits[attachedExit]
           exits[attachedExit] = { ...owner, earlyEntries: [...owner.earlyEntries, entry], usesCommonEarlyEntries: false }
+          inConditions = true
         } else {
           common.push(entry)
         }
+        continue
+      }
+
+      if (attachedExit !== null && inConditions && PlanParser.isExitNote(rawLine)) {
+        const owner = exits[attachedExit]
+        const note = PlannedExit.noteText(owner)
+        exits[attachedExit] = { ...owner, note: note === null ? line : `${note}\n${line}` }
         continue
       }
       attachedExit = null
 
       const commonBreak = PlanParser.commonBreak(line)
       if (commonBreak !== null) {
-        plan.defaultBreak = commonBreak
-        defaultFromText = true
+        // The first line that names it: «Все перерывы 2 минуты» comes with the opening points.
+        if (!defaultFromText) {
+          plan.defaultBreak = commonBreak
+          defaultFromText = true
+        }
         notes.push(line)
         continue
       }
@@ -243,6 +266,7 @@ export const PlanParser = {
   sourceLines(text: string): SourceLine[] {
     const result: SourceLine[] = []
     let attachedExit: number | null = null
+    let inConditions = false
     let contentIndex = 0
     const rows = PlanParser.lines(text)
     while (rows.length && rows[rows.length - 1] === '') rows.pop()
@@ -263,11 +287,15 @@ export const PlanParser = {
         kind = 'exit'
         exitNumber = exit.number
         attachedExit = exit.number
+        inConditions = false
       } else if (PlanParser.isExitBreak(lower) && attachedExit !== null && DurationText.sumOfUnits(line) !== null) {
         kind = 'breakTime'
         exitNumber = attachedExit
       } else if (PlanParser.parseEarlyEntry(rawLine) !== null) {
         kind = 'earlyEntry'
+        exitNumber = attachedExit
+        inConditions = attachedExit !== null
+      } else if (attachedExit !== null && inConditions && PlanParser.isExitNote(rawLine)) {
         exitNumber = attachedExit
       } else {
         attachedExit = null
@@ -299,16 +327,22 @@ export const PlanParser = {
    * the break of every exit. The time has to belong to the word: a few words after it or right before it,
    * in the same part of the sentence. A note that mentions breaks next to some other time says nothing about
    * them, and neither does the false-start rule: «Фальстарт: если пошла к двери в первые 20 секунд …, через
-   * обычный перерыв …» once made every break 20 s.
+   * обычный перерыв …» once made every break 20 s. «После перерыва» says when, not how long, and a time behind an
+   * exit is the exit's: «далее после перерыва делаем выход на 15 секунд» once made every break 15 s.
    */
   commonBreak(line: string): number | null {
     if (PlanParser.isFalseStartRule(PlanParser.stripDecorations(line).toLowerCase())) return null
     for (const clause of PlanParser.clauses(line)) {
       const match = breakWordRegex.exec(clause)
       if (!match) continue
+      const lastWordBefore = (clause.slice(0, match.index).match(/\p{L}+/gu) ?? []).at(-1)?.toLowerCase()
+      if (lastWordBefore !== undefined && timePrepositions.has(lastWordBefore)) continue
       const after = clause.slice(match.index + match[0].length)
       const digit = after.search(/\p{Nd}/u)
-      if (digit >= 0 && (after.slice(0, digit).match(/\p{L}+/gu) ?? []).length <= 4) {
+      const words = digit >= 0 ? (after.slice(0, digit).match(/\p{L}+/gu) ?? []).map((w) => w.toLowerCase()) : []
+      // «между выходами» is the break's place; «выход на 15 секунд» is the exit's time.
+      const exitTime = !words.includes('между') && !words.includes('between') && words.some((w) => exitWordRegex.test(w))
+      if (digit >= 0 && words.length <= 4 && !exitTime) {
         const duration = DurationText.sumOfUnits(after)
         if (duration !== null) return duration
       }
@@ -319,6 +353,17 @@ export const PlanParser = {
       }
     }
     return null
+  },
+
+  /** A line under an exit that belongs to it: not a rule of the whole training (🚩, 🔖) and not about the breaks. */
+  isExitNote(rawLine: string): boolean {
+    const line = PlanParser.stripDecorations(rawLine)
+    return (
+      !PlanParser.isDoNotEnterRule(rawLine) &&
+      !rawLine.startsWith('🔖') &&
+      !PlanParser.isFalseStartRule(line.toLowerCase()) &&
+      PlanParser.commonBreak(line) === null
+    )
   },
 
   /** «Фальстарт: …», "False start: …" (lowercased, decorations stripped). */

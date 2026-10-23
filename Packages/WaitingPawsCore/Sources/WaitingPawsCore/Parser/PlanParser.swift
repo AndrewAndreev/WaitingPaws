@@ -11,6 +11,9 @@ import Foundation
 /// - a condition for coming back early: `🟡 Если встала и пошла - входим через 2 минуты от начала движения`,
 ///   `If she lies down - come back in 30 seconds`. Right under an exit (no blank line between) it is that exit's,
 ///   anywhere else it is common to the training.
+/// - a line that goes on from an exit's conditions (no blank line between) and is none of these: the exit's own note
+///   («🟡 Если встала за это время: …» under its 🟡/🟢); the rules against coming in and about false starts stay the
+///   training's, and so does a line right under the exit line itself.
 /// - anything else becomes a note.
 public enum PlanParser {
     public static func parse(_ text: String) -> TrainingPlan {
@@ -21,6 +24,8 @@ public enum PlanParser {
         var defaultFromText = false
         /// The exit the next condition belongs to: the last one, while no blank line has come after it.
         var attachedExit: Int?
+        /// The lines under `attachedExit` have reached its conditions: what follows them is the exit's too.
+        var inConditions = false
         var contentIndex = 0
 
         for rawLine in lines(of: text) {
@@ -35,6 +40,7 @@ public enum PlanParser {
             if let exit = parseExit(line) {
                 exits.append(exit)
                 attachedExit = exits.count - 1
+                inConditions = false
                 continue
             }
 
@@ -49,16 +55,25 @@ public enum PlanParser {
                 if let attachedExit {
                     exits[attachedExit].earlyEntries.append(entry)
                     exits[attachedExit].usesCommonEarlyEntries = false
+                    inConditions = true
                 } else {
                     common.append(entry)
                 }
                 continue
             }
+
+            if let attachedExit, inConditions, isExitNote(rawLine) {
+                exits[attachedExit].note = [exits[attachedExit].noteText, line].compactMap { $0 }.joined(separator: "\n")
+                continue
+            }
             attachedExit = nil
 
             if let duration = commonBreak(in: line) {
-                plan.defaultBreak = duration
-                defaultFromText = true
+                // The first line that names it: «Все перерывы 2 минуты» comes with the opening points.
+                if !defaultFromText {
+                    plan.defaultBreak = duration
+                    defaultFromText = true
+                }
                 notes.append(line)
                 continue
             }
@@ -172,6 +187,7 @@ public enum PlanParser {
     public static func sourceLines(_ text: String) -> [SourceLine] {
         var result: [SourceLine] = []
         var attachedExit: Int?
+        var inConditions = false
         var contentIndex = 0
         var rows = lines(of: text)
         while rows.last?.isEmpty == true { rows.removeLast() }
@@ -191,11 +207,15 @@ public enum PlanParser {
                 kind = .exit
                 number = exit.number
                 attachedExit = exit.number
+                inConditions = false
             } else if isExitBreak(lower), attachedExit != nil, DurationText.sumOfUnits(in: line) != nil {
                 kind = .breakTime
                 number = attachedExit
             } else if parseEarlyEntry(rawLine) != nil {
                 kind = .earlyEntry
+                number = attachedExit
+                inConditions = attachedExit != nil
+            } else if attachedExit != nil, inConditions, isExitNote(rawLine) {
                 number = attachedExit
             } else {
                 attachedExit = nil
@@ -223,16 +243,22 @@ public enum PlanParser {
     /// the break of every exit. The time has to belong to the word: a few words after it or right before it,
     /// in the same part of the sentence. A note that mentions breaks next to some other time says nothing about
     /// them, and neither does the false-start rule: «Фальстарт: если пошла к двери в первые 20 секунд …, через
-    /// обычный перерыв …» once made every break 20 s.
+    /// обычный перерыв …» once made every break 20 s. «После перерыва» says when, not how long, and a time behind an
+    /// exit is the exit's: «далее после перерыва делаем выход на 15 секунд» once made every break 15 s.
     public static func commonBreak(in line: String) -> TimeInterval? {
         if isFalseStartRule(stripDecorations(line).lowercased()) { return nil }
         for clause in clauses(of: line) {
             let range = NSRange(clause.startIndex..., in: clause)
             guard let match = breakWordRegex.firstMatch(in: clause, range: range),
                   let word = Range(match.range, in: clause) else { continue }
+            let lastWordBefore = clause[..<word.lowerBound].split(whereSeparator: { !$0.isLetter }).last?.lowercased()
+            if let lastWordBefore, timePrepositions.contains(lastWordBefore) { continue }
             let after = clause[word.upperBound...]
             if let digit = after.firstIndex(where: \.isWholeNumber),
-               after[..<digit].split(whereSeparator: { !$0.isLetter }).count <= 4,
+               case let words = after[..<digit].split(whereSeparator: { !$0.isLetter }).map { $0.lowercased() }, words.count <= 4,
+               // «между выходами» is the break's place; «выход на 15 секунд» is the exit's time.
+               words.contains("между") || words.contains("between")
+                || !words.contains(where: { exitWordRegex.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) != nil }),
                let duration = DurationText.sumOfUnits(in: String(after)) {
                 return duration
             }
@@ -244,6 +270,13 @@ public enum PlanParser {
             }
         }
         return nil
+    }
+
+    /// A line under an exit that belongs to it: not a rule of the whole training (🚩, 🔖) and not about the breaks.
+    static func isExitNote(_ rawLine: String) -> Bool {
+        let line = stripDecorations(rawLine)
+        return !isDoNotEnterRule(rawLine) && !rawLine.hasPrefix("🔖") && !isFalseStartRule(line.lowercased())
+            && commonBreak(in: line) == nil
     }
 
     /// «Фальстарт: …», "False start: …" (lowercased, decorations stripped).
@@ -439,6 +472,13 @@ public enum PlanParser {
     private static let durationRegex = try! NSRegularExpression(
         pattern: #"\d+(?:[.,]\d+)?\s*(?:час\p{L}*|hour\p{L}*|hr\p{L}*|мин\p{L}*|min\p{L}*|сек\p{L}*|sec\p{L}*|ч|h|м|m|с|s)(?![\p{L}])"#,
         options: [.caseInsensitive])
+
+    /// «после перерыва», «через перерыв», "after the break": when, not how long.
+    private static let timePrepositions: Set<String> = ["после", "через", "до", "перед", "after", "before", "following"]
+
+    /// «выход», «выхода», "exit", "departure": a time behind it is the exit's.
+    private static let exitWordRegex = try! NSRegularExpression(pattern: #"^(?:выход\p{L}*|exit\p{L}*|departure\p{L}*)$"#,
+                                                                options: [.caseInsensitive])
 
     private static let breakWordRegex = try! NSRegularExpression(
         pattern: #"перерыв\p{L}*|\b(?:break|breaks|pause|pauses)\b"#, options: [.caseInsensitive])

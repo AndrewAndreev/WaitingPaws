@@ -249,6 +249,69 @@ final class PlanParserTests: XCTestCase {
         XCTAssertEqual(PlanParser.sourceLines(plan.rawText).map(\.exitNumber), [1, 2, 2])
     }
 
+    /// The training of 23.10.2026: «- далее после перерыва делаем выход на 15 секунд» made every break 15 s; the
+    /// conditions nested under exit 6 («🟡 Если встала за это время: …») landed among the training's rules.
+    func testBreakTimeOfAnExitAndNotesUnderAnExit() {
+        let plan = PlanParser.parse("""
+        🐹 Тренировка на пятницу - Андрей - 23.10.2026
+
+        ➡️ Гостей уводим из квартиры минимум за 1 час, без скрытия ухода➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
+        ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
+        ➡️ В перерывах сидите за столом, работаете
+        ➡️ Все перерывы 2 минуты
+        ➡️ Если лежит в лежанке, особо не шевелится, засыпает - перед выходом сначала шуршим на кухне/перемещаемся по квартире пока Мия не поднимет голову, затем сразу идём на выход
+        1 выход - 5 секунд
+
+        2 выход - 10 секунд
+
+        3 выход - 20 секунд
+
+        4 выход - 2 минуты ИЛИ до вставания
+
+        5 выход - 10 секунд
+
+        6 выход - 8 минут
+        🟡 Если встала и пошла - входим через 4 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+        🟢 Если легла - входим через 2 минуты от укладки
+        🟡 Если встала за это время:
+             ➡️ если бродит - вход через 2 минуты
+             ➡️ если легла - вход через 30 секунд
+
+        Если при возвращении с 6 выхода понимаешь, что она проспала его, то:
+        - далее после перерыва делаем выход на 15 секунд
+        - и далее после перерыва повторяем 6 выход
+        🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери
+
+        🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку
+        """)
+        XCTAssertEqual(plan.defaultBreak, 120)
+        XCTAssertTrue(plan.exits.allSatisfy { $0.breakAfter == nil })
+        XCTAssertEqual(plan.exits.map(\.duration), [5, 10, 20, 120, 10, 480])
+        XCTAssertEqual(plan.exits[5].earlyEntries.map(\.summary), ["встала и пошла → 4:00", "легла → 2:00"])
+        XCTAssertEqual(plan.exits[5].note, "Если встала за это время:\nесли бродит - вход через 2 минуты\nесли легла - вход через 30 секунд")
+        XCTAssertEqual(plan.notes.count, 11)
+        XCTAssertTrue(plan.notes.contains("далее после перерыва делаем выход на 15 секунд"))
+        XCTAssertEqual(plan.doNotEnterRule?.title, "Залаяла, завыла")
+        XCTAssertTrue(plan.notes.last?.hasPrefix("Фальстарт") == true)
+        let exit6 = PlanParser.sourceLines(plan.rawText).filter { $0.exitNumber == 6 }
+        XCTAssertEqual(exit6.map(\.kind), [.exit, .earlyEntry, .earlyEntry, .note, .note, .note])
+    }
+
+    func testTimesThatAreNotTheBreak() {
+        XCTAssertNil(PlanParser.commonBreak(in: "далее после перерыва делаем выход на 15 секунд"))
+        XCTAssertNil(PlanParser.commonBreak(in: "Перерыв, затем выход 30 секунд"))
+        XCTAssertNil(PlanParser.commonBreak(in: "After the break do an exit of 15 seconds"))
+        XCTAssertEqual(PlanParser.commonBreak(in: "Перерывы между выходами — 2 минуты"), 120)
+        // The first line that names the common break wins.
+        let plan = PlanParser.parse("""
+        ➡️ Все перерывы 2 минуты
+        1 выход - 5 секунд
+
+        Перерывы можно увеличить до 3 минут
+        """)
+        XCTAssertEqual(plan.defaultBreak, 120)
+    }
+
     func testEarlyEntryLines() {
         let english = PlanParser.parseEarlyEntry("If she lies down - come back in 30 seconds")
         XCTAssertEqual(english?.event, "She lies down")

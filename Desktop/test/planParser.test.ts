@@ -215,6 +215,61 @@ describe('PlanParser (Russian)', () => {
     expect(lines.filter((line) => line.kind === 'falseStart')).toHaveLength(1)
   })
 
+  // The training of 23.10.2026: «- далее после перерыва делаем выход на 15 секунд» made every break 15 s; the
+  // conditions nested under exit 6 («🟡 Если встала за это время: …») landed among the training's rules.
+  it('keeps an exit\'s time out of the common break and notes under an exit with it', () => {
+    const plan = PlanParser.parse(`🐹 Тренировка на пятницу - Андрей - 23.10.2026
+
+➡️ Гостей уводим из квартиры минимум за 1 час, без скрытия ухода➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
+➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
+➡️ В перерывах сидите за столом, работаете
+➡️ Все перерывы 2 минуты
+➡️ Если лежит в лежанке, особо не шевелится, засыпает - перед выходом сначала шуршим на кухне/перемещаемся по квартире пока Мия не поднимет голову, затем сразу идём на выход
+1 выход - 5 секунд
+
+2 выход - 10 секунд
+
+3 выход - 20 секунд
+
+4 выход - 2 минуты ИЛИ до вставания
+
+5 выход - 10 секунд
+
+6 выход - 8 минут
+🟡 Если встала и пошла - входим через 4 минуты от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру
+🟢 Если легла - входим через 2 минуты от укладки
+🟡 Если встала за это время:
+     ➡️ если бродит - вход через 2 минуты
+     ➡️ если легла - вход через 30 секунд
+
+Если при возвращении с 6 выхода понимаешь, что она проспала его, то:
+- далее после перерыва делаем выход на 15 секунд
+- и далее после перерыва повторяем 6 выход
+🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери
+
+🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку`)
+    expect(plan.defaultBreak).toBe(120)
+    expect(plan.exits.every((exit) => exit.breakAfter === null)).toBe(true)
+    expect(plan.exits.map((exit) => exit.duration)).toEqual([5, 10, 20, 120, 10, 480])
+    expect(plan.exits[5].earlyEntries.map(EarlyEntry.summary)).toEqual(['встала и пошла → 4:00', 'легла → 2:00'])
+    expect(plan.exits[5].note).toBe('Если встала за это время:\nесли бродит - вход через 2 минуты\nесли легла - вход через 30 секунд')
+    expect(plan.notes).toHaveLength(11)
+    expect(plan.notes).toContain('далее после перерыва делаем выход на 15 секунд')
+    expect(plan.notes.at(-1)?.startsWith('Фальстарт')).toBe(true)
+    const exit6 = PlanParser.sourceLines(plan.rawText).filter((line) => line.exitNumber === 6)
+    expect(exit6.map((line) => line.kind)).toEqual(['exit', 'earlyEntry', 'earlyEntry', 'note', 'note', 'note'])
+  })
+
+  it('does not take an exit\'s time or «после перерыва» for the break', () => {
+    expect(PlanParser.commonBreak('далее после перерыва делаем выход на 15 секунд')).toBeNull()
+    expect(PlanParser.commonBreak('Перерыв, затем выход 30 секунд')).toBeNull()
+    expect(PlanParser.commonBreak('After the break do an exit of 15 seconds')).toBeNull()
+    expect(PlanParser.commonBreak('Перерывы между выходами — 2 минуты')).toBe(120)
+    // The first line that names the common break wins.
+    const plan = PlanParser.parse('➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n\nПерерывы можно увеличить до 3 минут')
+    expect(plan.defaultBreak).toBe(120)
+  })
+
   it('reads early entry lines', () => {
     const english = PlanParser.parseEarlyEntry('If she lies down - come back in 30 seconds')
     expect(english?.event).toBe('She lies down')
