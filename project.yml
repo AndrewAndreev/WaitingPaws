@@ -18,8 +18,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.2.2"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "1.3"
+    CURRENT_PROJECT_VERSION: "5"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 849CANCD26
     ENABLE_USER_SCRIPT_SANDBOXING: YES
@@ -127,8 +127,8 @@ targets:
         CODE_SIGN_IDENTITY: "Apple Development"
         # The Mac's own version and build (the shared ones are in `settings.base` above): a Mac-only fix leaves the
         # iPhone's as they are.
-        MARKETING_VERSION: "1.2.2"
-        CURRENT_PROJECT_VERSION: "5"
+        MARKETING_VERSION: "1.3"
+        CURRENT_PROJECT_VERSION: "6"
 
 schemes:
   WaitingPaws-iOS:
