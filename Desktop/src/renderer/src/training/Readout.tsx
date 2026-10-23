@@ -31,7 +31,8 @@ export function Readout({ live }: { live: LiveSession }) {
         </div>
         <div className="readout__timer">
           <div className={'readout__digits tabular' + (neutral ? ' readout__digits--neutral' : '')}>{live.timerText}</div>
-          <div className="readout__line">
+          {/* An extra exit has no plan to fill up to: no line (its place stays, the card keeps its height). */}
+          <div className={'readout__line' + (live.isOpenExit ? ' readout__line--none' : '')}>
             <div className="readout__line-bar" style={{ width: `${Math.min(100, Math.max(0, (live.isAway || live.isBreak ? live.progress : 0) * 100))}%` }} />
           </div>
           <div className={'readout__caption' + (live.overdue ? ' readout__caption--over' : '')}>{live.timerCaption}</div>
@@ -223,7 +224,7 @@ function ExitStrip({ live }: { live: LiveSession }) {
         return (
           <Fragment key={exit.id}>
             <span className={`exit-chip exit-chip--${state} tabular`}>
-              {DurationText.compact(exit.duration)}
+              {exit.isOpen ? t('доп.') : DurationText.compact(exit.duration)}
               {exit.untilStanding && <StandIcon />}
             </span>
             {index < exits.length - 1 && (
@@ -244,14 +245,19 @@ function Info({ live }: { live: LiveSession }) {
   if (!exit || live.isFinished) return null
   return (
     <div className="readout__info">
-      <span>{t('План %@', live.exitDescription)}</span>
+      <span>{exit.isOpen ? t('Выход %lld · %@', exit.number, live.exitDescription) : t('План %@', live.exitDescription)}</span>
     </div>
   )
 }
 
-/// Always the same two buttons: the next step (Space) and the false start (Backspace, ⌫ on the button).
+/// The next step (Space) and the false start (Backspace, ⌫ on the button). Outside, when the schedule says how long a
+/// return still counts as a false start («в первые 20 секунд»), the false start counts that time down and then folds
+/// away, leaving the row to «Вернулись». In the break after the last exit: «Завершить» and «Ещё выход».
 function Transport({ live }: { live: LiveSession }) {
   const phase = live.phase
+  const lastBreak = phase.kind === 'breakTime' && phase.nextExitIndex === null
+  const left = live.falseStartLeft
+  const window = live.falseStartWindow
   return (
     <div className="transport">
       {phase.kind === 'away' ? (
@@ -261,22 +267,65 @@ function Transport({ live }: { live: LiveSession }) {
       ) : phase.kind === 'breakTime' ? (
         <Step icon={<FinishIcon />} title={t('Завершить')} keys="Пробел" tone="primary" onClick={() => void call('session.command', 'finish')} />
       ) : null}
-      {SessionPhase.canFalseStart(phase) && (
-        <Step icon={<FalseStartIcon />} title={t('Фальстарт')} keys="⌫" hint="Backspace" tone="warn" onClick={() => void call('session.command', 'resetExit')} />
+      {lastBreak ? (
+        <Step key="more" icon={<DoorStepIcon />} title={t('Ещё выход')} tone="secondary" onClick={() => void call('session.command', 'startOpenExit')} />
+      ) : (
+        SessionPhase.canFalseStart(phase) && (
+          <Step
+            key="falseStart"
+            icon={<FalseStartIcon />}
+            title={t('Фальстарт')}
+            keys="⌫"
+            hint="Backspace"
+            tone="warn"
+            gone={left === 0}
+            countdown={left !== null && left > 0 && window ? { left, window } : null}
+            onClick={() => void call('session.command', 'resetExit')}
+          />
+        )
       )}
     </div>
   )
 }
 
-/// Pink toward an exit, blue toward a break («Вернулись»), the false start quiet.
-function Step({ icon, title, keys, hint, tone, onClick }: { icon: ReactNode; title: string; keys: string; hint?: string; tone: 'primary' | 'rest' | 'warn'; onClick: () => void }) {
+/// Pink toward an exit, blue toward a break («Вернулись»), the false start quiet, «Ещё выход» plain. `countdown`: how
+/// long the button is still there (the time in its label, a line along its bottom); `gone`: folded away.
+function Step({
+  icon,
+  title,
+  keys,
+  hint,
+  tone,
+  gone = false,
+  countdown = null,
+  onClick,
+}: {
+  icon: ReactNode
+  title: string
+  keys?: string
+  hint?: string
+  tone: 'primary' | 'rest' | 'warn' | 'secondary'
+  gone?: boolean
+  countdown?: { left: number; window: number } | null
+  onClick: () => void
+}) {
+  const shortcut = hint ?? keys
   return (
-    <button className={`step step--${tone}`} onClick={onClick} title={`${title} (${t(hint ?? keys)})`}>
+    <button
+      className={`step step--${tone}` + (gone ? ' step--gone' : '') + (countdown ? ' step--counting' : '')}
+      onClick={onClick}
+      title={shortcut ? `${title} (${t(shortcut)})` : title}
+      disabled={gone}
+      tabIndex={gone ? -1 : undefined}
+      aria-hidden={gone || undefined}
+    >
       <span className="step__label">
         {icon}
         <span className="ellipsis">{title}</span>
+        {countdown && <span className="step__countdown tabular">{DurationText.clock(Math.ceil(countdown.left))}</span>}
       </span>
-      <Kbd keys={keys} />
+      {keys && <Kbd keys={keys} />}
+      {countdown && <span className="step__window" style={{ transform: `scaleX(${Math.min(1, countdown.left / countdown.window)})` }} />}
     </button>
   )
 }

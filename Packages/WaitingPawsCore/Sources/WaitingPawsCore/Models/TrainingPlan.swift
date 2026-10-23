@@ -75,6 +75,8 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
     public var earlyEntries: [EarlyEntry]
     /// The plan's common conditions apply to this exit (when it has none of its own).
     public var usesCommonEarlyEntries: Bool
+    /// An extra exit added after the schedule's last one: no planned time, its timer counts up.
+    public var isOpen: Bool
 
     public init(id: UUID = UUID(),
                 number: Int,
@@ -84,7 +86,8 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
                 breakAfter: TimeInterval? = nil,
                 triggers: [String] = [],
                 earlyEntries: [EarlyEntry] = [],
-                usesCommonEarlyEntries: Bool = true) {
+                usesCommonEarlyEntries: Bool = true,
+                isOpen: Bool = false) {
         self.id = id
         self.number = number
         self.duration = duration
@@ -94,10 +97,11 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
         self.triggers = triggers
         self.earlyEntries = earlyEntries
         self.usesCommonEarlyEntries = usesCommonEarlyEntries
+        self.isOpen = isOpen
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, number, duration, untilStanding, note, breakAfter, triggers, earlyEntries, usesCommonEarlyEntries
+        case id, number, duration, untilStanding, note, breakAfter, triggers, earlyEntries, usesCommonEarlyEntries, isOpen
     }
 
     /// Plans from builds before triggers and conditions decode with none of their own.
@@ -112,10 +116,17 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
         triggers = try container.decodeIfPresent([String].self, forKey: .triggers) ?? []
         earlyEntries = try container.decodeIfPresent([EarlyEntry].self, forKey: .earlyEntries) ?? []
         usesCommonEarlyEntries = try container.decodeIfPresent(Bool.self, forKey: .usesCommonEarlyEntries) ?? true
+        isOpen = try container.decodeIfPresent(Bool.self, forKey: .isOpen) ?? false
+    }
+
+    /// The extra exit «Ещё выход» starts after the schedule's last one.
+    public static func open(number: Int) -> PlannedExit {
+        PlannedExit(number: number, duration: 0, isOpen: true)
     }
 
     /// Human readable planned duration, e.g. "30 с или до вставания" / "30 s or until the dog stands".
     public var durationDescription: String {
+        if isOpen { return Self.openText }
         var text = DurationText.short(duration)
         if untilStanding { text += " " + Self.untilStandingText }
         return text
@@ -129,6 +140,9 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
 
     /// "или до вставания": come back as soon as the dog stands up.
     public static var untilStandingText: String { tr("или до вставания", "or until the dog stands") }
+
+    /// An extra exit's time: «без времени».
+    public static var openText: String { tr("без времени", "no set time") }
 }
 
 /// A parsed (and possibly hand-corrected) training schedule.
@@ -272,6 +286,23 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         public var detail: String
         public var text: String
     }
+
+    /// «🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода…»: how long into an exit a return still
+    /// counts as a false start. `nil` when the schedule doesn't say (the button stays the whole exit).
+    public var falseStartWindow: TimeInterval? {
+        for note in notes where PlanParser.isFalseStartRule(PlanParser.stripDecorations(note).lowercased()) {
+            let range = NSRange(note.startIndex..., in: note)
+            guard let match = Self.firstSecondsRegex.firstMatch(in: note, range: range),
+                  let timeRange = Range(match.range(at: 1), in: note),
+                  let window = DurationText.sumOfUnits(in: String(note[timeRange])), window > 0 else { continue }
+            return window
+        }
+        return nil
+    }
+
+    /// «в первые 20 секунд», «в течение первых 30 секунд», "in the first 20 seconds".
+    private static let firstSecondsRegex = try! NSRegularExpression(
+        pattern: #"(?:перв\p{L}*|first)\s+(\d+(?:[.,]\d+)?\s*\p{L}+)"#, options: [.caseInsensitive])
 
     /// The note that says when not to come in.
     public var doNotEnterRule: Rule? {

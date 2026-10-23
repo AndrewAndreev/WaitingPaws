@@ -185,11 +185,13 @@ public struct SyncState: Codable, Equatable {
     /// The Mac's second camera (another room), only to look at; nil without one and from builds before it.
     public var secondStreamName: String?
     public var secondCameraTitle: String?
+    /// The second camera's `xiaomi://` source: its modes and turning on the iPhone, like `cameraSource`.
+    public var secondCameraSource: String?
 
     public init(session: TrainingSession.Snapshot?, recordingSince: Date?, cameraReady: Bool, cameraTitle: String,
                 streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil, cameraSource: String? = nil,
                 streamRevision: Int? = nil, sentAt: Date? = nil, secondStreamName: String? = nil,
-                secondCameraTitle: String? = nil) {
+                secondCameraTitle: String? = nil, secondCameraSource: String? = nil) {
         self.session = session
         self.recordingSince = recordingSince
         self.cameraReady = cameraReady
@@ -202,6 +204,7 @@ public struct SyncState: Codable, Equatable {
         self.sentAt = sentAt
         self.secondStreamName = secondStreamName
         self.secondCameraTitle = secondCameraTitle
+        self.secondCameraSource = secondCameraSource
     }
 }
 

@@ -192,24 +192,49 @@ struct ConsoleReadout: View {
     // MARK: - Buttons
 
     /// The next step (Space) and the false start (⌫), as on the iPhone: blue toward a break, pink toward an exit.
+    /// Outside, «Фальстарт» runs out with the trainer's window («в первые 20 секунд…») and folds away; after the
+    /// schedule's last exit «Ещё выход» starts an extra one without a planned time.
     private func buttons(_ content: ReadoutContent) -> some View {
-        HStack(spacing: 10) {
-            if let step = content.step {
-                StepButton(title: step.title, icon: step.icon, key: String(localized: "Пробел"),
-                           fill: step.tint, foreground: .black) {
-                    switch step {
-                    case .outside: session.markBehindDoor()
-                    case .backInside: session.endExit()
-                    case .finish: model.finishSession()
+        TimelineView(.periodic(from: .now, by: 0.5)) { context in
+            let falseStartLeft = content.falseStartLeft(at: context.date)
+            let showsFalseStart = content.showsFalseStart(at: context.date)
+            HStack(spacing: 10) {
+                if content.canStartOpenExit {
+                    StepButton(title: String(localized: "Ещё выход"), icon: .outside, key: "",
+                               fill: .white.opacity(0.08), foreground: .primary) {
+                        session.startOpenExit()
                     }
                 }
-            }
-            if content.canFalseStart {
-                StepButton(title: String(localized: "Фальстарт"), icon: .symbol("arrow.uturn.backward"), key: "⌫",
-                           fill: .white.opacity(0.08), foreground: MacPalette.red) {
-                    session.resetExit()
+                if let step = content.step {
+                    StepButton(title: step.title, icon: step.icon, key: String(localized: "Пробел"),
+                               fill: step.tint, foreground: .black) {
+                        switch step {
+                        case .outside: session.markBehindDoor()
+                        case .backInside: session.endExit()
+                        case .finish: model.finishSession()
+                        }
+                    }
+                }
+                if showsFalseStart {
+                    StepButton(title: String(localized: "Фальстарт"), icon: .symbol("arrow.uturn.backward"), key: "⌫",
+                               fill: .white.opacity(0.08), foreground: MacPalette.red) {
+                        session.resetExit()
+                    }
+                    .overlay(alignment: .bottom) {
+                        if let falseStartLeft, let window = session.plan.falseStartWindow {
+                            Capsule()
+                                .fill(MacPalette.red.opacity(0.7))
+                                .frame(height: 3)
+                                .scaleEffect(x: max(0, falseStartLeft / window), anchor: .leading)
+                                .padding(.horizontal, 14)
+                                .padding(.bottom, 4)
+                                .animation(.linear(duration: 0.5), value: falseStartLeft)
+                        }
+                    }
+                    .transition(.scale(scale: 0.4, anchor: .trailing).combined(with: .opacity))
                 }
             }
+            .animation(.smooth(duration: 0.35), value: showsFalseStart)
         }
     }
 }
@@ -234,7 +259,7 @@ private struct StepButton: View {
             }
         }
         .buttonStyle(StepButtonStyle(fill: fill, foreground: foreground))
-        .help("\(title) · \(key)")
+        .help(key.isEmpty ? title : "\(title) · \(key)")
     }
 
     private var label: some View {
@@ -245,7 +270,12 @@ private struct StepButton: View {
         .fixedSize()
     }
 
+    @ViewBuilder
     private var keyCap: some View {
+        if !key.isEmpty { keyCapText }
+    }
+
+    private var keyCapText: some View {
         Text(key)
             .font(.system(size: 10.5, weight: .semibold))
             .padding(.horizontal, 6)

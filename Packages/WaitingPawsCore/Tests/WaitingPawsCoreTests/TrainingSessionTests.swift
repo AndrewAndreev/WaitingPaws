@@ -228,6 +228,45 @@ final class TrainingSessionTests: XCTestCase {
         XCTAssertEqual(mirror.plan.defaultBreak, 90)
     }
 
+    /// «Ещё выход» after the schedule's last exit: an exit without a planned time, counting up, in the log as such.
+    func testOpenExitAfterTheLastOne() {
+        let session = makeSession()
+        session.markBehindDoor(); advance(5); session.endExit()
+        advance(120); session.markBehindDoor(); advance(30); session.endExit()
+        guard case .breakTime(_, _, _, nil) = session.phase else { return XCTFail("expected the last break") }
+
+        advance(60)
+        session.startOpenExit()
+        XCTAssertEqual(session.plan.exits.count, 3)
+        XCTAssertTrue(session.plan.exits[2].isOpen)
+        guard case .away(let index, _, _) = session.phase else { return XCTFail("expected outside") }
+        XCTAssertEqual(index, 2)
+        advance(42)
+        XCTAssertNil(session.remaining(at: now))
+        XCTAssertEqual(session.elapsed(at: now), 42)
+        session.endExit()
+        guard case .breakTime(_, _, _, nil) = session.phase else { return XCTFail("expected a last break again") }
+        session.finish()
+
+        let log = SessionLogFormatter.text(for: session.makeRecord(recordingFileName: nil))
+        XCTAssertTrue(log.contains("3 выход — без времени: за дверью 0:42 ✅"), log)
+        let again = try! JSONDecoder().decode(TrainingPlan.self, from: JSONEncoder().encode(session.plan))
+        XCTAssertTrue(again.exits[2].isOpen)
+    }
+
+    func testFalseStartWindowFromTheRule() {
+        var plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 300)])
+        XCTAssertNil(plan.falseStartWindow)
+        plan.notes = ["Фальстарт: если пошла к двери в первые 20 секунд длинного выхода - сразу возвращаемся"]
+        XCTAssertEqual(plan.falseStartWindow, 20)
+        plan.notes = ["Фальстарт: если в течение первых 1,5 минут пошла к двери — возвращаемся"]
+        XCTAssertEqual(plan.falseStartWindow, 90)
+        plan.notes = ["False start: if she goes to the door in the first 30 seconds, come back"]
+        XCTAssertEqual(plan.falseStartWindow, 30)
+        plan.notes = ["Фальстарт: если пошла к двери — сразу возвращаемся"]
+        XCTAssertNil(plan.falseStartWindow)
+    }
+
     func testEarlyEntriesOfExits() {
         var plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 30, untilStanding: true),
                                         PlannedExit(number: 2, duration: 120)])

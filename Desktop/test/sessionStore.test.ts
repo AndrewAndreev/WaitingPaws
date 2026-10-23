@@ -133,6 +133,7 @@ const swiftRecord = `{
         "duration" : 2,
         "earlyEntries" : [],
         "id" : "7D3A4E3F-5C66-4122-AE77-9F3C4D5E6F70",
+        "isOpen" : false,
         "number" : 1,
         "triggers" : [],
         "untilStanding" : false,
@@ -149,6 +150,7 @@ const swiftRecord = `{
           }
         ],
         "id" : "8E4B5F40-6D77-4233-BF88-A04D5E6F7081",
+        "isOpen" : false,
         "note" : "выйти и сразу вернуться",
         "number" : 2,
         "triggers" : [
@@ -174,6 +176,7 @@ const swiftRecord = `{
       "endedAt" : "2026-09-25T15:00:04Z",
       "falseStart" : false,
       "id" : "A06D7162-8F99-4455-91AA-C26F708192A3",
+      "isOpen" : false,
       "leftAt" : "2026-09-25T15:00:01Z",
       "number" : 1,
       "plannedBreak" : 120,

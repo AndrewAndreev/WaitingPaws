@@ -121,7 +121,8 @@ export interface Go2RTCFetchResponse {
 export interface BackendMethods {
   'settings.update'(patch: Partial<Settings>): void
   'session.start'(plan: TrainingPlanJSON): void
-  'session.command'(command: 'startExit' | 'markBehindDoor' | 'endExit' | 'resetExit' | 'finish'): void
+  /** A button press; `startOpenExit` is «Ещё выход» after the last exit (on the iPhone a plan edit and «Вышли»). */
+  'session.command'(command: 'startExit' | 'markBehindDoor' | 'endExit' | 'resetExit' | 'startOpenExit' | 'finish'): void
   'session.abandon'(): void
   /** The running session's schedule, edited (false: it drops exits already done or the current one). */
   'session.updatePlan'(plan: TrainingPlanJSON, options?: { quiet?: boolean; changesSince?: TrainingPlanJSON | null }): boolean

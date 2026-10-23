@@ -139,11 +139,15 @@ export interface ExitResult {
   falseStart: boolean
   plannedBreak: number
   actualBreak: number | null
+  /** An extra exit without a planned time (after the schedule's last one). */
+  isOpen: boolean
 }
 
 export const ExitResult = {
-  make(fields: Omit<ExitResult, 'id' | 'actualBreak'> & Partial<Pick<ExitResult, 'id' | 'actualBreak'>>): ExitResult {
-    return { ...fields, id: fields.id ?? newUUID(), actualBreak: fields.actualBreak ?? null }
+  make(
+    fields: Omit<ExitResult, 'id' | 'actualBreak' | 'isOpen'> & Partial<Pick<ExitResult, 'id' | 'actualBreak' | 'isOpen'>>,
+  ): ExitResult {
+    return { ...fields, id: fields.id ?? newUUID(), actualBreak: fields.actualBreak ?? null, isOpen: fields.isOpen ?? false }
   },
 
   /** Time actually spent behind the door ("За дверью" → "Вернулись"), in seconds. */
@@ -169,9 +173,11 @@ export const ExitResult = {
       falseStart: result.falseStart,
       plannedBreak: result.plannedBreak,
       actualBreak: result.actualBreak,
+      isOpen: result.isOpen,
     })
   },
 
+  /** Results of builds before extra exits decode as planned ones. */
   decode(value: unknown, dates: DateEncoding, path = ''): ExitResult {
     const json = new ObjectReader(value, path)
     return {
@@ -186,6 +192,7 @@ export const ExitResult = {
       falseStart: json.bool('falseStart'),
       plannedBreak: json.number('plannedBreak'),
       actualBreak: json.optionalNumber('actualBreak'),
+      isOpen: json.optionalBool('isOpen') ?? false,
     }
   },
 }
@@ -280,7 +287,9 @@ export const SessionLogFormatter = {
     lines.push('')
 
     record.results.forEach((result, index) => {
-      let line = `${SessionLogFormatter.exitName(result.number)} — ${DurationText.short(result.plannedDuration)}`
+      let line =
+        `${SessionLogFormatter.exitName(result.number)} — ` +
+        (result.isOpen ? PlannedExit.openText() : DurationText.short(result.plannedDuration))
       if (result.untilStanding) line += ' ' + PlannedExit.untilStandingText()
       if (result.attempt > 1) line += tr(`, попытка ${result.attempt}`, `, attempt ${result.attempt}`)
       line += `: ${SessionLogFormatter.outcome(result)} ${result.falseStart ? '❌' : '✅'}`

@@ -352,6 +352,9 @@
   background: var(--border-default);
   overflow: hidden;
 }
+.readout__line--none {
+  visibility: hidden;
+}
 .readout__line-bar {
   height: 100%;
   border-radius: 3px;
@@ -378,11 +381,23 @@
   color: var(--text-secondary);
 }
 .transport {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 10px;
+  display: flex;
   container-type: inline-size;
+}
+/* Equal widths; the space between is a margin, so a button that folds away takes it along. */
+.transport > .step {
+  flex: 1 1 0;
+}
+.transport > .step + .step {
+  margin-left: 10px;
+}
+/* Outside past the schedule's false-start window: the false start folds away and «Вернулись» takes the row. */
+.transport > .step.step--gone {
+  flex-grow: 0;
+  margin-left: 0;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 /* Narrow panel: the keys go, the titles stay (Space and Backspace still work). */
 @container (max-width: 420px) {
@@ -405,9 +420,15 @@
   font-weight: 600;
   cursor: pointer;
   min-width: 0;
+  position: relative;
+  overflow: hidden;
   transition:
     background var(--duration-fast) var(--ease),
-    transform var(--duration-fast) var(--ease);
+    transform var(--duration-fast) var(--ease),
+    flex-grow 250ms var(--ease),
+    margin 250ms var(--ease),
+    padding 250ms var(--ease),
+    opacity 200ms var(--ease);
 }
 .step:active {
   transform: scale(0.98);
@@ -451,6 +472,35 @@
 }
 .step--warn:hover {
   background: color-mix(in srgb, var(--bg-control-hover) 100%, var(--danger) 6%);
+}
+/* «Ещё выход» in the last break: there, but not the obvious step. */
+.step--secondary:hover {
+  background: color-mix(in srgb, var(--bg-control-hover) 100%, var(--text-primary) 6%);
+}
+/* How long the false start is still there (outside, with «в первые 20 секунд» in the schedule). */
+.step__countdown {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+/* The narrowest panel: the time goes in place of the icon, so the title stays whole. */
+@container (max-width: 360px) {
+  .step--counting .step__label > svg {
+    display: none;
+  }
+}
+.step__window {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.45;
+  transform-origin: left center;
+  transition: transform 250ms linear;
 }
 
 /* ---------- Under the buttons: the exit's conditions, what to prepare, the trainer's text ---------- */

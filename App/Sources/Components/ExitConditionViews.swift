@@ -20,6 +20,18 @@ struct ExitBrief {
             + entries.compactMap { entry in entry.detail.map { "\(entry.event): \($0)" } }
     }
 
+    /// Nothing to show for this exit outside (or, in a break, for the way out).
+    func isEmpty(inBreak: Bool) -> Bool {
+        entries.isEmpty && notes.isEmpty && (inBreak ? exit.triggers.isEmpty : doNotEnter == nil)
+    }
+
+    /// The schedule has details for some exit: the readout keeps a row for them.
+    static func hasDetails(_ plan: TrainingPlan) -> Bool {
+        plan.doNotEnterRule != nil || plan.exits.contains { exit in
+            !exit.triggers.isEmpty || exit.noteText != nil || !plan.earlyEntries(of: exit).isEmpty
+        }
+    }
+
     /// The conditions in one line: «встала и пошла → 2:00 · легла → 0:30».
     var entriesSummary: String? {
         entries.isEmpty ? nil : entries.map(\.summary).joined(separator: " · ")
@@ -368,5 +380,25 @@ extension TrainingPlan {
         guard exits.indices.contains(index) else { return }
         exits[index].earlyEntries = []
         exits[index].usesCommonEarlyEntries = true
+    }
+}
+
+// MARK: - Camera names
+
+/// What to call the two cameras where there is little room: their names while they are short and different
+/// («Прихожая», «Комната»), else the models when those differ («Xiaomi Smart Camera C302» → «C302»), else the names.
+/// The number («1», «2») is the last resort of the views themselves.
+enum CameraShortNames {
+    static func make(_ first: String, _ second: String) -> (String, String) {
+        if first != second, first.count <= 14, second.count <= 14 { return (first, second) }
+        if let a = model(of: first), let b = model(of: second), a != b { return (a, b) }
+        return (first, second)
+    }
+
+    /// «C302», «C200», «MJSXJ09CM»: the last word of letters and digits with a digit in it.
+    static func model(of name: String) -> String? {
+        name.split(whereSeparator: { $0 == " " || $0 == "-" || $0 == "_" }).last.map(String.init).flatMap { word in
+            word.contains(where: \.isNumber) && word.contains(where: \.isLetter) ? word : nil
+        }
     }
 }

@@ -409,8 +409,12 @@ export class TrainingSession {
   static remaining(s: TrainingSessionSnapshot, now: number): number | null {
     const phase = s.phase
     switch (phase.kind) {
-      case 'away':
-        return s.plan.exits[phase.exitIndex].duration - (now - phase.leftAt) / 1000
+      case 'away': {
+        const exit = s.plan.exits[phase.exitIndex]
+        // An extra exit has no plan to count down to.
+        if (exit.isOpen) return null
+        return exit.duration - (now - phase.leftAt) / 1000
+      }
       case 'breakTime':
         return phase.duration - (now - phase.since) / 1000
       default:
@@ -640,7 +644,22 @@ export class TrainingSession {
     return true
   }
 
-  /** Ends the session right now (also used by the auto-finish after the last break). */
+  /**
+   * «Ещё выход» in the break after the schedule's last exit: one more exit without a planned time, and out of the
+   * door at once (the press is «Вышли»). On a mirror both go to the owner, the schedule first.
+   */
+  startOpenExit(at: number | null = null): void {
+    const phase = this.state.phase
+    if (phase.kind !== 'breakTime' || phase.nextExitIndex !== null) return
+    const plan = this.state.plan
+    const edited: TrainingPlan = { ...plan, exits: [...plan.exits, PlannedExit.open(plan.exits.length + 1)] }
+    this.batch(() => {
+      if (!this.updatePlan(edited)) return
+      this.markBehindDoor(at)
+    })
+  }
+
+  /** Ends the session right now. */
   finish(): void {
     if (this.commandHandler) return this.commandHandler('finish', this.clock())
     if (this.state.phase.kind === 'finished') return
@@ -738,6 +757,7 @@ export class TrainingSession {
       endedAt: now,
       falseStart,
       plannedBreak,
+      isOpen: exit.isOpen,
     })
     this.update({ results: [...this.state.results, result] })
 

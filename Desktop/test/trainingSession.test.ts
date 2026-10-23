@@ -233,6 +233,61 @@ describe('TrainingSession', () => {
     expect(mirror.plan.defaultBreak).toBe(90)
   })
 
+  // «Ещё выход» after the schedule's last exit: an exit without a planned time, counting up, in the log as such.
+  it('adds an open exit after the last one', () => {
+    const session = makeSession()
+    session.markBehindDoor(); advance(5); session.endExit()
+    advance(120); session.markBehindDoor(); advance(30); session.endExit()
+    expect(session.phase).toMatchObject({ kind: 'breakTime', nextExitIndex: null })
+
+    advance(60)
+    session.startOpenExit()
+    expect(session.plan.exits).toHaveLength(3)
+    expect(session.plan.exits[2].isOpen).toBe(true)
+    const phase = session.phase
+    if (phase.kind !== 'away') throw new Error('expected outside')
+    expect(phase.exitIndex).toBe(2)
+    advance(42)
+    expect(session.remaining(now)).toBeNull()
+    expect(session.elapsed(now)).toBe(42)
+    session.endExit()
+    expect(session.phase).toMatchObject({ kind: 'breakTime', nextExitIndex: null })
+    session.finish()
+
+    const log = SessionLogFormatter.text(session.makeRecord(null))
+    expect(log).toContain('3 выход — без времени: за дверью 0:42 ✅')
+    const again = TrainingPlan.decode(JSON.parse(JSON.stringify(TrainingPlan.encode(session.plan, DISK_DATES))), DISK_DATES)
+    expect(again.exits[2].isOpen).toBe(true)
+
+    // Not in the Swift test: the schedule note, the result's JSON and an older build's result.
+    expect(session.events.map((event) => event.detail)).toContain('Расписание изменено: добавлен выход 3 — без времени')
+    const result = session.results[2]
+    expect(result.isOpen).toBe(true)
+    const json = ExitResult.encode(result, DISK_DATES)
+    expect(json.isOpen).toBe(true)
+    expect(ExitResult.decode(JSON.parse(JSON.stringify(json)), DISK_DATES)).toEqual(result)
+    delete json.isOpen
+    expect(ExitResult.decode(json, DISK_DATES).isOpen).toBe(false)
+  })
+
+  it('takes «Ещё выход» only in the break after the last exit, on a mirror plan first', () => {
+    const session = makeSession()
+    session.startOpenExit()
+    expect(session.phase.kind, 'before the first exit').toBe('ready')
+    session.markBehindDoor(); advance(5); session.endExit()
+    session.startOpenExit()
+    expect(session.plan.exits, 'an exit still to come').toHaveLength(2)
+
+    advance(120); session.markBehindDoor(); advance(30); session.endExit()
+    const mirror = TrainingSession.fromSnapshot(session.snapshot, { clock: () => now })
+    const sent: string[] = []
+    mirror.planHandler = (plan) => sent.push(`plan ${plan.exits.length}`)
+    mirror.commandHandler = (command) => sent.push(command)
+    mirror.startOpenExit()
+    expect(sent).toEqual(['plan 3', 'markBehindDoor'])
+    expect(mirror.plan.exits, 'the owner applies it').toHaveLength(2)
+  })
+
   // A press on the iPhone whose command reaches the computer seconds later is still logged when it was pressed.
   it('keeps the moment of a late press, within the phase', () => {
     const session = makeSession()
@@ -298,6 +353,19 @@ describe('TrainingSession', () => {
       ],
     }
     expect(TrainingPlan.changes(edited, plan)).toEqual(['выход 2: триггеры', 'выход 2: ранний вход', 'выход 2: заметка'])
+  })
+
+  it('reads the false start window from the rule', () => {
+    const plan = TrainingPlan.make({ exits: [PlannedExit.make({ number: 1, duration: 300 })] })
+    expect(TrainingPlan.falseStartWindow(plan)).toBeNull()
+    const window = (note: string) => TrainingPlan.falseStartWindow({ ...plan, notes: [note] })
+    expect(window('Фальстарт: если пошла к двери в первые 20 секунд длинного выхода - сразу возвращаемся')).toBe(20)
+    expect(window('Фальстарт: если в течение первых 1,5 минут пошла к двери — возвращаемся')).toBe(90)
+    expect(window('False start: if she goes to the door in the first 30 seconds, come back')).toBe(30)
+    expect(window('Фальстарт: если пошла к двери — сразу возвращаемся')).toBeNull()
+    // Not in the Swift test: the trainer's 🔖 in front, and «первые» in a note that isn't the rule.
+    expect(window('🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода')).toBe(20)
+    expect(window('Первые 20 секунд не смотреть на собаку')).toBeNull()
   })
 
   it('reads a plan from an older build', () => {

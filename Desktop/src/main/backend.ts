@@ -366,6 +366,9 @@ export class AppBackend {
       case 'resetExit':
         session.resetExit(at)
         break
+      case 'startOpenExit':
+        session.startOpenExit(at)
+        break
       case 'finish':
         void this.finishSession()
         return

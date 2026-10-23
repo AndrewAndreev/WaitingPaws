@@ -398,21 +398,11 @@ struct SessionScreen: View {
                 .accessibilityLabel("Текст тренера")
             }
             if model.session != nil {
-                Menu {
-                    Button("Изменить расписание", systemImage: "slider.horizontal.3") {
-                        if let session = model.session, !session.isFinished { editingSessionPlan = session.plan }
-                    }
-                    Button(model.finishTitle, systemImage: "flag.checkered") { confirmFinish = true }
-                    Button("Отменить без сохранения", systemImage: "xmark.circle", role: .destructive) { confirmAbandon = true }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Theme.control, in: Circle())
-                }
-                .menuStyle(.button)
-                .buttonStyle(.plain)
+                SessionMenu(onEditPlan: {
+                                if let session = model.session, !session.isFinished { editingSessionPlan = session.plan }
+                            },
+                            onFinish: { confirmFinish = true },
+                            onAbandon: { confirmAbandon = true })
             } else {
                 IconButton(systemImage: "clock.arrow.circlepath") { showHistory = true }
                 IconButton(systemImage: "gearshape") { showSettings = true }
@@ -506,8 +496,8 @@ struct PlanEntryCard: View {
 
 
 /// Camera name pill with its menu. Separate view so per-second updates elsewhere do not rebuild an open menu.
-/// As a segment of `CameraSwitcher` it is the selected camera's name; quality and camera modes are the first
-/// camera's, so they are there while it is on screen.
+/// As a segment of `CameraSwitcher` it is the selected camera's name. The camera modes are the shown camera's;
+/// quality is the first camera's (the one recorded), so it is there while that one is on screen.
 private struct CameraMenu: View {
     @Environment(AppModel.self) private var model
     var onReconnect: () -> Void
@@ -556,9 +546,7 @@ private struct CameraMenu: View {
                     Label("Качество · \(quality.title)", systemImage: "sparkles.tv")
                 }
             }
-            if !model.isShowingSecondCamera {
-                CameraModeMenuItems()
-            }
+            CameraModeMenuItems()
             Toggle("Звук", systemImage: "speaker.wave.2", isOn: Binding(
                 get: { model.settings.audioEnabled },
                 set: { model.settings.audioEnabled = $0 }))
@@ -580,7 +568,7 @@ private struct CameraMenu: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
-        .layoutPriority(-1)
+        .layoutPriority(segment == nil ? -1 : 0)
     }
 }
 
@@ -593,30 +581,37 @@ private struct CameraSwitcher: View {
     var onPickSecondCamera: () -> Void
 
     var body: some View {
-        HStack(spacing: 2) {
-            segment(second: false, title: model.activeCameraName, number: 1)
-            segment(second: true, title: model.activeSecondCameraName, number: 2)
+        let names = CameraShortNames.make(model.activeCameraName, model.activeSecondCameraName)
+        let shown = model.isShowingSecondCamera
+        // What fits: both names; the shown one's name and the other's number; both numbers. The bar's width doesn't
+        // change by the second (REC keeps its width), so the choice holds.
+        ViewThatFits(in: .horizontal) {
+            row(names.0, names.1)
+            row(shown ? "1" : names.0, shown ? names.1 : "2")
+            row("1", "2")
         }
-        .padding(2)
-        .background(Theme.control, in: Capsule())
         .layoutPriority(-1)
     }
 
-    /// The camera on screen keeps its name; the other one gives way to «● 2» when the bar is busy.
+    private func row(_ first: String, _ second: String) -> some View {
+        HStack(spacing: 2) {
+            segment(second: false, title: first)
+            segment(second: true, title: second)
+        }
+        .padding(2)
+        .background(Theme.control, in: Capsule())
+    }
+
     @ViewBuilder
-    private func segment(second: Bool, title: String, number: Int) -> some View {
+    private func segment(second: Bool, title: String) -> some View {
         if model.isShowingSecondCamera == second {
             CameraMenu(onReconnect: onReconnect, onPickCamera: onPickCamera, onPickSecondCamera: onPickSecondCamera,
                        segment: title)
-                .layoutPriority(1)
         } else {
             Button {
                 withAnimation(.smooth(duration: 0.2)) { model.showCamera(second: second) }
             } label: {
-                ViewThatFits(in: .horizontal) {
-                    CameraSegmentLabel(title: title, selected: false)
-                    CameraSegmentLabel(title: "\(number)", selected: false)
-                }
+                CameraSegmentLabel(title: title, selected: false)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(String(localized: "Показать камеру «\(title)»"))
@@ -636,15 +631,39 @@ private struct CameraSegmentLabel: View {
                 // Still connected: switching back is instant.
                 Circle().fill(Color(red: 0.43, green: 0.91, blue: 0.63)).frame(width: 6, height: 6)
             }
-            Text(title).lineLimit(1).truncationMode(.tail)
+            Text(title).lineLimit(1)
         }
-        .fixedSize(horizontal: !selected, vertical: false)
+        .fixedSize()
         .font(.system(.subheadline, design: .rounded, weight: selected ? .semibold : .medium))
         .foregroundStyle(selected ? .white : .white.opacity(0.6))
         .padding(.horizontal, 9)
         .frame(height: 30)
         .background(selected ? Color.white.opacity(0.16) : .clear, in: Capsule())
         .contentShape(Capsule())
+    }
+}
+
+/// ••• during a training. Its own view: the screen's updates don't rebuild an open menu (it used to blink).
+private struct SessionMenu: View {
+    @Environment(AppModel.self) private var model
+    var onEditPlan: () -> Void
+    var onFinish: () -> Void
+    var onAbandon: () -> Void
+
+    var body: some View {
+        Menu {
+            Button("Изменить расписание", systemImage: "slider.horizontal.3", action: onEditPlan)
+            Button(model.finishTitle, systemImage: "flag.checkered", action: onFinish)
+            Button("Отменить без сохранения", systemImage: "xmark.circle", role: .destructive, action: onAbandon)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .background(Theme.control, in: Circle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
     }
 }
 
@@ -658,8 +677,13 @@ private struct RecordingPill: View {
                 model.toggleRecording()
             } label: {
                 if model.isRecordingNow {
-                    Pill(text: "REC " + DurationText.clock(model.recordingDuration(at: context.date)),
-                         systemImage: "record.circle.fill", tint: Theme.danger)
+                    // Digits of one width and room for «REC 00:00»: the bar is not laid out anew every second.
+                    let clock = DurationText.clock(model.recordingDuration(at: context.date))
+                    ZStack {
+                        Pill(text: "REC " + (clock.count > 5 ? "0:00:00" : "00:00"), systemImage: "record.circle.fill").hidden()
+                        Pill(text: "REC " + clock, systemImage: "record.circle.fill", tint: Theme.danger)
+                    }
+                    .monospacedDigit()
                 } else if !model.isLinkedToMac, model.recorder.lastError != nil {
                     Pill(text: String(localized: "Запись не идёт"), systemImage: "exclamationmark.triangle.fill", tint: Theme.warning)
                 } else {

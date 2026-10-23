@@ -292,6 +292,11 @@ struct CameraWebView {
                 }
                 lastTime = video.currentTime;
               }, 250);
+              // Back from the background: WebKit may have paused the picture; the data catches up on its own (the jump to
+              // live in 'updateend' below) as long as the connection lived through it.
+              document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && !first && this.video.paused) this.video.play().catch(() => {});
+              });
               this.video.addEventListener('resize', () => report('size ' + this.video.videoWidth + 'x' + this.video.videoHeight));
               this.video.addEventListener('error', () => report('video error ' + (this.video.error ? this.video.error.code : '?')));
             }

@@ -1,16 +1,138 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// The iPhone's heads-up display for the running session: the shared readout on a card.
+/// The iPhone's heads-up display for the running session: the shared readout on a card. The card keeps one height:
+/// the exit's conditions, triggers and notes are a row of chips in it; pulled up (or the row tapped) they open in full
+/// above the card like a drawer, over the camera, and go back down the same way. Nothing a press shows resizes the
+/// card, so the camera above and the buttons below stay put; and the card is no taller than it needs to be.
 struct SessionHUD: View {
     let session: TrainingSession
     /// Smaller ring and tighter spacing for portrait phones.
     var compact = false
     var onFinish: () -> Void
 
+    #if DEBUG
+    // `--demo-details`: the details open above the card (UI checks).
+    @State private var expanded = CommandLine.arguments.contains("--demo-details")
+    #else
+    @State private var expanded = false
+    #endif
+    @GestureState private var drag: CGFloat = 0
+    @State private var panelHeight: CGFloat = 0
+
     var body: some View {
+        let size: SessionReadout.Size = compact ? .phoneCompact : .phone
+        let content = ReadoutContent(session: session)
+        let hasDetails = ExitBrief.hasDetails(session.plan)
         GlassCard(padding: compact ? 14 : 18) {
-            SessionReadout(session: session, size: compact ? .phoneCompact : .phone, onFinish: onFinish)
+            SessionReadout(session: session, size: size, onFinish: onFinish,
+                           onDetails: hasDetails ? { withAnimation(.smooth(duration: 0.3)) { expanded.toggle() } } : nil)
+        }
+        .overlay(alignment: .top) {
+            if hasDetails {
+                grabber
+                    .padding(.top, 5)
+            }
+        }
+        .overlay(alignment: .top) {
+            if expanded, let brief = content.brief, !brief.isEmpty(inBreak: content.isBreak) {
+                ExitDetailsPanel(brief: brief, isBreak: content.isBreak, size: size, maxDetailsHeight: compact ? 300 : 380,
+                                 onClose: { withAnimation(.smooth(duration: 0.3)) { expanded = false } })
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { panelHeight = $0 }
+                    // Above the card, over the camera: its bottom edge just over the card's top edge.
+                    .offset(y: -panelHeight + 12 + max(0, drag))
+                    .transition(.opacity.combined(with: .offset(y: 30)))
+            }
+        }
+        .gesture(
+            DragGesture(minimumDistance: 12, coordinateSpace: .global)
+                .updating($drag) { value, state, _ in if expanded { state = value.translation.height } }
+                .onEnded { value in
+                    guard hasDetails, abs(value.translation.height) > abs(value.translation.width) else { return }
+                    withAnimation(.smooth(duration: 0.3)) {
+                        if value.predictedEndTranslation.height < -40 { expanded = true }
+                        if value.predictedEndTranslation.height > 60 { expanded = false }
+                    }
+                },
+            including: hasDetails ? .all : .subviews
+        )
+    }
+
+    /// The handle at the card's top edge: pull up for the details, down to put them away.
+    private var grabber: some View {
+        Capsule()
+            .fill(.white.opacity(expanded ? 0.5 : 0.28))
+            .frame(width: 36, height: 4)
+            .accessibilityLabel(expanded ? "Свернуть подробности выхода" : "Развернуть подробности выхода")
+            .accessibilityAddTraits(.isButton)
+            .onTapGesture { withAnimation(.smooth(duration: 0.3)) { expanded.toggle() } }
+    }
+}
+
+/// The exit's details in full, above the readout card: when to come back early, when not to come in and the notes
+/// outside; what to take for the next exit in a break.
+private struct ExitDetailsPanel: View {
+    let brief: ExitBrief
+    let isBreak: Bool
+    let size: SessionReadout.Size
+    /// More than this scrolls (the panel must leave some of the camera).
+    var maxDetailsHeight: CGFloat
+    var onClose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(isBreak ? String(localized: "К выходу \(brief.exit.number)") : String(localized: "Выход \(brief.exit.number)"))
+                    .font(Theme.display(17, weight: .bold))
+                Spacer(minLength: 0)
+                Button(action: onClose) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .frame(width: 32, height: 32)
+                        .background(Theme.control, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Свернуть подробности выхода")
+            }
+            ScrollView { details }
+                .frame(maxHeight: maxDetailsHeight)
+        }
+        .padding(14)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(.white.opacity(0.1), lineWidth: 1))
+        .shadow(color: .black.opacity(0.55), radius: 16, y: -2)
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if isBreak {
+                ForEach(Array(brief.exit.triggers.enumerated()), id: \.offset) { _, trigger in
+                    TriggerRow(text: trigger, size: size.info)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: size.plate)
+                        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+            }
+            ForEach(brief.entries) { entry in
+                EarlyEntryPlate(entry: entry, showsDetail: true, height: size.plate, digits: size.plateDigits)
+                    .opacity(isBreak ? 0.7 : 1)
+            }
+            if !isBreak, let rule = brief.doNotEnter {
+                DoNotEnterPlate(rule: rule, showsDetail: true, height: size.plate, digits: size.plateDigits)
+            }
+            ForEach(brief.notes, id: \.self) { note in
+                Label {
+                    Text(note).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "text.bubble")
+                }
+                .font(.system(size: size.info - 1, design: .rounded))
+                .foregroundStyle(.white.opacity(0.7))
+                .padding(.horizontal, 4)
+                .padding(.top, 2)
+            }
         }
     }
 }
@@ -83,10 +205,11 @@ struct ReadoutContent {
         switch session.phase {
         case .ready, .leaving, .away:
             guard let exit = session.currentExit else { return nil }
+            if exit.isOpen { return String(localized: "Выход без времени — вернитесь, когда нужно") }
             return String(localized: "План \(DurationText.short(exit.duration))")
         case .breakTime(_, _, _, let next):
             guard let next, session.plan.exits.indices.contains(next) else {
-                return String(localized: "Выходы закончились — нажмите «Завершить»")
+                return String(localized: "Выходы закончились: «Ещё выход» или «Завершить»")
             }
             let exit = session.plan.exits[next]
             let duration = DurationText.short(exit.duration)
@@ -108,6 +231,24 @@ struct ReadoutContent {
 
     var canFalseStart: Bool { session.phase.canFalseStart }
 
+    /// Outside: how long «Фальстарт» still counts, by the trainer's rule («в первые 20 секунд…»); nil without one.
+    func falseStartLeft(at now: Date) -> TimeInterval? {
+        guard case .away = session.phase, let window = session.plan.falseStartWindow else { return nil }
+        return window - session.elapsed(at: now)
+    }
+
+    /// «Фальстарт» is there: always in a break; outside until the trainer's window has passed.
+    func showsFalseStart(at now: Date) -> Bool {
+        guard canFalseStart else { return false }
+        return (falseStartLeft(at: now) ?? 1) > 0
+    }
+
+    /// The break after the schedule's last exit: «Ещё выход» is offered next to «Завершить».
+    var canStartOpenExit: Bool {
+        if case .breakTime(_, _, _, nil) = session.phase { return true }
+        return false
+    }
+
     func timer(at now: Date) -> Timer {
         let remaining = session.remaining(at: now)
         let overdue = (remaining ?? 0) < 0
@@ -119,6 +260,10 @@ struct ReadoutContent {
         case .leaving:
             return Timer(text: DurationText.clock(session.elapsed(at: now)), caption: String(localized: "к двери"),
                          overdue: false, tint: tint, progress: nil)
+        case .away where session.currentExit?.isOpen == true:
+            // An extra exit has no plan: its time counts up.
+            return Timer(text: DurationText.clock(session.elapsed(at: now)), caption: String(localized: "прошло"),
+                         overdue: false, tint: Theme.accent, progress: nil)
         case .away, .breakTime:
             let value = remaining ?? 0
             return Timer(text: overdue ? "+" + DurationText.clock(-value) : DurationText.clock(value),
@@ -135,6 +280,8 @@ struct SessionReadout: View {
     let session: TrainingSession
     var size: Size = .phone
     var onFinish: () -> Void
+    /// The row of the exit's chips opens its details (nil: the schedule has none, no row).
+    var onDetails: (() -> Void)? = nil
 
     struct Size {
         var ring: CGFloat
@@ -157,10 +304,18 @@ struct SessionReadout: View {
         VStack(spacing: size.spacing) {
             ExitStrip(session: session)
             header(content)
+            if let onDetails {
+                ExitChips(brief: content.brief, isBreak: content.isBreak, onTap: onDetails)
+            }
             TimelineView(.periodic(from: .now, by: 0.5)) { context in
                 timer(content.timer(at: context.date))
             }
-            info(content)
+            Text(content.line ?? " ")
+                .font(.system(size: size.info, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.85))
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
             ReadoutActions(session: session, height: size.button, onFinish: onFinish)
         }
     }
@@ -200,75 +355,66 @@ struct SessionReadout: View {
         .frame(width: size.ring, height: size.ring)
     }
 
-    /// The line and the exit's details. The card keeps one height for the whole training: under the details lie,
-    /// hidden, the tallest of every exit's (outside and in a break), so a press never resizes it — the camera above
-    /// and the buttons below stay where they are. Only unfolding the notes makes it taller.
-    private func info(_ content: ReadoutContent) -> some View {
-        VStack(spacing: 8) {
-            Text(content.line ?? " ")
-                .font(.system(size: size.info, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
-                .multilineTextAlignment(.center)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            ZStack(alignment: .top) {
-                ForEach(session.plan.exits) { exit in
-                    let brief = ExitBrief(plan: session.plan, exit: exit)
-                    outsideDetails(brief).hidden()
-                    breakDetails(brief).hidden()
-                }
-                if let brief = content.brief {
-                    if content.isBreak {
-                        breakDetails(brief)
-                    } else {
-                        outsideDetails(brief)
+}
+
+/// The exit's details in one row of chips under the title, the same height on every exit: outside its conditions with
+/// their times and «не входить», in a break the next exit's triggers; 📝 when it has notes. A tap opens them in full.
+private struct ExitChips: View {
+    let brief: ExitBrief?
+    let isBreak: Bool
+    var onTap: () -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                if let brief {
+                    if isBreak {
+                        ForEach(Array(brief.exit.triggers.enumerated()), id: \.offset) { _, trigger in
+                            chip { Image(systemName: "bolt.fill").foregroundStyle(Theme.warning); Text(trigger) }
+                        }
+                    }
+                    ForEach(brief.entries) { entry in
+                        chip {
+                            Circle().fill(entry.tone.color).frame(width: 7, height: 7)
+                            Text(entry.event)
+                            Text(entry.delay.flatMap { $0 > 0 ? DurationText.clock($0) : nil } ?? String(localized: "сразу"))
+                                .fontWeight(.bold)
+                                .monospacedDigit()
+                        }
+                        .opacity(isBreak ? 0.7 : 1)
+                    }
+                    if !isBreak, brief.doNotEnter != nil {
+                        chip { Image(systemName: "flag.fill").foregroundStyle(Theme.danger); Text("не входить") }
+                    }
+                    if !brief.notes.isEmpty {
+                        chip { Image(systemName: "text.bubble.fill") }
                     }
                 }
             }
-            .accessibilityElement(children: .contain)
+            .padding(.horizontal, 1)
         }
-        .frame(maxWidth: .infinity)
+        .frame(height: 30)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Открыть подробности выхода")
     }
 
-    /// Outside: when to come back early, big; when not to come in; the notes folded.
-    private func outsideDetails(_ brief: ExitBrief) -> some View {
-        VStack(spacing: 6) {
-            ForEach(brief.entries) { entry in
-                EarlyEntryPlate(entry: entry, height: size.plate, digits: size.plateDigits)
-            }
-            if let rule = brief.doNotEnter {
-                DoNotEnterPlate(rule: rule, height: size.plate, digits: size.plateDigits)
-            }
-            if !brief.notes.isEmpty {
-                FoldedNotes(notes: brief.notes, size: size.info - 2)
-                    .padding(.horizontal, 4)
-                    .id(brief.exit.id)
-            }
-        }
-    }
-
-    /// In a break: what to take for the next exit and its conditions in one line.
-    private func breakDetails(_ brief: ExitBrief) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(brief.exit.triggers.enumerated()), id: \.offset) { _, trigger in
-                TriggerRow(text: trigger, size: size.info)
-            }
-            if let summary = brief.entriesSummary {
-                Label {
-                    Text("На выходе: \(summary)")
-                } icon: {
-                    Image(systemName: "figure.run")
-                }
-                .font(.system(size: size.info - 2, design: .rounded))
-                .foregroundStyle(.white.opacity(0.55))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding(.horizontal, 4)
+    private func chip<Label: View>(@ViewBuilder _ label: () -> Label) -> some View {
+        HStack(spacing: 5, content: label)
+            .font(.system(size: 13, weight: .medium, design: .rounded))
+            .foregroundStyle(.white.opacity(0.9))
+            .lineLimit(1)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(Color.white.opacity(0.08), in: Capsule())
     }
 }
 
-/// Always the same two buttons: the next step and the false start.
+/// The next step and the false start. Outside, «Фальстарт» counts down the trainer's window («в первые 20 секунд…»)
+/// and then folds away, the step taking the whole row. After the schedule's last exit: «Ещё выход» (an extra one
+/// without a planned time) next to «Завершить» — a training ends only with that.
 struct ReadoutActions: View {
     let session: TrainingSession
     var height: CGFloat = 52
@@ -276,23 +422,46 @@ struct ReadoutActions: View {
 
     var body: some View {
         let content = ReadoutContent(session: session)
-        HStack(spacing: 8) {
-            if let step = content.step {
-                BigButton(title: step.title, icon: step.icon, style: step == .backInside ? .rest : .primary,
-                          height: height) {
-                    switch step {
-                    case .outside: session.markBehindDoor()
-                    case .backInside: session.endExit()
-                    case .finish: onFinish()
+        TimelineView(.periodic(from: .now, by: 0.5)) { context in
+            let falseStartLeft = content.falseStartLeft(at: context.date)
+            let showsFalseStart = content.showsFalseStart(at: context.date)
+            HStack(spacing: 8) {
+                if content.canStartOpenExit {
+                    BigButton(title: String(localized: "Ещё выход"), icon: .outside, style: .secondary, height: height) {
+                        session.startOpenExit()
                     }
                 }
-            }
-            if content.canFalseStart {
-                BigButton(title: String(localized: "Фальстарт"), systemImage: "arrow.uturn.backward", style: .destructive,
-                          height: height) {
-                    session.resetExit()
+                if let step = content.step {
+                    BigButton(title: step.title, icon: step.icon, style: step == .backInside ? .rest : .primary,
+                              height: height) {
+                        switch step {
+                        case .outside: session.markBehindDoor()
+                        case .backInside: session.endExit()
+                        case .finish: onFinish()
+                        }
+                    }
+                }
+                if showsFalseStart {
+                    BigButton(title: String(localized: "Фальстарт"), systemImage: "arrow.uturn.backward", style: .destructive,
+                              height: height) {
+                        session.resetExit()
+                    }
+                    .overlay(alignment: .bottom) {
+                        if let falseStartLeft, let window = session.plan.falseStartWindow {
+                            // How long it still counts: a line running out under the title.
+                            Capsule()
+                                .fill(Theme.danger.opacity(0.7))
+                                .frame(height: 3)
+                                .scaleEffect(x: max(0, falseStartLeft / window), anchor: .leading)
+                                .padding(.horizontal, 18)
+                                .padding(.bottom, 7)
+                                .animation(.linear(duration: 0.5), value: falseStartLeft)
+                        }
+                    }
+                    .transition(.scale(scale: 0.4, anchor: .trailing).combined(with: .opacity))
                 }
             }
+            .animation(.smooth(duration: 0.35), value: showsFalseStart)
         }
     }
 }
@@ -329,7 +498,7 @@ struct ExitStrip: View {
 
     private func chip(_ exit: PlannedExit, state: ChipState) -> some View {
         HStack(spacing: 2) {
-            Text(DurationText.compact(exit.duration))
+            Text(exit.isOpen ? String(localized: "доп.") : DurationText.compact(exit.duration))
             if exit.untilStanding {
                 Image(systemName: "figure.stand").font(.system(size: 9, weight: .bold))
             }

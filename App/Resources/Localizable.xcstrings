@@ -3435,6 +3435,22 @@
         }
       }
     },
+    "Выход без времени — вернитесь, когда нужно" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An exit with no set time — come back when you need to"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выход без времени — вернитесь, когда нужно"
+          }
+        }
+      }
+    },
     "Выход уже прошёл или идёт сейчас: его можно поправить, но не удалить и не переставить" : {
       "localizations" : {
         "en" : {
@@ -3547,18 +3563,18 @@
         }
       }
     },
-    "Выходы закончились — нажмите «Завершить»" : {
+    "Выходы закончились: «Ещё выход» или «Завершить»" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No exits left — press “Finish”"
+            "value" : "No exits left: “Another Exit” or “Finish”"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выходы закончились — нажмите «Завершить»"
+            "value" : "Выходы закончились: «Ещё выход» или «Завершить»"
           }
         }
       }
@@ -4219,6 +4235,22 @@
         }
       }
     },
+    "доп." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "extra"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доп."
+          }
+        }
+      }
+    },
     "другая версия Waiting Paws" : {
       "localizations" : {
         "en" : {
@@ -4471,6 +4503,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Есть только записи без тренировки — они во вкладке «Только видео»."
+          }
+        }
+      }
+    },
+    "Ещё выход" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another Exit"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё выход"
           }
         }
       }
@@ -5751,6 +5799,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ищем камеры…"
+          }
+        }
+      }
+    },
+    "К выходу %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For exit %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "К выходу %lld"
           }
         }
       }
@@ -8603,6 +8667,22 @@
         }
       }
     },
+    "Открыть подробности выхода" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the exit’s details"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть подробности выхода"
+          }
+        }
+      }
+    },
     "Открыть текст тренера крупнее" : {
       "localizations" : {
         "en" : {
@@ -10875,6 +10955,22 @@
         }
       }
     },
+    "прошло" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "elapsed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "прошло"
+          }
+        }
+      }
+    },
     "пустая звуковая дорожка" : {
       "localizations" : {
         "en" : {
@@ -10951,6 +11047,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Развернуть окно тренировки"
+          }
+        }
+      }
+    },
+    "Развернуть подробности выхода" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the exit’s details"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Развернуть подробности выхода"
           }
         }
       }
@@ -11463,6 +11575,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Свернуть заметки"
+          }
+        }
+      }
+    },
+    "Свернуть подробности выхода" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide the exit’s details"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свернуть подробности выхода"
           }
         }
       }
@@ -12519,6 +12647,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Текст тренера"
+          }
+        }
+      }
+    },
+    "Текст тренера на весь экран" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The trainer’s text full screen"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст тренера на весь экран"
           }
         }
       }
@@ -13607,6 +13751,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Уменьшить · ⌘−, щипок или ⌥-прокрутка"
+          }
+        }
+      }
+    },
+    "Уменьшить текст тренера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make the trainer’s text smaller"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшить текст тренера"
           }
         }
       }

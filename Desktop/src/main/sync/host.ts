@@ -636,6 +636,8 @@ export function syncState(state: SyncHostState): SyncState {
     streamName: state.streamName ?? '',
     secondStreamName: state.secondStreamName || null,
     secondCameraTitle: state.secondStreamName ? state.secondCameraTitle || state.secondStreamName : null,
+    // No camera modes for a second camera here.
+    secondCameraSource: null,
     lastRecord: state.lastRecord ?? null,
     pendingPlan: state.pendingPlan ?? null,
     cameraSource: state.cameraSource ?? null,

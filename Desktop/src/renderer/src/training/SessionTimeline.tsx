@@ -302,7 +302,8 @@ function factSegments(live: LiveSession, plan: TrainingPlan): Segment[] {
         end: Math.max(result.endedAt, result.leftAt + 4000),
         kind: result.falseStart ? 'false' : 'outside',
         label: result.falseStart ? '↺' : String(result.number),
-        split: !result.falseStart && result.endedAt > planned ? planned : undefined,
+        // An extra exit has no plan to run over.
+        split: !result.falseStart && !result.isOpen && result.endedAt > planned ? planned : undefined,
         splitKind: 'over',
       })
     } else if (result.falseStart) {
@@ -324,7 +325,7 @@ function factSegments(live: LiveSession, plan: TrainingPlan): Segment[] {
       end: Math.max(live.now, phase.leftAt + 1000),
       kind: 'exit',
       label: String(plan.exits[phase.exitIndex].number),
-      split: live.now > planned ? planned : undefined,
+      split: !live.isOpenExit && live.now > planned ? planned : undefined,
       splitKind: 'over',
     })
   }

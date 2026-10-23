@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
-import { SessionPhase } from '@core/trainingSession'
 import { call, ui, useNow, useStore } from '../store'
 import { isRecording } from '../model'
 import { falseStart, primaryStep, primaryStepTitle } from '../actions'
@@ -52,7 +51,7 @@ export function MiniPanel() {
               {primaryStepTitle(session)}
             </button>
           )}
-          {SessionPhase.canFalseStart(live.phase) && (
+          {live.canFalseStart && (
             <button className="mini__btn" onClick={() => falseStart()} title={t('Фальстарт')}>
               <FalseStartIcon />
             </button>

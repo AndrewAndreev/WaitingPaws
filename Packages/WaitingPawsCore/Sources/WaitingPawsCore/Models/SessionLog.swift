@@ -62,9 +62,12 @@ public struct ExitResult: Codable, Equatable, Identifiable {
     public var falseStart: Bool
     public var plannedBreak: TimeInterval
     public var actualBreak: TimeInterval?
+    /// An extra exit without a planned time (after the schedule's last one).
+    public var isOpen: Bool
 
     public init(id: UUID = UUID(), number: Int, attempt: Int, plannedDuration: TimeInterval, untilStanding: Bool,
-                startedAt: Date, leftAt: Date?, endedAt: Date, falseStart: Bool, plannedBreak: TimeInterval, actualBreak: TimeInterval? = nil) {
+                startedAt: Date, leftAt: Date?, endedAt: Date, falseStart: Bool, plannedBreak: TimeInterval, actualBreak: TimeInterval? = nil,
+                isOpen: Bool = false) {
         self.id = id
         self.number = number
         self.attempt = attempt
@@ -76,6 +79,29 @@ public struct ExitResult: Codable, Equatable, Identifiable {
         self.falseStart = falseStart
         self.plannedBreak = plannedBreak
         self.actualBreak = actualBreak
+        self.isOpen = isOpen
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, number, attempt, plannedDuration, untilStanding, startedAt, leftAt, endedAt, falseStart, plannedBreak,
+             actualBreak, isOpen
+    }
+
+    /// Results of builds before extra exits decode as planned ones.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        number = try container.decode(Int.self, forKey: .number)
+        attempt = try container.decode(Int.self, forKey: .attempt)
+        plannedDuration = try container.decode(TimeInterval.self, forKey: .plannedDuration)
+        untilStanding = try container.decode(Bool.self, forKey: .untilStanding)
+        startedAt = try container.decode(Date.self, forKey: .startedAt)
+        leftAt = try container.decodeIfPresent(Date.self, forKey: .leftAt)
+        endedAt = try container.decode(Date.self, forKey: .endedAt)
+        falseStart = try container.decode(Bool.self, forKey: .falseStart)
+        plannedBreak = try container.decode(TimeInterval.self, forKey: .plannedBreak)
+        actualBreak = try container.decodeIfPresent(TimeInterval.self, forKey: .actualBreak)
+        isOpen = try container.decodeIfPresent(Bool.self, forKey: .isOpen) ?? false
     }
 
     /// Time actually spent behind the door ("За дверью" → "Вернулись").
@@ -143,7 +169,8 @@ public enum SessionLogFormatter {
         lines.append("")
 
         for (index, result) in record.results.enumerated() {
-            var line = "\(exitName(result.number)) — \(DurationText.short(result.plannedDuration))"
+            var line = "\(exitName(result.number)) — "
+                + (result.isOpen ? PlannedExit.openText : DurationText.short(result.plannedDuration))
             if result.untilStanding { line += " " + PlannedExit.untilStandingText }
             if result.attempt > 1 { line += tr(", попытка \(result.attempt)", ", attempt \(result.attempt)") }
             line += ": \(outcome(of: result)) \(result.falseStart ? "❌" : "✅")"

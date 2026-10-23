@@ -237,6 +237,8 @@ public final class TrainingSession {
     public func remaining(at now: Date) -> TimeInterval? {
         switch phase {
         case .away(let index, _, let leftAt):
+            // An extra exit has no plan to count down to.
+            guard !plan.exits[index].isOpen else { return nil }
             return plan.exits[index].duration - now.timeIntervalSince(leftAt)
         case .breakTime(_, let since, let duration, _):
             return duration - now.timeIntervalSince(since)
@@ -403,7 +405,17 @@ public final class TrainingSession {
         return true
     }
 
-    /// Ends the session right now (also used by the auto-finish after the last break).
+    /// «Ещё выход» in the break after the schedule's last exit: one more exit without a planned time, and out of the
+    /// door at once (the press is «Вышли»). On a mirror both go to the owner, the schedule first.
+    public func startOpenExit(at time: Date? = nil) {
+        guard case .breakTime(_, _, _, nil) = phase else { return }
+        var newPlan = plan
+        newPlan.exits.append(.open(number: plan.exits.count + 1))
+        guard updatePlan(newPlan) else { return }
+        markBehindDoor(at: time)
+    }
+
+    /// Ends the session right now.
     public func finish() {
         if forwards(.finish, at: nil) { return }
         guard !phase.isFinished else { return }
@@ -518,7 +530,8 @@ public final class TrainingSession {
                                 leftAt: leftAt,
                                 endedAt: now,
                                 falseStart: falseStart,
-                                plannedBreak: plannedBreak)
+                                plannedBreak: plannedBreak,
+                                isOpen: exit.isOpen)
         results.append(result)
 
         let detail = leftAt == nil && since == now

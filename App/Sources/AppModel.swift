@@ -51,6 +51,8 @@ final class AppModel {
     var playerGeneration = 0
     /// The switcher put the second camera on screen (`isShowingSecondCamera` says whether there is one).
     private(set) var showsSecondCamera = false
+    /// The second camera's `xiaomi://` source, once read (sent to a linked iPhone).
+    private(set) var secondXiaomiSource: String?
     /// The selected camera's `xiaomi://` source, once read (quality, camera settings on a linked iPhone).
     private(set) var currentXiaomiSource: String?
 
@@ -759,23 +761,39 @@ final class AppModel {
             await cameraModes.load(server: nil, source: nil)
             return
         }
+        // The camera on screen: its modes and turning (the second camera's too).
         let source: String?
         #if os(iOS)
         // The Mac's go2rtc config (with the Xiaomi tokens) is closed to the LAN: the Mac sends the source itself.
-        source = isLinkedToMac ? syncClient.state?.cameraSource
-            : await xiaomiSource(client: Go2RTCClient(server: server), stream: activeStreamName)
+        source = isLinkedToMac
+            ? (isShowingSecondCamera ? syncClient.state?.secondCameraSource : syncClient.state?.cameraSource)
+            : await xiaomiSource(client: Go2RTCClient(server: server), stream: shownStreamName)
         #else
-        source = await xiaomiSource(client: Go2RTCClient(server: server), stream: activeStreamName)
+        source = await xiaomiSource(client: Go2RTCClient(server: server), stream: shownStreamName)
+        if isShowingSecondCamera { secondXiaomiSource = source }
         #endif
         await cameraModes.load(server: server, source: source)
+    }
+
+    /// The second camera's `xiaomi://` source, for a linked iPhone (its modes and turning there).
+    func refreshSecondCameraSource() async {
+        guard settings.hasSecondCamera, let client, !Self.isUIPreview else {
+            secondXiaomiSource = nil
+            return
+        }
+        await waitForServer()
+        secondXiaomiSource = await xiaomiSource(client: client, stream: settings.secondStreamName)
     }
 
     /// What the camera settings depend on (a `.task` id).
     var cameraModesKey: String {
         #if os(iOS)
-        if isLinkedToMac { return "mac|\(activeStreamName)|\(syncClient.state?.cameraSource ?? "")" }
+        if isLinkedToMac {
+            let source = isShowingSecondCamera ? syncClient.state?.secondCameraSource : syncClient.state?.cameraSource
+            return "mac|\(shownStreamName)|\(source ?? "")"
+        }
         #endif
-        return "own|\(activeStreamName)"
+        return "own|\(shownStreamName)"
     }
 
     // MARK: - Xiaomi account
@@ -874,18 +892,24 @@ final class AppModel {
     // MARK: - App lifecycle
 
     #if os(iOS)
-    /// The app went to the background. iOS suspends it soon (there is no background mode for recording a
-    /// camera), so a recording gets the usual ~30 s of grace and is then closed cleanly; it goes on when the
-    /// app is back. The training itself keeps time by the clock and catches up on return.
+    /// The app went to the background. iOS suspends it a few seconds later (there is no background mode for a
+    /// camera), and then the link to the Mac, go2rtc's listener and the players' connections die: coming back meant
+    /// connecting again and waiting for frames. So the app asks for the usual ~30 s of grace whenever there is
+    /// something to keep — a training, a recording, a camera or the link: a quick look at the messenger finds all
+    /// of it still there. When the grace runs out a recording is closed cleanly and goes on when the app is back;
+    /// the training keeps time by the clock and catches up on return.
     func didEnterBackground() {
-        guard isRecordingLocally, !isLinkedToMac, backgroundTask == .invalid else { return }
-        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Recording") { [weak self] in
+        let worthKeeping = session != nil || isRecordingLocally || isLinkedToMac || settings.isConfigured
+        guard worthKeeping, backgroundTask == .invalid else { return }
+        print("[app] in the background: keeping the camera and the link for a while")
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Keep the camera") { [weak self] in
             MainActor.assumeIsolated { self?.cutRecordingForBackground() }
         }
     }
 
     private func cutRecordingForBackground() {
-        if isRecordingLocally {
+        print("[app] the background grace ran out")
+        if isRecordingLocally, !isLinkedToMac {
             recordingCutByBackground = true
             stopRecording(deleteFile: false)
             print("[rec] stopped: the app stayed in the background")
@@ -998,9 +1022,14 @@ extension AppModel {
     /// The second camera is the one on screen (the first one keeps playing and recording behind it).
     var isShowingSecondCamera: Bool { showsSecondCamera && hasSecondCamera }
 
+    /// The stream on screen: the first camera's, or the second one's the switcher shows. Turning and the camera's
+    /// modes follow it; recording and quality stay the first camera's.
+    var shownStreamName: String { isShowingSecondCamera ? activeSecondStreamName : activeStreamName }
+
     func showCamera(second: Bool) {
+        guard second != showsSecondCamera else { return }
+        panTilt.stop()
         showsSecondCamera = second
-        if second { panTilt.stop() }
     }
 
     func removeSecondCamera() {
@@ -1097,7 +1126,8 @@ extension AppModel {
                       cameraSource: currentXiaomiSource,
                       streamRevision: playerGeneration,
                       secondStreamName: settings.hasSecondCamera ? settings.secondStreamName : nil,
-                      secondCameraTitle: settings.hasSecondCamera ? settings.secondCameraDisplayName : nil)
+                      secondCameraTitle: settings.hasSecondCamera ? settings.secondCameraDisplayName : nil,
+                      secondCameraSource: settings.hasSecondCamera ? secondXiaomiSource : nil)
         }
         syncHost.commandHandler = { [unowned self] command in applyRemote(command) }
         syncHost.accessProvider = { [unowned self] in

@@ -2,10 +2,11 @@ import SwiftUI
 import WaitingPawsCore
 
 /// The trainer's whole text over the training screen. It is not a new screen: the camera above keeps playing without
-/// reconnecting (switching to the messenger for the text used to cost the picture). It takes 80 % of the screen (half
-/// was too small to read); drag the top down, or ✕, to close it. The lines of the current exit (the next one in a
-/// break) are marked and brought into view when the exit changes; the two step buttons come along, smaller, so it
-/// needn't be closed for a press.
+/// reconnecting (switching to the messenger for the text used to cost the picture). It rests at 80 % of the screen to
+/// scroll the text in, pulls up to the whole screen and swipes down to close (or ✕). The drag follows the finger in the
+/// screen's coordinates — in the drawer's own ones it fought its own movement and shook. The lines of the current exit
+/// (the next one in a break) are marked and brought into view when the exit changes; the two step buttons come along,
+/// smaller, so it needn't be closed for a press.
 struct TrainerTextDrawer: View {
     let session: TrainingSession
     /// The height it may take: the screen's.
@@ -15,14 +16,21 @@ struct TrainerTextDrawer: View {
     var onFinish: () -> Void
     var onClose: () -> Void
 
-    @GestureState private var drag: CGFloat = 0
+    private enum Detent { case middle, full }
 
-    /// Of the screen's height.
-    static let heightShare: CGFloat = 0.8
+    @State private var detent: Detent = .middle
+    @GestureState(resetTransaction: Transaction(animation: .smooth(duration: 0.3))) private var drag: CGFloat = 0
+
+    /// Where it rests, of the screen's height.
+    static let middleShare: CGFloat = 0.8
+
+    private func height(of detent: Detent) -> CGFloat {
+        detent == .full ? available : available * Self.middleShare
+    }
 
     var body: some View {
         let content = ReadoutContent(session: session)
-        let height = available * Self.heightShare - drag
+        let height = min(available, max(160, height(of: detent) - drag))
         VStack(spacing: 8) {
             top(content)
             TrainerTextView(text: session.plan.rawText, exitNumber: content.textExitNumber)
@@ -30,7 +38,7 @@ struct TrainerTextDrawer: View {
         }
         .padding(.horizontal, 14)
         .padding(.bottom, 10 + bottomInset)
-        .frame(height: min(available, max(220, height)) + bottomInset, alignment: .top)
+        .frame(height: height + bottomInset, alignment: .top)
         .frame(maxWidth: .infinity)
         .background(Theme.panel, in: UnevenRoundedRectangle(topLeadingRadius: Theme.cornerRadius,
                                                             topTrailingRadius: Theme.cornerRadius, style: .continuous))
@@ -41,7 +49,8 @@ struct TrainerTextDrawer: View {
         .shadow(color: .black.opacity(0.5), radius: 18, y: -4)
     }
 
-    /// The grabber, «Текст тренера», the live clock of the moment and ✕. Dragging it down closes the drawer.
+    /// The grabber, «Текст тренера», the live clock of the moment and ✕. Drag it: up — the whole screen, down — back
+    /// to 80 % and further down closed; the release goes where the swipe was heading.
     private func top(_ content: ReadoutContent) -> some View {
         VStack(spacing: 8) {
             Capsule()
@@ -57,16 +66,27 @@ struct TrainerTextDrawer: View {
                     Pill(text: "\(content.title) · \(timer.text)", tint: timer.tint)
                         .monospacedDigit()
                 }
+                IconButton(systemImage: detent == .full ? "chevron.down" : "chevron.up") {
+                    withAnimation(.smooth(duration: 0.3)) { detent = detent == .full ? .middle : .full }
+                }
+                .accessibilityLabel(detent == .full ? "Уменьшить текст тренера" : "Текст тренера на весь экран")
                 IconButton(systemImage: "xmark", action: onClose)
                     .accessibilityLabel("Закрыть текст тренера")
             }
         }
         .contentShape(Rectangle())
         .gesture(
-            DragGesture(minimumDistance: 6)
-                .updating($drag) { value, state, _ in state = max(0, value.translation.height) }
+            DragGesture(minimumDistance: 4, coordinateSpace: .global)
+                .updating($drag) { value, state, _ in state = value.translation.height }
                 .onEnded { value in
-                    if value.translation.height > 90 { onClose() }
+                    let landing = height(of: detent) - value.predictedEndTranslation.height
+                    if landing < available * 0.45 {
+                        onClose()
+                    } else {
+                        withAnimation(.smooth(duration: 0.3)) {
+                            detent = landing > (height(of: .middle) + height(of: .full)) / 2 ? .full : .middle
+                        }
+                    }
                 }
         )
     }

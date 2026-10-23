@@ -92,9 +92,10 @@ final class MacUIState {
         }
     }
 
-    /// ⌫: false start — outside, or in a break when the dog went to the door before «Вышли».
+    /// ⌫: false start — outside while the trainer's window lasts, or in a break when the dog went to the door before
+    /// «Вышли».
     func falseStart(_ model: AppModel) {
-        guard let session = model.session, session.phase.canFalseStart else { return }
+        guard let session = model.session, ReadoutContent(session: session).showsFalseStart(at: Date()) else { return }
         session.resetExit()
     }
 

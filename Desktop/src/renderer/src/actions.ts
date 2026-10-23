@@ -5,6 +5,7 @@ import { SessionPhase, type TrainingSessionSnapshot } from '@core/trainingSessio
 import type { AppState } from '@shared/api'
 import { isConfigured, isRecording } from './model'
 import { call, toast, ui } from './store'
+import { canFalseStartNow } from './training/live'
 
 /// What menus, keys, the title bar and the panels do — the Mac app's `MacUIState`.
 
@@ -58,10 +59,11 @@ export async function primaryStep(): Promise<void> {
   if (phase.kind === 'breakTime') return void call('session.command', 'finish')
 }
 
-/// Backspace: false start — outside, or in a break when the dog went to the door before «Вышли».
+/// Backspace: false start — outside (within the schedule's «в первые 20 секунд», when it says so), or in a break when
+/// the dog went to the door before «Вышли».
 export function falseStart(): void {
   const session = ui.get().app?.session as TrainingSessionSnapshot | null | undefined
-  if (!session || !SessionPhase.canFalseStart(session.phase)) return
+  if (!session || !canFalseStartNow(session, Date.now())) return
   void call('session.command', 'resetExit')
 }
 

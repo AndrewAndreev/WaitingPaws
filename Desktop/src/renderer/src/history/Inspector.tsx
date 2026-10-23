@@ -398,7 +398,7 @@ function ExitLine({ record, result, isLast, canJump }: { record: TrainingRecord;
         }}
       >
         <span className="muted">{result.attempt > 1 ? `${result.number}·${result.attempt}` : result.number}</span>
-        <span className="hlog__num muted">{DurationText.clock(result.plannedDuration) + (result.untilStanding ? '*' : '')}</span>
+        <span className="hlog__num muted">{result.isOpen ? t('доп.') : DurationText.clock(result.plannedDuration) + (result.untilStanding ? '*' : '')}</span>
         <span className={'hlog__num hlog__actual' + (result.falseStart ? ' hlog__actual--false' : '')}>{away ?? '—'}</span>
         <span className={'hlog__status' + (result.falseStart ? ' hlog__status--false' : '')}>{result.falseStart ? <FalseStartFilledIcon /> : <DoneCircleIcon />}</span>
         <span className={'hlog__num' + (off ? ' hlog__off' : rest === null ? ' faint' : '')}>{rest === null ? '—' : DurationText.clock(rest)}</span>

@@ -26,6 +26,9 @@ export type EarlyEntryTone = 'yellow' | 'green' | 'plain'
 
 const tones: readonly EarlyEntryTone[] = ['yellow', 'green', 'plain']
 
+/** «в первые 20 секунд», «в течение первых 30 секунд», "in the first 20 seconds" (`TrainingPlan.firstSecondsRegex`). */
+const firstSecondsRegex = /(?:перв\p{L}*|first)\s+(\d+(?:[.,]\d+)?\s*\p{L}+)/iu
+
 /**
  * When to come back before the planned time, from a line such as «🟡 Если встала и пошла - входим через 2 минуты от
  * начала движения, когда сняла фокус внимания с двери» or «🟢 Если легла - входим через 30 секунд от укладки».
@@ -125,6 +128,8 @@ export interface PlannedExit {
   earlyEntries: EarlyEntry[]
   /** The plan's common conditions apply to this exit (when it has none of its own). */
   usesCommonEarlyEntries: boolean
+  /** An extra exit added after the schedule's last one: no planned time, its timer counts up. */
+  isOpen: boolean
 }
 
 export const PlannedExit = {
@@ -139,11 +144,18 @@ export const PlannedExit = {
       triggers: fields.triggers ?? [],
       earlyEntries: fields.earlyEntries ?? [],
       usesCommonEarlyEntries: fields.usesCommonEarlyEntries ?? true,
+      isOpen: fields.isOpen ?? false,
     }
+  },
+
+  /** The extra exit «Ещё выход» starts after the schedule's last one. */
+  open(number: number): PlannedExit {
+    return PlannedExit.make({ number, duration: 0, isOpen: true })
   },
 
   /** Human readable planned duration, e.g. "30 с или до вставания" / "30 s or until the dog stands". */
   durationDescription(exit: PlannedExit): string {
+    if (exit.isOpen) return PlannedExit.openText()
     let text = DurationText.short(exit.duration)
     if (exit.untilStanding) text += ' ' + PlannedExit.untilStandingText()
     return text
@@ -160,6 +172,11 @@ export const PlannedExit = {
     return tr('или до вставания', 'or until the dog stands')
   },
 
+  /** An extra exit's time: «без времени». */
+  openText(): string {
+    return tr('без времени', 'no set time')
+  },
+
   encode(exit: PlannedExit): JSONObject {
     return compact({
       id: exit.id,
@@ -171,6 +188,7 @@ export const PlannedExit = {
       triggers: exit.triggers,
       earlyEntries: exit.earlyEntries.map(EarlyEntry.encode),
       usesCommonEarlyEntries: exit.usesCommonEarlyEntries,
+      isOpen: exit.isOpen,
     })
   },
 
@@ -187,6 +205,7 @@ export const PlannedExit = {
       triggers: json.has('triggers') ? json.array('triggers', expectString) : [],
       earlyEntries: json.has('earlyEntries') ? json.array('earlyEntries', (item, itemPath) => EarlyEntry.decode(item, itemPath)) : [],
       usesCommonEarlyEntries: json.optionalBool('usesCommonEarlyEntries') ?? true,
+      isOpen: json.optionalBool('isOpen') ?? false,
     }
   },
 }
@@ -318,6 +337,22 @@ export const TrainingPlan = {
   },
 
   // MARK: - Rules for the whole training
+
+  /**
+   * «🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода…»: how long into an exit a return still
+   * counts as a false start, in seconds. `null` when the schedule doesn't say (the button stays the whole exit).
+   */
+  falseStartWindow(plan: TrainingPlan): number | null {
+    for (const note of plan.notes) {
+      if (!PlanParser.isFalseStartRule(PlanParser.stripDecorations(note).toLowerCase())) continue
+      const match = firstSecondsRegex.exec(note)
+      if (!match) continue
+      const window = DurationText.sumOfUnits(match[1])
+      if (window === null || !(window > 0)) continue
+      return window
+    }
+    return null
+  },
 
   /** The note that says when not to come in. */
   doNotEnterRule(plan: TrainingPlan): PlanRule | null {

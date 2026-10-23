@@ -1,7 +1,7 @@
 import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { PlannedExit, TrainingPlan } from '@core/models'
-import { TrainingSession, type SessionPhase, type TrainingSessionSnapshot } from '@core/trainingSession'
+import { SessionPhase, TrainingSession, type TrainingSessionSnapshot } from '@core/trainingSession'
 import { SessionEventKind, type ExitResult } from '@core/sessionLog'
 
 /// Everything the training page shows, derived from a session snapshot at a moment (the Mac app's
@@ -61,6 +61,27 @@ export class LiveSession {
     return TrainingSession.falseStartsCount(this.session)
   }
 
+  /// Outside on an extra exit («Ещё выход»): no plan, the timer counts up.
+  get isOpenExit(): boolean {
+    return isOpenExit(this.session)
+  }
+
+  /// Outside, with a false-start window in the schedule: seconds of it still left (0 once it has passed). Null in a
+  /// break, before the door, or with no window (the button stays the whole exit).
+  get falseStartLeft(): number | null {
+    return falseStartLeft(this.session, this.now)
+  }
+
+  /// The schedule's false-start window, seconds.
+  get falseStartWindow(): number | null {
+    return TrainingPlan.falseStartWindow(this.plan)
+  }
+
+  /// «Фальстарт» means something now (and is on screen): not outside past the schedule's window.
+  get canFalseStart(): boolean {
+    return canFalseStartNow(this.session, this.now)
+  }
+
   /// An exit past its plan is a warning; a break past its plan is time lost, in red.
   get tint(): Tint {
     if (this.overdue) return this.isBreak ? 'break-over' : 'over'
@@ -69,7 +90,8 @@ export class LiveSession {
     return 'outside'
   }
 
-  /// Big readout: countdown (counting up past the plan with a "+"), or elapsed time on the way to the door.
+  /// Big readout: countdown (counting up past the plan with a "+"), or elapsed time on the way to the door and on an
+  /// extra exit.
   get timerText(): string {
     switch (this.phase.kind) {
       case 'ready':
@@ -78,6 +100,7 @@ export class LiveSession {
         return DurationText.clock(this.elapsed)
       case 'away':
       case 'breakTime': {
+        if (this.isOpenExit) return DurationText.clock(this.elapsed)
         const r = this.remaining ?? 0
         return r < 0 ? '+' + DurationText.clock(-r) : DurationText.clock(r)
       }
@@ -94,6 +117,7 @@ export class LiveSession {
         return t('к двери')
       case 'away':
       case 'breakTime':
+        if (this.isOpenExit) return t('прошло')
         return this.overdue ? t('сверх плана') : t('осталось')
       case 'finished':
         return t('всего')
@@ -144,7 +168,8 @@ export class LiveSession {
       case 'ready':
       case 'leaving':
       case 'away': {
-        const parts = [t('План %@', this.exitDescription)]
+        const exit = this.currentExit
+        const parts = [exit?.isOpen ? t('Выход без времени — вернитесь, когда нужно') : t('План %@', this.exitDescription)]
         if (attempt > 1) parts.push(t('попытка %lld', attempt))
         return parts.join(' · ')
       }
@@ -156,7 +181,7 @@ export class LiveSession {
             ? t('Следующий выход %lld — %@ · попытка %lld', next.number, description, attempt)
             : t('Следующий выход %lld — %@', next.number, description)
         }
-        return t('Выходы закончились — нажмите «Завершить»')
+        return t('Выходы закончились: «Ещё выход» или «Завершить»')
       case 'finished':
         return t('выходов %lld из %lld · фальстартов %lld', this.completedExits, this.plan.exits.length, this.falseStarts)
     }
@@ -213,6 +238,24 @@ export class LiveSession {
   results(): readonly ExitResult[] {
     return this.session.results
   }
+}
+
+function isOpenExit(session: TrainingSessionSnapshot): boolean {
+  const phase = session.phase
+  return phase.kind === 'away' && !!session.plan.exits[phase.exitIndex]?.isOpen
+}
+
+/// See `LiveSession.falseStartLeft`.
+export function falseStartLeft(session: TrainingSessionSnapshot, now: number): number | null {
+  if (session.phase.kind !== 'away') return null
+  const window = TrainingPlan.falseStartWindow(session.plan)
+  return window === null ? null : Math.max(0, window - TrainingSession.elapsed(session, now))
+}
+
+/// Backspace and the button: a false start outside only within the schedule's window («в первые 20 секунд»); in a
+/// break it is the dog at the door before «Вышли», as always.
+export function canFalseStartNow(session: TrainingSessionSnapshot, now: number): boolean {
+  return SessionPhase.canFalseStart(session.phase) && falseStartLeft(session, now) !== 0
 }
 
 export function eventTitle(kind: SessionEventKind): string {

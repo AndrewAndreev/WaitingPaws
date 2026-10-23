@@ -177,10 +177,13 @@ struct MacConsoleView: View {
                 ui.cameraOnly = false
             }
         }
-        .task(id: model.settings.streamName) {
-            await model.refreshXiaomiQuality()
+        .task(id: model.settings.streamName) { await model.refreshXiaomiQuality() }
+        // The modes and turning of the camera on screen (the second one's too, after the switcher).
+        .task(id: model.cameraModesKey) {
+            model.panTilt.stop()
             await model.refreshCameraModes()
         }
+        .task(id: model.settings.secondStreamName) { await model.refreshSecondCameraSource() }
         .sheet(isPresented: $ui.reviewingPlan, onDismiss: { focused = true }) {
             MacPlanReviewSheet(plan: pendingPlanBinding,
                                onStart: { ui.startPending(model) },
@@ -479,7 +482,8 @@ private struct CameraToolbarMenu: View {
                    systemImage: "person.crop.circle.badge.plus") { ui.showXiaomiSignIn = true }
             Divider()
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
-            if let quality = model.xiaomiQuality {
+            // Quality is the first camera's (it is the one recorded).
+            if !model.isShowingSecondCamera, let quality = model.xiaomiQuality {
                 Divider()
                 Picker("Качество", selection: Binding(
                     get: { quality },
@@ -509,7 +513,10 @@ private struct CameraToolbarMenu: View {
     /// «Прихожая · HD»; a long Mi Home name is cut in the middle by the toolbar. With a second camera the switcher
     /// names them, and the menu is the first camera's quality.
     private var title: String {
-        if model.hasSecondCamera { return model.xiaomiQuality?.title ?? String(localized: "Камера") }
+        if model.hasSecondCamera {
+            // Quality is the first camera's: nothing to show while the second is on screen.
+            return model.isShowingSecondCamera ? "" : model.xiaomiQuality?.title ?? ""
+        }
         let name = model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера") : model.settings.cameraDisplayName
         guard let quality = model.xiaomiQuality else { return name }
         return "\(name) · \(quality.title)"
@@ -525,11 +532,13 @@ private struct CameraToolbarSwitcher: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        let names = CameraShortNames.make(
+            model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера 1") : model.settings.cameraDisplayName,
+            model.activeSecondCameraName)
         Picker("Камера", selection: Binding(get: { model.isShowingSecondCamera },
                                             set: { model.showCamera(second: $0) })) {
-            Text(model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера 1") : model.settings.cameraDisplayName)
-                .tag(false)
-            Text(model.activeSecondCameraName).tag(true)
+            Text(names.0).tag(false)
+            Text(names.1).tag(true)
         }
         .pickerStyle(.segmented)
         .labelsHidden()
