@@ -283,6 +283,7 @@ final class SetupCameraCatalog {
         }
         model.settings.secondCameraTitle = title
         model.settings.secondStreamName = name
+        model.secondVideoSize = nil
         print("[setup] second camera \(name) (\(title))")
     }
 

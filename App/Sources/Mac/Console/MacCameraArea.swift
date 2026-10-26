@@ -85,8 +85,8 @@ struct MacCameraArea: View {
                                          stream: model.activeSecondStreamName,
                                          mode: model.settings.playerMode,
                                          audioEnabled: model.settings.audioEnabled && model.isShowingSecondCamera,
-                                         reloadToken: reloadToken + model.playerGeneration,
-                                         onVideoSize: { _ in },
+                                         reloadToken: reloadToken + model.activeSecondPlayerGeneration,
+                                         onVideoSize: { size in model.secondVideoSize = size },
                                          onDelay: { _, _ in })
                             .opacity(model.isShowingSecondCamera ? 1 : 0)
                             .allowsHitTesting(model.isShowingSecondCamera)

@@ -371,7 +371,7 @@ struct MacConsoleView: View {
     private var toolbar: some ToolbarContent {
         ToolbarItemGroup {
             if model.hasSecondCamera { CameraToolbarSwitcher() }
-            CameraToolbarMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 })
+            CameraToolbarMenu(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 })
             if model.canPanTilt { PanTiltToolbarToggle() }
         }
         // As wide as the room the panel's buttons leave over the panel: the camera's group lands right before the
@@ -482,18 +482,21 @@ private struct CameraToolbarMenu: View {
                    systemImage: "person.crop.circle.badge.plus") { ui.showXiaomiSignIn = true }
             Divider()
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
-            // Quality is the first camera's (it is the one recorded).
-            if !model.isShowingSecondCamera, let quality = model.xiaomiQuality {
+            // The quality of the camera on screen; only the first one's goes into the recordings.
+            if let quality = shownQuality {
+                let second = model.isShowingSecondCamera
                 Divider()
                 Picker("Качество", selection: Binding(
                     get: { quality },
                     set: { newValue in
-                        Task { await model.setXiaomiQuality(newValue) }
+                        Task { await model.setXiaomiQuality(newValue, second: second) }
                     })) {
-                    ForEach(AppModel.XiaomiQuality.allCases) { Text(model.qualityTitle($0)).tag($0) }
+                    ForEach(AppModel.XiaomiQuality.allCases) {
+                        Text(model.qualityTitle($0, source: second ? model.secondXiaomiSource : nil)).tag($0)
+                    }
                 }
-                Text("Записи — в этом же качестве")
-                if let size = model.videoSize {
+                Text(second ? "Только на экране: записывается первая камера" : "Записи — в этом же качестве")
+                if let size = second ? model.secondVideoSize : model.videoSize {
                     Text("Сейчас \(Int(size.width))×\(Int(size.height))")
                 }
             }
@@ -511,11 +514,10 @@ private struct CameraToolbarMenu: View {
     }
 
     /// «Прихожая · HD»; a long Mi Home name is cut in the middle by the toolbar. With a second camera the switcher
-    /// names them, and the menu is the first camera's quality.
+    /// names them, and the menu shows the quality of the one on screen.
     private var title: String {
         if model.hasSecondCamera {
-            // Quality is the first camera's: nothing to show while the second is on screen.
-            return model.isShowingSecondCamera ? "" : model.xiaomiQuality?.title ?? ""
+            return shownQuality?.title ?? ""
         }
         let name = model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера") : model.settings.cameraDisplayName
         guard let quality = model.xiaomiQuality else { return name }
@@ -524,6 +526,11 @@ private struct CameraToolbarMenu: View {
 
     private var cameraOnline: Bool {
         model.settings.connectionMode == .external || model.embedded.status.isRunning
+    }
+
+    /// The camera on screen's quality; nil when it is not a Mi Home camera.
+    private var shownQuality: AppModel.XiaomiQuality? {
+        model.isShowingSecondCamera ? model.secondXiaomiQuality : model.xiaomiQuality
     }
 }
 

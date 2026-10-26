@@ -49,9 +49,11 @@ final class AppModel {
 
     /// Bumped when every player must reconnect (go2rtc's API came back after the app was suspended).
     var playerGeneration = 0
+    /// Bumped when only the second camera's player must reconnect (its quality changed).
+    private(set) var secondPlayerGeneration = 0
     /// The switcher put the second camera on screen (`isShowingSecondCamera` says whether there is one).
     private(set) var showsSecondCamera = false
-    /// The second camera's `xiaomi://` source, once read (sent to a linked iPhone).
+    /// The second camera's `xiaomi://` source, once read (its quality; sent to a linked iPhone).
     private(set) var secondXiaomiSource: String?
     /// The selected camera's `xiaomi://` source, once read (quality, camera settings on a linked iPhone).
     private(set) var currentXiaomiSource: String?
@@ -672,7 +674,16 @@ final class AppModel {
     /// Current `subtype` of the selected stream's xiaomi:// source, if it is a Xiaomi camera.
     private(set) var xiaomiQuality: XiaomiQuality?
     /// Resolution the player actually receives (reported by the web player), for the quality menu.
-    var videoSize: CGSize? { didSet { rememberQualityResolution() } }
+    var videoSize: CGSize? {
+        didSet { rememberQualityResolution(size: videoSize, quality: xiaomiQuality, source: currentXiaomiSource) }
+    }
+
+    /// The second camera's quality: only for its picture, the recording is the first camera's.
+    var secondXiaomiQuality: XiaomiQuality? { secondXiaomiSource.map(Self.quality(of:)) }
+    /// What the second camera's player receives.
+    var secondVideoSize: CGSize? {
+        didSet { rememberQualityResolution(size: secondVideoSize, quality: secondXiaomiQuality, source: secondXiaomiSource) }
+    }
 
     /// «HD · 480p» once the camera (`source`, by default the one on screen) has been seen at that level,
     /// else «HD». «Авто» has no fixed resolution.
@@ -685,9 +696,9 @@ final class AppModel {
 
     /// Remembers what the current level gave. Only for an explicit `subtype`: without one go2rtc picks
     /// a level by model (3 on the C200/C300), which is not necessarily the «HD» shown then.
-    private func rememberQualityResolution() {
-        guard let size = videoSize, size.width > 0, size.height > 0, let quality = xiaomiQuality, quality != .auto,
-              let source = currentXiaomiSource, Self.query("subtype", in: source) == quality.rawValue,
+    private func rememberQualityResolution(size: CGSize?, quality: XiaomiQuality?, source: String?) {
+        guard let size, size.width > 0, size.height > 0, let quality, quality != .auto,
+              let source, Self.query("subtype", in: source) == quality.rawValue,
               let did = Self.query("did", in: source) else { return }
         let seen = "\(Int(size.width))x\(Int(size.height))"
         if settings.qualityResolutions[did]?[quality.rawValue] != seen {
@@ -697,6 +708,15 @@ final class AppModel {
 
     private static func query(_ name: String, in source: String) -> String? {
         URLComponents(string: source)?.queryItems?.first { $0.name == name }?.value
+    }
+
+    /// The level a `xiaomi://` source asks for: without `subtype` go2rtc's default is «HD».
+    private static func quality(of source: String) -> XiaomiQuality {
+        switch query("subtype", in: source) {
+        case nil, "hd": return .hd
+        case "sd": return .sd
+        case let raw?: return XiaomiQuality(rawValue: raw) ?? .hd
+        }
     }
 
     /// The selected stream's `xiaomi://` source. While the camera is live, `/api/streams` describes the
@@ -710,30 +730,50 @@ final class AppModel {
         return (try? await client.configuredSources(stream: name))?.first { $0.hasPrefix("xiaomi://") }
     }
 
+    #if DEBUG
+    /// `--demo-quality` (with `--demo-second-camera`): Mi Home sources for both cameras, the first at SD and the
+    /// second at HD, without go2rtc; a quality change stays in memory.
+    private static func demoXiaomiSource(second: Bool) -> String? {
+        guard CommandLine.arguments.contains("--demo-quality") else { return nil }
+        return second ? "xiaomi://demo:cn@127.0.0.1?did=2&model=chuangmi.camera.ipc019&subtype=2"
+                      : "xiaomi://demo:cn@127.0.0.1?did=1&model=chuangmi.camera.069a01&subtype=1"
+    }
+    #endif
+
     /// Reads the selected stream's source and remembers its quality (nil for non-Xiaomi streams).
     func refreshXiaomiQuality() async {
+        #if DEBUG
+        if let demo = Self.demoXiaomiSource(second: false) {
+            currentXiaomiSource = demo
+            xiaomiQuality = Self.quality(of: demo)
+            return
+        }
+        #endif
         await waitForServer()
-        guard let client, let source = await xiaomiSource(client: client),
-              let components = URLComponents(string: source) else {
+        guard let client, let source = await xiaomiSource(client: client), URLComponents(string: source) != nil else {
             xiaomiQuality = nil
             currentXiaomiSource = nil
             return
         }
         currentXiaomiSource = source
-        let raw = components.queryItems?.first { $0.name == "subtype" }?.value
-        switch raw {
-        case nil, "hd": xiaomiQuality = .hd
-        case "sd": xiaomiQuality = .sd
-        default: xiaomiQuality = XiaomiQuality(rawValue: raw!) ?? .hd
-        }
+        xiaomiQuality = Self.quality(of: source)
     }
 
-    /// Re-registers the stream with `subtype=<quality>`: the one quality of the picture and of the recordings.
-    /// go2rtc then creates a new stream and the old one, with its own camera connection, lives until its viewers
-    /// leave, so every player reconnects (also a linked iPhone's, through `SyncState.streamRevision`).
-    func setXiaomiQuality(_ quality: XiaomiQuality) async {
+    /// Re-registers the stream with `subtype=<quality>`: the first camera's is the quality of the picture and of
+    /// the recordings, the second one's only of its picture. go2rtc then creates a new stream and the old one, with
+    /// its own camera connection, lives until its viewers leave, so that camera's players reconnect (also a linked
+    /// iPhone's, through `SyncState.streamRevision`).
+    func setXiaomiQuality(_ quality: XiaomiQuality, second: Bool = false) async {
+        #if DEBUG
+        if let demo = Self.demoXiaomiSource(second: second) {
+            let updated = demo.replacingOccurrences(of: "subtype=\(Self.quality(of: demo).rawValue)", with: "subtype=\(quality.rawValue)")
+            if second { secondXiaomiSource = updated } else { currentXiaomiSource = updated; xiaomiQuality = quality }
+            return
+        }
+        #endif
         guard let client else { return }
-        guard let source = await xiaomiSource(client: client), var components = URLComponents(string: source) else {
+        let stream = second ? settings.secondStreamName : settings.streamName
+        guard let source = await xiaomiSource(client: client, stream: stream), var components = URLComponents(string: source) else {
             errorMessage = String(localized: "Не удалось сменить качество: go2rtc не отдал адрес камеры")
             return
         }
@@ -742,12 +782,18 @@ final class AppModel {
         components.queryItems = items
         guard let updated = components.string else { return }
         do {
-            try await client.addStream(name: settings.streamName, source: updated)
-            xiaomiQuality = quality
-            currentXiaomiSource = updated
-            videoSize = nil
-            playerGeneration += 1
-            print("[camera] quality \(quality.rawValue): \(updated)")
+            try await client.addStream(name: stream, source: updated)
+            if second {
+                secondXiaomiSource = updated
+                secondVideoSize = nil
+                secondPlayerGeneration += 1
+            } else {
+                xiaomiQuality = quality
+                currentXiaomiSource = updated
+                videoSize = nil
+                playerGeneration += 1
+            }
+            print("[camera] \(second ? "second camera " : "")quality \(quality.rawValue): \(updated)")
         } catch {
             errorMessage = String(localized: "Не удалось сменить качество: \(error.localizedDescription)")
         }
@@ -777,6 +823,12 @@ final class AppModel {
 
     /// The second camera's `xiaomi://` source, for a linked iPhone (its modes and turning there).
     func refreshSecondCameraSource() async {
+        #if DEBUG
+        if let demo = Self.demoXiaomiSource(second: true) {
+            secondXiaomiSource = demo
+            return
+        }
+        #endif
         guard settings.hasSecondCamera, let client, !Self.isUIPreview else {
             secondXiaomiSource = nil
             return
@@ -1022,8 +1074,8 @@ extension AppModel {
     /// The second camera is the one on screen (the first one keeps playing and recording behind it).
     var isShowingSecondCamera: Bool { showsSecondCamera && hasSecondCamera }
 
-    /// The stream on screen: the first camera's, or the second one's the switcher shows. Turning and the camera's
-    /// modes follow it; recording and quality stay the first camera's.
+    /// The stream on screen: the first camera's, or the second one's the switcher shows. Turning, quality and the
+    /// camera's modes follow it; recording stays the first camera's.
     var shownStreamName: String { isShowingSecondCamera ? activeSecondStreamName : activeStreamName }
 
     func showCamera(second: Bool) {
@@ -1036,6 +1088,7 @@ extension AppModel {
         settings.secondStreamName = ""
         settings.secondCameraTitle = ""
         showsSecondCamera = false
+        secondVideoSize = nil
     }
 
     var activeCameraName: String {
@@ -1052,6 +1105,15 @@ extension AppModel {
         if syncClient.isConnected { return syncClient.state?.streamRevision ?? 0 }
         #endif
         return playerGeneration
+    }
+
+    /// For the second camera's player: also bumped when only its quality changed. A linked Mac's `streamRevision`
+    /// already counts that change.
+    var activeSecondPlayerGeneration: Int {
+        #if os(iOS)
+        if syncClient.isConnected { return activePlayerGeneration }
+        #endif
+        return playerGeneration + secondPlayerGeneration
     }
 
     var activePlayerMode: PlayerMode {
@@ -1124,7 +1186,9 @@ extension AppModel {
                       lastRecord: lastRecord,
                       pendingPlan: session == nil ? pendingPlan : nil,
                       cameraSource: currentXiaomiSource,
-                      streamRevision: playerGeneration,
+                      // Either camera's quality: the iPhone (also one from before the second camera's
+                      // quality) reconnects both of its players.
+                      streamRevision: playerGeneration + secondPlayerGeneration,
                       secondStreamName: settings.hasSecondCamera ? settings.secondStreamName : nil,
                       secondCameraTitle: settings.hasSecondCamera ? settings.secondCameraDisplayName : nil,
                       secondCameraSource: settings.hasSecondCamera ? secondXiaomiSource : nil)

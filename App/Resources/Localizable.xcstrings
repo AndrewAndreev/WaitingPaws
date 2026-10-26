@@ -12747,6 +12747,22 @@
         }
       }
     },
+    "Только на экране: записывается первая камера" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On screen only: the first camera is recorded"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только на экране: записывается первая камера"
+          }
+        }
+      }
+    },
     "Тот же логин и пароль, что в приложении Mi Home. Камеры появятся сразу после входа." : {
       "localizations" : {
         "en" : {

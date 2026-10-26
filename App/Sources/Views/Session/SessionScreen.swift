@@ -95,6 +95,7 @@ struct SessionScreen: View {
         .modifier(LinkNoticeOverlay())
         #endif
         .task(id: model.settings.streamName) { await model.refreshXiaomiQuality() }
+        .task(id: model.settings.secondStreamName) { await model.refreshSecondCameraSource() }
         // Camera modes also through a linked Mac: they live in the camera.
         .task(id: model.cameraModesKey) {
             model.panTilt.stop()
@@ -356,8 +357,8 @@ struct SessionScreen: View {
                                      stream: model.activeSecondStreamName,
                                      mode: model.activePlayerMode,
                                      audioEnabled: model.settings.audioEnabled && model.isShowingSecondCamera,
-                                     reloadToken: reloadToken + model.activePlayerGeneration,
-                                     onVideoSize: { _ in },
+                                     reloadToken: reloadToken + model.activeSecondPlayerGeneration,
+                                     onVideoSize: { size in model.secondVideoSize = size },
                                      onDelay: { _, _ in })
                         .opacity(model.isShowingSecondCamera ? 1 : 0)
                         .allowsHitTesting(model.isShowingSecondCamera)
@@ -379,11 +380,11 @@ struct SessionScreen: View {
                 .buttonStyle(PressableButtonStyle())
             } else {
                 if model.hasSecondCamera {
-                    CameraSwitcher(onReconnect: { model.videoSize = nil; reloadToken += 1 },
+                    CameraSwitcher(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 },
                                    onPickCamera: { showCameraPicker = true },
                                    onPickSecondCamera: { showSecondCameraPicker = true })
                 } else {
-                    CameraMenu(onReconnect: { model.videoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true },
+                    CameraMenu(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true },
                                onPickSecondCamera: { showSecondCameraPicker = true })
                 }
                 RecordingPill()
@@ -527,17 +528,21 @@ private struct CameraMenu: View {
                 #endif
             }
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
-            if !model.isLinkedToMac, !model.isShowingSecondCamera, let quality = model.xiaomiQuality {
+            // The quality of the camera on screen; only the first one's goes into the recordings.
+            let second = model.isShowingSecondCamera
+            if !model.isLinkedToMac, let quality = second ? model.secondXiaomiQuality : model.xiaomiQuality {
                 Menu {
                     Picker("Качество", selection: Binding(
                         get: { quality },
                         set: { newValue in
-                            Task { await model.setXiaomiQuality(newValue) }
+                            Task { await model.setXiaomiQuality(newValue, second: second) }
                         })) {
-                        ForEach(AppModel.XiaomiQuality.allCases) { q in Text(model.qualityTitle(q)).tag(q) }
+                        ForEach(AppModel.XiaomiQuality.allCases) { q in
+                            Text(model.qualityTitle(q, source: second ? model.secondXiaomiSource : nil)).tag(q)
+                        }
                     }
-                    Text("Записи — в этом же качестве")
-                    if let size = model.videoSize {
+                    Text(second ? "Только на экране: записывается первая камера" : "Записи — в этом же качестве")
+                    if let size = second ? model.secondVideoSize : model.videoSize {
                         Divider()
                         Button("Сейчас \(Int(size.width))×\(Int(size.height))", systemImage: "info.circle") {}
                             .disabled(true)
