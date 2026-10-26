@@ -7275,18 +7275,18 @@
         }
       }
     },
-    "Например, в комнате, куда уходит собака. Её можно смотреть переключателем, записывается первая камера." : {
+    "Например, в комнате, куда уходит собака. Переключатель выбирает, какую камеру смотреть и записывать." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "For example, in the room the dog goes to. Switch to it to watch; the first camera is the one recorded."
+            "value" : "For example, in the room the dog goes to. The switcher picks which camera you watch and record."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Например, в комнате, куда уходит собака. Её можно смотреть переключателем, записывается первая камера."
+            "value" : "Например, в комнате, куда уходит собака. Переключатель выбирает, какую камеру смотреть и записывать."
           }
         }
       }
@@ -12743,22 +12743,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Только камера"
-          }
-        }
-      }
-    },
-    "Только на экране: записывается первая камера" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On screen only: the first camera is recorded"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Только на экране: записывается первая камера"
           }
         }
       }

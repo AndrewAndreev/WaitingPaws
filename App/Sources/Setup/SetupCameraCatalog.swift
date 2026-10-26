@@ -251,6 +251,7 @@ final class SetupCameraCatalog {
         // The second camera made the first one: no second one left.
         if model.settings.secondStreamName == model.settings.streamName { model.removeSecondCamera() }
         model.videoSize = nil
+        model.followShownCameraInRecording()
         Task { await model.refreshXiaomiQuality() }
         print("[setup] camera \(model.settings.streamName) (\(model.settings.cameraTitle))")
     }
@@ -284,6 +285,7 @@ final class SetupCameraCatalog {
         model.settings.secondCameraTitle = title
         model.settings.secondStreamName = name
         model.secondVideoSize = nil
+        model.followShownCameraInRecording()
         print("[setup] second camera \(name) (\(title))")
     }
 

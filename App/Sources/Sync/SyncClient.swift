@@ -376,11 +376,20 @@ final class SyncClient {
 
     /// `--demo-mac-session`: linked to a Mac that runs `plan` here in memory, without any network. `lag`: every command
     /// reaches it that much later and its state comes back as late (a weak Wi-Fi).
-    @ObservationIgnored private var demoMac: (session: TrainingSession, lag: Double, recordingSince: Date?)?
+    /// It has a second camera «Комната»; `showsSecondCamera` is the one on its screen.
+    @ObservationIgnored private var demoMac: (session: TrainingSession, lag: Double, recordingSince: Date?, showsSecondCamera: Bool)?
 
     func demoSession(_ plan: TrainingPlan, lag: Double) {
-        demoMac = (TrainingSession(plan: plan), lag, nil)
+        demoMac = (TrainingSession(plan: plan), lag, nil, false)
         status = .connected(SyncDevice(id: "demo-mac", name: "MacBook Pro", kind: .mac, model: "MacBook Pro"))
+        demoMacPublish()
+    }
+
+    /// `--demo-mac-switch-camera`: the switcher on the demo Mac.
+    func demoMacSwitchCamera() {
+        guard demoMac != nil else { return }
+        demoMac?.showsSecondCamera.toggle()
+        print("[sync] demo: the Mac shows its \(demoMac?.showsSecondCamera == true ? "second" : "first") camera")
         demoMacPublish()
     }
 
@@ -398,6 +407,7 @@ final class SyncClient {
             case .session(let command, let time): command.apply(to: mac.session, at: time)
             case .startRecording: demoMac?.recordingSince = mac.recordingSince ?? Date()
             case .stopRecording: demoMac?.recordingSince = nil
+            case .showCamera(let second): demoMac?.showsSecondCamera = second
             default: break
             }
             demoMacPublish()
@@ -409,7 +419,8 @@ final class SyncClient {
         let finished = mac.session.isFinished
         let state = SyncState(session: finished ? nil : mac.session.snapshot, recordingSince: mac.recordingSince,
                               cameraReady: true, cameraTitle: "Xiaomi Smart Camera C200", streamName: "",
-                              lastRecord: finished ? mac.session.makeRecord(recordingFileName: nil) : nil, sentAt: Date())
+                              lastRecord: finished ? mac.session.makeRecord(recordingFileName: nil) : nil, sentAt: Date(),
+                              secondStreamName: "room", secondCameraTitle: "Комната", showsSecondCamera: mac.showsSecondCamera)
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(mac.lag))
             guard let self, demoMac != nil else { return }

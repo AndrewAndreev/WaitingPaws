@@ -69,7 +69,7 @@ final class AppSettings {
     var serverPassword: String { didSet { KeychainStore.set(serverPassword, for: Key.password) } }
     var streamName: String { didSet { Self.defaults.set(streamName, forKey: Key.streamName) } }
     var cameraTitle: String { didSet { Self.defaults.set(cameraTitle, forKey: Key.cameraTitle) } }
-    /// A second camera to look at (another room): shown instead of the first one by the switcher, never recorded.
+    /// A second camera (another room): shown instead of the first one by the switcher, and recorded while it is.
     var secondStreamName: String { didSet { Self.defaults.set(secondStreamName, forKey: Key.secondStreamName) } }
     var secondCameraTitle: String { didSet { Self.defaults.set(secondCameraTitle, forKey: Key.secondCameraTitle) } }
     var xiaomiAccountID: String { didSet { Self.defaults.set(xiaomiAccountID, forKey: Key.xiaomiAccountID) } }

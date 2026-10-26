@@ -9,12 +9,16 @@ import Foundation
 /// is remuxed in place without re-encoding, the sound is converted to AAC, and a silent AAC track is
 /// added when the camera gave no sound at all.
 /// One part of a recording: the file and when it was requested (`AppModel` starts a new part each time the camera
-/// stream breaks off and comes back).
+/// stream breaks off and comes back, and each time the other camera is put on screen).
 struct RecordingSegment: Equatable {
     let url: URL
     let startedAt: Date
     /// Written by the time the part ended; 0 while it is being written.
     var bytes: Int64 = 0
+    /// When its video began to arrive (`StreamRecorder.firstFragmentAt`): the camera's next keyframe after the request.
+    var mediaStartedAt: Date?
+    /// Where its video lands in the recording.
+    var placedAt: Date { mediaStartedAt ?? startedAt }
 }
 
 enum RecordingFinalizer {
@@ -90,10 +94,12 @@ enum RecordingFinalizer {
         return true
     }
 
-    /// Joins the parts of a recording the camera broke off into `output`, each at its own time since `startedAt`:
-    /// the time the camera was away stays in the video as an empty stretch, so the training log (and the history's
-    /// «jump to the exit») still lines up with the picture. Each part is finalized first (AAC sound, not fragmented);
-    /// the parts other than `output` are deleted afterwards. `output` may be one of the parts, or an empty file.
+    /// Joins the parts of a recording into `output`, each at its own time (`placedAt`) since the first part's first
+    /// frame (`startedAt` when that part got no video): the time a camera was away stays in the video as an empty stretch, so the training log (and the history's «jump to the
+    /// exit») still lines up with the picture. A part that runs on past the next one's start (the camera switched:
+    /// the old one is kept until the new one's first keyframe) ends there. Parts from two cameras may differ in size;
+    /// the track keeps each one's own format. Each part is finalized first (AAC sound, not fragmented); the parts
+    /// other than `output` are deleted afterwards. `output` may be one of the parts, or an empty file.
     static func join(_ segments: [RecordingSegment], startedAt: Date, into output: URL) async throws {
         let composition = AVMutableComposition()
         guard let video = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
@@ -101,31 +107,50 @@ enum RecordingFinalizer {
             throw FinalizeError.failed(String(localized: "не удалось склеить запись"))
         }
         var assets: [AVURLAsset] = [] // a track does not retain its asset
-        var placed = 0
+        var parts: [(segment: RecordingSegment, video: AVAssetTrack, sound: AVAssetTrack?)] = []
         for segment in segments {
             try await finalize(segment.url)
             let asset = AVURLAsset(url: segment.url)
             assets.append(asset)
             guard let track = try await asset.loadTracks(withMediaType: .video).first else { continue }
-            let range = try await track.load(.timeRange)
-            let wanted = CMTime(seconds: max(0, segment.startedAt.timeIntervalSince(startedAt)), preferredTimescale: 600)
-            let at = max(video.timeRange.end, wanted)
-            if at > video.timeRange.end {
-                video.insertEmptyTimeRange(CMTimeRange(start: video.timeRange.end, end: at))
-            }
-            try video.insertTimeRange(range, of: track, at: at)
-            if placed == 0 { video.preferredTransform = try await track.load(.preferredTransform) }
-            if let sound = try await asset.loadTracks(withMediaType: .audio).first {
-                let soundRange = try await sound.load(.timeRange)
-                let soundAt = max(audio.timeRange.end, at + (soundRange.start - range.start))
-                if soundAt > audio.timeRange.end {
-                    audio.insertEmptyTimeRange(CMTimeRange(start: audio.timeRange.end, end: soundAt))
-                }
-                try audio.insertTimeRange(soundRange, of: sound, at: soundAt)
-            }
-            placed += 1
+            parts.append((segment, track, try await asset.loadTracks(withMediaType: .audio).first))
         }
-        guard placed > 0 else { throw FinalizeError.noVideo }
+        guard !parts.isEmpty else { throw FinalizeError.noVideo }
+
+        // The video starts with the first part's first frame, as a recording in one part does; without that part the
+        // wait from the start stays empty.
+        let origin = parts[0].segment == segments.first ? parts[0].segment.placedAt : startedAt
+        func time(_ segment: RecordingSegment) -> CMTime {
+            CMTime(seconds: max(0, segment.placedAt.timeIntervalSince(origin)), preferredTimescale: 600)
+        }
+        // An empty track's time range is invalid, not zero.
+        func end(_ track: AVMutableCompositionTrack) -> CMTime { track.segments.isEmpty ? .zero : track.timeRange.end }
+        for (index, part) in parts.enumerated() {
+            let range = try await part.video.load(.timeRange)
+            let at = max(end(video), time(part.segment))
+            // Up to where the next part begins.
+            var length = range.duration
+            if index + 1 < parts.count {
+                let next = time(parts[index + 1].segment)
+                if next > at { length = min(length, next - at) }
+            }
+            if at > end(video) {
+                video.insertEmptyTimeRange(CMTimeRange(start: end(video), end: at))
+            }
+            try video.insertTimeRange(CMTimeRange(start: range.start, duration: length), of: part.video, at: at)
+            if index == 0 { video.preferredTransform = try await part.video.load(.preferredTransform) }
+            if let sound = part.sound {
+                let soundRange = try await sound.load(.timeRange)
+                let soundAt = max(end(audio), at + (soundRange.start - range.start))
+                let soundEnd = min(soundRange.end, soundRange.start + (at + length - soundAt))
+                if soundEnd > soundRange.start {
+                    if soundAt > end(audio) {
+                        audio.insertEmptyTimeRange(CMTimeRange(start: end(audio), end: soundAt))
+                    }
+                    try audio.insertTimeRange(CMTimeRange(start: soundRange.start, end: soundEnd), of: sound, at: soundAt)
+                }
+            }
+        }
 
         guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough) else {
             throw FinalizeError.failed(String(localized: "экспорт недоступен"))

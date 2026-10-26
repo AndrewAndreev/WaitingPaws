@@ -10,7 +10,8 @@ import WaitingPawsCore
 final class AppModel {
     let settings = AppSettings()
     let store = SessionStore(rootDirectory: AppModel.storeRoot)
-    let recorder = StreamRecorder()
+    /// Writes the recording's current part. A new one takes over when the other camera is put on screen.
+    private(set) var recorder = StreamRecorder()
     let embedded = EmbeddedGo2RTC()
     let performance = PerformanceMonitor()
     /// Night mode and the other settings of the Mi Home camera on screen.
@@ -59,6 +60,11 @@ final class AppModel {
     private(set) var currentXiaomiSource: String?
 
     private var currentRecordingURL: URL?
+    /// The stream the current part is written from: the camera that was on screen when it began.
+    @ObservationIgnored private var recordingStream: String?
+    /// The other camera put on screen while recording: its part is written already, and takes over with its first
+    /// keyframe (the old camera keeps writing until then, so the joined video has no hole at the switch).
+    @ObservationIgnored private var incomingPart: (recorder: StreamRecorder, segment: RecordingSegment, stream: String)?
     /// The recording in progress in parts: the first is `currentRecordingURL`; a new part starts whenever the camera
     /// stream broke off (go2rtc lost the camera) and came back. Joined into the first file when the recording stops.
     private var recordingSegments: [RecordingSegment] = []
@@ -100,6 +106,16 @@ final class AppModel {
             let lag = args.firstIndex(of: "--demo-mac-lag").flatMap { $0 + 1 < args.count ? Double(args[$0 + 1]) : nil }
             syncClient.onState = { [unowned self] state in applySyncState(state) }
             syncClient.demoSession(PlanParser.parse(Self.demoPlanText), lag: lag ?? 0)
+            // `--demo-mac-switch-camera <seconds>`: the demo Mac flips between its two cameras that often.
+            if let index = args.firstIndex(of: "--demo-mac-switch-camera"), index + 1 < args.count,
+               let seconds = Double(args[index + 1]) {
+                Task { [weak self] in
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .seconds(seconds))
+                        self?.syncClient.demoMacSwitchCamera()
+                    }
+                }
+            }
         }
         // `--demo-remote-steps`: once linked (to a Mac or the demo one), press «Вышли» from the iPhone.
         if args.contains("--demo-remote-steps") {
@@ -141,9 +157,7 @@ final class AppModel {
         if CommandLine.arguments.contains("--demo-camera-modes") { cameraModes.loadDemo() }
         #endif
         performance.startHangLogging()
-        recorder.onEnded = { [weak self] reason in
-            MainActor.assumeIsolated { self?.recordingStreamEnded(reason) }
-        }
+        attachRecorder(recorder)
         if settings.showPerformance || CommandLine.arguments.contains("--perf") { performance.start() }
         #if os(iOS)
         KeyboardPrewarmer.prewarm(after: 2)
@@ -160,6 +174,19 @@ final class AppModel {
         }
         // `--demo-show-second` (with `--demo-second-camera`): the second camera on screen.
         if CommandLine.arguments.contains("--demo-show-second") { showsSecondCamera = true }
+        // `--demo-switch-camera <seconds>`: the switcher flips between the two cameras that often (with `--demo-clip`:
+        // a recording joined from both).
+        if let index = CommandLine.arguments.firstIndex(of: "--demo-switch-camera"), index + 1 < CommandLine.arguments.count,
+           let seconds = Double(CommandLine.arguments[index + 1]) {
+            Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(seconds))
+                    guard let self else { return }
+                    self.showCamera(second: !self.showsSecondCamera)
+                    print("[demo] camera \(self.showsSecondCamera ? "second" : "first") on screen")
+                }
+            }
+        }
         #if os(iOS)
         // `--demo-rotate`: the screen turns to landscape and back, 3 s apart, like a phone turned in the hand (the
         // player must not load again: «[player] … load» in the log).
@@ -481,11 +508,13 @@ final class AppModel {
         guard !isRecordingLocally else { return }
         let plan = session?.plan ?? TrainingPlan(title: String(localized: "Запись"))
         let fileURL = store.newRecordingURL(for: plan)
+        let stream = shownLocalStreamName
         do {
-            try recorder.start(url: client.mp4URL(stream: settings.streamName),
+            try recorder.start(url: client.mp4URL(stream: stream),
                                authorization: client.server.authorizationHeader,
                                to: fileURL)
             currentRecordingURL = fileURL
+            recordingStream = stream
             recordingSegments = [RecordingSegment(url: fileURL, startedAt: recorder.startedAt ?? Date())]
             session?.noteRecording(started: true, fileName: fileURL.lastPathComponent)
             if session == nil {
@@ -494,7 +523,7 @@ final class AppModel {
                 lastClip = nil
                 keepAwake(true)
             }
-            print("[rec] started \(fileURL.lastPathComponent)")
+            print("[rec] started \(fileURL.lastPathComponent) from \(stream)")
         } catch {
             errorMessage = String(localized: "Не удалось начать запись: \(error.localizedDescription)")
         }
@@ -511,6 +540,8 @@ final class AppModel {
         resumeTask?.cancel()
         resumeTask = nil
         recordingResuming = false
+        dropIncomingPart()
+        recordingStream = nil
         guard wasRecording || currentRecordingURL != nil else { return }
         // A session keeps the screen awake on its own; a recording without one releases it here.
         defer { if session == nil { keepAwake(false) } }
@@ -566,6 +597,119 @@ final class AppModel {
     private func noteSegmentEnded() {
         guard let last = recordingSegments.indices.last else { return }
         recordingSegments[last].bytes = recorder.bytesWritten
+        recordingSegments[last].mediaStartedAt = recorder.firstFragmentAt
+    }
+
+    /// The camera recorded here: the one on screen.
+    private var shownLocalStreamName: String {
+        showsSecondCamera && settings.hasSecondCamera ? settings.secondStreamName : settings.streamName
+    }
+
+    /// The current part's recorder: its video start goes into its part, its end (without a stop) starts the next one.
+    private func attachRecorder(_ recorder: StreamRecorder) {
+        recorder.onEnded = { [weak self, weak recorder] reason in
+            MainActor.assumeIsolated {
+                guard let self, recorder === self.recorder else { return }
+                self.recordingStreamEnded(reason)
+            }
+        }
+        recorder.onFirstFragment = { [weak self, weak recorder] in
+            MainActor.assumeIsolated {
+                guard let self, let recorder, recorder === self.recorder,
+                      let last = self.recordingSegments.indices.last else { return }
+                self.recordingSegments[last].mediaStartedAt = recorder.firstFragmentAt
+            }
+        }
+    }
+
+    private func partURL(_ main: URL, number: Int) -> URL {
+        store.recordingsDirectory
+            .appendingPathComponent(".parts", isDirectory: true)
+            .appendingPathComponent("\(main.deletingPathExtension().lastPathComponent)-part\(number).mp4")
+    }
+
+    /// «То, что на экране, то и записывается»: the camera on screen changed (the switcher, here or on the linked
+    /// iPhone; another camera chosen) while recording here, so the recording goes on from it in a new part. The old
+    /// camera keeps writing until the new one's first keyframe — up to a whole GOP after the switch — and the parts
+    /// are joined into one video when the recording stops.
+    func followShownCameraInRecording() {
+        guard isRecordingLocally, let client, let main = currentRecordingURL else { return }
+        let stream = shownLocalStreamName
+        guard !stream.isEmpty else { return }
+        if let incomingPart {
+            guard incomingPart.stream != stream else { return }
+            dropIncomingPart()
+        }
+        guard stream != recordingStream else { return }
+        if recordingResuming {
+            // Nothing is being written (the camera broke off): the next part simply comes from the new one.
+            resumeTask?.cancel()
+            startNextRecordingPart()
+            return
+        }
+        let number = recordingSegments.count + 1
+        let url = partURL(main, number: number)
+        let next = StreamRecorder()
+        do {
+            try next.start(url: client.mp4URL(stream: stream), authorization: client.server.authorizationHeader, to: url)
+        } catch {
+            print("[rec] part \(number) from \(stream) failed: \(error.localizedDescription)")
+            return
+        }
+        next.onFirstFragment = { [weak self, weak next] in
+            MainActor.assumeIsolated {
+                guard let self, let next else { return }
+                self.takeOverRecording(by: next)
+            }
+        }
+        next.onEnded = { [weak self, weak next] reason in
+            MainActor.assumeIsolated {
+                guard let self, let next, self.incomingPart?.recorder === next else { return }
+                self.incomingPartEnded(reason)
+            }
+        }
+        incomingPart = (next, RecordingSegment(url: url, startedAt: next.startedAt ?? Date()), stream)
+        print("[rec] \(stream) on screen: part \(number) starts with its next keyframe")
+    }
+
+    /// The new camera's first keyframe: its part becomes the recording's current one, the old camera stops.
+    private func takeOverRecording(by next: StreamRecorder) {
+        guard let incoming = incomingPart, incoming.recorder === next else { return }
+        incomingPart = nil
+        if recorder.isRecording {
+            recorder.stop()
+            noteSegmentEnded()
+        }
+        var segment = incoming.segment
+        segment.mediaStartedAt = next.firstFragmentAt
+        recordingSegments.append(segment)
+        recorder = next
+        attachRecorder(next)
+        recordingStream = incoming.stream
+        recordingResuming = false
+        resumeTask?.cancel()
+        resumeTask = nil
+        print("[rec] part \(recordingSegments.count) from \(incoming.stream) took over")
+    }
+
+    /// The new camera's stream ended before its first keyframe (the camera is away): try again in a while; meanwhile
+    /// the old camera goes on, or — if it broke off too — the recording waits for the one on screen.
+    private func incomingPartEnded(_ reason: String?) {
+        print("[rec] \(incomingPart?.stream ?? "?") did not start (\(reason ?? "ended")): trying again")
+        dropIncomingPart()
+        resumeTask?.cancel()
+        resumeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled, let self else { return }
+            if self.recordingResuming { self.startNextRecordingPart() } else { self.followShownCameraInRecording() }
+        }
+    }
+
+    private func dropIncomingPart() {
+        guard let incoming = incomingPart else { return }
+        incomingPart = nil
+        incoming.recorder.stop()
+        try? FileManager.default.removeItem(at: incoming.segment.url)
     }
 
     /// The recording's stream ended without a stop: go2rtc lost the camera (it reconnects by itself) or refused the
@@ -581,6 +725,8 @@ final class AppModel {
             print("[rec] the camera stream broke off (\(reason ?? "ended")): going on when the camera is back")
         }
         recordingResuming = true
+        // The camera just put on screen is already on its way in: it takes over.
+        guard incomingPart == nil else { return }
         resumeTask?.cancel()
         resumeTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
@@ -590,15 +736,15 @@ final class AppModel {
     }
 
     private func startNextRecordingPart() {
-        guard recordingResuming, let main = currentRecordingURL, let client, !settings.streamName.isEmpty else { return }
+        let stream = shownLocalStreamName
+        guard recordingResuming, incomingPart == nil, let main = currentRecordingURL, let client, !stream.isEmpty else { return }
         let number = recordingSegments.count + 1
-        let url = store.recordingsDirectory
-            .appendingPathComponent(".parts", isDirectory: true)
-            .appendingPathComponent("\(main.deletingPathExtension().lastPathComponent)-part\(number).mp4")
+        let url = partURL(main, number: number)
         do {
-            try recorder.start(url: client.mp4URL(stream: settings.streamName),
+            try recorder.start(url: client.mp4URL(stream: stream),
                                authorization: client.server.authorizationHeader, to: url)
             recordingSegments.append(RecordingSegment(url: url, startedAt: recorder.startedAt ?? Date()))
+            recordingStream = stream
             recordingResuming = false
             if number != lastRequestedPart { print("[rec] waiting for the camera to write part \(number)") }
             lastRequestedPart = number
@@ -692,7 +838,7 @@ final class AppModel {
         didSet { rememberQualityResolution(size: videoSize, quality: xiaomiQuality, source: currentXiaomiSource) }
     }
 
-    /// The second camera's quality: only for its picture, the recording is the first camera's.
+    /// The second camera's quality: of its picture, and of the recording while it is on screen.
     var secondXiaomiQuality: XiaomiQuality? { secondXiaomiSource.map(Self.quality(of:)) }
     /// What the second camera's player receives.
     var secondVideoSize: CGSize? {
@@ -773,8 +919,8 @@ final class AppModel {
         xiaomiQuality = Self.quality(of: source)
     }
 
-    /// Re-registers the stream with `subtype=<quality>`: the first camera's is the quality of the picture and of
-    /// the recordings, the second one's only of its picture. go2rtc then creates a new stream and the old one, with
+    /// Re-registers the stream with `subtype=<quality>`: the quality of that camera's picture and of the recording while
+    /// it is on screen. go2rtc then creates a new stream and the old one, with
     /// its own camera connection, lives until its viewers leave, so that camera's players reconnect (also a linked
     /// iPhone's, through `SyncState.streamRevision`).
     func setXiaomiQuality(_ quality: XiaomiQuality, second: Bool = false) async {
@@ -1085,17 +1231,26 @@ extension AppModel {
 
     var hasSecondCamera: Bool { !activeSecondStreamName.isEmpty }
 
-    /// The second camera is the one on screen (the first one keeps playing and recording behind it).
+    /// The second camera is the one on screen, and the one recorded (the first one keeps playing behind it).
     var isShowingSecondCamera: Bool { showsSecondCamera && hasSecondCamera }
 
-    /// The stream on screen: the first camera's, or the second one's the switcher shows. Turning, quality and the
-    /// camera's modes follow it; recording stays the first camera's.
+    /// The stream on screen: the first camera's, or the second one's the switcher shows. Turning, quality, the
+    /// camera's modes and the recording follow it.
     var shownStreamName: String { isShowingSecondCamera ? activeSecondStreamName : activeStreamName }
 
     func showCamera(second: Bool) {
         guard second != showsSecondCamera else { return }
         panTilt.stop()
         showsSecondCamera = second
+        #if os(iOS)
+        // The linked Mac shows — and records — the same camera. A Mac from before that would drop the link on the
+        // command: its state has no camera in it.
+        if syncClient.isConnected, syncClient.state?.showsSecondCamera != nil {
+            syncClient.send(.showCamera(second: second))
+            print("[sync] \(second ? "second" : "first") camera on screen, on the \(linkedHostKind) too")
+        }
+        #endif
+        followShownCameraInRecording()
     }
 
     func removeSecondCamera() {
@@ -1103,6 +1258,7 @@ extension AppModel {
         settings.secondCameraTitle = ""
         showsSecondCamera = false
         secondVideoSize = nil
+        followShownCameraInRecording()
     }
 
     var activeCameraName: String {
@@ -1205,7 +1361,8 @@ extension AppModel {
                       streamRevision: playerGeneration + secondPlayerGeneration,
                       secondStreamName: settings.hasSecondCamera ? settings.secondStreamName : nil,
                       secondCameraTitle: settings.hasSecondCamera ? settings.secondCameraDisplayName : nil,
-                      secondCameraSource: settings.hasSecondCamera ? secondXiaomiSource : nil)
+                      secondCameraSource: settings.hasSecondCamera ? secondXiaomiSource : nil,
+                      showsSecondCamera: isShowingSecondCamera)
         }
         syncHost.commandHandler = { [unowned self] command in applyRemote(command) }
         syncHost.accessProvider = { [unowned self] in
@@ -1276,6 +1433,8 @@ extension AppModel {
             if !isRecordingLocally { startRecording() }
         case .stopRecording:
             stopRecording(deleteFile: false)
+        case .showCamera(let second):
+            showCamera(second: second)
         }
     }
     #endif
@@ -1294,6 +1453,12 @@ extension AppModel {
         }
         let hostName = syncClient.host?.name ?? linkedHostKind
         let kind = linkedHostKind
+        // The camera on the Mac's screen (the one it records) is the one here: when it changes there, or on linking.
+        if let shown = state.showsSecondCamera, shown != previous?.showsSecondCamera, shown != showsSecondCamera {
+            panTilt.stop()
+            showsSecondCamera = shown
+            print("[sync] \(shown ? "second" : "first") camera on screen, as on the \(kind)")
+        }
         if previous == nil {
             linkNotice = LinkNotice(title: String(localized: "Синхронизировано с «\(hostName)»"),
                                     detail: String(localized: "Тренировка, запись и лог — на \(kind), шаги общие."))

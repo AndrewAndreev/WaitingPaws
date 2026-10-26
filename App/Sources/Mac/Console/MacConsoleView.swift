@@ -482,7 +482,7 @@ private struct CameraToolbarMenu: View {
                    systemImage: "person.crop.circle.badge.plus") { ui.showXiaomiSignIn = true }
             Divider()
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
-            // The quality of the camera on screen; only the first one's goes into the recordings.
+            // The quality of the camera on screen, the one recorded.
             if let quality = shownQuality {
                 let second = model.isShowingSecondCamera
                 Divider()
@@ -495,7 +495,7 @@ private struct CameraToolbarMenu: View {
                         Text(model.qualityTitle($0, source: second ? model.secondXiaomiSource : nil)).tag($0)
                     }
                 }
-                Text(second ? "Только на экране: записывается первая камера" : "Записи — в этом же качестве")
+                Text("Записи — в этом же качестве")
                 if let size = second ? model.secondVideoSize : model.videoSize {
                     Text("Сейчас \(Int(size.width))×\(Int(size.height))")
                 }
@@ -534,7 +534,7 @@ private struct CameraToolbarMenu: View {
     }
 }
 
-/// «Прихожая · Комната» (⌘1 / ⌘2): which camera is on screen. Both keep playing; the recording is the first one's.
+/// «Прихожая · Комната» (⌘1 / ⌘2): which camera is on screen, and recorded. Both keep playing.
 private struct CameraToolbarSwitcher: View {
     @Environment(AppModel.self) private var model
 

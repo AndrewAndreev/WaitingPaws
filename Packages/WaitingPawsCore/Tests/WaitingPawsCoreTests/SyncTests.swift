@@ -285,6 +285,29 @@ final class SyncTests: XCTestCase {
         XCTAssertNil(decoded.pendingPlan)
     }
 
+    /// The camera on screen travels both ways: the Mac's in its state, the iPhone's switch as a command. A state from
+    /// a Mac before that has no camera in it, which tells the iPhone not to send the command.
+    func testShownCameraTravelsBothWays() throws {
+        let state = SyncState(session: nil, recordingSince: nil, cameraReady: true, cameraTitle: "Прихожая", streamName: "hall",
+                              lastRecord: nil, secondStreamName: "room", showsSecondCamera: true)
+        guard case .state(let decoded) = try SyncMessage.decode(SyncMessage.state(state).encoded()) else {
+            return XCTFail("no state")
+        }
+        XCTAssertEqual(decoded.showsSecondCamera, true)
+        for command in [SyncCommand.showCamera(second: true), .showCamera(second: false)] {
+            XCTAssertEqual(try SyncMessage.decode(SyncMessage.command(command).encoded()), .command(command))
+        }
+
+        var json = try JSONSerialization.jsonObject(with: SyncMessage.state(state).encoded()) as! [String: Any]
+        var payload = (json["state"] as! [String: Any])["_0"] as! [String: Any]
+        payload.removeValue(forKey: "showsSecondCamera")
+        json["state"] = ["_0": payload]
+        guard case .state(let old) = try SyncMessage.decode(JSONSerialization.data(withJSONObject: json)) else {
+            return XCTFail("no state")
+        }
+        XCTAssertNil(old.showsSecondCamera)
+    }
+
     func testHostInfoTXTRoundTrip() {
         let info = SyncHostInfo(name: "MacBook Андрея", cameraTitle: "Прихожая", cameraReady: true, sessionRunning: true, currentExit: 6)
         XCTAssertEqual(SyncHostInfo(name: info.name, txt: info.txt), info)

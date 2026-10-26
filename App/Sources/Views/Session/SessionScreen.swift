@@ -496,7 +496,7 @@ struct PlanEntryCard: View {
 
 /// Camera name pill with its menu. Separate view so per-second updates elsewhere do not rebuild an open menu.
 /// As a segment of `CameraSwitcher` it is the selected camera's name. The camera modes are the shown camera's;
-/// quality is the first camera's (the one recorded), so it is there while that one is on screen.
+/// so is the quality (of the picture and of the recording).
 private struct CameraMenu: View {
     @Environment(AppModel.self) private var model
     var onReconnect: () -> Void
@@ -526,7 +526,7 @@ private struct CameraMenu: View {
                 #endif
             }
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
-            // The quality of the camera on screen; only the first one's goes into the recordings.
+            // The quality of the camera on screen, the one recorded.
             let second = model.isShowingSecondCamera
             if !model.isLinkedToMac, let quality = second ? model.secondXiaomiQuality : model.xiaomiQuality {
                 Menu {
@@ -539,7 +539,7 @@ private struct CameraMenu: View {
                             Text(model.qualityTitle(q, source: second ? model.secondXiaomiSource : nil)).tag(q)
                         }
                     }
-                    Text(second ? "Только на экране: записывается первая камера" : "Записи — в этом же качестве")
+                    Text("Записи — в этом же качестве")
                     if let size = second ? model.secondVideoSize : model.videoSize {
                         Divider()
                         Button("Сейчас \(Int(size.width))×\(Int(size.height))", systemImage: "info.circle") {}
@@ -576,7 +576,7 @@ private struct CameraMenu: View {
 }
 
 /// «Прихожая · Комната»: which camera is on screen. The other one keeps playing (the green dot) and a tap brings it;
-/// a tap on the one on screen opens its menu. Recording is always the first camera's.
+/// a tap on the one on screen opens its menu. The one on screen is recorded (and shown on a linked Mac too).
 private struct CameraSwitcher: View {
     @Environment(AppModel.self) private var model
     var onReconnect: () -> Void

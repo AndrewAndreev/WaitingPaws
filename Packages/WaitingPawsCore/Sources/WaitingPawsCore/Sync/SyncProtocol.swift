@@ -182,16 +182,20 @@ public struct SyncState: Codable, Equatable {
     /// The Mac's clock when this state left it: the iPhone keeps track of how far the two clocks are apart
     /// (`SyncClock`) to send the moment of each button press in the Mac's time. Set by the sender, not compared.
     public var sentAt: Date?
-    /// The Mac's second camera (another room), only to look at; nil without one and from builds before it.
+    /// The Mac's second camera (another room), recorded while it is on screen; nil without one and from builds
+    /// before it.
     public var secondStreamName: String?
     public var secondCameraTitle: String?
     /// The second camera's `xiaomi://` source: its modes and turning on the iPhone, like `cameraSource`.
     public var secondCameraSource: String?
+    /// The camera on the Mac's screen, the one it records: the iPhone shows the same one. Nil from Macs before the
+    /// cameras were in step — those don't know `SyncCommand.showCamera` either (an unknown command closes the link).
+    public var showsSecondCamera: Bool?
 
     public init(session: TrainingSession.Snapshot?, recordingSince: Date?, cameraReady: Bool, cameraTitle: String,
                 streamName: String, lastRecord: TrainingRecord?, pendingPlan: TrainingPlan? = nil, cameraSource: String? = nil,
                 streamRevision: Int? = nil, sentAt: Date? = nil, secondStreamName: String? = nil,
-                secondCameraTitle: String? = nil, secondCameraSource: String? = nil) {
+                secondCameraTitle: String? = nil, secondCameraSource: String? = nil, showsSecondCamera: Bool? = nil) {
         self.session = session
         self.recordingSince = recordingSince
         self.cameraReady = cameraReady
@@ -205,6 +209,7 @@ public struct SyncState: Codable, Equatable {
         self.secondStreamName = secondStreamName
         self.secondCameraTitle = secondCameraTitle
         self.secondCameraSource = secondCameraSource
+        self.showsSecondCamera = showsSecondCamera
     }
 }
 
@@ -242,6 +247,9 @@ public enum SyncCommand: Codable, Equatable {
     case abandonSession
     case startRecording
     case stopRecording
+    /// The switcher on the iPhone: the Mac shows (and records) that camera too. Only to a Mac whose state has
+    /// `showsSecondCamera`.
+    case showCamera(second: Bool)
 }
 
 public enum SyncMessage: Codable, Equatable {
