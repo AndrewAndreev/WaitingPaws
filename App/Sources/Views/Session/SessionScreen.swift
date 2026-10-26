@@ -35,45 +35,43 @@ struct SessionScreen: View {
             // screen, the clock (or the way to record or back) floats over it. The camera keeps its place in each
             // layout, so the player is not recreated.
             let clipMode = model.isRecordingClip || (cameraOnly && model.session == nil)
-            Group {
-                if wide {
-                    HStack(spacing: 12) {
-                        cameraArea
-                            .overlay(alignment: .top) {
-                                if clipMode { topBar.padding(12).transition(.opacity) }
-                            }
-                            .overlay(alignment: .bottom) { clipOverlay(clipMode) }
-                            .overlay(alignment: .bottomTrailing) { cameraCorner(clipMode) }
-                        if !clipMode {
-                            VStack(spacing: 12) {
-                                topBar
-                                if model.performance.isRunning { performanceBar }
-                                Spacer(minLength: 0)
-                                bottomContent(compact: false)
-                            }
-                            .frame(width: min(420, geometry.size.width * 0.45))
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
-                        }
+            // One layout for both orientations, switched with `AnyLayout`: the camera stays the same view when the
+            // phone turns. In two `if wide` branches it was a new one each time, and its new player connected to the
+            // camera again.
+            let layout = wide ? AnyLayout(HStackLayout(spacing: 12)) : AnyLayout(VStackLayout(spacing: 10))
+            let edge: CGFloat = clipMode ? 0 : 12
+            layout {
+                if !wide {
+                    topBar
+                        .padding(.horizontal, 12)
+                    if model.performance.isRunning { performanceBar.padding(.horizontal, 12) }
+                }
+                cameraArea
+                    .overlay(alignment: .top) {
+                        if wide && clipMode { topBar.padding(12).transition(.opacity) }
                     }
-                    .padding(clipMode ? 0 : 12)
-                } else {
-                    VStack(spacing: 10) {
-                        topBar
+                    .overlay(alignment: .bottom) { clipOverlay(clipMode) }
+                    .overlay(alignment: .bottomTrailing) { cameraCorner(clipMode) }
+                    .padding(.horizontal, wide ? 0 : edge)
+                if !clipMode {
+                    if wide {
+                        VStack(spacing: 12) {
+                            topBar
+                            if model.performance.isRunning { performanceBar }
+                            Spacer(minLength: 0)
+                            bottomContent(compact: false)
+                        }
+                        .frame(width: min(420, geometry.size.width * 0.45))
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    } else {
+                        bottomContent(compact: compact)
                             .padding(.horizontal, 12)
-                        if model.performance.isRunning { performanceBar.padding(.horizontal, 12) }
-                        cameraArea
-                            .overlay(alignment: .bottom) { clipOverlay(clipMode) }
-                            .overlay(alignment: .bottomTrailing) { cameraCorner(clipMode) }
-                            .padding(.horizontal, clipMode ? 0 : 12)
-                        if !clipMode {
-                            bottomContent(compact: compact)
-                                .padding(.horizontal, 12)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    .padding(.bottom, 4)
                 }
             }
+            .padding(wide ? EdgeInsets(top: edge, leading: edge, bottom: edge, trailing: edge)
+                          : EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.smooth(duration: 0.35), value: clipMode)
             .overlay(alignment: wide ? .bottomTrailing : .bottom) {

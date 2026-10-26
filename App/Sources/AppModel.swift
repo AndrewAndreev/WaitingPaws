@@ -160,6 +160,20 @@ final class AppModel {
         }
         // `--demo-show-second` (with `--demo-second-camera`): the second camera on screen.
         if CommandLine.arguments.contains("--demo-show-second") { showsSecondCamera = true }
+        #if os(iOS)
+        // `--demo-rotate`: the screen turns to landscape and back, 3 s apart, like a phone turned in the hand (the
+        // player must not load again: «[player] … load» in the log).
+        if CommandLine.arguments.contains("--demo-rotate") {
+            Task {
+                for orientation in [UIInterfaceOrientationMask.landscapeRight, .portrait] {
+                    try? await Task.sleep(for: .seconds(3))
+                    let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+                    scene?.requestGeometryUpdate(.iOS(interfaceOrientations: orientation))
+                    print("[demo] turned to \(orientation == .portrait ? "portrait" : "landscape")")
+                }
+            }
+        }
+        #endif
         // `--demo-session` starts a session from a sample schedule right away (handy for previews and UI checks).
         if CommandLine.arguments.contains("--demo-session") {
             let plan = PlanParser.parse(Self.demoPlanText)

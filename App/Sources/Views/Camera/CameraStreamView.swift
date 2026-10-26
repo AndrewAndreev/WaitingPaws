@@ -466,6 +466,8 @@ struct CameraWebView {
         coordinator.loadedKey = key
         coordinator.server = server
         coordinator.audioEnabled = audioEnabled
+        // Every load is a new connection to the camera: one more than expected is a reconnect.
+        print("[player] \(LogHandler.clock.string(from: Date())) load \(stream)")
         webView.loadHTMLString(html(), baseURL: server.baseURL)
     }
 
