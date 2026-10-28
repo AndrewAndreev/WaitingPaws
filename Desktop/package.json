@@ -1,7 +1,7 @@
 {
   "name": "waiting-paws",
   "productName": "Waiting Paws",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Short-absence training for dogs: trainer's schedule, timers, live camera and recording.",
   "author": "Andrew Andreev <andrew@comrade.su>",
   "homepage": "https://github.com/AndrewAndreev/WaitingPaws",

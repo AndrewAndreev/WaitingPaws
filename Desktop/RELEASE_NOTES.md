@@ -1,27 +1,32 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.1.0**
+**New in 1.2.0**
 
-* Two steps and two timers: «Вышли» (Outside) once the door is closed and «Вернулись» (Back Inside); «Фальстарт»
-  works outside and in the break. A break that runs out keeps going until «Вышли», its timer turns red and counts up.
-* The new training panel: the exit strip, a big timer over a progress line, two buttons with their keys;
-  «Вернулись» is blue, the colour of the break. Door icons on both buttons.
-* The schedule can be edited during the training («Расписание»), and on the timeline: click an exit or a break to
-  type its length or drag its edge (Shift — 5 s grid). The countdown recalculates at once.
-* The timeline starts at the first exit; what happened outside is pink, every overrun is yellow.
-* Presses on a linked iPhone land at their real moment, even over a weak Wi-Fi.
-* «Начать тренировку и запись» / «Завершить тренировку и запись» when the recording goes with the training;
-  «Повторить прошлое» is gone.
-* Schedule parser: a time sets the common break only when it belongs to «перерыв» (false-start rules no longer
-  turn into 20 s breaks).
-* A wider navigation rail with labels that always fit; timeline legend entries that do not fit drop out whole.
-* Dialogs put the main button on the right with «Отмена» next to it, as on the Mac, the iPhone and the web;
-  the selected tab's accent mark runs the full height of the tab.
+* Exits get triggers («+ куртка»), conditions for coming back early («🟡 Если встала — входим через 2 минуты») and
+  their own notes; the trainer's «🚩 … не входить» rule stands out in red. The schedule check shows them under each
+  exit, the training shows the condition plates under the timer and the trainer's text at the bottom of the panel.
+* Conditions written once go to all exits, to the long ones (≥ 1 min) or one by one. Times are read from words too
+  («через минуту», «через секунд 30», «через 1,5 минуты»); one that can't be read is shown in the trainer's words
+  instead of «сразу», and «не заходя в комнату» is no longer taken for a rule.
+* A second camera (another room): the «Прихожая · Комната» switcher, Ctrl+1 / Ctrl+2. Recording stays with the main
+  camera.
+* A training ends only with «Завершить»; after the last exit the break runs on, and «Ещё выход» adds an exit without
+  a planned time. «Фальстарт» folds away when the trainer's window for it is over.
+* Recording is safer: two quick stops, a full disk or a file held open by Explorer or an antivirus no longer lose
+  the video; after a camera drop-out each part lands at its first frame, so «jump to the exit» matches the video.
+  A training is saved when Windows shuts down or signs out.
+* Shortcuts as on the Mac: Ctrl+E edits the running schedule, Ctrl+. finishes; letters work in the Russian layout
+  too.
+* The server can't be switched during a training or a recording, and «Свой сервер go2rtc» no longer sends you back
+  to the first-launch screen before its address is saved.
+* Security: the built-in go2rtc refuses requests that would re-point the camera from a web page, camera settings
+  reach only the cameras set up here, the iPhone link refuses browser pages, and a forgotten iPhone loses camera
+  access at once. Error messages are in English with the English interface.
 
 * The trainer's schedule (paste from Telegram/WhatsApp, Ctrl+Shift+V), review and editing before the start, big
   timers for exits and breaks, the plan-and-actual timeline, the log for the trainer.
 * Live camera through the built-in go2rtc 1.9.14 (Mi Home cameras, including homes shared with the account, and any
-  go2rtc stream); quality and the camera's night mode and other settings.
+  go2rtc stream), a second camera; quality and the camera's night mode and other settings.
 * Recording with the training or on its own; recordings are finished as regular MP4 with AAC sound; history with
   the progress chart, the video player and "jump to the exit".
 * The iPhone app links to this computer like to a Mac (Settings → iPhone).
