@@ -13,6 +13,8 @@ struct HistoryView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var confirmClearAll = false
+    /// Swiped or long-pressed for deletion (or several rows deleted at once): asked first, as on the entry's own screen.
+    @State private var pendingDelete: [Item] = []
     @State private var path: [HistoryRoute] = []
 
     private enum Item: Identifiable {
@@ -37,17 +39,20 @@ struct HistoryView: View {
             if case .clip = self { return true }
             return false
         }
+
+        var record: TrainingRecord? {
+            if case .session(let record) = self { return record }
+            return nil
+        }
+
+        var clip: RecordingClip? {
+            if case .clip(let clip) = self { return clip }
+            return nil
+        }
     }
 
     private var items: [Item] {
         (model.history.map(Item.session) + model.clips.map(Item.clip)).sorted { $0.date > $1.date }
-    }
-
-    private func delete(_ item: Item) {
-        switch item {
-        case .session(let record): model.delete(record, includingRecording: true)
-        case .clip(let clip): model.delete(clip)
-        }
     }
 
     var body: some View {
@@ -69,13 +74,13 @@ struct HistoryView: View {
                                 }
                             }
                             .contextMenu {
-                                Button(item.isClip ? "Удалить запись" : "Удалить вместе с видео", systemImage: "trash", role: .destructive) {
-                                    delete(item)
+                                Button(item.isClip ? "Удалить запись…" : "Удалить тренировку…", systemImage: "trash", role: .destructive) {
+                                    pendingDelete = [item]
                                 }
                             }
                         }
                         .onDelete { offsets in
-                            for index in offsets { delete(items[index]) }
+                            pendingDelete = offsets.map { items[$0] }
                         }
                     }
                     #if os(macOS)
@@ -110,6 +115,7 @@ struct HistoryView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
+                    .accessibilityLabel("Ещё")
                 }
                 #if os(iOS)
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
@@ -120,6 +126,15 @@ struct HistoryView: View {
                 Button("Отмена", role: .cancel) {}
             } message: {
                 Text("Логи и видео будут удалены с устройства. Копии в Фото останутся.")
+            }
+            .confirmationDialog(deleteTitle,
+                                isPresented: Binding(get: { !pendingDelete.isEmpty }, set: { if !$0 { pendingDelete = [] } }),
+                                titleVisibility: .visible, presenting: pendingDelete.isEmpty ? nil : pendingDelete) { items in
+                deleteButtons(items)
+            } message: { items in
+                if items.contains(where: \.isClip) {
+                    if items.count == 1 { Text("Копия в Фото останется.") } else { Text("Копии в Фото останутся.") }
+                }
             }
         }
         .onAppear {
@@ -133,6 +148,42 @@ struct HistoryView: View {
             }
             #endif
         }
+    }
+
+    /// «Удалить тренировку?», «Удалить 2 тренировки и 1 запись?».
+    private var deleteTitle: String {
+        let trainings = pendingDelete.filter { !$0.isClip }.count
+        let clips = pendingDelete.count - trainings
+        if pendingDelete.count == 1 { return clips == 1 ? String(localized: "Удалить запись?") : String(localized: "Удалить тренировку?") }
+        // Accusative: «Удалить 2 тренировки».
+        let trainingsText = pluralText(trainings, ru: ("тренировку", "тренировки", "тренировок"), en: ("training", "trainings"))
+        let clipsText = pluralText(clips, ru: ("запись", "записи", "записей"), en: ("recording", "recordings"))
+        switch (trainings, clips) {
+        case (_, 0): return String(localized: "Удалить \(trainingsText)?")
+        case (0, _): return String(localized: "Удалить \(clipsText)?")
+        default: return String(localized: "Удалить \(trainingsText) и \(clipsText)?")
+        }
+    }
+
+    @ViewBuilder
+    private func deleteButtons(_ items: [Item]) -> some View {
+        let records = items.compactMap(\.record)
+        let clips = items.compactMap(\.clip)
+        if records.isEmpty {
+            Button("Удалить", role: .destructive) { for clip in clips { model.delete(clip) } }
+        } else {
+            Button("Удалить вместе с видео", role: .destructive) {
+                for record in records { model.delete(record, includingRecording: true) }
+                for clip in clips { model.delete(clip) }
+            }
+            // Not with recordings among them: those are videos themselves.
+            if clips.isEmpty, records.contains(where: { model.store.recordingURL(for: $0) != nil }) {
+                Button(records.count == 1 ? "Удалить только лог, видео оставить" : "Удалить только логи, видео оставить") {
+                    for record in records { model.delete(record, includingRecording: false) }
+                }
+            }
+        }
+        Button("Отмена", role: .cancel) {}
     }
 }
 
@@ -260,6 +311,7 @@ struct ClipDetailView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(role: .destructive) { confirmDelete = true } label: { Image(systemName: "trash") }
+                    .accessibilityLabel("Удалить запись")
             }
         }
         .confirmationDialog("Удалить запись?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -340,6 +392,7 @@ struct HistoryDetailView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(role: .destructive) { confirmDelete = true } label: { Image(systemName: "trash") }
+                    .accessibilityLabel("Удалить тренировку")
             }
         }
         .confirmationDialog("Удалить тренировку?", isPresented: $confirmDelete, titleVisibility: .visible) {

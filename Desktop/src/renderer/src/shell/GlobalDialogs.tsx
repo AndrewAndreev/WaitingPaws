@@ -5,8 +5,8 @@ import { SessionLogFormatter, ExitResult, type TrainingRecord } from '@core/sess
 import type { RecordingClip } from '@shared/api'
 import { call, callStrict, toast, ui, useApp, useStore } from '../store'
 import { formatTime } from '../model'
-import { CheckIcon, ClipIcon, CopyIcon, ErrorIcon, FolderIcon, HistoryIcon, PhoneIcon } from '../ui/icons'
-import { Button, Dialog } from '../ui/kit'
+import { CheckIcon, ClipIcon, CopyIcon, ErrorIcon, FolderIcon, HistoryIcon, PhoneIcon, WarningIcon } from '../ui/icons'
+import { Button, Dialog, InfoBar } from '../ui/kit'
 import { PlanReviewDialog, SessionPlanDialog } from '../plan/PlanReviewDialog'
 import { CameraPickerDialog } from '../onboarding/CameraPickerDialog'
 import { XiaomiSignInDialog } from '../onboarding/XiaomiSignInDialog'
@@ -86,14 +86,24 @@ export function GlobalDialogs() {
           hideClose
           width={460}
           footer={
+            // A known iPhone that could not prove its pairing may be another device posing as it: declining is the
+            // default then.
             <>
-              <Button onClick={() => void call('sync.respond', request.id, false)}>{t('Отклонить')}</Button>
-              <Button variant="primary" onClick={() => void call('sync.respond', request.id, true)}>
+              <Button variant={request.wasPaired ? 'primary' : 'default'} autoFocus={request.wasPaired} onClick={() => void call('sync.respond', request.id, false)}>
+                {t('Отклонить')}
+              </Button>
+              <Button variant={request.wasPaired ? 'default' : 'primary'} onClick={() => void call('sync.respond', request.id, true)}>
                 {t('Разрешить')}
               </Button>
             </>
           }
-        />
+        >
+          {request.wasPaired ? (
+            <InfoBar kind="warning" icon={<WarningIcon style={{ color: 'var(--warning)', flex: 'none' }} />}>
+              {t('Этот iPhone уже был подключён, но не подтвердил это. Если на нём не нажимали «Забыть», нажмите «Отклонить».')}
+            </InfoBar>
+          ) : undefined}
+        </Dialog>
       )}
 
       {app.lastRecord && !app.session && <SummaryDialog record={app.lastRecord as TrainingRecord} />}

@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { dirname, resolve } from 'node:path'
+import { tr } from '@core/localization'
 import { clock, write } from './log'
 
 /// Runs the bundled go2rtc (built from `GoMobile/` by `scripts/build-go2rtc.mjs`) as a child process and
@@ -38,6 +39,12 @@ export class EmbeddedGo2RTC {
   private listeners = new Set<(status: Go2RTCStatus) => void>()
   private stopping = false
   private restarts = 0
+  /// The LAN password of the last start (null: loopback only); a restart after a crash uses it too.
+  private lanPassword: string | null = null
+  /// A restart after a crash, waiting its turn; `stop()` cancels it.
+  private restartTimer: NodeJS.Timeout | null = null
+  /// Bumped by `stop()`: a start still looking for free ports gives up.
+  private generation = 0
   /// Someone else's go2rtc answered on our port.
   private foreign = false
 
@@ -52,6 +59,11 @@ export class EmbeddedGo2RTC {
 
   get isRunning(): boolean {
     return this.status.kind === 'running'
+  }
+
+  /// Running, starting or about to restart after a crash, with the API open to the LAN.
+  get isOpenToLAN(): boolean {
+    return this.lanEnabled && (this.child !== null || this.restartTimer !== null || this.status.kind === 'starting')
   }
 
   onStatus(listener: (status: Go2RTCStatus) => void): () => void {
@@ -72,15 +84,22 @@ export class EmbeddedGo2RTC {
       this.setStatus({ kind: 'unavailable' })
       return
     }
+    // A restart after a crash still waiting is this start.
+    if (this.restartTimer) clearTimeout(this.restartTimer)
+    this.restartTimer = null
     this.setStatus({ kind: 'starting' })
     this.stopping = false
+    this.lanPassword = lanPassword
     this.lanEnabled = lanPassword !== null
+    const generation = this.generation
 
     const ports = await freePorts(this.lanEnabled)
+    if (generation !== this.generation) return
     if (!ports) {
+      const [first, last] = [PREFERRED_API_PORT, PREFERRED_API_PORT + 29]
       this.setStatus({
         kind: 'failed',
-        message: `Порты ${PREFERRED_API_PORT}–${PREFERRED_API_PORT + 29} заняты другими программами — go2rtc негде запустить.`,
+        message: tr(`Порты ${first}–${last} заняты другими программами — go2rtc негде запустить.`, `Ports ${first}–${last} are taken by other apps — go2rtc has nowhere to run.`),
       })
       return
     }
@@ -120,13 +139,17 @@ export class EmbeddedGo2RTC {
         this.setStatus({ kind: 'idle' })
         return
       }
-      // A crash: try again a few times, then say so.
+      // A crash: try again a few times, then say so. With the password of the latest start: a forgotten iPhone's
+      // must not come back.
       if (this.restarts < 3) {
         this.restarts += 1
         this.setStatus({ kind: 'idle' })
-        setTimeout(() => void this.start(lanPassword), 1000 * this.restarts)
+        this.restartTimer = setTimeout(() => {
+          this.restartTimer = null
+          void this.start(this.lanPassword)
+        }, 1000 * this.restarts)
       } else {
-        this.setStatus({ kind: 'failed', message: 'go2rtc перестал отвечать. Перезапустите приложение.' })
+        this.setStatus({ kind: 'failed', message: tr('go2rtc перестал отвечать. Перезапустите приложение.', 'go2rtc stopped responding. Restart the app.') })
       }
     })
     child.on('error', (error) => {
@@ -144,21 +167,33 @@ export class EmbeddedGo2RTC {
       this.stopping = true
       child.kill()
       this.child = null
-      this.setStatus({ kind: 'idle' })
+      // Still starting meanwhile (see `isOpenToLAN`).
       await new Promise((resolve) => setTimeout(resolve, 300))
-      return this.start(lanPassword)
+      if (generation !== this.generation) return
+      this.setStatus({ kind: 'idle' })
+      return this.start(this.lanPassword)
     }
     if (version !== null) {
       this.restarts = 0
       this.setStatus({ kind: 'running', version: version.split('+')[0] || version })
     } else {
-      this.setStatus({ kind: 'failed', message: `go2rtc запустился, но API на 127.0.0.1:${this.apiPort} не отвечает` })
+      this.setStatus({
+        kind: 'failed',
+        message: tr(`go2rtc запустился, но API на 127.0.0.1:${this.apiPort} не отвечает`, `go2rtc started, but its API at 127.0.0.1:${this.apiPort} doesn’t respond`),
+      })
     }
   }
 
   async stop(): Promise<void> {
+    // A restart after a crash or a start still looking for ports does not come any more.
+    this.generation += 1
+    if (this.restartTimer) clearTimeout(this.restartTimer)
+    this.restartTimer = null
     const child = this.child
-    if (!child) return
+    if (!child) {
+      if (this.status.kind === 'starting') this.setStatus({ kind: 'idle' })
+      return
+    }
     this.stopping = true
     await new Promise<void>((resolve) => {
       const timer = setTimeout(() => {

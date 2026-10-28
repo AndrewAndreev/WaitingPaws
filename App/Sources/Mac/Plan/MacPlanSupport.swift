@@ -8,13 +8,14 @@ import WaitingPawsCore
 enum MacPlanFormat {
     /// "2 мин", "1:30" when minutes and seconds mix, "45 с".
     static func cell(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds.rounded())
+        // Not `Int(_:)`: a plan from elsewhere may carry any number, and it traps on infinity.
+        let total = DurationText.wholeSeconds(seconds)
         return total >= 60 && total % 60 != 0 ? DurationText.clock(seconds) : DurationText.short(seconds)
     }
 
     /// "≈ 28 мин" for summaries (seconds dropped from ten minutes up).
     static func approx(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds.rounded())
+        let total = DurationText.wholeSeconds(seconds)
         if total >= 600 { return String(localized: "≈ \(Int((Double(total) / 60).rounded())) мин") }
         return "≈ " + DurationText.short(seconds)
     }
@@ -144,13 +145,17 @@ struct MacPlanTextLine: Identifiable, Equatable {
                 result.append(MacPlanTextLine(id: id, text: "", kind: .blank))
                 continue
             }
-            defer { contentIndex += 1 }
             let stripped = stripDecorations(line)
+            // A row of decorations only («➡️») is not content, as in `PlanParser.sourceLines`: it is no header, and a
+            // condition below it stays with its exit.
+            guard !stripped.isEmpty else {
+                result.append(MacPlanTextLine(id: id, text: line, kind: .note))
+                continue
+            }
+            defer { contentIndex += 1 }
             let lower = stripped.lowercased()
             let kind: Kind
-            if stripped.isEmpty {
-                kind = .note
-            } else if let number = exitNumber(stripped) {
+            if let number = exitNumber(stripped) {
                 kind = .exit(number: number, ordinal: exitOrdinal)
                 exitOrdinal += 1
                 lastExitLine = id
@@ -181,7 +186,7 @@ struct MacPlanTextLine: Identifiable, Equatable {
 
     /// «🔖 Фальстарт: …», «Фальстарт — …», "False start: …".
     static func isRule(_ line: String) -> Bool {
-        line.hasPrefix("🔖") || PlanParser.isFalseStartRule(stripDecorations(line).lowercased())
+        PlanParser.hasMark(line, "🔖") || PlanParser.isFalseStartRule(stripDecorations(line).lowercased())
     }
 
     /// `PlanParser.stripDecorations`: leading emoji, bullets and arrows.
@@ -342,7 +347,7 @@ struct MacDurationEditor: View {
 
     @FocusState private var minutesFocused: Bool
 
-    private var total: Int { Int((value ?? defaultValue ?? 0).rounded()) }
+    private var total: Int { DurationText.wholeSeconds(value ?? defaultValue ?? 0) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

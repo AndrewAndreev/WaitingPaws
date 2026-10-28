@@ -3,8 +3,10 @@ import { call, ui } from '../store'
 import { falseStart, pasteSchedule, primaryStep, startPending } from '../actions'
 import { hasSecondCamera, isConfigured, isRecording } from '../model'
 
-/// Keyboard shortcuts of the window (Windows conventions: Ctrl, not ⌘; F11 full screen is handled by the main
-/// process). Space and Backspace drive the training only on the training page and never inside text fields.
+/// Keyboard shortcuts of the window: the Mac app's (`MacCommands`) with Ctrl for ⌘ — Ctrl+E edits the running
+/// schedule, Ctrl+. finishes, Ctrl+1 / Ctrl+2 pick the camera; history is Ctrl+H (Ctrl+Y is Redo on Windows), F11
+/// full screen is handled by the main process. Space and Backspace drive the training only on the training page and
+/// never inside text fields.
 export function useGlobalShortcuts(): void {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -14,19 +16,19 @@ export function useGlobalShortcuts(): void {
       const target = event.target as HTMLElement | null
       const typing = !!target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
       const dialogOpen = !!document.querySelector('[role="dialog"]')
-      const key = event.key.toLowerCase()
+      const key = latinKey(event)
       const ctrl = event.ctrlKey || event.metaKey
 
       if (ctrl && !event.shiftKey && !event.altKey) {
         switch (key) {
-          // Ctrl+1 / Ctrl+2: the main or the second camera on the training page (Ctrl+2 is history without a second
-          // camera, as before).
+          // Ctrl+1: the training page with the main camera; Ctrl+2: the second camera, when there is one.
           case '1':
             event.preventDefault()
             return ui.set({ route: 'training', camera: 'main' })
           case '2':
             event.preventDefault()
-            return hasSecondCamera(app.settings) ? ui.set({ route: 'training', camera: 'second' }) : ui.set({ route: 'history' })
+            if (hasSecondCamera(app.settings)) ui.set({ route: 'training', camera: 'second' })
+            return
           case 'h':
             event.preventDefault()
             return ui.set({ route: 'history' })
@@ -42,7 +44,11 @@ export function useGlobalShortcuts(): void {
             event.preventDefault()
             return void startPending()
           case 'e':
-            if (!app.session) return
+            if (!app.session || dialogOpen) return
+            event.preventDefault()
+            return ui.set({ editingSessionPlan: true })
+          case '.':
+            if (!app.session || dialogOpen) return
             event.preventDefault()
             return ui.set({ confirmFinish: true })
         }
@@ -80,4 +86,14 @@ export function useGlobalShortcuts(): void {
       window.removeEventListener('paste', onPaste)
     }
   }, [])
+}
+
+/// `event.key`, or with a non-Latin layout (Russian: «у» for Ctrl+E, «б» for Ctrl+,) the key's US character — as the
+/// Mac does for its menu shortcuts.
+function latinKey(event: KeyboardEvent): string {
+  const key = event.key.toLowerCase()
+  if (key.length !== 1 || /[ -~]/.test(key)) return key
+  if (event.code.startsWith('Key')) return event.code.slice(3).toLowerCase()
+  if (event.code.startsWith('Digit')) return event.code.slice(5)
+  return ({ Comma: ',', Period: '.' } as Record<string, string>)[event.code] ?? key
 }

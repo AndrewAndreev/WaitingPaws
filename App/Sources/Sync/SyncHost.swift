@@ -15,6 +15,9 @@ final class SyncHost {
     struct PairingRequest: Identifiable, Equatable {
         let id: UUID
         let device: SyncDevice
+        /// A device paired before that could not prove it: forgotten on the iPhone — or another device using its id,
+        /// name and model. The prompt warns and leans to «Отклонить».
+        var wasPaired = false
     }
 
     struct PairedDevice: Codable, Identifiable, Equatable {
@@ -152,7 +155,10 @@ final class SyncHost {
         settleName()
         let advertise = bonjourFailures < 3 && !AppModel.isSyncTest
         do {
-            let parameters = SyncChannel.parameters()
+            // A web page that finds the port is turned away before the key exchange (see `SyncWebSocket`).
+            let parameters = SyncWebSocket.listenerParameters { origin in
+                print("[sync] refused a connection from a web page (Origin: \(origin))")
+            }
             let listener: NWListener
             #if DEBUG
             if let index = CommandLine.arguments.firstIndex(of: "--sync-port"), index + 1 < CommandLine.arguments.count,
@@ -222,6 +228,7 @@ final class SyncHost {
     func answerPairing(allow: Bool) {
         guard let request = pairingRequest else { return }
         pairingRequest = nil
+        if request.wasPaired { print("[sync] \(request.device.name), unconfirmed, \(allow ? "allowed" : "declined")") }
         if allow {
             approve(request.id)
         } else if let client = clients[request.id] {
@@ -299,6 +306,20 @@ final class SyncHost {
                 clients[id] = client
                 approve(id)
             } else {
+                // One request on screen at a time: another device's waits for no answer and must not replace the one
+                // the user may be about to allow. The same device asking again (it reconnected) replaces its own.
+                if let current = pairingRequest, current.id != id {
+                    guard current.device.id == hello.deviceID else {
+                        print("[sync] \(hello.deviceName) turned away: another request is waiting for an answer")
+                        client.channel.send(.rejected(String(localized: "Сначала ответьте на другой запрос на Mac")))
+                        Task { [weak self] in
+                            try? await Task.sleep(for: .milliseconds(300))
+                            self?.drop(id)
+                        }
+                        return
+                    }
+                    drop(current.id)
+                }
                 client.channel.cipher = handshake.cipher(isMac: true, pairingSecret: nil)
                 clients[id] = client
                 // Tells the iPhone to switch to the keys without its old secret (a new pairing follows).
@@ -306,7 +327,10 @@ final class SyncHost {
                 if autoAccept {
                     approve(id)
                 } else {
-                    let request = PairingRequest(id: id, device: hello.device)
+                    if known != nil {
+                        print("[sync] \(hello.deviceName) was paired before but did not prove it (\(proof == nil ? "no" : "wrong") proof)")
+                    }
+                    let request = PairingRequest(id: id, device: hello.device, wasPaired: known != nil)
                     pairingRequest = request
                     onPairingRequest?(request)
                 }

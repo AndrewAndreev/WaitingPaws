@@ -377,7 +377,7 @@ private struct ExitChips: View {
                         chip {
                             Circle().fill(entry.tone.color).frame(width: 7, height: 7)
                             Text(entry.event)
-                            Text(entry.delay.flatMap { $0 > 0 ? DurationText.clock($0) : nil } ?? String(localized: "сразу"))
+                            Text(entry.delay.flatMap { $0 > 0 ? DurationText.clock($0) : nil } ?? entry.unreadDelay ?? String(localized: "сразу"))
                                 .fontWeight(.bold)
                                 .monospacedDigit()
                         }
@@ -544,7 +544,7 @@ struct SummaryCard: View {
                     Text("Тренировка завершена")
                         .font(Theme.display(22, weight: .bold))
                     Spacer()
-                    IconButton(systemImage: "xmark", action: onClose)
+                    IconButton(systemImage: "xmark", label: String(localized: "Закрыть"), action: onClose)
                 }
                 Text(record.plan.displayTitle)
                     .font(.system(.subheadline, design: .rounded))

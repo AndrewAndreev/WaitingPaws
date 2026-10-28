@@ -34,6 +34,8 @@ export interface PairingRequest {
   /// From the iPhone's hello ("iphone", "iPhone 16"); missing from older builds.
   platform?: string | null
   model?: string | null
+  /// The device id is a paired one, but it could not prove the pairing (see SyncHostView in main/sync/host.ts).
+  wasPaired?: boolean
 }
 
 export interface PairedDeviceInfo {

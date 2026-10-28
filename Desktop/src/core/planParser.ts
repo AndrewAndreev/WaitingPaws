@@ -22,7 +22,7 @@
 import { DurationText } from './durationText'
 import { coreLanguage, coreLocale } from './localization'
 import { EarlyEntry, type EarlyEntryTone, PlannedExit, TrainingPlan } from './models'
-import { parseSwiftInt, splitLines, trimWhitespaces, trimWhitespacesAnd } from './text'
+import { parseSwiftDouble, parseSwiftInt, splitLines, trimWhitespaces, trimWhitespacesAnd } from './text'
 
 const decorationRegex = /^[^\p{L}\p{N}(]+/u
 
@@ -59,16 +59,48 @@ const afterRegex = new RegExp(`${wordStart}(?:через|спустя|in|after)\
 
 const rightAwayRegex = new RegExp(`${wordStart}(?:сразу|немедленно|right away|immediately|at once)${wordEnd}`, 'iu')
 
-/** «не входить», «не входим», «не заходить», "do not come in", "don't go in". */
+/**
+ * «не входить», «не заходите», «нельзя возвращаться», "do not come in", "don’t return", "never enter": the verbs of
+ * `comeBackRegex` with a «не» in front, as an infinitive or a call to do it. Not «не заходя в комнату», «не входя
+ * резко» or "don’t enter the bedroom": that says how to come in, not whether.
+ */
 const doNotEnterRegex = new RegExp(
-  `${wordStart}не\\s+(?:входить|входим|заходить|заходим|возвращаться|возвращаемся)${wordEnd}|` +
-    `${wordStart}(?:do not|don't|never)\\s+(?:come|go)\\s+(?:in|back)${wordEnd}`,
+  `${wordStart}(?:не|нельзя)\\s+(?:входи(?:ть|м|те)?|заходи(?:ть|м|те)?|возвраща(?:ться|емся|йтесь|йся))${wordEnd}|` +
+    `(?:${wordStart}(?:not|never|cannot|dont)|n['’]t)\\s+` +
+    `(?:(?:come|go)\\s+(?:in|back|inside)|return|enter${wordEnd}(?!\\s+the\\s+(?!(?:house|flat|apartment|home)${wordEnd})\\p{L}))${wordEnd}`,
   'iu',
 )
+
+/** Where the time after «через» ends: a comma (not the one in «1,5»), a semicolon or a colon. */
+const clauseEndRegex = /[;:]|(?<!\d),|,(?!\d)/u
 
 /** "<number> <unit>" (`DurationText`'s units). */
 const durationRegex =
   /\d+(?:[.,]\d+)?\s*(?:час\p{L}*|hour\p{L}*|hr\p{L}*|мин\p{L}*|min\p{L}*|сек\p{L}*|sec\p{L}*|ч|h|м|m|с|s)(?![\p{L}])/giu
+
+/**
+ * A time in words at the start: «минуту», «полминуты», «полторы минуты», «две минуты», "an hour", "half a minute"
+ * (the number is looked up in `numberWords`).
+ */
+const spelledDurationRegex =
+  /^(?:(half\s+an?|\p{L}+)\s*-?\s*)?(час(?:а|ов)?|минут\p{L}*|секунд\p{L}*|hours?|hrs?|minutes?|mins?|seconds?|secs?)(?!\p{L})/iu
+
+/**
+ * The number right after a unit that has none: «через секунд 30», «через минут пять» (`numberWords`). Not one that
+ * starts a time of its own: «через минуту 30 секунд».
+ */
+const countAfterUnitRegex = /^\s+(?:(\d+(?:[.,]\d+)?)|(\p{L}+))(?![\p{L}\p{N}])(?!\s*(?:час|мин|сек|hour|hr|min|sec))/iu
+
+const numberWords = new Map<string, number>([
+  ['один', 1], ['одна', 1], ['одну', 1], ['два', 2], ['две', 2], ['три', 3], ['четыре', 4], ['пять', 5], ['шесть', 6],
+  ['семь', 7], ['восемь', 8], ['девять', 9], ['десять', 10], ['пятнадцать', 15], ['двадцать', 20], ['тридцать', 30],
+  ['пол', 0.5], ['полторы', 1.5], ['полтора', 1.5],
+  ['a', 1], ['an', 1], ['one', 1], ['two', 2], ['three', 3], ['four', 4], ['five', 5], ['six', 6], ['seven', 7],
+  ['eight', 8], ['nine', 9], ['ten', 10], ['fifteen', 15], ['twenty', 20], ['thirty', 30], ['half', 0.5],
+])
+
+/** U+FE0E / U+FE0F after an emoji: «🟡︎» is the trainer's 🟡 all the same. */
+const variationSelectors = /[\uFE0E\uFE0F]/gu
 
 /** "2 minute " / "2-minute " / «2 минуты » right before the break word. */
 const durationBeforeWordRegex = /\d+(?:[.,]\d+)?[\s-]*\p{L}+[\s-]*$/u
@@ -150,6 +182,9 @@ export const PlanParser = {
         continue
       }
       attachedExit = null
+      // A 🚩 rule keeps its flag: `TrainingPlan.doNotEnterRule` knows it by the flag when its words don't say
+      // «не входить».
+      const note = PlanParser.hasMark(rawLine, '🚩') ? '🚩 ' + line : line
 
       const commonBreak = PlanParser.commonBreak(line)
       if (commonBreak !== null) {
@@ -158,7 +193,7 @@ export const PlanParser = {
           plan.defaultBreak = commonBreak
           defaultFromText = true
         }
-        notes.push(line)
+        notes.push(note)
         continue
       }
 
@@ -167,7 +202,7 @@ export const PlanParser = {
         continue
       }
 
-      notes.push(line)
+      notes.push(note)
     }
 
     plan.exits = exits
@@ -192,12 +227,13 @@ export const PlanParser = {
   /**
    * «🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери»,
    * «🟢 Если легла - входим через 30 секунд от укладки», "If she lies down — come back in 30 seconds". A rule about
-   * not coming in («🚩 Если залаяла - ни в коем случае не входить…») is not one.
+   * not coming in («🚩 Если залаяла - ни в коем случае не заходите…») is not one.
    */
   parseEarlyEntry(rawLine: string): EarlyEntry | null {
     const line = PlanParser.stripDecorations(rawLine)
     const lower = line.toLowerCase()
-    if (!(lower.startsWith('если ') || lower.startsWith('if ')) || PlanParser.isDoNotEnterRule(line)) return null
+    // The raw line: its 🚩 says «не входить» even when the words say «заходите».
+    if (!(lower.startsWith('если ') || lower.startsWith('if ')) || PlanParser.isDoNotEnterRule(rawLine)) return null
     const verb = comeBackRegex.exec(line)
     if (!verb) return null
 
@@ -208,16 +244,19 @@ export const PlanParser = {
     let delay: number | null = null
     const after = afterRegex.exec(tail)
     if (after) {
-      // The time right after «через» / "in", up to the end of its part of the sentence.
+      // The time right after «через» / "in", up to the end of its part of the sentence («через 1,5 минуты» is one
+      // part).
       const rest = tail.slice(after.index + after[0].length)
-      const found = rest.search(/[,;:]/u)
+      const found = rest.search(clauseEndRegex)
       const clauseEnd = found < 0 ? rest.length : found
       const clause = rest.slice(0, clauseEnd)
-      const last = [...clause.matchAll(durationRegex)].at(-1)
-      if (last) {
-        const end = last.index + last[0].length
-        delay = DurationText.sumOfUnits(clause.slice(0, end))
-        tail = clause.slice(end) + rest.slice(clauseEnd)
+      const time = PlanParser.delayTime(clause)
+      if (time) {
+        delay = time.seconds
+        tail = clause.slice(time.end) + rest.slice(clauseEnd)
+      } else {
+        // «через пару минут» is not «сразу»: the words lead the detail (`EarlyEntry.unreadDelay`).
+        tail = tail.slice(after.index)
       }
     } else {
       const now = rightAwayRegex.exec(tail)
@@ -226,13 +265,66 @@ export const PlanParser = {
     const detail = trimWhitespacesAnd(tail, ',;:.-–—')
 
     const tone: EarlyEntryTone =
-      rawLine.startsWith('🟡') || rawLine.startsWith('🟠') ? 'yellow' : rawLine.startsWith('🟢') ? 'green' : 'plain'
+      PlanParser.hasMark(rawLine, '🟡') || PlanParser.hasMark(rawLine, '🟠')
+        ? 'yellow'
+        : PlanParser.hasMark(rawLine, '🟢')
+          ? 'green'
+          : 'plain'
     return EarlyEntry.make({ event, delay, detail: detail === '' ? null : detail, tone })
   },
 
-  /** «🚩 Если залаяла, завыла - ни в коем случае не входить, ждём…», "If she barks — do not come in". */
+  /**
+   * The time `clause` (what follows «через» / "in") starts with, and where it ends: «2 минуты», «1 мин 30 сек»,
+   * «0,5 минуты», and in words «минуту», «полминуты», «две минуты», "a minute", "half a minute".
+   */
+  delayTime(clause: string): { seconds: number; end: number } | null {
+    const spelled = spelledDurationRegex.exec(clause)
+    if (spelled) {
+      // No number: the one after the unit («через секунд 30», «через минут пять»), else one («через минуту»). An
+      // unknown word («через пару минут»): no time.
+      let count = 1
+      let end = spelled[0].length
+      if (spelled[1] !== undefined) {
+        const value = numberWords.get(spelled[1].toLowerCase().split(/\s+/u)[0])
+        if (value === undefined) return null
+        count = value
+      } else {
+        const after = countAfterUnitRegex.exec(clause.slice(end))
+        const value =
+          after === null
+            ? null
+            : after[1] !== undefined
+              ? parseSwiftDouble(after[1].replace(',', '.'))
+              : (numberWords.get(after[2].toLowerCase()) ?? null)
+        if (after !== null && value !== null) {
+          count = value
+          end += after[0].length
+        }
+      }
+      // The count times one unit, not `${count} секунд`: a huge count prints as "1e+30", read as 30. No more than
+      // `sumOfUnits` takes.
+      const unitTime = DurationText.sumOfUnits(`1 ${spelled[2]}`)
+      if (unitTime === null || count * unitTime > DurationText.longestTyped) return null
+      return { seconds: count * unitTime, end }
+    }
+    const last = [...clause.matchAll(durationRegex)].at(-1)
+    if (!last) return null
+    const end = last.index + last[0].length
+    const seconds = DurationText.sumOfUnits(clause.slice(0, end))
+    return seconds === null ? null : { seconds, end }
+  },
+
+  /** «🚩 Если залаяла, завыла - ни в коем случае не входить, ждём…», «…не заходите», "If she barks — do not return". */
   isDoNotEnterRule(line: string): boolean {
-    return line.startsWith('🚩') || doNotEnterRegex.test(line)
+    return PlanParser.hasMark(line, '🚩') || doNotEnterRegex.test(line)
+  },
+
+  /**
+   * The line starts with the trainer's `mark` («🟡», «🚩», «🔖»), also with a variation selector after it («🟡︎»):
+   * Swift takes the two for different characters, JavaScript for the same start.
+   */
+  hasMark(line: string, mark: string): boolean {
+    return line.replace(variationSelectors, '').startsWith(mark)
   },
 
   /**
@@ -277,8 +369,13 @@ export const PlanParser = {
         result.push({ id, text: '', kind: 'blank', exitNumber: null })
         return
       }
-      const index = contentIndex++
       const line = PlanParser.stripDecorations(rawLine)
+      // A lone «➡️» is no line of the schedule for `parse`: not the header, and an exit's lines go on past it.
+      if (line === '') {
+        result.push({ id, text: rawLine, kind: 'note', exitNumber: attachedExit })
+        return
+      }
+      const index = contentIndex++
       const lower = line.toLowerCase()
       let kind: SourceLineKind = 'note'
       let exitNumber: number | null = null
@@ -303,7 +400,7 @@ export const PlanParser = {
           kind = 'header'
         } else if (PlanParser.isDoNotEnterRule(rawLine)) {
           kind = 'doNotEnter'
-        } else if (rawLine.startsWith('🔖') || PlanParser.isFalseStartRule(lower)) {
+        } else if (PlanParser.hasMark(rawLine, '🔖') || PlanParser.isFalseStartRule(lower)) {
           kind = 'falseStart'
         }
       }
@@ -360,7 +457,7 @@ export const PlanParser = {
     const line = PlanParser.stripDecorations(rawLine)
     return (
       !PlanParser.isDoNotEnterRule(rawLine) &&
-      !rawLine.startsWith('🔖') &&
+      !PlanParser.hasMark(rawLine, '🔖') &&
       !PlanParser.isFalseStartRule(line.toLowerCase()) &&
       PlanParser.commonBreak(line) === null
     )
@@ -388,14 +485,13 @@ export const PlanParser = {
   normalizeBreaks(plan: TrainingPlan, defaultFromText: boolean): TrainingPlan {
     let defaultBreak = plan.defaultBreak
     if (!defaultFromText) {
+      const breaks = plan.exits.flatMap((exit) => (exit.breakAfter === null ? [] : [exit.breakAfter]))
       const counts = new Map<number, number>()
-      for (const exit of plan.exits) {
-        if (exit.breakAfter !== null) counts.set(exit.breakAfter, (counts.get(exit.breakAfter) ?? 0) + 1)
-      }
-      // On a tie Swift picks whichever comes first in its (unordered) dictionary; here the first one written wins.
-      let common: [number, number] | null = null
-      for (const entry of counts) if (common === null || common[1] < entry[1]) common = entry
-      if (common !== null && common[1] * 2 > Math.max(1, plan.exits.length - 1)) defaultBreak = common[0]
+      for (const value of breaks) counts.set(value, (counts.get(value) ?? 0) + 1)
+      // On a tie the break written first wins, as on the Mac and iPhone.
+      const most = Math.max(0, ...counts.values())
+      const common = breaks.find((value) => counts.get(value) === most)
+      if (common !== undefined && most * 2 > Math.max(1, plan.exits.length - 1)) defaultBreak = common
     }
     return {
       ...plan,

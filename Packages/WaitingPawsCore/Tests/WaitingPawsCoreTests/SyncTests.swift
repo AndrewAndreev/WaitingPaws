@@ -154,6 +154,25 @@ final class SyncTests: XCTestCase {
         XCTAssertEqual(mirror.snapshot, owner.snapshot)
     }
 
+    /// No link (being restored): the iPhone takes a press back at once by ticking far ahead, and the mirror shows the
+    /// owner's last state again, a finish too.
+    func testAPressWithoutLinkIsTakenBackAtOnce() {
+        let clock = Clock()
+        let owner = runningSession(clock)
+        let mirror = TrainingSession(snapshot: owner.snapshot, clock: { clock.now })
+        mirror.commandHandler = { _, _ in }
+
+        mirror.endExit()
+        if case .breakTime = mirror.phase {} else { XCTFail("the press shows first, got \(mirror.phase)") }
+        mirror.tick(at: .distantFuture)
+        XCTAssertEqual(mirror.snapshot, owner.snapshot)
+
+        mirror.finish()
+        mirror.tick(at: .distantFuture)
+        XCTAssertFalse(mirror.isFinished)
+        XCTAssertEqual(mirror.snapshot, owner.snapshot)
+    }
+
     /// «Завершить» on a mirror: «Готово» at once, until the owner's state without the session arrives.
     func testFinishOnTheMirrorShowsAtOnce() {
         let clock = Clock()

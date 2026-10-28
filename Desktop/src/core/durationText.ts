@@ -26,6 +26,16 @@ function multiplier(unit: string): number {
   }
 }
 
+/**
+ * Whole seconds for the formatters: NaN is 0 and anything past ±(2³¹ − 1) s (68 years) is cut there, as on the Mac and
+ * iPhone, where `Int(_:)` traps on such times.
+ */
+function whole(seconds: number, round: (value: number) => number): number {
+  if (Number.isNaN(seconds)) return 0
+  const limit = 2 ** 31 - 1
+  return round(Math.min(Math.max(seconds, -limit), limit))
+}
+
 function parseClock(text: string): number | null {
   const match = clockRegex.exec(text)
   if (!match) return null
@@ -43,7 +53,7 @@ function parseClock(text: string): number | null {
 export const DurationText = {
   /** "15 с", "2 мин", "1 мин 30 с", "1 ч 5 мин". */
   short(seconds: number): string {
-    const total = roundHalfAwayFromZero(seconds)
+    const total = whole(seconds, roundHalfAwayFromZero)
     if (total < 0) return '−' + DurationText.short(-total)
     const hours = Math.floor(total / 3600)
     const minutes = Math.floor((total % 3600) / 60)
@@ -57,7 +67,7 @@ export const DurationText = {
 
   /** Very short form for chips: "5с", "30с", "1м", "1м30", "5м" / "5s", "1m", "1m30". */
   compact(seconds: number): string {
-    const total = roundHalfAwayFromZero(seconds)
+    const total = whole(seconds, roundHalfAwayFromZero)
     const s = tr('с', 's')
     const m = tr('м', 'm')
     if (total < 60) return `${total}${s}`
@@ -68,7 +78,7 @@ export const DurationText = {
 
   /** "0:15", "12:03", "1:02:03". Negative values are prefixed with a minus sign. */
   clock(seconds: number): string {
-    const total = Math.floor(seconds)
+    const total = whole(seconds, Math.floor)
     const negative = total < 0
     const value = Math.abs(total)
     const hours = Math.floor(value / 3600)
@@ -80,21 +90,26 @@ export const DurationText = {
 
   /**
    * Parses "15 с", "2 минуты", "1 мин 30 сек", "2 minutes", "1:30", "90". Returns `null` when nothing
-   * recognisable is found.
+   * recognisable is found, and for more than `longestTyped`.
    */
   parse(text: string): number | null {
     const trimmed = trimWhitespacesAndNewlines(text)
     if (trimmed === '') return null
 
-    const clock = parseClock(trimmed)
-    if (clock !== null) return clock
-    const sum = DurationText.sumOfUnits(trimmed)
-    if (sum !== null) return sum
-
-    return parseSwiftDouble(trimmed.replace(/,/g, '.'))
+    const value = parseClock(trimmed) ?? DurationText.sumOfUnits(trimmed) ?? parseSwiftDouble(trimmed.replace(/,/g, '.'))
+    return value !== null && Math.abs(value) <= DurationText.longestTyped ? value : null
   },
 
-  /** Sums every "<number> <unit>" pair found in `text`. Returns `null` if no unit is present. */
+  /**
+   * The longest time `parse` takes: a day. An exit or a break is minutes; "inf" or "1e400" typed into a duration
+   * field is no time at all.
+   */
+  longestTyped: 24 * 3600,
+
+  /**
+   * Sums every "<number> <unit>" pair found in `text`. Returns `null` if no unit is present, and for more than
+   * `longestTyped`: «1 выход - 99999999999999999999 секунд» pasted into a plan is no time either.
+   */
   sumOfUnits(text: string): number | null {
     const matches = [...text.matchAll(unitRegex)]
     if (matches.length === 0) return null
@@ -104,6 +119,15 @@ export const DurationText = {
       if (value === null) continue
       total += value * multiplier(match[2])
     }
-    return total
+    // Too many digits make an infinite number: it is past the limit too.
+    return total <= DurationText.longestTyped ? total : null
+  },
+
+  /**
+   * Whole seconds as the formatters count them, for any number (a plan from elsewhere may carry one), as on the Mac,
+   * where `Int(_:)` traps on NaN, infinity and past `Int.max`.
+   */
+  wholeSeconds(seconds: number): number {
+    return whole(seconds, roundHalfAwayFromZero)
   },
 }

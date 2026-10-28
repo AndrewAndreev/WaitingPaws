@@ -67,6 +67,9 @@ public enum PlanParser {
                 continue
             }
             attachedExit = nil
+            // A 🚩 rule keeps its flag: `TrainingPlan.doNotEnterRule` knows it by the flag when its words don't say
+            // «не входить».
+            let note = hasMark(rawLine, "🚩") ? "🚩 " + line : line
 
             if let duration = commonBreak(in: line) {
                 // The first line that names it: «Все перерывы 2 минуты» comes with the opening points.
@@ -74,7 +77,7 @@ public enum PlanParser {
                     plan.defaultBreak = duration
                     defaultFromText = true
                 }
-                notes.append(line)
+                notes.append(note)
                 continue
             }
 
@@ -83,7 +86,7 @@ public enum PlanParser {
                 continue
             }
 
-            notes.append(line)
+            notes.append(note)
         }
 
         plan.exits = exits
@@ -109,11 +112,12 @@ public enum PlanParser {
 
     /// «🟡 Если встала и пошла - входим через 2 минуты от начала движения, когда сняла фокус внимания с двери»,
     /// «🟢 Если легла - входим через 30 секунд от укладки», "If she lies down — come back in 30 seconds". A rule about
-    /// not coming in («🚩 Если залаяла - ни в коем случае не входить…») is not one.
+    /// not coming in («🚩 Если залаяла - ни в коем случае не заходите…») is not one.
     public static func parseEarlyEntry(_ rawLine: String) -> EarlyEntry? {
         let line = stripDecorations(rawLine)
         let lower = line.lowercased()
-        guard lower.hasPrefix("если ") || lower.hasPrefix("if "), !isDoNotEnterRule(line) else { return nil }
+        // The raw line: its 🚩 says «не входить» even when the words say «заходите».
+        guard lower.hasPrefix("если ") || lower.hasPrefix("if "), !isDoNotEnterRule(rawLine) else { return nil }
         let range = NSRange(line.startIndex..., in: line)
         guard let verb = comeBackRegex.firstMatch(in: line, range: range), let verbRange = Range(verb.range, in: line)
         else { return nil }
@@ -125,30 +129,74 @@ public enum PlanParser {
         var delay: TimeInterval?
         let tailRange = NSRange(tail.startIndex..., in: tail)
         if let after = afterRegex.firstMatch(in: tail, range: tailRange), let afterRange = Range(after.range, in: tail) {
-            // The time right after «через» / "in", up to the end of its part of the sentence.
+            // The time right after «через» / "in", up to the end of its part of the sentence («через 1,5 минуты» is
+            // one part).
             let rest = String(tail[afterRange.upperBound...])
-            let clauseEnd = rest.firstIndex(where: { ",;:".contains($0) }) ?? rest.endIndex
+            let clauseEnd = clauseEndRegex.firstMatch(in: rest, range: NSRange(rest.startIndex..., in: rest))
+                .flatMap { Range($0.range, in: rest)?.lowerBound } ?? rest.endIndex
             let clause = String(rest[..<clauseEnd])
-            let clauseRange = NSRange(clause.startIndex..., in: clause)
-            if let last = durationRegex.matches(in: clause, range: clauseRange).last,
-               let end = Range(last.range, in: clause)?.upperBound {
-                delay = DurationText.sumOfUnits(in: String(clause[..<end]))
+            if case let (time, end)? = delayTime(atStartOf: clause) {
+                delay = time
                 tail = String(clause[end...]) + String(rest[clauseEnd...])
+            } else {
+                // «через пару минут» is not «сразу»: the words lead the detail (`EarlyEntry.unreadDelay`).
+                tail = String(tail[afterRange.lowerBound...])
             }
         } else if let now = rightAwayRegex.firstMatch(in: tail, range: tailRange), let nowRange = Range(now.range, in: tail) {
             tail = String(tail[nowRange.upperBound...])
         }
         let detail = tail.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: ",;:.-–—")))
 
-        let tone: EarlyEntry.Tone = rawLine.hasPrefix("🟡") || rawLine.hasPrefix("🟠") ? .yellow
-            : rawLine.hasPrefix("🟢") ? .green : .plain
+        let tone: EarlyEntry.Tone = hasMark(rawLine, "🟡") || hasMark(rawLine, "🟠") ? .yellow
+            : hasMark(rawLine, "🟢") ? .green : .plain
         return EarlyEntry(event: event, delay: delay, detail: detail.isEmpty ? nil : detail, tone: tone)
     }
 
-    /// «🚩 Если залаяла, завыла - ни в коем случае не входить, ждём…», "If she barks — do not come in".
+    /// The time `clause` (what follows «через» / "in") starts with, and where it ends: «2 минуты», «1 мин 30 сек»,
+    /// «0,5 минуты», and in words «минуту», «полминуты», «две минуты», "a minute", "half a minute".
+    static func delayTime(atStartOf clause: String) -> (TimeInterval, String.Index)? {
+        let range = NSRange(clause.startIndex..., in: clause)
+        if let match = spelledDurationRegex.firstMatch(in: clause, range: range),
+           var end = Range(match.range, in: clause)?.upperBound, let unit = Range(match.range(at: 2), in: clause) {
+            // No number: the one after the unit («через секунд 30», «через минут пять»), else one («через минуту»).
+            // An unknown word («через пару минут»): no time.
+            var count: Double = 1
+            if let words = Range(match.range(at: 1), in: clause) {
+                guard let word = clause[words].lowercased().split(whereSeparator: \.isWhitespace).first,
+                      let value = numberWords[String(word)] else { return nil }
+                count = value
+            } else if let after = countAfterUnitRegex.firstMatch(in: clause, range: NSRange(end..., in: clause)),
+                      let number = Range(after.range, in: clause) {
+                let digits = Range(after.range(at: 1), in: clause).map { clause[$0].replacingOccurrences(of: ",", with: ".") }
+                let word = Range(after.range(at: 2), in: clause).map { clause[$0].lowercased() }
+                if let value = digits.flatMap({ Double($0) }) ?? word.flatMap({ numberWords[$0] }) {
+                    count = value
+                    end = number.upperBound
+                }
+            }
+            // The count times one unit, not "\(count) секунд": a huge count prints as "1e+30", read as 30. No more
+            // than `sumOfUnits` takes.
+            guard let unitTime = DurationText.sumOfUnits(in: "1 \(clause[unit])"),
+                  count * unitTime <= DurationText.longestTyped else { return nil }
+            return (count * unitTime, end)
+        }
+        guard let last = durationRegex.matches(in: clause, range: range).last,
+              let end = Range(last.range, in: clause)?.upperBound,
+              let time = DurationText.sumOfUnits(in: String(clause[..<end])) else { return nil }
+        return (time, end)
+    }
+
+    /// «🚩 Если залаяла, завыла - ни в коем случае не входить, ждём…», «…не заходите», "If she barks — do not return".
     public static func isDoNotEnterRule(_ line: String) -> Bool {
         let range = NSRange(line.startIndex..., in: line)
-        return line.hasPrefix("🚩") || doNotEnterRegex.firstMatch(in: line, range: range) != nil
+        return hasMark(line, "🚩") || doNotEnterRegex.firstMatch(in: line, range: range) != nil
+    }
+
+    /// The line starts with the trainer's `mark` («🟡», «🚩», «🔖»), also with a variation selector after it («🟡︎»):
+    /// Swift takes the two for different characters, JavaScript for the same start.
+    public static func hasMark(_ line: String, _ mark: String) -> Bool {
+        let scalars = line.unicodeScalars.filter { $0.value != 0xFE0E && $0.value != 0xFE0F }
+        return String(String.UnicodeScalarView(scalars)).hasPrefix(mark)
     }
 
     /// «Если залаяла, завыла - ни в коем случае не входить» → («Залаяла, завыла», «ни в коем случае не входить»):
@@ -198,8 +246,13 @@ public enum PlanParser {
                 result.append(SourceLine(id: index, text: "", kind: .blank, exitNumber: nil))
                 continue
             }
-            defer { contentIndex += 1 }
             let line = stripDecorations(rawLine)
+            // A lone «➡️» is no line of the schedule for `parse`: not the header, and an exit's lines go on past it.
+            if line.isEmpty {
+                result.append(SourceLine(id: index, text: rawLine, kind: .note, exitNumber: attachedExit))
+                continue
+            }
+            defer { contentIndex += 1 }
             let lower = line.lowercased()
             var kind: SourceLine.Kind = .note
             var number: Int?
@@ -223,7 +276,7 @@ public enum PlanParser {
                     kind = .header
                 } else if isDoNotEnterRule(rawLine) {
                     kind = .doNotEnter
-                } else if rawLine.hasPrefix("🔖") || isFalseStartRule(lower) {
+                } else if hasMark(rawLine, "🔖") || isFalseStartRule(lower) {
                     kind = .falseStart
                 }
             }
@@ -255,7 +308,7 @@ public enum PlanParser {
             if let lastWordBefore, timePrepositions.contains(lastWordBefore) { continue }
             let after = clause[word.upperBound...]
             if let digit = after.firstIndex(where: \.isWholeNumber),
-               case let words = after[..<digit].split(whereSeparator: { !$0.isLetter }).map { $0.lowercased() }, words.count <= 4,
+               case let words = after[..<digit].split(whereSeparator: { !$0.isLetter }).map({ $0.lowercased() }), words.count <= 4,
                // «между выходами» is the break's place; «выход на 15 секунд» is the exit's time.
                words.contains("между") || words.contains("between")
                 || !words.contains(where: { exitWordRegex.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) != nil }),
@@ -275,7 +328,7 @@ public enum PlanParser {
     /// A line under an exit that belongs to it: not a rule of the whole training (🚩, 🔖) and not about the breaks.
     static func isExitNote(_ rawLine: String) -> Bool {
         let line = stripDecorations(rawLine)
-        return !isDoNotEnterRule(rawLine) && !rawLine.hasPrefix("🔖") && !isFalseStartRule(line.lowercased())
+        return !isDoNotEnterRule(rawLine) && !hasMark(rawLine, "🔖") && !isFalseStartRule(line.lowercased())
             && commonBreak(in: line) == nil
     }
 
@@ -298,9 +351,12 @@ public enum PlanParser {
     /// most exits becomes the plan's break.
     static func normalizeBreaks(_ plan: inout TrainingPlan, defaultFromText: Bool) {
         if !defaultFromText {
-            let counts = Dictionary(plan.exits.compactMap(\.breakAfter).map { ($0, 1) }, uniquingKeysWith: +)
-            if let common = counts.max(by: { $0.value < $1.value }), common.value * 2 > max(1, plan.exits.count - 1) {
-                plan.defaultBreak = common.key
+            let breaks = plan.exits.compactMap(\.breakAfter)
+            let counts = Dictionary(breaks.map { ($0, 1) }, uniquingKeysWith: +)
+            // On a tie the break written first wins (a Dictionary's order changes from launch to launch).
+            if let most = counts.values.max(), let common = breaks.first(where: { counts[$0] == most }),
+               most * 2 > max(1, plan.exits.count - 1) {
+                plan.defaultBreak = common
             }
         }
         for index in plan.exits.indices where plan.exits[index].breakAfter == plan.defaultBreak {
@@ -463,15 +519,40 @@ public enum PlanParser {
     private static let rightAwayRegex = try! NSRegularExpression(
         pattern: #"\b(?:сразу|немедленно|right away|immediately|at once)\b"#, options: [.caseInsensitive])
 
-    /// «не входить», «не входим», «не заходить», "do not come in", "don't go in".
+    /// «не входить», «не заходите», «нельзя возвращаться», "do not come in", "don’t return", "never enter": the verbs
+    /// of `comeBackRegex` with a «не» in front, as an infinitive or a call to do it. Not «не заходя в комнату», «не
+    /// входя резко» or "don’t enter the bedroom": that says how to come in, not whether.
     private static let doNotEnterRegex = try! NSRegularExpression(
-        pattern: #"\bне\s+(?:входить|входим|заходить|заходим|возвращаться|возвращаемся)\b|\b(?:do not|don't|never)\s+(?:come|go)\s+(?:in|back)\b"#,
+        pattern: #"\b(?:не|нельзя)\s+(?:входи(?:ть|м|те)?|заходи(?:ть|м|те)?|возвраща(?:ться|емся|йтесь|йся))\b|(?:\b(?:not|never|cannot|dont)|n['’]t)\s+(?:(?:come|go)\s+(?:in|back|inside)|return|enter\b(?!\s+the\s+(?!(?:house|flat|apartment|home)\b)\p{L}))\b"#,
         options: [.caseInsensitive])
+
+    /// Where the time after «через» ends: a comma (not the one in «1,5»), a semicolon or a colon.
+    private static let clauseEndRegex = try! NSRegularExpression(pattern: #"[;:]|(?<!\d),|,(?!\d)"#)
 
     /// "<number> <unit>" (`DurationText`'s units).
     private static let durationRegex = try! NSRegularExpression(
         pattern: #"\d+(?:[.,]\d+)?\s*(?:час\p{L}*|hour\p{L}*|hr\p{L}*|мин\p{L}*|min\p{L}*|сек\p{L}*|sec\p{L}*|ч|h|м|m|с|s)(?![\p{L}])"#,
         options: [.caseInsensitive])
+
+    /// A time in words at the start: «минуту», «полминуты», «полторы минуты», «две минуты», "an hour", "half a minute"
+    /// (the number is looked up in `numberWords`).
+    private static let spelledDurationRegex = try! NSRegularExpression(
+        pattern: #"^(?:(half\s+an?|\p{L}+)\s*-?\s*)?(час(?:а|ов)?|минут\p{L}*|секунд\p{L}*|hours?|hrs?|minutes?|mins?|seconds?|secs?)(?!\p{L})"#,
+        options: [.caseInsensitive])
+
+    /// The number right after a unit that has none: «через секунд 30», «через минут пять» (`numberWords`). Not one that
+    /// starts a time of its own: «через минуту 30 секунд».
+    private static let countAfterUnitRegex = try! NSRegularExpression(
+        pattern: #"^\s+(?:(\d+(?:[.,]\d+)?)|(\p{L}+))(?![\p{L}\p{N}])(?!\s*(?:час|мин|сек|hour|hr|min|sec))"#,
+        options: [.caseInsensitive])
+
+    private static let numberWords: [String: Double] = [
+        "один": 1, "одна": 1, "одну": 1, "два": 2, "две": 2, "три": 3, "четыре": 4, "пять": 5, "шесть": 6, "семь": 7,
+        "восемь": 8, "девять": 9, "десять": 10, "пятнадцать": 15, "двадцать": 20, "тридцать": 30,
+        "пол": 0.5, "полторы": 1.5, "полтора": 1.5,
+        "a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+        "nine": 9, "ten": 10, "fifteen": 15, "twenty": 20, "thirty": 30, "half": 0.5,
+    ]
 
     /// «после перерыва», «через перерыв», "after the break": when, not how long.
     private static let timePrepositions: Set<String> = ["после", "через", "до", "перед", "after", "before", "following"]

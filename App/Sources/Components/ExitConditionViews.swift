@@ -105,7 +105,7 @@ struct ExitMarks: View {
 /// «● Встала и пошла           через 2:00»: a condition for coming back early, readable at arm's length.
 struct EarlyEntryPlate: View {
     let entry: EarlyEntry
-    /// Mac: the trainer's words under the event, one line.
+    /// Mac: the trainer's words under the event, one line (those on the right not again).
     var showsDetail = false
     var height: CGFloat = 44
     var digits: CGFloat = 22
@@ -117,7 +117,7 @@ struct EarlyEntryPlate: View {
                 Text(entry.event)
                     .font(.system(size: digits * 0.7, weight: .semibold, design: .rounded))
                     .lineLimit(1)
-                if showsDetail, let detail = entry.detail {
+                if showsDetail, let detail = entry.detailBesideTime {
                     Text(detail)
                         .font(.system(size: digits * 0.52))
                         .foregroundStyle(.secondary)
@@ -135,6 +135,12 @@ struct EarlyEntryPlate: View {
                         .font(Theme.display(digits, weight: .bold))
                         .monospacedDigit()
                 }
+            } else if let words = entry.unreadDelay {
+                // «через пару минут»: the trainer's words, not digits.
+                Text(words)
+                    .font(.system(size: digits * 0.6, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             } else {
                 Text("сразу").font(Theme.display(digits * 0.8, weight: .bold))
             }

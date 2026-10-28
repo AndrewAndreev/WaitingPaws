@@ -85,7 +85,9 @@ export interface SyncHostView {
     /// Connected right now.
     connected?: boolean
   }[]
-  pairingRequests: { id: string; deviceName: string; platform?: string; model?: string }[]
+  /// `wasPaired`: the device id is a paired one, but it could not prove the pairing — another device posing as it,
+  /// or the same iPhone after «Забыть» there. Allowing it replaces the pairing.
+  pairingRequests: { id: string; deviceName: string; platform?: string; model?: string; wasPaired?: boolean }[]
   error: string | null
 }
 
@@ -138,6 +140,7 @@ interface Client {
 interface PairingRequest {
   id: string
   hello: SyncHello
+  wasPaired: boolean
 }
 
 export class SyncHost {
@@ -377,13 +380,14 @@ export class SyncHost {
         ...(device.lastSeen !== null ? { lastSeen: device.lastSeen } : {}),
         connected: connected.has(device.deviceID),
       })),
-      pairingRequests: this.requests.map(({ id, hello }) => {
+      pairingRequests: this.requests.map(({ id, hello, wasPaired }) => {
         const device = SyncHello.device(hello)
         return {
           id,
           deviceName: hello.deviceName,
           platform: device.kind ?? hello.platform ?? undefined,
           ...(device.model ? { model: device.model } : {}),
+          ...(wasPaired ? { wasPaired } : {}),
         }
       }),
       error: this.listenError ?? this.bonjourError,
@@ -469,7 +473,7 @@ export class SyncHost {
           // Tells the iPhone to switch to the keys without its old secret (a new pairing follows).
           client.channel.send({ kind: 'pending' })
           if (this.options.autoAccept) this.approve(id)
-          else this.askApproval(client, hello)
+          else this.askApproval(client, hello, known !== null)
         }
         return
       }
@@ -490,7 +494,7 @@ export class SyncHost {
     }
   }
 
-  private askApproval(client: Client, hello: SyncHello): void {
+  private askApproval(client: Client, hello: SyncHello, wasPaired: boolean): void {
     // The same iPhone asking again (it reconnected): the new request replaces the old one.
     for (const request of this.requests.filter((item) => item.hello.deviceID === hello.deviceID)) this.drop(request.id)
     if (this.requests.length >= maxPairingRequests) {
@@ -501,8 +505,9 @@ export class SyncHost {
       setTimeout(() => this.drop(client.id), 300)
       return
     }
-    this.requests.push({ id: client.id, hello })
-    this.log(`[sync] ${hello.deviceName} asks to join`)
+    this.requests.push({ id: client.id, hello, wasPaired })
+    if (wasPaired) this.log(`[sync] ${hello.deviceName} (${hello.deviceID.slice(0, 8)}) is paired but could not prove it: asking again`)
+    else this.log(`[sync] ${hello.deviceName} asks to join`)
     this.deps.onChange()
   }
 

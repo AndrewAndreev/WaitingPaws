@@ -8,7 +8,8 @@ interface MediaBridge extends MediaIO {
 
 export type MediaJob =
   | { id: number; kind: 'check'; path: string }
-  | { id: number; kind: 'write'; parts: RecordingPart[]; output: string }
+  /** `replacing`: the file the result is to replace (see `writeRecording`). */
+  | { id: number; kind: 'write'; parts: RecordingPart[]; output: string; replacing?: string }
 
 declare global {
   interface Window {
@@ -23,7 +24,7 @@ let queue: Promise<void> = Promise.resolve()
 bridge.onJob((job) => {
   queue = queue.then(async () => {
     try {
-      const value = job.kind === 'check' ? await needsFinalizing(bridge, job.path) : await writeRecording(bridge, job.parts, job.output)
+      const value = job.kind === 'check' ? await needsFinalizing(bridge, job.path) : await writeRecording(bridge, job.parts, job.output, job.replacing ?? null)
       bridge.done(job.id, { ok: true, value })
     } catch (error) {
       bridge.done(job.id, { ok: false, error: error instanceof Error ? error.message : String(error) })

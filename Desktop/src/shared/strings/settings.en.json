@@ -31,8 +31,8 @@
   "Как подключить iPhone": "How to Connect an iPhone",
   "Включите «Разрешить подключение с iPhone» и разрешите доступ в окне брандмауэра Windows.": "Turn on “Allow connections from iPhone” and allow access when Windows Firewall asks.",
   "Подключите iPhone к той же Wi‑Fi сети, что и этот компьютер.": "Connect the iPhone to the same Wi‑Fi network as this computer.",
-  "Откройте Waiting Paws на iPhone: появится карточка «Рядом Mac с Waiting Paws» с именем этого компьютера. Нажмите «Синхронизировать тренировку с Mac». Тот же выбор есть в настройках приложения на iPhone, в разделе «Mac».": "Open Waiting Paws on the iPhone: a “Mac with Waiting Paws Nearby” card appears with this computer’s name. Tap “Sync Training with Mac”. The same choice is in the iPhone app’s settings, in the “Mac” section.",
-  "Откройте Waiting Paws на iPhone: появится карточка «Рядом Mac с Waiting Paws» — «%@». Нажмите «Синхронизировать тренировку с Mac». Тот же выбор есть в настройках приложения на iPhone, в разделе «Mac».": "Open Waiting Paws on the iPhone: a “Mac with Waiting Paws Nearby” card appears — “%@”. Tap “Sync Training with Mac”. The same choice is in the iPhone app’s settings, in the “Mac” section.",
+  "Откройте Waiting Paws на iPhone: появится карточка «Рядом ПК с Waiting Paws» с именем этого компьютера. Нажмите «Синхронизировать тренировку с ПК». Тот же выбор есть в настройках приложения на iPhone, в разделе «Синхронизация».": "Open Waiting Paws on the iPhone: a “PC with Waiting Paws Nearby” card appears with this computer’s name. Tap “Sync Training with PC”. The same choice is in the iPhone app’s settings, in the “Sync” section.",
+  "Откройте Waiting Paws на iPhone: появится карточка «Рядом ПК с Waiting Paws» — «%@». Нажмите «Синхронизировать тренировку с ПК». Тот же выбор есть в настройках приложения на iPhone, в разделе «Синхронизация».": "Open Waiting Paws on the iPhone: a “PC with Waiting Paws Nearby” card appears — “%@”. Tap “Sync Training with PC”. The same choice is in the iPhone app’s settings, in the “Sync” section.",
   "Здесь появится запрос — нажмите «Разрешить». Дальше этот iPhone будет подключаться сам.": "A request appears here — click “Allow”. After that, this iPhone connects by itself.",
   "Имя на iPhone": "Name on iPhone",
   "Под этим именем компьютер появится в приложении на iPhone.": "The iPhone app shows this computer under this name.",
@@ -60,5 +60,6 @@
   "Вопросы и сообщения о проблемах — на странице проекта на GitHub.": "Questions and problem reports — on the project’s GitHub page.",
   "Текст не найден.": "The text wasn’t found.",
   "Сервер go2rtc": "go2rtc Server",
-  "Тренировки коротких выходов из дома: расписание тренера, таймеры выходов и перерывов, лог для тренера. Камера Mi Home или любой поток go2rtc показывает собаку, пока вы за дверью.": "Training for short exits from home: the trainer’s schedule, exit and break timers, a log for the trainer. A Mi Home camera or any go2rtc stream shows your dog while you’re outside."
+  "Тренировки коротких выходов из дома: расписание тренера, таймеры выходов и перерывов, лог для тренера. Камера Mi Home или любой поток go2rtc показывает собаку, пока вы за дверью.": "Training for short exits from home: the trainer’s schedule, exit and break timers, a log for the trainer. A Mi Home camera or any go2rtc stream shows your dog while you’re outside.",
+  "Чтобы снова подключиться, iPhone попросит разрешения на этом компьютере.": "To connect again, the iPhone will ask for permission on this computer."
 }

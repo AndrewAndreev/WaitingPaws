@@ -117,7 +117,7 @@ struct MacConsoleView: View {
             return .handled
         }
         .onKeyPress(.delete) {
-            guard model.session?.phase.canFalseStart == true else { return .ignored }
+            guard ui.canFalseStart(model) else { return .ignored }
             ui.falseStart(model)
             return .handled
         }
@@ -175,8 +175,15 @@ struct MacConsoleView: View {
                 ui.reviewingPlan = false
                 // The training needs its readout and timeline.
                 ui.cameraOnly = false
+            } else {
+                // Ended elsewhere (finished on the iPhone, the last break ran out): these would act on no training,
+                // and «Отменить без сохранения» would delete a recording started after it.
+                ui.confirmFinish = false
+                ui.editingSessionPlan = nil
             }
         }
+        // The menu's «Фальстарт» greys out when the trainer's window outside closes.
+        .task(id: model.session?.phase) { await ui.watchFalseStartWindow(model) }
         .task(id: model.settings.streamName) { await model.refreshXiaomiQuality() }
         // The modes and turning of the camera on screen (the second one's too, after the switcher).
         .task(id: model.cameraModesKey) {
@@ -549,7 +556,7 @@ private struct CameraToolbarSwitcher: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        .help("Какую камеру показывать · ⌘1 / ⌘2. Записывается первая")
+        .help("Какую камеру показывать · ⌘1 / ⌘2. Записывается та, что на экране")
     }
 }
 

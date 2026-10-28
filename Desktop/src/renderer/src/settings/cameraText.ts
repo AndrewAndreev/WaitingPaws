@@ -2,6 +2,7 @@ import { t } from '@shared/i18n'
 import type { AppState } from '@shared/api'
 import type { XiaomiRegion } from '@shared/settings'
 import { Go2RTCClient, Go2RTCServer } from '@core/go2rtcClient'
+export { queryValue } from '@core/go2rtcClient'
 import { bridgeFetch } from '../platform/bridge'
 
 /// The go2rtc the app talks to is up (the bundled one running, or the user's server configured).
@@ -22,15 +23,6 @@ export function pixels(width: number, height: number): string {
   let h = Math.round(height)
   if (w % 16 === 0 && Math.abs(h - (w * 9) / 16) <= 8) h = (w * 9) / 16
   return `${w}×${h}`
-}
-
-export function queryValue(source: string, name: string): string | null {
-  const query = source.split('?')[1] ?? ''
-  for (const part of query.split('&')) {
-    const [key, value] = part.split('=')
-    if (key === name) return decodeURIComponent(value ?? '')
-  }
-  return null
 }
 
 const vendors: Record<string, string> = { xiaomi: 'Xiaomi', mijia: 'Xiaomi', chuangmi: 'Xiaomi', isa: 'Xiaomi', xiaovv: 'Xiaovv', lumi: 'Aqara' }

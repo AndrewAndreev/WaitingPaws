@@ -16,7 +16,8 @@ backend only through `window.wp` (`src/shared/api.ts`), so the same UI can run i
 * **go2rtc** is the same patched 1.9.14 the iOS/macOS apps embed (`GoMobile/`), built as `go2rtc.exe` by
   `scripts/build-go2rtc.mjs` (the `GoMobile/build.sh` patches as exact string replacements) with
   `GoMobile/desktop/main.go`. It runs as a child process on `127.0.0.1:11984` (next free pair if taken), exits with
-  the app (`-parent-pid`), restarts after a crash; its output goes to the app log.
+  the app (`-parent-pid`), restarts after a crash (with the current LAN password; a linked iPhone gets the new ports);
+  its output goes to the app log.
 * **Live view**: go2rtc's `video-rtc.js` runs right in the window (`src/renderer/src/player/`), with the Mac app's
   jitter-buffered MSE path, phases for the status overlay and the delay figures. The main process strips the browser
   `Origin` from requests to go2rtc (its guard refuses foreign origins — that protects it from web pages, not from us)
@@ -24,12 +25,20 @@ backend only through `window.wp` (`src/shared/api.ts`), so the same UI can run i
 * **Recording**: `GET /api/stream.mp4` into `Documents\Waiting Paws\Recordings`, in parts when the camera drops out.
   Afterwards a hidden window turns it into a regular MP4 with **mediabunny + WebCodecs**: video copied as is, the
   camera's Opus/FLAC/PCM sound → AAC 48 kHz with silence for pauses, a silent track when the camera gave no sound,
-  parts joined at their real time (the port of the Mac's `RecordingFinalizer`, no ffmpeg needed).
+  parts joined at their real time — each at its first frame, as on the Mac (the port of the Mac's `RecordingFinalizer`,
+  no ffmpeg needed). A part without video or one that can't be read is left out and kept in `Recordings\.parts`.
+  A finished file that can't replace the recording (a player or the antivirus holds it for seconds) is kept next to
+  it as `<name>.finalizing-<time>.mp4` and put in place at the next launch.
+  Closing the window, quitting, or a Windows shutdown/sign-out during a training saves it (on shutdown the parts of a
+  recording stay unjoined). Deleting a recording removes its parts too, also while it is still being joined.
 * **History** is the Mac/iPhone format (`Documents\Waiting Paws\Sessions\*.json|txt`): a history folder copied from
   a Mac opens here and back.
 * **iPhone link**: the computer advertises itself over Bonjour exactly like the Mac (`_waitingpaws._tcp`, WebSocket,
   X25519 + ChaChaPoly), so the existing iPhone app pairs with it as with a Mac. Off by default (Settings → iPhone):
-  opening go2rtc to the LAN makes Windows Firewall ask.
+  opening go2rtc to the LAN makes Windows Firewall ask. Handshakes from a browser (with an `Origin` header) are
+  refused; a known iPhone id that can't prove its pairing gets a warning in the prompt, with «Отклонить» as the
+  default. Switching to your own go2rtc server stops the bundled one (the iPhone then runs the training without video);
+  the server can't be changed during a training or a recording.
 * **Settings** `%APPDATA%\Waiting Paws\settings.json` (the server password encrypted with DPAPI via safeStorage),
   go2rtc config with Mi Home tokens `%APPDATA%\Waiting Paws\go2rtc\go2rtc.yaml`, logs `%APPDATA%\Waiting Paws\Logs`
   (last 5 runs, passwords and tokens masked).
@@ -88,9 +97,11 @@ npx electron . --data-dir=%TEMP%\wp-check --demo-session --demo-exits-done=3 --d
 npx electron . --data-dir=%TEMP%\wp-check --capture=shot.png --quit-after-capture --eval="__wpUI.set({route:'history'})"
 ```
 
-`--data-dir` keeps settings, history, go2rtc config and logs in that folder. Keyboard: Space next step, Backspace
-false start, Ctrl+Enter start, Ctrl+Shift+V paste schedule, Ctrl+R record, Ctrl+E finish, Ctrl+H history, Ctrl+,
-settings, F11 full screen, F12 developer tools.
+`--data-dir` keeps settings, history, go2rtc config and logs in that folder. Keyboard (the Mac's shortcuts with Ctrl
+for ⌘): Space next step, Backspace false start, Ctrl+Enter start, Ctrl+Shift+V paste schedule, Ctrl+R record, Ctrl+E
+edit the running schedule, Ctrl+. finish, Ctrl+1 / Ctrl+2 the training page with the main / second camera, Ctrl+H
+history (⌘Y on the Mac), Ctrl+, settings, Ctrl+= / Ctrl+− / Ctrl+0 zoom the schedule's timeline, F11 full screen, F12
+developer tools (development builds only).
 
 Opened in a plain browser (`npm run dev`, then the dev server URL) the UI runs on an in-page backend
 (`src/renderer/src/platform/browserBackend.ts`): schedule, timers, log and history work, without a camera — the

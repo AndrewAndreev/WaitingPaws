@@ -328,6 +328,11 @@
 .sradio:hover {
   background: var(--bg-surface-2);
 }
+.sradio:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
 .sradio__ring {
   width: 20px;
   height: 20px;

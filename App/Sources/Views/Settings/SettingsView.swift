@@ -10,6 +10,15 @@ struct SettingsView: View {
     @State private var showCameraPicker = false
     @State private var confirmSignOut = false
     @State private var signingOut = false
+    /// «Свой сервер go2rtc» picked while there's no address yet: the mode switches with «Подключить». Switched at once,
+    /// the app would be left without a camera and go back to the first-launch setup.
+    @State private var choosingServer = false
+    /// What the address field shows while it isn't an address (see `address`).
+    @State private var addressDraft: String?
+    #if os(iOS)
+    /// «Забыть» tapped for this computer (confirmation shown).
+    @State private var forgetHost: SyncClient.PairedHost?
+    #endif
 
     var body: some View {
         @Bindable var settings = model.settings
@@ -17,23 +26,31 @@ struct SettingsView: View {
             ScrollViewReader { proxy in
             Form {
                 Section {
-                    Picker("Режим", selection: $settings.connectionMode) {
+                    Picker("Режим", selection: modeSelection) {
                         ForEach(ConnectionMode.allCases) { mode in Text(mode.title).tag(mode) }
                     }
                     .onChange(of: settings.connectionMode) { _, _ in
                         model.startEmbeddedIfNeeded()
                         checkStatus = ""
                     }
-                    if settings.connectionMode == .embedded {
+                    if settings.connectionMode == .embedded && !choosingServer {
                         LabeledContent("Состояние", value: embeddedStatusText)
                     } else {
-                        TextField("Адрес", text: $settings.serverURLString, prompt: Text("http://192.168.1.10:1984"))
+                        TextField("Адрес", text: address, prompt: Text("http://192.168.1.10:1984"))
                             .plainInput()
                         TextField("Логин", text: $settings.serverUsername)
                             .plainInput()
                         SecureField("Пароль", text: $settings.serverPassword)
                         HStack {
-                            Button("Проверить") { Task { await check() } }
+                            if choosingServer {
+                                Button("Подключить") {
+                                    choosingServer = false
+                                    settings.connectionMode = .external
+                                }
+                                .disabled(Go2RTCServer.parse(address.wrappedValue) == nil)
+                            } else {
+                                Button("Проверить") { Task { await check() } }
+                            }
                             Spacer()
                             Text(checkStatus).font(.footnote).foregroundStyle(.secondary)
                         }
@@ -41,10 +58,14 @@ struct SettingsView: View {
                 } header: {
                     Text("Подключение")
                 } footer: {
-                    Text(settings.connectionMode == .embedded
-                         ? "go2rtc работает внутри приложения, камера должна быть в той же Wi-Fi сети. Видео и запись идут, пока приложение открыто."
-                         : "Отдельный сервер go2rtc в сети: подходит, если нужен доступ не из дома или постоянная запись.")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(settings.connectionMode == .embedded && !choosingServer
+                             ? "go2rtc работает внутри приложения, камера должна быть в той же Wi-Fi сети. Видео и запись идут, пока приложение открыто."
+                             : "Отдельный сервер go2rtc в сети: подходит, если нужен доступ не из дома или постоянная запись.")
+                        if isBusy { Text("Во время тренировки или записи сервер не меняется.") }
+                    }
                 }
+                .disabled(isBusy)
 
                 Section {
                     LabeledContent("Поток", value: settings.cameraDisplayName.isEmpty ? "—" : settings.cameraDisplayName)
@@ -183,7 +204,44 @@ struct SettingsView: View {
                 .environment(model)
                 .sheetFrame(width: 520, height: 560)
             }
+            #if os(iOS)
+            .confirmationDialog(forgetHost.map { String(localized: "Забыть «\($0.device.name)»?") } ?? "",
+                                isPresented: Binding(get: { forgetHost != nil }, set: { if !$0 { forgetHost = nil } }),
+                                titleVisibility: .visible, presenting: forgetHost) { host in
+                Button("Забыть", role: .destructive) { model.syncClient.forget(host.id) }
+                Button("Отмена", role: .cancel) {}
+            } message: { host in
+                Text(forgetMessage(host))
+            }
+            #endif
         }
+    }
+
+    /// A training or a recording runs here: switching the server would cut the camera (and the recording) off. One on
+    /// a linked Mac doesn't use this iPhone's server.
+    private var isBusy: Bool {
+        (model.session != nil && !model.isMirroringSession) || (model.isRecordingNow && !model.isLinkedToMac)
+    }
+
+    /// The server's address. With «Свой сервер» on, text that isn't an address (a cleared field, one being retyped)
+    /// stays in the field only: saved, it would leave the app without a server and send it back to the first-launch setup.
+    private var address: Binding<String> {
+        Binding(get: { addressDraft ?? model.settings.serverURLString },
+                set: { text in
+                    let usable = model.settings.connectionMode == .embedded || Go2RTCServer.parse(text) != nil
+                    addressDraft = usable ? nil : text
+                    if usable { model.settings.serverURLString = text }
+                })
+    }
+
+    /// «Свой сервер go2rtc» without a usable address only opens the server's fields (see `choosingServer`).
+    private var modeSelection: Binding<ConnectionMode> {
+        Binding(get: { choosingServer ? .external : model.settings.connectionMode },
+                set: { mode in
+                    choosingServer = mode == .external && model.settings.connectionMode == .embedded
+                        && Go2RTCServer.parse(model.settings.serverURLString) == nil
+                    if !choosingServer { model.settings.connectionMode = mode }
+                })
     }
 
     private var embeddedStatusText: String {
@@ -242,7 +300,7 @@ struct SettingsView: View {
             Section {
                 ForEach(client.pairedHosts.sorted { $0.lastConnected > $1.lastConnected }) { paired in
                     LabeledContent {
-                        Button("Забыть", role: .destructive) { client.forget(paired.id) }
+                        Button("Забыть", role: .destructive) { forgetHost = paired }
                             .buttonStyle(.borderless)
                     } label: {
                         hostLabel(paired.device, detail: pairedDetail(paired))
@@ -263,6 +321,15 @@ struct SettingsView: View {
         } icon: {
             Image(systemName: host.symbolName)
         }
+    }
+
+    /// «Забыть «…»?»: the computer will have to allow this iPhone again; a sync with it running now stops.
+    private func forgetMessage(_ host: SyncClient.PairedHost) -> String {
+        let again = String(localized: "Чтобы снова синхронизироваться, на \(host.device.kindTitle) понадобится «Разрешить».")
+        let client = model.syncClient
+        // `forget` also gives up a link being restored.
+        let linked = (client.isConnected && client.host?.id == host.id) || client.reconnecting?.id == host.id
+        return linked ? String(localized: "Синхронизация отключится.") + " " + again : again
     }
 
     private func pairedDetail(_ paired: SyncClient.PairedHost) -> String {

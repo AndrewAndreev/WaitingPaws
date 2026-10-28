@@ -363,4 +363,226 @@ final class PlanParserTests: XCTestCase {
         XCTAssertEqual(DurationText.clock(-12), "−0:12")
         XCTAssertEqual(DurationText.clock(3725), "1:02:05")
     }
+
+    /// "inf" typed into a duration field crashed the app: `Int(.infinity)` traps.
+    func testDurationTextTakesOnlyRealTimes() {
+        for text in ["inf", "nan", "1e400", "0x1p4", "99999999999999999:00", "100 часов"] {
+            XCTAssertNil(DurationText.parse(text), text)
+        }
+        XCTAssertEqual(DurationText.parse("1e2"), 100)
+        XCTAssertEqual(DurationText.parse("-5"), -5)
+        XCTAssertEqual(DurationText.short(.infinity), DurationText.short(TimeInterval(Int32.max)))
+        XCTAssertEqual(DurationText.short(.nan), "0 с")
+        XCTAssertEqual(DurationText.compact(1e300), DurationText.compact(TimeInterval(Int32.max)))
+        XCTAssertEqual(DurationText.clock(-.infinity), "−596523:14:07")
+    }
+
+    /// «🚩 … не заходите» became the condition «Залаяла, завыла → сразу»: the app said the opposite of the trainer.
+    func testDoNotEnterRules() {
+        let plan = PlanParser.parse("""
+        6 выход - 4 минуты
+        🚩 Если залаяла, завыла - ни в коем случае не заходите, ждите тишины
+        """)
+        XCTAssertTrue(plan.exits[0].earlyEntries.isEmpty)
+        XCTAssertTrue(plan.commonEarlyEntries.isEmpty)
+        XCTAssertEqual(plan.notes, ["🚩 Если залаяла, завыла - ни в коем случае не заходите, ждите тишины"])
+        XCTAssertEqual(plan.doNotEnterRule?.title, "Залаяла, завыла")
+        XCTAssertEqual(plan.doNotEnterRule?.detail, "ни в коем случае не заходите, ждите тишины")
+        XCTAssertEqual(PlanParser.sourceLines(plan.rawText).map(\.kind), [.exit, .doNotEnter])
+
+        // The flag alone says it, and it beats a note that only mentions not coming in.
+        let flagged = PlanParser.parse("1 выход - 5 секунд\n\nНе заходить в комнату без нужды\n🚩 Если залаяла - ждём тишины")
+        XCTAssertEqual(flagged.doNotEnterRule?.title, "Залаяла")
+
+        for line in ["Если залаяла - не входите", "Если лает - нельзя возвращаться, входим когда замолчит",
+                     "If she barks, do not return", "If she barks - don’t come in, wait for silence",
+                     "If she barks, never enter"] {
+            XCTAssertNil(PlanParser.parseEarlyEntry(line), line)
+            XCTAssertTrue(PlanParser.isDoNotEnterRule(line), line)
+        }
+        XCTAssertFalse(PlanParser.isDoNotEnterRule("Если лает — ждём вне входа"))
+        XCTAssertFalse(PlanParser.isDoNotEnterRule("Если лает — дальше не выходим"))
+        // A plan saved before the flag was kept: its words still say it.
+        XCTAssertNotNil(TrainingPlan(notes: ["Если залаяла, завыла - ни в коем случае не заходите"]).doNotEnterRule)
+    }
+
+    /// «через минуту», «через 0,5 минуты» were read as no time, and no time is «сразу».
+    func testDelaysInWordsAndWithDecimalCommas() {
+        func delay(_ line: String) -> TimeInterval? { PlanParser.parseEarlyEntry(line)?.delay }
+        XCTAssertEqual(delay("🟡 Если встала - входим через минуту"), 60)
+        XCTAssertEqual(delay("Если встала - входим через 0,5 минуты"), 30)
+        XCTAssertEqual(delay("Если встала - входим через 1,5 минуты, когда отойдёт"), 90)
+        XCTAssertEqual(delay("Если встала - входим через полминуты"), 30)
+        XCTAssertEqual(delay("Если встала - входим через пол минуты"), 30)
+        XCTAssertEqual(delay("Если встала - входим через полторы минуты"), 90)
+        XCTAssertEqual(delay("Если легла - входим через десять секунд"), 10)
+        XCTAssertEqual(delay("If she stands up - come back in a minute"), 60)
+        XCTAssertEqual(delay("If she stands up - come back in half a minute"), 30)
+        XCTAssertEqual(delay("If she lies down - come back after ten seconds"), 10)
+        let words = PlanParser.parseEarlyEntry("Если встала - входим через две минуты от начала движения, когда сняла фокус")
+        XCTAssertEqual(words?.delay, 120)
+        XCTAssertEqual(words?.detail, "от начала движения, когда сняла фокус")
+        XCTAssertNil(words?.unreadDelay)
+
+        // Words it can't read stay in sight instead of «сразу».
+        let vague = PlanParser.parseEarlyEntry("🟡 Если встала - входим через пару минут от начала движения, когда отойдёт")
+        XCTAssertNil(vague?.delay)
+        XCTAssertEqual(vague?.detail, "через пару минут от начала движения, когда отойдёт")
+        XCTAssertEqual(vague?.unreadDelay, "через пару минут")
+        XCTAssertEqual(vague?.summary, "встала → через пару минут")
+        XCTAssertEqual(vague?.delayDescription, "через пару минут")
+        XCTAssertEqual(PlanParser.parseEarlyEntry("If she lies down - come back in a couple of minutes")?.unreadDelay,
+                       "in a couple of minutes")
+        // «сразу» is still «сразу», and an "in" that names a place is no time.
+        XCTAssertEqual(PlanParser.parseEarlyEntry("Если встала - входим сразу")?.summary, "встала → сразу")
+        XCTAssertNil(PlanParser.parseEarlyEntry("If she lies down - come back in the hallway")?.unreadDelay)
+    }
+
+    /// 2/3/2/3-minute breaks: the plan's break was whichever a Dictionary gave first, different from launch to launch
+    /// and from Windows. The first one written wins.
+    func testTiedBreaks() {
+        let plan = PlanParser.parse("""
+        1 выход - 5 секунд
+        Перерыв 3 минуты
+        2 выход - 5 секунд
+        Перерыв 2 минуты
+        3 выход - 5 секунд
+        Перерыв 3 минуты
+        4 выход - 5 секунд
+        Перерыв 2 минуты
+        """)
+        XCTAssertEqual(plan.defaultBreak, 180)
+        XCTAssertEqual(plan.exits.map(\.breakAfter), [nil, 120, nil, 120])
+    }
+
+    /// «🟡︎», «🔖︎», «🚩︎» (with a variation selector) are the trainer's marks all the same, as on Windows.
+    func testMarksWithVariationSelectors() {
+        XCTAssertEqual(PlanParser.parseEarlyEntry("🟡\u{FE0F} Если встала - входим через 15 секунд")?.tone, .yellow)
+        XCTAssertEqual(PlanParser.parseEarlyEntry("🟢\u{FE0E} Если легла - входим через 15 секунд")?.tone, .green)
+        let text = """
+        6 выход - 4 минуты
+        🟡 Если встала - входим через 1 минуту
+        🔖\u{FE0E} На третьей попытке завершаем тренировку
+        🚩\u{FE0F} Если залаяла - ждём тишины
+        """
+        let plan = PlanParser.parse(text)
+        XCTAssertNil(plan.exits[0].note)
+        XCTAssertEqual(plan.notes, ["На третьей попытке завершаем тренировку", "🚩 Если залаяла - ждём тишины"])
+        XCTAssertEqual(plan.doNotEnterRule?.title, "Залаяла")
+        XCTAssertEqual(PlanParser.sourceLines(text).map(\.kind), [.exit, .earlyEntry, .falseStart, .doNotEnter])
+    }
+
+    /// A lone «➡️» row at the top was taken for the header of the trainer's text, and the header for a note.
+    func testDecorationOnlyLines() {
+        let text = "➡️\n🐹 Тренировка на понедельник - 19.10.2026\n1 выход - 5 секунд\n➡️\n🟢 Если легла - входим через 20 секунд"
+        let plan = PlanParser.parse(text)
+        XCTAssertEqual(plan.title, "Тренировка на понедельник")
+        XCTAssertEqual(plan.exits[0].earlyEntries.count, 1)
+        let lines = PlanParser.sourceLines(text)
+        XCTAssertEqual(lines.map(\.kind), [.note, .header, .exit, .note, .earlyEntry])
+        XCTAssertEqual(lines.map(\.exitNumber), [nil, nil, 1, 1, 1])
+    }
+
+    /// «…входим через 30 секунд, не заходя в комнату» was taken for a rule against coming in: the condition was lost
+    /// and the line became the plan's «Не входить».
+    func testHowToComeInIsNoRuleAgainstIt() {
+        let plan = PlanParser.parse("""
+        3 выход - 2 минуты
+        🟢 Если легла - входим через 30 секунд, не заходя в комнату
+        """)
+        XCTAssertEqual(plan.exits[0].earlyEntries.first?.delay, 30)
+        XCTAssertEqual(plan.exits[0].earlyEntries.first?.detail, "не заходя в комнату")
+        XCTAssertNil(plan.doNotEnterRule)
+        XCTAssertEqual(PlanParser.sourceLines(plan.rawText).map(\.kind), [.exit, .earlyEntry])
+
+        let quietly = PlanParser.parseEarlyEntry("Если встала - возвращаемся через минуту, не входя резко")
+        XCTAssertEqual(quietly?.delay, 60)
+        XCTAssertEqual(quietly?.detail, "не входя резко")
+        XCTAssertEqual(PlanParser.parseEarlyEntry("Если встала - входим через минуту, не возвращаясь к двери")?.delay, 60)
+        let bedroom = PlanParser.parseEarlyEntry("If she lies down - come back in 30 seconds, don’t enter the bedroom")
+        XCTAssertEqual(bedroom?.delay, 30)
+        XCTAssertEqual(bedroom?.detail, "don’t enter the bedroom")
+
+        for line in ["Если залаяла - не входить", "Если залаяла - не заходи", "Если залаяла - не входим",
+                     "Если залаяла - не возвращайтесь", "Если лает - не возвращайся, жди", "Если лает - нельзя заходить",
+                     "If she barks, don't enter", "If she barks, do not enter the flat",
+                     "If she barks - never enter until she is quiet"] {
+            XCTAssertTrue(PlanParser.isDoNotEnterRule(line), line)
+            XCTAssertNil(PlanParser.parseEarlyEntry(line), line)
+        }
+        XCTAssertFalse(PlanParser.isDoNotEnterRule("Если лает — в план не входит"))
+    }
+
+    /// «1 выход - 99999999999999999999 секунд» pasted into a plan crashed the Mac: the plan's length went to `Int(_:)`.
+    func testHugeTimesAreNoTime() {
+        XCTAssertNil(DurationText.sumOfUnits(in: "99999999999999999999 секунд"))
+        XCTAssertNil(DurationText.sumOfUnits(in: String(repeating: "9", count: 400) + " секунд"))
+        XCTAssertNil(DurationText.sumOfUnits(in: "25 часов"))
+        XCTAssertEqual(DurationText.sumOfUnits(in: "24 часа"), 86400)
+
+        let plan = PlanParser.parse("""
+        1 выход - 99999999999999999999 секунд
+        Перерыв 99999999999999999999 минут
+        2 выход - 5 секунд
+        🟡 Если встала - входим через секунд 99999999999999999999
+        """)
+        XCTAssertEqual(plan.exits.map(\.duration), [0, 5])
+        XCTAssertEqual(plan.exits.map(\.breakAfter), [nil, nil])
+        XCTAssertEqual(plan.notes, ["Перерыв 99999999999999999999 минут"])
+        XCTAssertNil(plan.exits[1].earlyEntries.first?.delay)
+
+        XCTAssertEqual(DurationText.wholeSeconds(.infinity), Int(Int32.max))
+        XCTAssertEqual(DurationText.wholeSeconds(-.infinity), -Int(Int32.max))
+        XCTAssertEqual(DurationText.wholeSeconds(.nan), 0)
+        XCTAssertEqual(DurationText.wholeSeconds(89.5), 90)
+    }
+
+    /// «через секунд 30» was read as one second with «30» left over: «через 0:01 · 30».
+    func testNumberAfterItsUnit() {
+        func entry(_ line: String) -> EarlyEntry? { PlanParser.parseEarlyEntry(line) }
+        XCTAssertEqual(entry("Если встала - входим через секунд 30")?.delay, 30)
+        XCTAssertNil(entry("Если встала - входим через секунд 30")?.detail)
+        XCTAssertEqual(entry("Если встала - входим через минут 5, когда отойдёт")?.delay, 300)
+        XCTAssertEqual(entry("Если встала - входим через минут 5, когда отойдёт")?.detail, "когда отойдёт")
+        XCTAssertEqual(entry("Если легла - входим через секунд тридцать от укладки")?.delay, 30)
+        XCTAssertEqual(entry("Если легла - входим через секунд тридцать от укладки")?.detail, "от укладки")
+        XCTAssertEqual(entry("Если встала - входим через минуты две")?.delay, 120)
+        // A word that is no number, or a time of its own, is not the count.
+        XCTAssertEqual(entry("Если встала - входим через минуту после укладки")?.delay, 60)
+        XCTAssertEqual(entry("Если встала - входим через минуту после укладки")?.detail, "после укладки")
+        XCTAssertNotEqual(entry("Если встала - входим через минуту 30 секунд")?.delay, 1800)
+    }
+
+    /// "come back in several minutes" said "right away": only "in a …" and a single digit were taken for a time.
+    func testEnglishDelaysItCannotRead() {
+        func words(_ line: String) -> String? { PlanParser.parseEarlyEntry(line)?.unreadDelay }
+        XCTAssertEqual(words("If she stands up - come back in several minutes"), "in several minutes")
+        XCTAssertEqual(words("If she stands up - come back in a few minutes"), "in a few minutes")
+        XCTAssertEqual(words("If she stands up - come back in few minutes"), "in few minutes")
+        XCTAssertEqual(words("If she lies down - come back in 15 breaths"), "in 15 breaths")
+        XCTAssertEqual(words("If she lies down - come back in some time"), "in some time")
+        XCTAssertEqual(words("If she stands up - come back in a couple of minutes after she lies down"),
+                       "in a couple of minutes")
+        XCTAssertEqual(words("If she stands up - come back after she settles"), "after she settles")
+        XCTAssertNil(words("If she lies down - come back in the kitchen"))
+        XCTAssertEqual(PlanParser.parseEarlyEntry("If she stands up - come back in several minutes")?.delayDescription,
+                       "in several minutes")
+    }
+
+    /// «через пару минут» on the right and «через пару минут от начала движения, когда отойдёт» under the event: the
+    /// trainer's words twice.
+    func testDetailBesideAnUnreadDelay() {
+        let vague = PlanParser.parseEarlyEntry("🟡 Если встала - входим через пару минут от начала движения, когда отойдёт")
+        XCTAssertEqual(vague?.detail, "через пару минут от начала движения, когда отойдёт")
+        XCTAssertEqual(vague?.detailBesideTime, "от начала движения, когда отойдёт")
+        XCTAssertEqual(PlanParser.parseEarlyEntry("Если встала - входим через пару минут, когда отойдёт")?.detailBesideTime,
+                       "когда отойдёт")
+        XCTAssertNil(PlanParser.parseEarlyEntry("Если встала - входим через пару минут")?.detailBesideTime)
+        XCTAssertEqual(PlanParser.parseEarlyEntry("If she stands up - come back in a few minutes after she lies down")?
+            .detailBesideTime, "after she lies down")
+        // A time it has read, or none: the detail as it is.
+        XCTAssertEqual(PlanParser.parseEarlyEntry("Если встала - входим через 2 минуты от начала движения")?.detailBesideTime,
+                       "от начала движения")
+        XCTAssertEqual(PlanParser.parseEarlyEntry("Если встала - входим сразу, тихо")?.detailBesideTime, "тихо")
+    }
 }

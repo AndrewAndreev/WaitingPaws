@@ -3,10 +3,19 @@ import WaitingPawsCore
 
 @main
 struct WaitingPawsApp: App {
-    @State private var model = AppModel()
+    @State private var model: AppModel
     #if os(macOS)
     @State private var ui = MacUIState()
+    @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var appDelegate
     #endif
+
+    init() {
+        let model = AppModel()
+        _model = State(initialValue: model)
+        #if os(macOS)
+        MacAppDelegate.model = model
+        #endif
+    }
 
     var body: some Scene {
         #if os(macOS)
@@ -94,6 +103,22 @@ struct WaitingPawsApp: App {
 }
 
 #if os(macOS)
+/// ⌘Q or logging out with a training or a recording running: they are finished first (`AppModel.finishBeforeQuit`),
+/// so the log and the video are kept.
+final class MacAppDelegate: NSObject, NSApplicationDelegate {
+    /// Set at launch (SwiftUI creates the delegate itself).
+    static weak var model: AppModel?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let model = Self.model, model.hasWorkBeforeQuit else { return .terminateNow }
+        Task {
+            await model.finishBeforeQuit(limit: .seconds(30))
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+}
+
 /// DEBUG `--open history|settings|welcome|main`: open that window at launch (UI checks without clicks).
 struct DebugWindowOpener: ViewModifier {
     /// Passed in: this modifier sits outside the `.environment(model)` of the window content.

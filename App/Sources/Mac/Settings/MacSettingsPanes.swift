@@ -511,20 +511,27 @@ private struct SettingsCameraCard: View {
 private struct SettingsConnectionPane: View {
     @Environment(AppModel.self) private var model
     @State private var check: SetupServerSheet.Check = .idle
+    /// «Свой сервер go2rtc» picked while there's no address yet: the mode switches with «Подключить». Switched at once,
+    /// the app would be left without a camera, and the training window would close into the welcome one.
+    @State private var choosingServer = false
+    /// What the address field shows while it isn't an address (see `address`).
+    @State private var addressDraft: String?
 
     var body: some View {
         @Bindable var settings = model.settings
+        // A training or a recording runs: switching the server would cut the camera (and the recording) off.
+        let busy = model.session != nil || model.isRecordingNow
         SettingsPaneHeader(pane: .connection, text: String(localized: "Где работает go2rtc — сервер, который забирает видео с камеры Xiaomi."))
         Section {
-            Picker("Режим", selection: $settings.connectionMode) {
+            Picker("Режим", selection: modeSelection) {
                 ForEach(ConnectionMode.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.radioGroup)
             .onChange(of: settings.connectionMode) {
-                model.startEmbeddedIfNeeded()
+                model.connectionModeChanged()
                 check = .idle
             }
-            if settings.connectionMode == .embedded {
+            if settings.connectionMode == .embedded && !choosingServer {
                 LabeledContent("Состояние") {
                     SetupServerStatusLabel()
                 }
@@ -537,14 +544,18 @@ private struct SettingsConnectionPane: View {
                 }
             }
         } footer: {
-            Text(settings.connectionMode == .embedded
-                 ? "go2rtc работает внутри приложения, камера должна быть в той же Wi‑Fi сети. Видео и запись идут, пока приложение открыто."
-                 : "Отдельный сервер go2rtc в сети: подходит, если нужна постоянная запись или доступ не из дома.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(settings.connectionMode == .embedded && !choosingServer
+                     ? "go2rtc работает внутри приложения, камера должна быть в той же Wi‑Fi сети. Видео и запись идут, пока приложение открыто."
+                     : "Отдельный сервер go2rtc в сети: подходит, если нужна постоянная запись или доступ не из дома.")
+                if busy { Text("Во время тренировки или записи сервер не меняется.") }
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
         }
+        .disabled(busy)
         Section {
-            TextField("Адрес", text: $settings.serverURLString, prompt: Text("http://192.168.1.10:1984"))
+            TextField("Адрес", text: address, prompt: Text("http://192.168.1.10:1984"))
                 .plainInput()
             TextField("Логин", text: $settings.serverUsername, prompt: Text("Необязательно"))
                 .plainInput()
@@ -552,14 +563,43 @@ private struct SettingsConnectionPane: View {
             HStack(spacing: 8) {
                 result
                 Spacer(minLength: 8)
-                Button("Проверить") { Task { await runCheck() } }
-                    .disabled(check == .checking || Go2RTCServer.parse(settings.serverURLString) == nil)
+                if choosingServer {
+                    Button("Подключить") {
+                        choosingServer = false
+                        settings.connectionMode = .external
+                    }
+                    .disabled(Go2RTCServer.parse(address.wrappedValue) == nil)
+                } else {
+                    Button("Проверить") { Task { await runCheck() } }
+                        .disabled(check == .checking || Go2RTCServer.parse(address.wrappedValue) == nil)
+                }
             }
         } header: {
             Text("Свой сервер")
         }
-        .disabled(settings.connectionMode == .embedded)
+        .disabled(busy || (settings.connectionMode == .embedded && !choosingServer))
         .onChange(of: settings.serverURLString) { check = .idle }
+    }
+
+    /// The server's address. With «Свой сервер» on, text that isn't an address (a cleared field, one being retyped)
+    /// stays in the field only: saved, it would leave the app without a server and close the window into the welcome one.
+    private var address: Binding<String> {
+        Binding(get: { addressDraft ?? model.settings.serverURLString },
+                set: { text in
+                    let usable = model.settings.connectionMode == .embedded || Go2RTCServer.parse(text) != nil
+                    addressDraft = usable ? nil : text
+                    if usable { model.settings.serverURLString = text }
+                })
+    }
+
+    /// «Свой сервер go2rtc» without a usable address only opens the server's fields (see `choosingServer`).
+    private var modeSelection: Binding<ConnectionMode> {
+        Binding(get: { choosingServer ? .external : model.settings.connectionMode },
+                set: { mode in
+                    choosingServer = mode == .external && model.settings.connectionMode == .embedded
+                        && Go2RTCServer.parse(model.settings.serverURLString) == nil
+                    if !choosingServer { model.settings.connectionMode = mode }
+                })
     }
 
     @ViewBuilder
@@ -654,6 +694,8 @@ private struct SettingsFilesPane: View {
 
 private struct SettingsIPhonePane: View {
     @Environment(AppModel.self) private var model
+    /// «Забыть…» clicked for this iPhone (confirmation shown).
+    @State private var forgetDevice: SyncHost.PairedDevice?
 
     var body: some View {
         @Bindable var settings = model.settings
@@ -671,6 +713,11 @@ private struct SettingsIPhonePane: View {
         } footer: {
             if settings.shareWithIPhone && !model.embedded.lanEnabled && settings.connectionMode == .embedded {
                 Label("Видео для iPhone станет доступно после перезапуска Waiting Paws.", systemImage: "arrow.clockwise")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else if settings.shareWithIPhone && settings.connectionMode == .external {
+                // The iPhone is given only this Mac's built-in go2rtc, never the user's server (`AppModel.setUpSync`).
+                Label("Со своим сервером go2rtc iPhone ведёт тренировку, но видео с камеры на нём не показывается.", systemImage: "video.slash")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -694,7 +741,7 @@ private struct SettingsIPhonePane: View {
             ForEach(host.pairedDevices) { paired in
                 let online = host.isConnected(paired)
                 LabeledContent {
-                    Button("Забыть") { host.forget(paired) }
+                    Button("Забыть…") { forgetDevice = paired }
                 } label: {
                     Label {
                         Text(paired.name)
@@ -711,6 +758,15 @@ private struct SettingsIPhonePane: View {
             Text("Первое подключение каждого iPhone нужно разрешить на этом Mac. Запись и лог остаются на Mac. После «Забыть» iPhone снова попросит разрешения.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+        .alert(forgetDevice.map { String(localized: "Забыть «\($0.name)»?") } ?? "",
+               isPresented: Binding(get: { forgetDevice != nil }, set: { if !$0 { forgetDevice = nil } }),
+               presenting: forgetDevice) { paired in
+            Button("Забыть", role: .destructive) { host.forget(paired) }
+            Button("Отмена", role: .cancel) {}
+        } message: { paired in
+            let again = String(localized: "Чтобы снова подключиться, iPhone попросит разрешения на этом Mac.")
+            Text(host.isConnected(paired) ? String(localized: "iPhone отключится.") + " " + again : again)
         }
     }
 

@@ -187,6 +187,25 @@ describe('Go2RTCClient requests', () => {
     expect(Go2RTCError.noSources().equals(error)).toBe(true)
   })
 
+  it('waits longer for Mi Cloud (signing in, listing cameras) than for the rest of the API', async () => {
+    // A server that answers after 80 ms and honours the request's deadline.
+    const slow = (async (_input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        const timer = setTimeout(() => resolve(json({ sources: [{ name: 'Кухня', url: 'xiaomi://k' }] })), 80)
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(timer)
+          reject(init.signal!.reason)
+        })
+      })) as typeof globalThis.fetch
+    const client = new Go2RTCClient(server, { fetch: slow, timeoutMs: 20 })
+    expect(Go2RTCClient.cloudTimeoutMs).toBeGreaterThanOrEqual(60_000)
+    expect(await client.xiaomiCameras('123', 'ru')).toHaveLength(1)
+    expect(await client.xiaomiLogin('user', 'password')).toEqual({ kind: 'success' })
+    const error = await client.streams().catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(Go2RTCError)
+    expect((error as Go2RTCError).kind).toBe('network')
+  })
+
   it('lists accounts and reads configured sources', async () => {
     const { fetch } = fakeFetch({
       'GET /api/xiaomi': () => json(['2', '1']),

@@ -161,11 +161,19 @@ struct CameraWebView {
 
     private var client: Go2RTCClient { Go2RTCClient(server: server) }
 
+    /// `text` as a JavaScript string literal for the page: JSON-encoded, so a quote in a stream name or password (or a
+    /// `</script>`) cannot break out of it.
+    private static func jsString(_ text: String) -> String {
+        (try? JSONEncoder().encode(text)).map { String(decoding: $0, as: UTF8.self) } ?? "''"
+    }
+
     /// What requires reloading the page. Sound is not part of it: it only mutes the player (see `applyMute`).
-    private var key: String { "\(server.baseURL)|\(stream)|\(mode.rawValue)|\(fill)|\(reloadToken)" }
+    /// What the loaded page was made for; the credentials count too (a linked Mac sends new ones after «Забыть» or when it
+    /// goes back to its built-in go2rtc), as a hash.
+    private var key: String { "\(server.baseURL)|\(server.hashValue)|\(stream)|\(mode.rawValue)|\(fill)|\(reloadToken)" }
 
     private func html() -> String {
-        let socket = client.playerSocketURL(stream: stream).absoluteString
+        let socket = Self.jsString(client.playerSocketURL(stream: stream).absoluteString)
         let muted = audioEnabled ? "false" : "true"
         #if os(macOS)
         // A box of one size at the page's top-left, whatever the window does: `PlayerWebView` fits and zooms it.
@@ -414,9 +422,9 @@ struct CameraWebView {
           customElements.define('video-rtc', Player);
           const player = document.createElement('video-rtc');
           window.player = player;
-          player.mode = '\(mode.go2rtcModes)';
+          player.mode = \(Self.jsString(mode.go2rtcModes));
           player.background = true;
-          player.src = '\(socket)';
+          player.src = \(socket);
           document.body.appendChild(player);
         </script>
         </body></html>

@@ -5,7 +5,7 @@ import Foundation
 public enum DurationText {
     /// "15 с", "2 мин", "1 мин 30 с", "1 ч 5 мин".
     public static func short(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds.rounded())
+        let total = whole(seconds, .toNearestOrAwayFromZero)
         if total < 0 { return "−" + short(TimeInterval(-total)) }
         let hours = total / 3600
         let minutes = (total % 3600) / 60
@@ -19,7 +19,7 @@ public enum DurationText {
 
     /// Very short form for chips: "5с", "30с", "1м", "1м30", "5м" / "5s", "1m", "1m30".
     public static func compact(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds.rounded())
+        let total = whole(seconds, .toNearestOrAwayFromZero)
         let s = tr("с", "s"), m = tr("м", "m")
         if total < 60 { return "\(total)\(s)" }
         let minutes = total / 60
@@ -29,7 +29,7 @@ public enum DurationText {
 
     /// "0:15", "12:03", "1:02:03". Negative values are prefixed with a minus sign.
     public static func clock(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds.rounded(.down))
+        let total = whole(seconds, .down)
         let negative = total < 0
         let value = abs(total)
         let hours = value / 3600
@@ -42,20 +42,22 @@ public enum DurationText {
     }
 
     /// Parses "15 с", "2 минуты", "1 мин 30 сек", "2 minutes", "1:30", "90". Returns `nil` when nothing
-    /// recognisable is found.
+    /// recognisable is found, and for more than `longestTyped`.
     public static func parse(_ text: String) -> TimeInterval? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }
 
-        if let clock = parseClock(trimmed) { return clock }
-        if let sum = sumOfUnits(in: trimmed) { return sum }
-
-        let normalized = trimmed.replacingOccurrences(of: ",", with: ".")
-        if let value = Double(normalized) { return value }
-        return nil
+        guard let value = parseClock(trimmed) ?? sumOfUnits(in: trimmed) ?? decimal(trimmed.replacingOccurrences(of: ",", with: ".")),
+              abs(value) <= longestTyped else { return nil }
+        return value
     }
 
-    /// Sums every "<number> <unit>" pair found in `text`. Returns `nil` if no unit is present.
+    /// The longest time `parse` takes: a day. An exit or a break is minutes; "inf" or "1e400" typed into a
+    /// duration field is no time at all.
+    public static let longestTyped: TimeInterval = 24 * 3600
+
+    /// Sums every "<number> <unit>" pair found in `text`. Returns `nil` if no unit is present, and for more than
+    /// `longestTyped`: «1 выход - 99999999999999999999 секунд» pasted into a plan is no time either.
     public static func sumOfUnits(in text: String) -> TimeInterval? {
         let range = NSRange(text.startIndex..., in: text)
         let matches = unitRegex.matches(in: text, range: range)
@@ -69,20 +71,43 @@ public enum DurationText {
             guard let value = Double(valueText) else { continue }
             total += value * multiplier(forUnit: String(text[unitRange]))
         }
-        return total
+        // Too many digits make an infinite Double: it is past the limit too.
+        return total <= longestTyped ? total : nil
+    }
+
+    /// Whole seconds as the formatters count them, for any number (a plan from elsewhere may carry one): `Int(_:)`
+    /// traps on NaN, infinity and past `Int.max`.
+    public static func wholeSeconds(_ seconds: TimeInterval) -> Int {
+        whole(seconds, .toNearestOrAwayFromZero)
+    }
+
+    /// `Double(text)` for decimals only ("90", "1.5", "2e3"), as on Windows: not "inf", "nan" or "0x1p4".
+    private static func decimal(_ text: String) -> Double? {
+        guard text.range(of: #"^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"#, options: .regularExpression) != nil
+        else { return nil }
+        return Double(text)
+    }
+
+    /// Whole seconds for the formatters. `Int(_:)` traps on NaN, infinity and anything past `Int.max`: such a time is
+    /// cut to 68 years (NaN to 0), which no real one comes near.
+    private static func whole(_ seconds: TimeInterval, _ rule: FloatingPointRoundingRule) -> Int {
+        guard !seconds.isNaN else { return 0 }
+        let limit = TimeInterval(Int32.max)
+        return Int(min(max(seconds, -limit), limit).rounded(rule))
     }
 
     private static func parseClock(_ text: String) -> TimeInterval? {
         let range = NSRange(text.startIndex..., in: text)
         guard let match = clockRegex.firstMatch(in: text, range: range) else { return nil }
-        var parts: [Int] = []
+        // Not Int: "9999999999999999:00" would overflow it.
+        var parts: [TimeInterval] = []
         for index in 1..<match.numberOfRanges {
             guard let partRange = Range(match.range(at: index), in: text) else { continue }
-            if let value = Int(text[partRange]) { parts.append(value) }
+            if let value = TimeInterval(text[partRange]) { parts.append(value) }
         }
         switch parts.count {
-        case 2: return TimeInterval(parts[0] * 60 + parts[1])
-        case 3: return TimeInterval(parts[0] * 3600 + parts[1] * 60 + parts[2])
+        case 2: return parts[0] * 60 + parts[1]
+        case 3: return parts[0] * 3600 + parts[1] * 60 + parts[2]
         default: return nil
         }
     }

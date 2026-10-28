@@ -132,6 +132,7 @@ struct SetupServerSheet: View {
         model.settings.serverUsername = username
         model.settings.serverPassword = password
         model.settings.connectionMode = .external
+        model.connectionModeChanged()
         print("[setup] own go2rtc server \(urlText)")
         dismiss()
     }

@@ -74,7 +74,7 @@ struct OnboardingFlow: View {
         #endif
         #if os(iOS)
         // A computer on the same network already has the camera signed in: offer it over the welcome screen (L4),
-        // and rejoin one this iPhone was linked to before without asking.
+        // and rejoin the one this iPhone syncs with without asking.
         .overlay {
             if !nearbyHosts.isEmpty || model.syncClient.isBusy {
                 ZStack(alignment: .bottom) {
@@ -93,10 +93,10 @@ struct OnboardingFlow: View {
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: nearbyHosts.map(\.id))
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.syncClient.isBusy)
-        .onChange(of: model.syncClient.preferredHost, initial: true) { _, host in
-            if onClose == nil, let host, model.syncClient.status == .idle, model.syncClient.isPaired(host.device) {
-                model.syncClient.connect(to: host)
-            }
+        // Only the computer this iPhone syncs with, not any joined before: «Отключить синхронизацию» (which leads
+        // here on an iPhone without its own camera) must stick.
+        .onChange(of: model.syncClient.preferredHost, initial: true) { _, _ in
+            if onClose == nil { model.syncClient.autoConnectIfPossible() }
         }
         #endif
     }

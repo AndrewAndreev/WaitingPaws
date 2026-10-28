@@ -3,7 +3,8 @@ import { t } from '@shared/i18n'
 import type { ConnectionMode, Settings } from '@shared/settings'
 import { Go2RTCClient, Go2RTCError, Go2RTCServer } from '@core/go2rtcClient'
 import { bridgeFetch } from '../platform/bridge'
-import { call, useApp } from '../store'
+import { call, ui, useApp } from '../store'
+import { isRecording } from '../model'
 import { Button, Spinner } from '../ui/kit'
 import { DocumentIcon, FailedFilledIcon, GlobeIcon, ReloadIcon, ServerIcon, SuccessFilledIcon } from '../ui/icons'
 import { Card, Group, PaneHeader, RadioRow, Row, Value } from './rows'
@@ -15,29 +16,37 @@ type Check = { kind: 'idle' } | { kind: 'checking' } | { kind: 'ok'; version: st
 export function ConnectionPane() {
   const app = useApp()
   const mode = app.settings.connectionMode
+  // Another server under a training or a recording (one waiting for the camera too) would cut its video off.
+  const locked = app.session !== null || isRecording(app)
   const setMode = (next: ConnectionMode) => {
-    if (next !== mode) void call('settings.update', { connectionMode: next })
+    if (next === mode || locked) return
+    // Without an address the app is not set up and falls back to the first-launch screen: the server form switches
+    // the mode once an address is checked and saved.
+    if (next === 'external' && !app.settings.serverURL.trim()) return ui.set({ showServerSetup: true })
+    void call('settings.update', { connectionMode: next })
   }
   return (
     <>
       <PaneHeader title={t('Подключение')} description={t('Где работает go2rtc — сервер, который забирает видео с камеры Xiaomi.')} />
-      <Group>
+      <Group footer={locked ? t('Во время тренировки или записи сервер не меняется.') : undefined}>
         <div role="radiogroup" className="sgroup__items" aria-label={t('Режим')}>
           <RadioRow
             checked={mode === 'embedded'}
+            disabled={locked}
             onSelect={() => setMode('embedded')}
             title={t('Встроенный go2rtc')}
             description={t('go2rtc работает внутри приложения, камера должна быть в той же Wi‑Fi сети. Видео и запись идут, пока приложение открыто.')}
           />
           <RadioRow
             checked={mode === 'external'}
+            disabled={locked}
             onSelect={() => setMode('external')}
             title={t('Свой сервер go2rtc')}
             description={t('Отдельный сервер go2rtc в сети: подходит, если нужна постоянная запись или доступ не из дома.')}
           />
         </div>
       </Group>
-      {mode === 'embedded' ? <EmbeddedGroup /> : <ServerGroup />}
+      {mode === 'embedded' ? <EmbeddedGroup /> : <ServerGroup locked={locked} />}
     </>
   )
 }
@@ -106,7 +115,7 @@ function EmbeddedGroup() {
 }
 
 /// Address, login and password of the user's server; saved when a field is left (Enter too), checked on demand.
-function ServerGroup() {
+function ServerGroup({ locked }: { locked: boolean }) {
   const app = useApp()
   const saved = app.settings
   const [url, setURL] = useState(saved.serverURL)
@@ -121,7 +130,9 @@ function ServerGroup() {
 
   const patch = (): Partial<Settings> => {
     const changes: Partial<Settings> = {}
-    if (url.trim() !== saved.serverURL) changes.serverURL = url.trim()
+    // Text that isn't an address (a cleared field, one being retyped) stays in the field only: saved, it would leave
+    // the app without a server and drop it to the first-launch screen.
+    if (url.trim() !== saved.serverURL && Go2RTCServer.parse(url)) changes.serverURL = url.trim()
     if (username !== saved.serverUsername) changes.serverUsername = username
     if (password !== saved.serverPassword) changes.serverPassword = password
     return changes
@@ -175,6 +186,7 @@ function ServerGroup() {
                   value={url}
                   placeholder="http://192.168.1.10:1984"
                   spellCheck={false}
+                  disabled={locked}
                   onChange={(event) => {
                     setURL(event.target.value)
                     setCheck({ kind: 'idle' })
@@ -186,7 +198,7 @@ function ServerGroup() {
               <div className="sform__pair">
                 <label className="field">
                   <span className="field__label">{t('Логин')}</span>
-                  <input className="input" value={username} placeholder={t('Необязательно')} spellCheck={false} autoComplete="off" onChange={(event) => setUsername(event.target.value)} onBlur={() => void commit()} onKeyDown={onKey} />
+                  <input className="input" value={username} placeholder={t('Необязательно')} spellCheck={false} autoComplete="off" disabled={locked} onChange={(event) => setUsername(event.target.value)} onBlur={() => void commit()} onKeyDown={onKey} />
                 </label>
                 <label className="field">
                   <span className="field__label">{t('Пароль')}</span>
@@ -196,6 +208,7 @@ function ServerGroup() {
                     value={password}
                     placeholder={t('Необязательно')}
                     autoComplete="new-password"
+                    disabled={locked}
                     onFocus={(event) => event.target.select()}
                     onChange={(event) => setPassword(event.target.value)}
                     onBlur={() => void commit()}
@@ -207,7 +220,7 @@ function ServerGroup() {
           }
         />
         <Row title={<CheckResult check={check} />}>
-          <Button disabled={check.kind === 'checking' || !parsed} onClick={() => void runCheck()}>
+          <Button disabled={locked || check.kind === 'checking' || !parsed} onClick={() => void runCheck()}>
             {t('Проверить')}
           </Button>
         </Row>

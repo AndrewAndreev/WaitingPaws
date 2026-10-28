@@ -1,5 +1,5 @@
 import { CameraModeOption, CameraSetting, MiotValue, XiaomiCameraError, type MiotPropertyID } from '@core/cameraModes'
-import { Go2RTCError, type Go2RTCClient } from '@core/go2rtcClient'
+import { Go2RTCError, queryValue, type Go2RTCClient } from '@core/go2rtcClient'
 import { MiotSpecProvider } from '@core/miotSpecProvider'
 import { tr } from '@core/localization'
 import { nodeStorage } from './storage'
@@ -139,15 +139,6 @@ export class CameraModesController {
     this.source = null
     this.changed()
   }
-}
-
-function queryValue(source: string, name: string): string | null {
-  const query = source.split('?')[1] ?? ''
-  for (const part of query.split('&')) {
-    const [key, value] = part.split('=')
-    if (key === name) return decodeURIComponent(value ?? '')
-  }
-  return null
 }
 
 function message(error: unknown): string {

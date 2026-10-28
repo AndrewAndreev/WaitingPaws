@@ -103,7 +103,23 @@ struct SessionScreen: View {
         // A finger still on an arrow when the app goes away would never lift.
         .onChange(of: scenePhase) { _, phase in if phase != .active { model.panTilt.stop() } }
         .onChange(of: model.session != nil) { _, running in
-            if running { cameraOnly = false } else { showTrainerText = false }
+            if running {
+                cameraOnly = false
+            } else {
+                showTrainerText = false
+                // Ended elsewhere (on the linked Mac, or the last break ran out): these would act on no training, and
+                // «Отменить без сохранения» would delete a recording started after it.
+                confirmFinish = false
+                confirmAbandon = false
+                editingSessionPlan = nil
+            }
+        }
+        .onChange(of: model.isReconnecting) { _, reconnecting in
+            // While the link is being restored their «Завершить» / «Отменить без сохранения» would reach no one.
+            if reconnecting {
+                confirmFinish = false
+                confirmAbandon = false
+            }
         }
         .onChange(of: model.settings.isConfigured) { _, configured in
             if configured { showCameraSetup = false }
@@ -162,7 +178,11 @@ struct SessionScreen: View {
         .sheet(item: $editingSessionPlan) { plan in
             NavigationStack {
                 PlanEditorView(plan: plan, fixedExits: model.session?.fixedExitCount ?? 0) { final in
-                    if model.session?.updatePlan(final) == true {
+                    if model.isReconnecting {
+                        // The edit would not reach the Mac, and its next state would undo it here: it stays in the
+                        // editor until the link is back.
+                        model.errorMessage = String(localized: "Нет связи с \(model.linkedHostKind) — переподключаемся…")
+                    } else if model.session?.updatePlan(final) == true {
                         editingSessionPlan = nil
                     } else {
                         model.errorMessage = String(localized: "Прошедшие выходы и текущий нельзя удалить или переставить.")
@@ -205,18 +225,6 @@ struct SessionScreen: View {
             .environment(model)
             .sheetFrame(width: 520, height: 560)
         }
-        #if os(macOS)
-        .alert(model.syncHost.pairingRequest.map { String(localized: "Подключить «\($0.device.name)»?") } ?? "",
-               isPresented: Binding(get: { model.syncHost.pairingRequest != nil },
-                                    set: { if !$0 { model.syncHost.answerPairing(allow: false) } })) {
-            Button("Разрешить") { model.syncHost.answerPairing(allow: true) }
-            Button("Отклонить", role: .cancel) { model.syncHost.answerPairing(allow: false) }
-        } message: {
-            if let request = model.syncHost.pairingRequest {
-                Text(MacPairingPrompt.informativeText(request.device, hostName: model.syncHost.hostName))
-            }
-        }
-        #endif
         .alert("Ошибка", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("Ок", role: .cancel) {}
         } message: {
@@ -246,11 +254,18 @@ struct SessionScreen: View {
 
     // MARK: - Camera
 
+    @ViewBuilder
     private var cameraArea: some View {
-        ZoomableView { camera }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black)
-            .overlay { if model.panTilt.isActive && model.canPanTilt { PanTiltFrame().transition(.opacity) } }
+        if hasNoCamera {
+            // Not inside the zoom view: its content takes no touches, and «Подключить камеру…» needs them.
+            NoCameraView(onConnect: { showCameraSetup = true })
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ZoomableView { camera }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black)
+                .overlay { if model.panTilt.isActive && model.canPanTilt { PanTiltFrame().transition(.opacity) } }
+        }
     }
 
     @ViewBuilder
@@ -334,9 +349,7 @@ struct SessionScreen: View {
 
     @ViewBuilder
     private var liveCamera: some View {
-        if hasNoCamera {
-            NoCameraView(onConnect: { showCameraSetup = true })
-        } else if !model.isLinkedToMac, model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
+        if !model.isLinkedToMac, model.settings.connectionMode == .embedded, !model.embedded.status.isRunning {
             CameraPlaceholder(text: embeddedStatusText)
         } else if let server = model.activeServer, !model.activeStreamName.isEmpty {
             // Both cameras play all the time: the switcher only shows one, so switching never reconnects.
@@ -362,6 +375,8 @@ struct SessionScreen: View {
                         .allowsHitTesting(model.isShowingSecondCamera)
                 }
             }
+        } else if model.isLinkedCameraNotShared {
+            CameraPlaceholder(text: String(localized: "Видео с камеры показывается только на \(model.linkedHostKind)"))
         } else {
             CameraPlaceholder(text: model.isLinkedToMac ? String(localized: "На \(model.linkedHostKind) не выбрана камера") : String(localized: "Камера не выбрана"))
         }
@@ -386,6 +401,7 @@ struct SessionScreen: View {
                                onPickSecondCamera: { showSecondCameraPicker = true })
                 }
                 RecordingPill()
+                    .disabled(model.isReconnecting)
             }
             Spacer()
             LinkPill()
@@ -402,9 +418,10 @@ struct SessionScreen: View {
                             },
                             onFinish: { confirmFinish = true },
                             onAbandon: { confirmAbandon = true })
+                .disabled(model.isReconnecting)
             } else {
-                IconButton(systemImage: "clock.arrow.circlepath") { showHistory = true }
-                IconButton(systemImage: "gearshape") { showSettings = true }
+                IconButton(systemImage: "clock.arrow.circlepath", label: String(localized: "История")) { showHistory = true }
+                IconButton(systemImage: "gearshape", label: String(localized: "Настройки")) { showSettings = true }
             }
         }
     }
@@ -430,6 +447,8 @@ struct SessionScreen: View {
     private func bottomContent(compact: Bool) -> some View {
         if let session = model.session {
             SessionHUD(session: session, compact: compact, onFinish: { confirmFinish = true })
+                // A Mac's training while its link is being restored: presses could not reach it.
+                .disabled(model.isReconnecting)
                 .frame(maxWidth: 560)
         } else if let record = model.lastRecord {
             SummaryCard(record: record, onClose: { model.lastRecord = nil }, onHistory: { showHistory = true })
@@ -617,6 +636,9 @@ private struct CameraSwitcher: View {
                 CameraSegmentLabel(title: title, selected: false)
             }
             .buttonStyle(.plain)
+            // The Mac's link is being restored: the switch could not reach it, and the Mac would go on recording the
+            // other camera.
+            .disabled(model.isReconnecting)
             .accessibilityLabel(String(localized: "Показать камеру «\(title)»"))
         }
     }
@@ -667,6 +689,7 @@ private struct SessionMenu: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .accessibilityLabel("Тренировка")
     }
 }
 

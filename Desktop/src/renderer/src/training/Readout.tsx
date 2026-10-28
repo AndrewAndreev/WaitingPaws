@@ -114,15 +114,18 @@ function OutsideBrief({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit })
 
 function EntryPlate({ entry }: { entry: EarlyEntry }) {
   const soon = entry.delay !== null && entry.delay > 0
+  const unread = soon ? null : EarlyEntry.unreadDelay(entry)
+  // The words on the right not again under the event.
+  const detail = EarlyEntry.detailBesideTime(entry)
   const standing = entry.id === EarlyEntry.untilStanding().id
   return (
     <div className="plate">
       {standing ? <StandIcon className="plate__lead" /> : <span className={`tone-dot tone-dot--${entry.tone}`} />}
       <span className="plate__what">
         <span className="plate__event ellipsis">{entry.event}</span>
-        {entry.detail && (
-          <span className="plate__detail ellipsis" title={entry.detail}>
-            {entry.detail}
+        {detail && (
+          <span className="plate__detail ellipsis" title={detail}>
+            {detail}
           </span>
         )}
       </span>
@@ -131,6 +134,9 @@ function EntryPlate({ entry }: { entry: EarlyEntry }) {
           <small>{t('через')}</small>
           {DurationText.clock(entry.delay ?? 0)}
         </span>
+      ) : unread ? (
+        // «через пару минут»: the trainer's words, not digits.
+        <span className="plate__then plate__then--words ellipsis">{unread}</span>
       ) : (
         <span className="plate__then plate__then--now">{t('сразу')}</span>
       )}

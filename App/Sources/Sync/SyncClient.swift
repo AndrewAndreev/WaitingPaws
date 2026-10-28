@@ -46,12 +46,22 @@ final class SyncClient {
     private(set) var pairedHosts: [PairedHost] = []
     private(set) var status: Status = .idle
     private(set) var state: SyncState?
-    /// How far this iPhone's clock is from the host's (from the states' `sentAt`); new for every connection.
+    /// How far this iPhone's clock is from the host's (from the states' `sentAt`); new for every link (kept while
+    /// `reconnecting` to the same host).
     @ObservationIgnored private(set) var clock = SyncClock()
     /// The host's go2rtc (LAN address + Basic auth) once connected.
     private(set) var server: Go2RTCServer?
+    /// The host whose link dropped mid-training (Wi-Fi blip, its app restarting) while this iPhone joins it again on
+    /// its own: its last `state` and `server` stay meanwhile, so the training stays on screen (`onState` is not called).
+    /// Given up after `reconnectGrace`, by «Отключить синхронизацию» or when the host turns this iPhone away.
+    private(set) var reconnecting: SyncDevice?
+    /// Counts the links made (also one restored after a drop; not a welcome sent again on the same link): the next
+    /// state is the first of a new link.
+    @ObservationIgnored private(set) var links = 0
+    @ObservationIgnored private var reconnectTimeout: Task<Void, Never>?
+    private static let reconnectGrace: Duration = .seconds(120)
 
-    /// Called with every state from the host, and with nil when the link goes away.
+    /// Called with every state from the host, and with nil when the link is gone (not while `reconnecting`).
     @ObservationIgnored var onState: ((SyncState?) -> Void)?
     /// This iPhone's name for the hosts (Settings, or the model).
     @ObservationIgnored var nameProvider: () -> String = { SyncIdentity.systemName }
@@ -63,6 +73,9 @@ final class SyncClient {
     @ObservationIgnored private var handshake: SyncCrypto.Handshake?
     /// No valid pairing secret on this connection: the host asked for «Разрешить», a new secret comes with welcome.
     @ObservationIgnored private var freshPairing = false
+    /// The user picked the host for this connection. Only then may a host that doesn't recognise this iPhone ask for
+    /// «Разрешить»: joining on our own never pairs anew (the host is found by the public id in its Bonjour record).
+    @ObservationIgnored private var startedByUser = false
     /// Where the secret offered on this connection came from (an older key is moved under the host's id once it works).
     @ObservationIgnored private var offeredSecretKey: String?
     /// Reconnect to this host whenever it shows up, also after a relaunch of either app (set after a successful
@@ -92,6 +105,9 @@ final class SyncClient {
         if case .connected = status { return true }
         return false
     }
+
+    /// Connected, or getting back to the host whose link dropped mid-training (its last state still shows).
+    var isLinked: Bool { isConnected || reconnecting != nil }
 
     var isBusy: Bool {
         switch status {
@@ -184,7 +200,7 @@ final class SyncClient {
         guard channel == nil, autoReconnectID != nil || legacyAutoReconnectName != nil, canAutoConnect(),
               let host = hosts.first(where: isAutoReconnectTarget) else { return }
         print("[sync] reconnecting to \(host.device.name)")
-        connect(to: host)
+        connect(to: host, byUser: false)
     }
 
     private func update(_ results: Set<NWBrowser.Result>) {
@@ -216,16 +232,18 @@ final class SyncClient {
 
     // MARK: - Connection
 
-    func connect(to host: DiscoveredHost) {
+    /// `byUser`: the user picked this host (see `startedByUser`); false when this iPhone rejoins one on its own.
+    func connect(to host: DiscoveredHost, byUser: Bool = true) {
         channel?.cancel()
         // Switching from another host: its state and camera go away first (the new one greets like a fresh link).
-        if isConnected { reset(to: .idle) }
-        let channel = SyncChannel(connection: NWConnection(to: host.endpoint, using: SyncChannel.parameters()))
+        if isConnected || (reconnecting != nil && reconnecting?.id != host.id) { reset(to: .idle) }
+        let channel = SyncChannel(connection: NWConnection(to: host.endpoint, using: SyncWebSocket.parameters()))
         self.channel = channel
         privateKey = SyncCrypto.newKey()
         handshake = nil
         freshPairing = false
         offeredSecretKey = nil
+        startedByUser = byUser
         status = .connecting(host.device)
         let kind = host.device.kindTitle
         channel.onStateChange = { [weak self, weak channel] state in
@@ -261,7 +279,7 @@ final class SyncClient {
 
     /// «Забыть»: drop the pairing secret, so joining this host again needs «Разрешить» there.
     func forget(_ hostID: String) {
-        if host?.id == hostID { disconnect() }
+        if host?.id == hostID || reconnecting?.id == hostID { disconnect() }
         KeychainStore.set("", for: Self.secretKey(hostID))
         if let name = pairedHosts.first(where: { $0.id == hostID })?.name { KeychainStore.set("", for: Self.legacySecretKey(name)) }
         pairedHosts.removeAll { $0.id == hostID }
@@ -294,8 +312,25 @@ final class SyncClient {
             channel.cipher = handshake.cipher(isMac: false, pairingSecret: stored?.secret)
             channel.send(.proof(stored.map { handshake.proof(pairingSecret: $0.secret) }))
         case .pending:
+            // Only an answer to our proof, before the welcome, means anything.
+            guard let handshake, !isConnected else {
+                print("[sync] \(host.device.name) sent pending out of turn, ignored")
+                return
+            }
+            guard startedByUser else {
+                // Joining on our own: a host that doesn't recognise this iPhone (forgotten there — or another device
+                // posing under its id) gets no new pairing. The stored secret stays; picking the host in the list
+                // pairs anew, with «Разрешить» there.
+                print("[sync] \(host.device.name) did not recognise this iPhone, not pairing again on our own")
+                autoReconnectID = nil
+                legacyAutoReconnectName = nil
+                self.channel?.cancel()
+                self.channel = nil
+                reset(to: .failed(String(localized: "«\(host.device.name)» больше не узнаёт этот iPhone. Чтобы подключиться заново, выберите его в списке.")))
+                return
+            }
             // The host did not recognise us (new iPhone, or forgotten there): keys without the old secret.
-            if let handshake, !freshPairing {
+            if !freshPairing {
                 freshPairing = true
                 channel.cipher = handshake.cipher(isMac: false, pairingSecret: nil)
             }
@@ -330,6 +365,10 @@ final class SyncClient {
             }
             autoReconnectID = id
             legacyAutoReconnectName = nil
+            if !isConnected { links += 1 }
+            // Back after a drop: the host's next state (right behind the welcome) takes over the training on screen.
+            reconnecting = nil
+            reconnectTimeout?.cancel()
             status = .connected(device)
             print("[sync] joined \(device.name) (\(device.modelTitle)), go2rtc at \(address):\(welcome.go2rtcPort)")
         case .state(let state):
@@ -344,14 +383,36 @@ final class SyncClient {
     private func lost(_ message: String) {
         channel?.cancel()
         channel = nil
-        reset(to: autoReconnectID == nil ? .failed(message) : .idle)
-        // The host may come back (app relaunched, Wi-Fi blip): `update` reconnects when it is seen again.
-        if let id = autoReconnectID, let host = hosts.first(where: { $0.id == id }) {
+        if case .connected(let device) = status, device.id == autoReconnectID, state?.session != nil {
+            startReconnecting(device)
+        }
+        if reconnecting != nil {
+            status = .idle
+        } else {
+            reset(to: autoReconnectID == nil ? .failed(message) : .idle)
+        }
+        // The host may come back (app relaunched, Wi-Fi blip): `update` reconnects when it is seen again. The retry
+        // asks the same as `update` does: a training or recording started here meanwhile is not taken over.
+        if autoReconnectID != nil {
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(2))
-                guard let self, self.channel == nil, self.autoReconnectID == id else { return }
-                self.connect(to: host)
+                self?.autoConnectIfPossible()
             }
+        }
+    }
+
+    /// The link dropped mid-training: the training stays on screen (the app disables its buttons) while this iPhone
+    /// joins the host again; after `reconnectGrace` it goes, and the host is still joined whenever it shows up.
+    private func startReconnecting(_ device: SyncDevice) {
+        print("[sync] lost \(device.name) mid-training, reconnecting")
+        reconnecting = device
+        reconnectTimeout?.cancel()
+        reconnectTimeout = Task { [weak self] in
+            try? await Task.sleep(for: Self.reconnectGrace)
+            guard !Task.isCancelled, let self, self.reconnecting != nil else { return }
+            print("[sync] \(device.name) did not come back, its training goes from the screen")
+            // An attempt still going on carries on.
+            self.reset(to: self.status)
         }
     }
 
@@ -457,6 +518,8 @@ final class SyncClient {
 
     private func reset(to status: Status) {
         self.status = status
+        reconnecting = nil
+        reconnectTimeout?.cancel()
         state = nil
         clock = SyncClock()
         server = nil

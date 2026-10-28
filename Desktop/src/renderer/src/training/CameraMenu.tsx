@@ -1,6 +1,7 @@
 import { t } from '@shared/i18n'
 import type { XiaomiQuality } from '@shared/api'
 import { secondCameraDisplayName } from '@shared/settings'
+import { queryValue } from '@core/go2rtcClient'
 import { call, ui, useStore, type CameraSlot } from '../store'
 import { cameraName, cameraOnline, hasSecondCamera, visibleCamera } from '../model'
 import { openCameraPicker } from '../onboarding/SetupKit'
@@ -31,15 +32,6 @@ export function qualityLabel(quality: XiaomiQuality, source: string | null, seen
   const size = did ? seen[did]?.[quality] : undefined
   const height = size?.split('x')[1]
   return height ? `${title} · ${height}p` : title
-}
-
-function queryValue(source: string, name: string): string | null {
-  const query = source.split('?')[1] ?? ''
-  for (const part of query.split('&')) {
-    const [key, value] = part.split('=')
-    if (key === name) return decodeURIComponent(value ?? '')
-  }
-  return null
 }
 
 /// Camera name with status; choose camera, the second camera, Xiaomi sign-in, reconnect, quality and the camera's own

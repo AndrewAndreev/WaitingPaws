@@ -25,18 +25,49 @@ public struct EarlyEntry: Codable, Equatable, Hashable, Identifiable {
         self.tone = tone
     }
 
-    /// «через 2 мин» / «сразу».
+    /// «через 2 мин» / «сразу» / «через пару минут» (`unreadDelay`).
     public var delayDescription: String {
-        guard let delay, delay > 0 else { return tr("сразу", "right away") }
+        guard let delay, delay > 0 else { return unreadDelay ?? tr("сразу", "right away") }
         return tr("через \(DurationText.short(delay))", "in \(DurationText.short(delay))")
     }
 
     /// «встала и пошла → 2:00», «легла → 0:30», «встала → сразу»: the short form for summaries.
     public var summary: String {
         let name = event.prefix(1).lowercased() + event.dropFirst()
-        guard let delay, delay > 0 else { return "\(name) → " + tr("сразу", "right away") }
+        guard let delay, delay > 0 else { return "\(name) → " + (unreadDelay ?? tr("сразу", "right away")) }
         return "\(name) → \(DurationText.clock(delay))"
     }
+
+    /// «через пару минут», "after she settles": the trainer's words for a time the parser couldn't read, which lead
+    /// the detail. Such a condition is not «сразу». `nil` when the time is known or there is none.
+    public var unreadDelay: String? {
+        unreadDelayParts?.words
+    }
+
+    /// The detail to show beside the time: without `unreadDelay`, which the time shows already («через пару минут»
+    /// there, «от начала движения, когда отойдёт» here). `nil` when nothing is left. The stored detail keeps the
+    /// words for older builds.
+    public var detailBesideTime: String? {
+        guard let parts = unreadDelayParts else { return detail }
+        let rest = parts.rest.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: ",;:.-–—")))
+        return rest.isEmpty ? nil : rest
+    }
+
+    /// The detail split after `unreadDelay`.
+    private var unreadDelayParts: (words: String, rest: Substring)? {
+        guard delay == nil, let detail else { return nil }
+        let range = NSRange(detail.startIndex..., in: detail)
+        guard let match = Self.unreadDelayRegex.firstMatch(in: detail, range: range),
+              let words = Range(match.range, in: detail) else { return nil }
+        return (String(detail[words]), detail[words.upperBound...])
+    }
+
+    /// `PlanParser`'s «через», «спустя», "after", "in" (only as in "in a couple of minutes", "in several minutes",
+    /// "in 15 breaths", not "in the kitchen"), up to the end of the part of the sentence or to where it says from
+    /// what: «через пару минут | от начала движения», "in a few minutes | after she lies down".
+    private static let unreadDelayRegex = try! NSRegularExpression(
+        pattern: #"^(?:через|спустя|after|in(?=\s+(?:an?|several|few|couple|some|[0-9]+)\b))\s+(?:(?!\s(?:от|после|когда|from|after|when)\b)[^,;:])*[^,;:\s.]"#,
+        options: [.caseInsensitive])
 
     /// The condition is about the dog standing up («встала», «встала и пошла», "stands up").
     public var isStandingUp: Bool {
@@ -304,13 +335,13 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     private static let firstSecondsRegex = try! NSRegularExpression(
         pattern: #"(?:перв\p{L}*|first)\s+(\d+(?:[.,]\d+)?\s*\p{L}+)"#, options: [.caseInsensitive])
 
-    /// The note that says when not to come in.
+    /// The note that says when not to come in: the trainer's 🚩 (the parser keeps it on the note), else the first
+    /// note whose words say so.
     public var doNotEnterRule: Rule? {
-        for note in notes where PlanParser.isDoNotEnterRule(note) {
-            let (title, detail) = PlanParser.splitCondition(note)
-            return Rule(title: title ?? tr("Не входить", "Do not come in"), detail: detail, text: note)
-        }
-        return nil
+        guard let note = notes.first(where: { PlanParser.hasMark($0, "🚩") }) ?? notes.first(where: PlanParser.isDoNotEnterRule)
+        else { return nil }
+        let (title, detail) = PlanParser.splitCondition(note)
+        return Rule(title: title ?? tr("Не входить", "Do not come in"), detail: detail, text: note)
     }
 
     /// What an edit changed, for the session log: "перерывы 2 мин → 3 мин", "выход 4: 45 с → 1 мин",

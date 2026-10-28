@@ -24,6 +24,9 @@ final class MacUIState {
     var cameraOnly = false
     /// Zoom of the camera picture in the training window (gestures and the View menu).
     let cameraZoom = ZoomState()
+    /// Bumped when the trainer's window for «Фальстарт» outside closes (`watchFalseStartWindow`): nothing observable
+    /// changes at that moment, and the menu item has to grey out.
+    private var falseStartWindowsClosed = 0
 
     init() {
         #if DEBUG
@@ -95,8 +98,30 @@ final class MacUIState {
     /// ⌫: false start — outside while the trainer's window lasts, or in a break when the dog went to the door before
     /// «Вышли».
     func falseStart(_ model: AppModel) {
-        guard let session = model.session, ReadoutContent(session: session).showsFalseStart(at: Date()) else { return }
+        guard canFalseStart(model), let session = model.session else { return }
         session.resetExit()
+    }
+
+    /// «Фальстарт» counts now, as the readout shows its button (`ReadoutContent.showsFalseStart`).
+    func canFalseStart(_ model: AppModel) -> Bool {
+        _ = falseStartWindowsClosed
+        guard let session = model.session else { return false }
+        return ReadoutContent(session: session).showsFalseStart(at: Date())
+    }
+
+    /// Waits out the trainer's window of the exit in progress, then wakes whatever reads `canFalseStart` (the menu).
+    func watchFalseStartWindow(_ model: AppModel) async {
+        guard let session = model.session, let left = ReadoutContent(session: session).falseStartLeft(at: Date()),
+              left > 0 else { return }
+        // A hair past the end, so `canFalseStart` already reads false then.
+        do { try await Task.sleep(for: .seconds(left + 0.1)) } catch { return }
+        falseStartWindowsClosed += 1
+    }
+
+    /// The pasted schedule's timeline editor is on screen: ⌘= / ⌘− / ⌘0 zoom it there (`MacPlanTimelineEditor`), so
+    /// the camera's zoom items give those keys up meanwhile (both took them, and only one of them reacted).
+    func showsPlanEditor(_ model: AppModel) -> Bool {
+        model.session == nil && model.pendingPlan != nil && !model.isRecordingClip && !cameraOnly
     }
 
     func primaryStepTitle(_ model: AppModel) -> String {
@@ -119,8 +144,9 @@ struct MacCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {}
         CommandGroup(before: .toolbar) {
+            let zoomKeys = !ui.showsPlanEditor(model)
             Button("Увеличить") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.zoom(by: ZoomState.step) } }
-                .keyboardShortcut("=", modifiers: .command)
+                .keyboardShortcut(zoomKeys ? KeyboardShortcut("=", modifiers: .command) : nil)
                 .disabled(ui.cameraZoom.scale >= ZoomState.maxScale)
             Button("Уменьшить") {
                 withAnimation(.spring(response: 0.3)) {
@@ -128,10 +154,10 @@ struct MacCommands: Commands {
                     ui.cameraZoom.settle()
                 }
             }
-            .keyboardShortcut("-", modifiers: .command)
+            .keyboardShortcut(zoomKeys ? KeyboardShortcut("-", modifiers: .command) : nil)
             .disabled(!ui.cameraZoom.isZoomed)
             Button("Без увеличения") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.reset() } }
-                .keyboardShortcut("0", modifiers: .command)
+                .keyboardShortcut(zoomKeys ? KeyboardShortcut("0", modifiers: .command) : nil)
                 .disabled(!ui.cameraZoom.isZoomed)
             Divider()
             Button(model.settings.cameraDisplayName.isEmpty ? String(localized: "Первая камера") : model.settings.cameraDisplayName) {
@@ -168,7 +194,7 @@ struct MacCommands: Commands {
             Button(String(localized: "\(ui.primaryStepTitle(model)) (Пробел)")) { ui.primaryStep(model) }
                 .disabled(model.session == nil)
             Button("Фальстарт (⌫)") { ui.falseStart(model) }
-                .disabled(!(model.session?.phase.canFalseStart ?? false))
+                .disabled(!ui.canFalseStart(model))
             Divider()
             Button(model.isRecordingNow ? "Остановить запись" : "Начать запись") { model.toggleRecording() }
                 .keyboardShortcut("r", modifiers: .command)

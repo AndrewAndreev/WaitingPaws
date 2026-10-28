@@ -20,9 +20,16 @@ public final class SessionStore {
     public var sessionsDirectory: URL { rootDirectory.appendingPathComponent("Sessions", isDirectory: true) }
     public var recordingsDirectory: URL { rootDirectory.appendingPathComponent("Recordings", isDirectory: true) }
 
-    /// A new file name; a second recording within the same minute gets a "-2" suffix instead of overwriting.
+    /// Longest part of a recording's file name taken from the schedule title (Windows: `SessionStore.maxTitleLength`).
+    static let maxTitleLength = 60
+
+    /// A new file name; a second recording within the same minute gets a "-2" suffix instead of overwriting. A long
+    /// schedule title is cut, as on Windows (which refuses paths over 260 characters): the same title gives the same
+    /// name on both.
     public func newRecordingURL(for plan: TrainingPlan, at date: Date = Date()) -> URL {
-        let base = "\(Self.fileStamp.string(from: date))-\(Go2RTCClient.streamName(for: plan.title))"
+        var slug = String(Go2RTCClient.streamName(for: plan.title).prefix(Self.maxTitleLength))
+        while slug.hasSuffix("-") { slug.removeLast() }
+        let base = "\(Self.fileStamp.string(from: date))-\(slug)"
         var url = recordingsDirectory.appendingPathComponent("\(base).mp4")
         var counter = 2
         while FileManager.default.fileExists(atPath: url.path) {
@@ -40,9 +47,18 @@ public final class SessionStore {
     }
 
     public func recordingURL(for record: TrainingRecord) -> URL? {
-        guard let name = record.recordingFileName else { return nil }
+        guard let name = record.recordingFileName, Self.isRecordingFileName(name) else { return nil }
         let url = recordingsDirectory.appendingPathComponent(name)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    /// A video name a record may point at: a bare `*.mp4` file name in `Recordings` (any case of the extension). A
+    /// history file copied from elsewhere with a path there (`../../…`, `C:…`) must not send deleting or sharing to
+    /// another file. As `SessionStore.isRecordingFileName` on Windows.
+    static func isRecordingFileName(_ name: String) -> Bool {
+        guard let dot = name.lastIndex(of: "."), dot != name.startIndex,
+              name[name.index(after: dot)...].lowercased() == "mp4" else { return false }
+        return !name.unicodeScalars.contains { $0.value < 0x20 || "/\\:".unicodeScalars.contains($0) }
     }
 
     public func logURL(for record: TrainingRecord) -> URL {

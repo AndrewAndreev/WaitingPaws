@@ -124,17 +124,28 @@ public enum Go2RTCError: LocalizedError, Equatable {
 public final class Go2RTCClient: Sendable {
     public let server: Go2RTCServer
     private let session: URLSession
+    /// For the requests go2rtc answers only after talking to Mi Cloud (signing in, listing cameras): it sends nothing
+    /// until then, and an account with shared homes takes page after page there, well past 20 s.
+    private let cloudSession: URLSession
+
+    /// How long a Mi Cloud request may stay silent (Windows: `Go2RTCClient.cloudTimeoutMs`).
+    static let cloudTimeout: TimeInterval = 90
 
     public init(server: Go2RTCServer, session: URLSession? = nil) {
         self.server = server
-        if let session {
-            self.session = session
-        } else {
-            let configuration = URLSessionConfiguration.default
-            configuration.timeoutIntervalForRequest = 20
-            configuration.waitsForConnectivity = false
-            self.session = URLSession(configuration: configuration)
-        }
+        self.session = session ?? Self.sharedSession
+        cloudSession = session ?? Self.sharedCloudSession
+    }
+
+    // Shared by all clients: the app makes a client for nearly every request.
+    private static let sharedSession = makeSession(timeout: 20)
+    private static let sharedCloudSession = makeSession(timeout: cloudTimeout)
+
+    private static func makeSession(timeout: TimeInterval) -> URLSession {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = timeout
+        configuration.waitsForConnectivity = false
+        return URLSession(configuration: configuration)
     }
 
     // MARK: - URLs
@@ -142,7 +153,7 @@ public final class Go2RTCClient: Sendable {
     public func url(path: String, query: [String: String] = [:]) -> URL {
         var components = URLComponents(url: server.baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty {
-            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+            components.percentEncodedQueryItems = Self.encodedQuery(query)
         }
         return components.url!
     }
@@ -151,8 +162,14 @@ public final class Go2RTCClient: Sendable {
     public func playerSocketURL(stream: String) -> URL {
         var components = URLComponents(url: server.urlWithCredentials.appendingPathComponent("api/ws"), resolvingAgainstBaseURL: false)!
         components.scheme = components.scheme == "https" ? "wss" : "ws"
-        components.queryItems = [URLQueryItem(name: "src", value: stream)]
+        components.percentEncodedQueryItems = Self.encodedQuery(["src": stream])
         return components.url!
+    }
+
+    /// Query items with everything but the unreserved characters percent-encoded (`queryItems` leaves `+`, `;`, `'`
+    /// and the like as they are, and go2rtc reads `+` as a space and drops a pair with `;` in it).
+    static func encodedQuery(_ query: [String: String]) -> [URLQueryItem] {
+        query.map { URLQueryItem(name: percentEncode($0.key), value: percentEncode($0.value)) }
     }
 
     public func playerScriptURL() -> URL {
@@ -318,10 +335,10 @@ public final class Go2RTCClient: Sendable {
         let query = ["id": accountID, "region": region.rawValue]
         let data: Data
         do {
-            data = try await request("GET", path: "api/xiaomi/cameras", query: query)
+            data = try await request("GET", path: "api/xiaomi/cameras", query: query, session: cloudSession)
         } catch Go2RTCError.http(let status, _) where status == 404 {
             do {
-                data = try await request("GET", path: "api/xiaomi", query: query)
+                data = try await request("GET", path: "api/xiaomi", query: query, session: cloudSession)
             } catch Go2RTCError.http(let status, _) where status == 404 {
                 throw Go2RTCError.noSources
             }
@@ -434,7 +451,7 @@ public final class Go2RTCClient: Sendable {
         request.httpBody = Self.formEncode(form).data(using: .utf8)
         applyAuth(&request)
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await cloudSession.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         switch status {
         case 200..<300:
@@ -460,11 +477,12 @@ public final class Go2RTCClient: Sendable {
 
     // MARK: - Plumbing
 
-    private func request(_ method: String, path: String, query: [String: String] = [:]) async throws -> Data {
+    private func request(_ method: String, path: String, query: [String: String] = [:],
+                         session: URLSession? = nil) async throws -> Data {
         var request = URLRequest(url: url(path: path, query: query))
         request.httpMethod = method
         applyAuth(&request)
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await (session ?? self.session).data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
             throw Go2RTCError.http(status: status, message: String(decoding: data, as: UTF8.self))
@@ -479,14 +497,15 @@ public final class Go2RTCClient: Sendable {
     }
 
     static func formEncode(_ form: [String: String]) -> String {
-        var allowed = CharacterSet.alphanumerics
-        allowed.insert(charactersIn: "-._~")
-        return form.map { key, value in
-            let k = key.addingPercentEncoding(withAllowedCharacters: allowed) ?? key
-            let v = value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
-            return "\(k)=\(v)"
-        }.joined(separator: "&")
+        form.map { "\(percentEncode($0.key))=\(percentEncode($0.value))" }.joined(separator: "&")
     }
+
+    /// RFC 3986 unreserved characters (ASCII letters, digits, `-._~`) stay, everything else is UTF-8 percent-encoded.
+    static func percentEncode(_ text: String) -> String {
+        text.addingPercentEncoding(withAllowedCharacters: unreserved) ?? text
+    }
+
+    private static let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 
     /// Stream name for a camera: "Гостиная" → "gostinaya" style ASCII slug.
     public static func streamName(for cameraName: String) -> String {

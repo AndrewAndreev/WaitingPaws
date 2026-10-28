@@ -112,14 +112,15 @@ struct PressableButtonStyle: ButtonStyle {
     }
 }
 
-/// Round icon button for the HUD corners.
+/// Round icon button for the HUD corners. `label` is what VoiceOver says: the icon alone says nothing useful.
 struct IconButton: View {
     var systemImage: String
+    var label: String? = nil
     var tint: Color = .white
     var action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        let button = Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(tint)
@@ -127,5 +128,10 @@ struct IconButton: View {
                 .background(Theme.control, in: Circle())
         }
         .buttonStyle(PressableButtonStyle())
+        if let label {
+            button.accessibilityLabel(label)
+        } else {
+            button
+        }
     }
 }

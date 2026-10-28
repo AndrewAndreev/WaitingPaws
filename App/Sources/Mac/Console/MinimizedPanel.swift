@@ -61,7 +61,9 @@ struct MinimizedPanelHook: NSViewRepresentable {
         private func showPanel() {
             guard panel == nil, model.session != nil || model.isRecordingNow,
                   let screen = window?.screen ?? NSScreen.main else { return }
-            let strip = MinimizedStrip(onRestore: { [weak self] in self?.restore() })
+            let strip = MinimizedStrip(onRestore: { [weak self] in self?.restore() },
+                                       // Next turn: the strip's own update is still running.
+                                       onIdle: { [weak self] in DispatchQueue.main.async { self?.hidePanel() } })
                 .environment(model)
                 .environment(ui)
                 .environment(\.colorScheme, .dark)
@@ -116,6 +118,9 @@ private struct MinimizedStrip: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui
     var onRestore: () -> Void
+    /// Neither a training nor a recording any more (finished from the iPhone, the last break ran out): nothing to
+    /// show or stop, the capsule goes.
+    var onIdle: () -> Void
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
@@ -158,7 +163,7 @@ private struct MinimizedStrip: View {
                             }
                             .buttonStyle(HUDButtonStyle(tint: primary.tint ?? MacPalette.pink, height: 36))
                         }
-                        if session.phase.canFalseStart {
+                        if ReadoutContent(session: session).showsFalseStart(at: context.date) {
                             Button { ui.falseStart(model) } label: { Label("Фальстарт", systemImage: "arrow.uturn.backward") }
                                 .buttonStyle(HUDButtonStyle(height: 36))
                         }
@@ -178,6 +183,7 @@ private struct MinimizedStrip: View {
             }
             .padding(10)
         }
+        .onChange(of: model.session == nil && !model.isRecordingNow) { _, idle in if idle { onIdle() } }
     }
 }
 #endif

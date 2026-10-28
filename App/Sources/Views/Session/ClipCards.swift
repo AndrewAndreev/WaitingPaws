@@ -83,7 +83,7 @@ struct ClipSavedCard: View {
                     Text("Запись сохранена")
                         .font(Theme.display(22, weight: .bold))
                     Spacer()
-                    IconButton(systemImage: "xmark", action: onClose)
+                    IconButton(systemImage: "xmark", label: String(localized: "Закрыть"), action: onClose)
                 }
                 Text([duration.map { DurationText.clock($0) }, photos.saved ? String(localized: "в Фото") : nil].compactMap { $0 }.joined(separator: " · "))
                     .font(.system(.subheadline, design: .rounded).monospacedDigit())

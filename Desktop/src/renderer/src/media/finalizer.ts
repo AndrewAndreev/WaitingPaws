@@ -6,9 +6,9 @@
 //   * finalize — go2rtc's fragmented MP4 becomes a regular MP4: the video is copied packet by packet (no
 //     re-encoding), the sound is converted to AAC, and a silent AAC track is added when the camera gave no sound
 //     (Telegram sends a video without sound as a GIF, most players and galleries only accept AAC in MP4);
-//   * join — the parts of a recording the camera broke off are put back into one file, each at its own time since
-//     the recording started: the time the camera was away stays an empty stretch (the last frame and silence), so
-//     the training log ("jump to the exit") still lines up with the picture.
+//   * join — the parts of a recording the camera broke off are put back into one file, each at the time its first
+//     frame arrived: the time the camera was away stays an empty stretch (the last frame and silence), so the
+//     training log ("jump to the exit") still lines up with the picture.
 // Pauses inside the sound (packets the camera dropped, a reconnect — go2rtc keeps them as a longer packet before
 // the pause) come back as silence: decoders run the sound on, which would put it ahead of the picture.
 import {
@@ -40,7 +40,7 @@ export interface MediaIO {
 
 export interface RecordingPart {
   path: string
-  /// Seconds from the start of the whole recording at which this part begins.
+  /// Seconds from the start of the whole recording (its first request) to this part's first frame.
   offset: number
 }
 
@@ -58,24 +58,33 @@ function source(io: MediaIO, path: string): CustomSource {
   })
 }
 
-/// Writes `parts` into `outputPath` as one regular MP4 with AAC sound. Throws when nothing could be read.
-export async function writeRecording(io: MediaIO, parts: RecordingPart[], outputPath: string): Promise<{ duration: number; parts: number }> {
+/// Writes `parts` into `outputPath` as one regular MP4 with AAC sound and returns the paths of the parts it used. A
+/// part without video frames (only go2rtc's header) is left out, and so is one that can't be read — unless it is
+/// `replacing`, the file the result is to replace: its video must not be lost to the others, so then nothing is
+/// written. Throws when nothing could be read. As the Mac's `RecordingFinalizer.join`.
+export async function writeRecording(
+  io: MediaIO,
+  parts: RecordingPart[],
+  outputPath: string,
+  replacing: string | null = null,
+): Promise<{ duration: number; used: string[] }> {
   const inputs: { input: Input; video: InputVideoTrack; audio: InputAudioTrack | null; offset: number; path: string }[] = []
   try {
     for (const part of parts) {
       const input = new Input({ source: source(io, part.path), formats: ALL_FORMATS })
       try {
         const video = await input.getPrimaryVideoTrack()
-        if (!video) {
-          io.log(`[rec] ${part.path}: no video, skipped`)
+        if (!video || !(await new EncodedPacketSink(video).getFirstPacket())) {
+          io.log(`[rec] ${fileName(part.path)}: no video, left out of the join`)
           input.dispose()
           continue
         }
         const audio = (await input.getAudioTracks())[0] ?? null
         inputs.push({ input, video, audio, offset: part.offset, path: part.path })
       } catch (error) {
-        io.log(`[rec] ${part.path}: unreadable (${(error as Error).message}), skipped`)
         input.dispose()
+        if (part.path === replacing) throw error
+        io.log(`[rec] ${fileName(part.path)}: left out of the join, kept (${(error as Error).message})`)
       }
     }
     if (!inputs.length) throw new Error('в файле нет видео')
@@ -97,6 +106,10 @@ export async function writeRecording(io: MediaIO, parts: RecordingPart[], output
       await output.start()
 
       const audio = new AudioPlacer(audioSource, channels)
+      // The video starts with the first part's first frame, as a recording in one part does; without that part (no
+      // video in it) the wait from the start stays empty. The first part is the file the result replaces: the backend
+      // passes only parts that got bytes, so `parts[0]` may be a later one. As the Mac's `RecordingFinalizer.join`.
+      const start = inputs[0].path === (replacing ?? parts[0].path) ? inputs[0].offset : 0
       let end = 0
       let previousVideoEnd = 0
       for (const [index, item] of inputs.entries()) {
@@ -107,7 +120,7 @@ export async function writeRecording(io: MediaIO, parts: RecordingPart[], output
         const origin = firstPacket.timestamp
         const config = await item.video.getDecoderConfig()
         // A part never starts before the previous one ended (the clocks of two requests can overlap a little).
-        const shift = Math.max(item.offset, previousVideoEnd) - origin
+        const shift = Math.max(item.offset - start, previousVideoEnd) - origin
         let firstOfPart = true
         let lastEnd = previousVideoEnd
         for await (const packet of sink.packets()) {
@@ -136,7 +149,7 @@ export async function writeRecording(io: MediaIO, parts: RecordingPart[], output
       audioSource.close()
       videoSource.close()
       await output.finalize()
-      return { duration: end, parts: inputs.length }
+      return { duration: end, used: inputs.map((item) => item.path) }
     } catch (error) {
       await output.cancel().catch(() => undefined)
       throw error
@@ -146,6 +159,10 @@ export async function writeRecording(io: MediaIO, parts: RecordingPart[], output
   } finally {
     for (const item of inputs) item.input.dispose()
   }
+}
+
+function fileName(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path
 }
 
 /// A bitrate the platform's AAC encoder takes: Windows (Media Foundation) only accepts 96, 128, 160 and 192 kbit/s,

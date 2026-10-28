@@ -99,14 +99,15 @@ function VideoPlayer({ fileName, exists, preparing }: { fileName: string; exists
   const loaded = usePlayer((state) => state.loaded === fileName)
   const seekRequest = useStore((store) => store.historySeek)
 
-  // Once the file is known to be there: finalize it if it never was (cheap when it was).
+  // Once the file is known to be there and is not being joined or finalized: finalize it if it never was (cheap
+  // when it was).
   useEffect(() => {
     if (finalizeChecked.has(fileName)) {
       setChecked(true)
       return
     }
     setChecked(false)
-    if (exists !== true) return
+    if (exists !== true || preparing) return
     let cancelled = false
     void call('history.finalize', fileName).finally(() => {
       finalizeChecked.add(fileName)
@@ -115,7 +116,7 @@ function VideoPlayer({ fileName, exists, preparing }: { fileName: string; exists
     return () => {
       cancelled = true
     }
-  }, [fileName, exists])
+  }, [fileName, exists, preparing])
 
   useEffect(() => setFailed(false), [fileName, version])
 

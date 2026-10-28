@@ -243,6 +243,7 @@ describe('SyncHost', () => {
     const changesBefore = h.changes
     const [request] = h.host.view().pairingRequests
     expect(request).toMatchObject({ deviceName: 'Test iPhone', platform: 'iphone', model: 'iPhone 16' })
+    expect(request.wasPaired).toBeUndefined()
     // Nothing sealed reaches a phone that is not allowed yet.
     await sleep(50)
     expect(phone.count('welcome')).toBe(0)
@@ -361,6 +362,8 @@ describe('SyncHost', () => {
     await impostor.join()
     await impostor.next('pending')
     await until(() => h.host.view().pairingRequests.length === 1)
+    // The prompt warns that a paired device could not prove the pairing.
+    expect(h.host.view().pairingRequests[0]).toMatchObject({ deviceName: 'Test iPhone', wasPaired: true })
     h.host.respond(h.host.view().pairingRequests[0].id, false)
     const rejected = await impostor.next('rejected')
     expect(rejected.reason).toBe('На компьютере подключение отклонили')
@@ -475,6 +478,28 @@ describe('SyncHost', () => {
       socket.on('connect', () => reject(new Error('still listening')))
       socket.on('error', () => resolve())
     })
+  })
+
+  it('refuses a WebSocket handshake from a browser page (it carries an Origin)', async () => {
+    const h = harness()
+    const port = await h.start()
+    const socket = await new Promise<Socket>((resolve) => {
+      const value = connectTCP(port, '127.0.0.1', () => resolve(value))
+    })
+    try {
+      let received = ''
+      socket.on('data', (chunk: Buffer) => (received += chunk.toString()))
+      const key = Buffer.from('waitingpaws-key!').toString('base64')
+      socket.write(
+        `GET / HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: https://example.com\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: ${key}\r\nSec-WebSocket-Version: 13\r\n\r\n`,
+      )
+      await until(() => received.includes('\r\n\r\n'))
+      expect(received).toMatch(/^HTTP\/1\.1 403/)
+      await sleep(50)
+      expect(h.host.view().pairingRequests).toEqual([])
+    } finally {
+      socket.destroy()
+    }
   })
 
   it('speaks WebSocket framing: fragments, pings and masks (as NWProtocolWebSocket may send them)', async () => {

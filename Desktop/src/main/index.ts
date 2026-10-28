@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, powerSaveBlocker, screen, session, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme, powerSaveBlocker, screen, session, shell, type WebContents } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { release } from 'node:os'
@@ -40,11 +40,33 @@ function load(window: BrowserWindow, page: 'index' | 'media', hash?: string): Pr
   return window.loadFile(join(__dirname, `../renderer/${page}.html`), hash ? { hash } : undefined)
 }
 
+/// The development server's pages (`npm run dev`); none in a packaged build.
+function isDevServerURL(url: string): boolean {
+  const devServer = process.env.ELECTRON_RENDERER_URL
+  return !app.isPackaged && !!devServer && url.startsWith(devServer)
+}
+
+/// Every page the app opens: no navigating away from the app's own pages, no new windows (the main window opens
+/// links in the browser instead, see `createWindow`).
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('will-navigate', (event, url) => {
+    if (!isDevServerURL(url)) event.preventDefault()
+  })
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+})
+
+/// Only the app's own windows may call the backend (the main window and the compact strip, not the media window).
+function isAppWindow(sender: WebContents): boolean {
+  return [mainWindow, miniWindow].some((window) => window && !window.isDestroyed() && window.webContents === sender)
+}
+
 async function start(): Promise<void> {
   await app.whenReady()
   startLog(paths.logsDirectory)
   log(`[app] Waiting Paws ${packageInfo.version} on ${process.platform} ${release()} (Electron ${process.versions.electron})`)
   Menu.setApplicationMenu(null)
+  // No page gets a permission (camera, microphone, notifications…): the app needs none.
+  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
 
   const settings = new SettingsStore(paths.settingsFile)
   applyTheme(settings.value.theme)
@@ -72,12 +94,18 @@ async function start(): Promise<void> {
 
   installNetworkRules(backend)
 
-  ipcMain.handle('wp:call', (_event, method: string, args: unknown[]) => {
+  ipcMain.handle('wp:call', (event, method: string, args: unknown[]) => {
+    if (!isAppWindow(event.sender)) throw new Error('not allowed')
     if (method === 'window.restore') return restoreMainWindow()
     return backend!.call(method, args)
   })
-  ipcMain.on('wp:subscribe', (event) => event.sender.send('wp:state', backend!.state()))
-  ipcMain.on('wp:log', (_event, line: string) => log(line))
+  ipcMain.on('wp:subscribe', (event) => {
+    if (isAppWindow(event.sender)) event.sender.send('wp:state', backend!.state())
+  })
+  // Log lines from the app's windows and the media window only.
+  ipcMain.on('wp:log', (event, line: string) => {
+    if (isAppWindow(event.sender) || finalizer.isMediaSender(event.sender)) log(String(line))
+  })
 
   createWindow()
   await backend.start()
@@ -179,6 +207,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
+      // Developer tools in development builds only.
+      devTools: !app.isPackaged,
       // The camera player must keep reading its WebSocket when the window is covered: a throttled page falls
       // behind and go2rtc drops frames for it (a freeze until the next keyframe).
       backgroundThrottling: false,
@@ -189,6 +219,9 @@ function createWindow(): void {
   if (state.maximized) window.maximize()
   window.once('ready-to-show', () => window.show())
   window.on('close', () => saveWindowState(window))
+  // Windows shutting down, restarting or signing out: no `before-quit`, and the process may be ended right after
+  // this, so the training is saved synchronously here.
+  window.on('session-end', () => backend?.saveBeforeSessionEnd())
   window.on('closed', () => {
     mainWindow = null
     hideMiniPanel()
@@ -207,17 +240,12 @@ function createWindow(): void {
     if (/^https?:/.test(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
-  window.webContents.on('will-navigate', (event, url) => {
-    const devServer = process.env.ELECTRON_RENDERER_URL
-    if (devServer && url.startsWith(devServer)) return
-    event.preventDefault()
-  })
   window.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
     if (input.key === 'F11') {
       window.setFullScreen(!window.isFullScreen())
       event.preventDefault()
-    } else if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+    } else if (!app.isPackaged && (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i'))) {
       window.webContents.toggleDevTools()
       event.preventDefault()
     }
@@ -287,7 +315,7 @@ function showMiniPanel(): void {
     show: false,
     title: 'Waiting Paws',
     backgroundColor: '#00000000',
-    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true, backgroundThrottling: false },
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true, backgroundThrottling: false, devTools: !app.isPackaged },
   })
   window.setAlwaysOnTop(true, 'floating')
   miniWindow = window

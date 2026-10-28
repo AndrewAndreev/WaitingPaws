@@ -18,7 +18,9 @@ export function App() {
   const app = useStore((store) => store.app)
   const route = useStore((store) => store.route)
 
-  useEffect(() => window.wp.onState((state) => ui.set({ app: state })), [])
+  // A training finished elsewhere (on the iPhone) takes its «Завершить тренировку?» and schedule dialogs with it —
+  // left set, they would pop up again at the next training.
+  useEffect(() => window.wp.onState((state) => ui.set(state.session ? { app: state } : { app: state, confirmFinish: false, editingSessionPlan: false })), [])
 
   useAppearance(app)
 

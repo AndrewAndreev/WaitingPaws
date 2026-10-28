@@ -601,6 +601,12 @@
   font-size: 15px;
   font-weight: 600;
 }
+.plate__then--words {
+  max-width: 45%;
+  font-family: var(--font-text);
+  font-size: 13px;
+  font-weight: 600;
+}
 .plate--stop {
   background: color-mix(in srgb, var(--danger) 13%, transparent);
 }

@@ -90,7 +90,8 @@ struct PlanEditorView: View {
                     DisclosureGroup(isExpanded: $showNotes) {
                         ForEach(plan.notes, id: \.self) { note in
                             Label {
-                                Text(note).font(.footnote).foregroundStyle(.secondary)
+                                // The icon already shows the 🚩 / 🔖 the parser keeps on the note.
+                                Text(PlanParser.stripDecorations(note)).font(.footnote).foregroundStyle(.secondary)
                             } icon: {
                                 let (symbol, tint) = ruleIcon(note)
                                 Image(systemName: symbol).foregroundStyle(tint)
@@ -165,6 +166,13 @@ struct PlanEditorView: View {
         .safeAreaInset(edge: .bottom) {
             @Bindable var settings = model.settings
             VStack(spacing: 10) {
+                // Why «Начать тренировку» / «Сохранить» below is greyed out.
+                if !plan.isValid {
+                    Label("В расписании нет выходов", systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(.footnote, design: .rounded, weight: .medium))
+                        .foregroundStyle(Theme.warning)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if isRunning {
                     BigButton(title: String(localized: "Сохранить"), systemImage: "checkmark", height: 50) {
                         var final = plan

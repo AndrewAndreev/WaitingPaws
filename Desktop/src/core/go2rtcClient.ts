@@ -74,6 +74,32 @@ export const Go2RTCStream = {
   },
 }
 
+/**
+ * The value of the query item `name` of a source URL (`xiaomi://…?did=…&model=…&subtype=hd`), read as
+ * `URLComponents.queryItems` reads it: split at the first "=", percent-decoded, "+" left as is; `null` when the item
+ * is missing, has no "=", or does not decode (a malformed escape).
+ */
+export function queryValue(source: string, name: string): string | null {
+  const start = source.indexOf('?')
+  if (start < 0) return null
+  const end = source.indexOf('#', start)
+  const query = source.slice(start + 1, end < 0 ? undefined : end)
+  for (const item of query.split('&')) {
+    const equals = item.indexOf('=')
+    if (percentDecoded(equals < 0 ? item : item.slice(0, equals)) !== name) continue
+    return equals < 0 ? null : percentDecoded(item.slice(equals + 1))
+  }
+  return null
+}
+
+function percentDecoded(text: string): string | null {
+  try {
+    return decodeURIComponent(text)
+  } catch {
+    return null
+  }
+}
+
 /** A discoverable source returned by go2rtc (`/api/xiaomi?id=…`); `url` is its id. */
 export interface Go2RTCSource {
   name: string
@@ -231,7 +257,7 @@ export class Go2RTCError extends Error {
 export interface Go2RTCClientOptions {
   /** Defaults to the global `fetch`. */
   fetch?: typeof globalThis.fetch
-  /** Per request, including the body; 20 s like the Swift client. */
+  /** Per request, including the body; 20 s like the Swift client. Mi Cloud calls get `cloudTimeoutMs`. */
   timeoutMs?: number
 }
 
@@ -244,6 +270,12 @@ interface MiotResult {
 
 /** Thin async client for the go2rtc HTTP API. */
 export class Go2RTCClient {
+  /**
+   * Deadline of the requests go2rtc answers only after talking to Mi Cloud (signing in, listing cameras): an account
+   * with shared homes takes page after page there, well past `timeoutMs`.
+   */
+  static readonly cloudTimeoutMs = 90_000
+
   private readonly fetchImpl: typeof globalThis.fetch
   private readonly timeoutMs: number
 
@@ -439,11 +471,11 @@ export class Go2RTCClient {
     const query = { id: accountID, region }
     let data: Uint8Array
     try {
-      data = await this.request('GET', 'api/xiaomi/cameras', query)
+      data = await this.request('GET', 'api/xiaomi/cameras', query, Go2RTCClient.cloudTimeoutMs)
     } catch (error) {
       if (!isNotFound(error)) throw error
       try {
-        data = await this.request('GET', 'api/xiaomi', query)
+        data = await this.request('GET', 'api/xiaomi', query, Go2RTCClient.cloudTimeoutMs)
       } catch (fallbackError) {
         if (isNotFound(fallbackError)) throw Go2RTCError.noSources()
         throw fallbackError
@@ -520,7 +552,7 @@ export class Go2RTCClient {
   }
 
   private async xiaomiAuth(form: Record<string, string>): Promise<XiaomiLoginStep> {
-    const { status, body } = await this.send('POST', this.url('api/xiaomi'), form)
+    const { status, body } = await this.send('POST', this.url('api/xiaomi'), form, Go2RTCClient.cloudTimeoutMs)
     if (status >= 200 && status < 300) return { kind: 'success' }
     if (status !== 401) throw Go2RTCError.http(status, utf8Decode(body))
 
@@ -548,8 +580,8 @@ export class Go2RTCClient {
 
   // MARK: - Plumbing
 
-  private async request(method: string, path: string, query: Record<string, string> = {}): Promise<Uint8Array> {
-    const { status, body } = await this.send(method, this.url(path, query))
+  private async request(method: string, path: string, query: Record<string, string> = {}, timeoutMs = this.timeoutMs): Promise<Uint8Array> {
+    const { status, body } = await this.send(method, this.url(path, query), undefined, timeoutMs)
     if (status < 200 || status >= 300) throw Go2RTCError.http(status, utf8Decode(body))
     return body
   }
@@ -559,6 +591,7 @@ export class Go2RTCClient {
     method: string,
     url: string,
     form?: Record<string, string>,
+    timeoutMs = this.timeoutMs,
   ): Promise<{ status: number; body: Uint8Array }> {
     const headers: Record<string, string> = {}
     const authorization = Go2RTCServer.authorizationHeader(this.server)
@@ -573,7 +606,7 @@ export class Go2RTCClient {
         method,
         headers,
         body,
-        signal: AbortSignal.timeout(this.timeoutMs),
+        signal: AbortSignal.timeout(timeoutMs),
       })
       return { status: response.status, body: new Uint8Array(await response.arrayBuffer()) }
     } catch (error) {

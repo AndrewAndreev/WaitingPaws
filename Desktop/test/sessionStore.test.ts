@@ -58,6 +58,36 @@ describe('SessionStore', () => {
     })
     expect(store.jsonPath(record)).toBe('/root/Sessions/2026-09-25_18-00-1F0C8A2B.json')
     expect(store.logPath(record)).toBe('/root/Sessions/2026-09-25_18-00-1F0C8A2B.txt')
+
+    // A long title is cut (Windows' path limit), without a dash left at the end.
+    const long = await store.newRecordingFile(TrainingPlan.make({ title: 'Очень длинное название тренировки '.repeat(6) }), start)
+    const slug = long.name.slice('2026-09-25_18-00-'.length, -'.mp4'.length)
+    expect(slug.length).toBeLessThanOrEqual(SessionStore.maxTitleLength)
+    expect(slug).toMatch(/^ocen-dlinnoe-nazvanie-trenirovki-.*[a-z0-9]$/)
+  })
+
+  it("never follows a record's video name out of the recordings folder", async () => {
+    const storage = new MemoryStorage()
+    const store = new SessionStore(storage, '/root')
+    await store.prepare()
+    await storage.writeText('/root/secret.mp4', 'x')
+    await storage.writeText('/root/Recordings/../secret.mp4', 'x')
+    await storage.writeText('/root/Recordings/notes.txt', 'x')
+    await storage.writeText('/root/Recordings/ok.MP4', 'x')
+    const record = (name: string) =>
+      TrainingRecord.make({ plan: TrainingPlan.make(), startedAt: 0, finishedAt: 0, events: [], results: [], recordingFileName: name })
+
+    for (const name of ['../secret.mp4', '..\\secret.mp4', '/root/secret.mp4', 'C:secret.mp4', 'notes.txt', '..', '.mp4']) {
+      expect(SessionStore.isRecordingFileName(name)).toBe(false)
+      expect(await store.recordingFile(record(name))).toBeNull()
+      await store.delete(record(name), true)
+    }
+    expect(await storage.exists('/root/secret.mp4')).toBe(true)
+    expect(await storage.exists('/root/Recordings/../secret.mp4')).toBe(true)
+    expect(await storage.exists('/root/Recordings/notes.txt')).toBe(true)
+    // Names the apps write, also in another case.
+    expect(SessionStore.isRecordingFileName('2026-09-25_18-00-trenirovka-na-patnicu-2.mp4')).toBe(true)
+    expect((await store.recordingFile(record('ok.MP4')))?.path).toBe('/root/Recordings/ok.MP4')
   })
 
   it('saves, loads newest first, skips damaged files and deletes', async () => {

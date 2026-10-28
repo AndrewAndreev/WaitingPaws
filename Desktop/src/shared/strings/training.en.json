@@ -1,8 +1,3 @@
 {
-  "Триггеров: %lld, условий раннего входа: %lld": "Triggers: %lld, conditions for coming back early: %lld",
-  "через": "in",
-  "Заметка к выходу": "Exit note",
-  "Подготовить к выходу %lld": "Get ready for exit %lld",
-  "На выходе: %@": "On the exit: %@",
   "Развернуть": "Expand"
 }

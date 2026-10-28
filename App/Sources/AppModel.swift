@@ -39,9 +39,16 @@ final class AppModel {
     var lastRecord: TrainingRecord?
     var errorMessage: String?
     #if os(iOS)
-    /// A short note under the Mac link pill («Синхронизировано с …», «Видео сохранено на Mac»); fades by itself.
+    /// A short note under the Mac link pill («Синхронизировано с …», «Видео сохранено на Mac»), at the top without
+    /// one; fades by itself.
     var linkNotice: LinkNotice?
     @ObservationIgnored private var lastSyncState: SyncState?
+    /// `SyncClient.links` at the last state: a state from a new link (also one restored after a drop) is its first.
+    @ObservationIgnored private var lastSyncLink = 0
+    /// The host the last state came from (the notice when its training goes from the screen names it).
+    @ObservationIgnored private var lastSyncHost: SyncDevice?
+    /// The host's training last mirrored here, until its log is kept here too (also when it ended while unlinked).
+    @ObservationIgnored private var mirroredSession: (planID: UUID, startedAt: Date)?
     #endif
     /// Recordings that landed in Photos (file names).
     private(set) var photosSavedFileNames: Set<String> = []
@@ -72,11 +79,19 @@ final class AppModel {
     private(set) var recordingResuming = false
     @ObservationIgnored private var resumeTask: Task<Void, Never>?
     @ObservationIgnored private var lastRequestedPart = 0
+    /// Bumped by every stop: a start still waiting for go2rtc gives up (the training was finished or abandoned meanwhile).
+    @ObservationIgnored private var recordingStartGeneration = 0
+    /// What follows a stop (joining the parts, remuxing, Photos), per recording file name; quitting waits for it.
+    @ObservationIgnored private var recordingFinishTasks: [String: Task<Void, Never>] = [:]
+    /// Recordings deleted while that work runs (`removeLeftovers`): it skips the copy to Photos.
+    @ObservationIgnored private var deletedWhileFinishing: Set<String> = []
     private var tickTask: Task<Void, Never>?
     private var awakeActivity: NSObjectProtocol?
     #if os(iOS)
     @ObservationIgnored private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     @ObservationIgnored private var recordingCutByBackground = false
+    /// Background time asked for while a stopped recording is joined and remuxed (`beginFinishingInBackground`).
+    @ObservationIgnored private var finishingBackgroundTasks: Set<UIBackgroundTaskIdentifier> = []
     #endif
 
     init() {
@@ -335,10 +350,26 @@ final class AppModel {
         guard settings.connectionMode == .embedded, !Self.isUIPreview else { return }
         #if os(macOS)
         let lanPassword = settings.shareWithIPhone ? settings.lanPassword : nil
+        Task {
+            await embedded.start(lanPassword: lanPassword)
+            // An iPhone linked before the API was open to the LAN (back from «Свой сервер») got no password.
+            syncHost.refreshAccess()
+        }
         #else
-        let lanPassword: String? = nil
+        Task { await embedded.start(lanPassword: nil) }
         #endif
-        Task { await embedded.start(lanPassword: lanPassword) }
+    }
+
+    /// The connection mode changed in Settings or the setup.
+    func connectionModeChanged() {
+        startEmbeddedIfNeeded()
+        #if os(macOS)
+        // A linked iPhone gets the camera only from the built-in go2rtc (`setUpSync`), which can't be stopped in-process
+        // and stays open to the LAN: with «Свой сервер» a new password shuts out an iPhone given the old one.
+        guard settings.connectionMode == .external, !Self.isUIPreview else { return }
+        if embedded.lanEnabled { embedded.setLANPassword(settings.rotateLanPassword()) }
+        syncHost.refreshAccess()
+        #endif
     }
 
     /// Every 10 s: frames go2rtc dropped because a viewer (the player, the recording, a linked iPhone) fell behind.
@@ -446,6 +477,9 @@ final class AppModel {
             return
         }
         #endif
+        // A late «Отменить без сохранения» (the training already ended, e.g. on the iPhone) must not delete a recording
+        // started since.
+        guard session != nil else { return }
         stopRecording(deleteFile: true)
         session = nil
         lastRecord = nil
@@ -496,11 +530,17 @@ final class AppModel {
             return
         }
         #endif
-        Task { await startRecordingWhenReady() }
+        let generation = recordingStartGeneration
+        Task { await startRecordingWhenReady(generation: generation) }
     }
 
-    private func startRecordingWhenReady() async {
+    private func startRecordingWhenReady(generation: Int) async {
         await waitForServer()
+        // Stopped while go2rtc was starting (the training finished or was abandoned): this start is no longer wanted.
+        guard generation == recordingStartGeneration else {
+            print("[rec] start dropped: stopped while go2rtc was starting")
+            return
+        }
         guard let client, !settings.streamName.isEmpty else {
             errorMessage = String(localized: "Камера не настроена")
             return
@@ -530,6 +570,7 @@ final class AppModel {
     }
 
     func stopRecording(deleteFile: Bool) {
+        recordingStartGeneration += 1
         #if os(iOS)
         if syncClient.isConnected {
             syncClient.send(.stopRecording)
@@ -571,13 +612,25 @@ final class AppModel {
             currentRecordingURL = nil
         } else if wasRecording, let url = currentRecordingURL {
             let needsJoin = filled.count > 1 || filled.first?.url != url
-            Task {
+            let name = url.lastPathComponent
+            #if os(iOS)
+            // The app may be on its way out (the background grace ran out, or it was left right after «Стоп»): without
+            // time asked for, the join runs while iOS suspends it.
+            let background = beginFinishingInBackground()
+            #endif
+            recordingFinishTasks[name] = Task {
                 if needsJoin { await joinRecording(url, segments: filled, startedAt: startedAt) }
-                if settings.saveToPhotos {
-                    saveToPhotos(url)
+                if deletedWhileFinishing.contains(name) {
+                    print("[rec] \(name) was deleted meanwhile")
+                } else if settings.saveToPhotos {
+                    await copyToPhotos(url)
                 } else {
-                    await finalizeRecording(url)
+                    await finalizeInPlace(url)
                 }
+                recordingFinishTasks[name] = nil
+                #if os(iOS)
+                endFinishingInBackground(background)
+                #endif
             }
             if session == nil {
                 // Without a training nothing else will claim the file: it becomes a standalone recording.
@@ -760,8 +813,8 @@ final class AppModel {
         finalizingFileNames.insert(name)
         defer { finalizingFileNames.remove(name) }
         do {
-            try await RecordingFinalizer.join(segments, startedAt: startedAt, into: url)
-            print("[rec] joined \(segments.count) parts into \(name)")
+            let used = try await RecordingFinalizer.join(segments, startedAt: startedAt, into: url)
+            print("[rec] joined \(used) parts into \(name)")
         } catch {
             print("[rec] joining \(name) failed: \(error.localizedDescription)")
         }
@@ -772,8 +825,15 @@ final class AppModel {
     private var finalizeTasks: [String: Task<Void, Never>] = [:]
 
     /// Turns a finished recording into a regular MP4 with an audio track (see `RecordingFinalizer`).
-    /// Cheap for files that are already done; concurrent calls for one file share the work.
+    /// Cheap for files that are already done; concurrent calls for one file share the work. A recording just stopped
+    /// is first joined and finalized by its own task (`recordingFinishTasks`): opening it waits for that instead of
+    /// remuxing its first part over the joined video.
     func finalizeRecording(_ url: URL) async {
+        if let finishing = recordingFinishTasks[url.lastPathComponent] { await finishing.value }
+        await finalizeInPlace(url)
+    }
+
+    private func finalizeInPlace(_ url: URL) async {
         let name = url.lastPathComponent
         if let running = finalizeTasks[name] {
             await running.value
@@ -795,18 +855,25 @@ final class AppModel {
 
     /// Copies a recording into the Photos library in the background; errors surface in the alert.
     func saveToPhotos(_ url: URL) {
+        photosSaveErrors[url.lastPathComponent] = nil
+        Task {
+            if let finishing = recordingFinishTasks[url.lastPathComponent] { await finishing.value }
+            await copyToPhotos(url)
+        }
+    }
+
+    /// `saveToPhotos` for a caller that waits for it (the end of a recording: quitting waits for that).
+    private func copyToPhotos(_ url: URL) async {
         let name = url.lastPathComponent
         photosSaveErrors[name] = nil
-        Task {
-            await finalizeRecording(url)
-            do {
-                try await PhotoLibrarySaver.save(videoAt: url)
-                photosSavedFileNames.insert(name)
-                print("[photos] saved \(name)")
-            } catch {
-                photosSaveErrors[name] = error.localizedDescription
-                print("[photos] failed \(name): \(error.localizedDescription)")
-            }
+        await finalizeInPlace(url)
+        do {
+            try await PhotoLibrarySaver.save(videoAt: url)
+            photosSavedFileNames.insert(name)
+            print("[photos] saved \(name)")
+        } catch {
+            photosSaveErrors[name] = error.localizedDescription
+            print("[photos] failed \(name): \(error.localizedDescription)")
         }
     }
 
@@ -1078,7 +1145,9 @@ final class AppModel {
     }
 
     func delete(_ record: TrainingRecord, includingRecording: Bool) {
+        let video = includingRecording ? store.recordingURL(for: record) : nil
         store.delete(record, includingRecording: includingRecording)
+        if let video { removeLeftovers(of: video) }
         history.removeAll { $0.id == record.id }
         if lastRecord?.id == record.id { lastRecord = nil }
         // A video kept without its log shows up as a standalone recording.
@@ -1087,14 +1156,48 @@ final class AppModel {
 
     func delete(_ clip: RecordingClip) {
         try? FileManager.default.removeItem(at: clip.url)
+        removeLeftovers(of: clip.url)
         clips.removeAll { $0.id == clip.id }
         if lastClip?.id == clip.id { lastClip = nil }
     }
 
+    /// What else goes with a deleted recording: its parts in `Recordings/.parts` (one left out of a join, or a join cut
+    /// short), and — while it is still being joined or remuxed — the file that work puts back when it ends: it goes again
+    /// then, without the copy to Photos.
+    private func removeLeftovers(of url: URL) {
+        let name = url.lastPathComponent
+        guard let work = recordingFinishTasks[name] ?? finalizeTasks[name] else { return removeParts(of: url) }
+        deletedWhileFinishing.insert(name)
+        Task {
+            await work.value
+            try? FileManager.default.removeItem(at: url)
+            removeParts(of: url)
+            deletedWhileFinishing.remove(name)
+        }
+    }
+
+    private func removeParts(of url: URL) {
+        let directory = store.recordingsDirectory.appendingPathComponent(".parts", isDirectory: true)
+        let prefix = url.deletingPathExtension().lastPathComponent + "-part"
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        for file in files where file.pathExtension == "mp4" {
+            let stem = file.deletingPathExtension().lastPathComponent
+            guard stem.hasPrefix(prefix), Int(stem.dropFirst(prefix.count)) != nil else { continue }
+            try? FileManager.default.removeItem(at: file)
+        }
+    }
+
     /// Removes every saved session with its log and video, and every standalone recording (nothing is touched in Photos).
     func deleteAll() {
-        for record in history { store.delete(record, includingRecording: true) }
-        for clip in clips { try? FileManager.default.removeItem(at: clip.url) }
+        for record in history {
+            let video = store.recordingURL(for: record)
+            store.delete(record, includingRecording: true)
+            if let video { removeLeftovers(of: video) }
+        }
+        for clip in clips {
+            try? FileManager.default.removeItem(at: clip.url)
+            removeLeftovers(of: clip.url)
+        }
         history = []
         clips = []
         lastRecord = nil
@@ -1135,6 +1238,23 @@ final class AppModel {
         backgroundTask = .invalid
     }
 
+    /// Background time to join and remux a stopped recording (`stopRecording`). It gets what is left of the app's
+    /// time: when that runs out every such request ends (iOS ends an app holding one); a join cut short keeps its parts.
+    private func beginFinishingInBackground() -> UIBackgroundTaskIdentifier {
+        let id = UIApplication.shared.beginBackgroundTask(withName: "Finish the recording") { [weak self] in
+            MainActor.assumeIsolated { self?.endFinishingInBackground(nil) }
+        }
+        if id != .invalid { finishingBackgroundTasks.insert(id) }
+        return id
+    }
+
+    /// Ends one request for finishing time, or all of them (`nil`: the time ran out).
+    private func endFinishingInBackground(_ id: UIBackgroundTaskIdentifier?) {
+        for task in id.map({ [$0] }) ?? Array(finishingBackgroundTasks) where finishingBackgroundTasks.remove(task) != nil {
+            UIApplication.shared.endBackgroundTask(task)
+        }
+    }
+
     /// Back in the foreground: reopen go2rtc's API if iOS closed it, and resume a recording cut by the suspension.
     func didBecomeActive() async {
         endBackgroundTask()
@@ -1144,7 +1264,28 @@ final class AppModel {
         recordingCutByBackground = false
         startRecording()
         linkNotice = LinkNotice(title: String(localized: "Запись продолжена"),
-                                detail: String(localized: "Пока приложение было свёрнуто, видео не записывалось. Начало записи — в истории."))
+                                detail: String(localized: "Пока приложение было свёрнуто, видео не записывалось. Начало записи — в истории."),
+                                systemImage: "record.circle")
+    }
+    #endif
+
+    #if os(macOS)
+    /// ⌘Q (or logging out) finds something to finish first: a training, a recording, or a video still being joined.
+    var hasWorkBeforeQuit: Bool {
+        session != nil || isRecordingLocally || !recordingFinishTasks.isEmpty || !finalizeTasks.isEmpty
+    }
+
+    /// Quitting mid-training keeps what was done, as closing the window does on Windows: the training is finished and
+    /// saved, the recording stopped, and the quit waits (up to `limit`) for the video to be joined and remuxed. A video
+    /// cut short by the limit stays as written (its first part; the rest in `.parts`).
+    func finishBeforeQuit(limit: Duration) async {
+        print("[app] quitting: finishing the training and the recording first")
+        if session != nil { finishSession() } else { stopRecording(deleteFile: false) }
+        let deadline = ContinuousClock.now + limit
+        while !recordingFinishTasks.isEmpty || !finalizeTasks.isEmpty, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        if !recordingFinishTasks.isEmpty || !finalizeTasks.isEmpty { print("[app] quitting before the video was finished") }
     }
     #endif
 
@@ -1172,10 +1313,21 @@ extension AppModel {
     /// The session on screen is a mirror of a training running on the linked Mac.
     var isMirroringSession: Bool { session?.commandHandler != nil }
 
-    /// Whether this iPhone shows a Mac's camera and training right now.
+    /// Whether this iPhone shows a Mac's camera and training right now (also while the link is being restored: see
+    /// `isReconnecting`).
     var isLinkedToMac: Bool {
         #if os(iOS)
-        return syncClient.isConnected
+        return syncClient.isLinked
+        #else
+        return false
+        #endif
+    }
+
+    /// The link dropped mid-training and is being restored: the training stays on screen, but presses can't reach
+    /// the Mac, so its buttons are off (`SyncClient.reconnecting`).
+    var isReconnecting: Bool {
+        #if os(iOS)
+        return syncClient.reconnecting != nil
         #else
         return false
         #endif
@@ -1184,23 +1336,24 @@ extension AppModel {
     /// What the linked host is called in the texts: "Mac", "ПК" («Запись на ПК»).
     var linkedHostKind: String {
         #if os(iOS)
-        return syncClient.host?.kindTitle ?? "Mac"
+        return (syncClient.host ?? syncClient.reconnecting)?.kindTitle ?? "Mac"
         #else
         return "Mac"
         #endif
     }
 
-    /// go2rtc the camera view and the recorder talk to: the linked Mac's, or our own.
+    /// go2rtc the camera view and the recorder talk to: the linked Mac's, or our own. Here and below, the Mac's last
+    /// state also while the link is being restored (`isReconnecting`); commands go only while connected.
     var activeServer: Go2RTCServer? {
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.server }
+        if syncClient.isLinked { return syncClient.server }
         #endif
         return settings.server
     }
 
     var activeStreamName: String {
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.streamName ?? "" }
+        if syncClient.isLinked { return syncClient.state?.streamName ?? "" }
         #endif
         return settings.streamName
     }
@@ -1214,7 +1367,7 @@ extension AppModel {
         if CommandLine.arguments.contains("--demo-second-camera") { return "room" }
         #endif
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.secondStreamName ?? "" }
+        if syncClient.isLinked { return syncClient.state?.secondStreamName ?? "" }
         #endif
         return settings.hasSecondCamera ? settings.secondStreamName : ""
     }
@@ -1224,7 +1377,7 @@ extension AppModel {
         if CommandLine.arguments.contains("--demo-second-camera") { return String(localized: "Комната") }
         #endif
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.secondCameraTitle ?? String(localized: "Камера 2") }
+        if syncClient.isLinked { return syncClient.state?.secondCameraTitle ?? String(localized: "Камера 2") }
         #endif
         return settings.secondCameraDisplayName
     }
@@ -1261,9 +1414,20 @@ extension AppModel {
         followShownCameraInRecording()
     }
 
+    /// The linked computer has a camera but gives this iPhone no video: it works with its own go2rtc server (its state
+    /// has the camera's name and no stream then).
+    var isLinkedCameraNotShared: Bool {
+        #if os(iOS)
+        if syncClient.isLinked, let state = syncClient.state {
+            return !state.cameraReady && state.streamName.isEmpty && !state.cameraTitle.isEmpty
+        }
+        #endif
+        return false
+    }
+
     var activeCameraName: String {
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.cameraTitle ?? String(localized: "Камера \(linkedHostKind)") }
+        if syncClient.isLinked { return syncClient.state?.cameraTitle ?? String(localized: "Камера \(linkedHostKind)") }
         #endif
         return settings.cameraDisplayName
     }
@@ -1272,7 +1436,7 @@ extension AppModel {
     /// Bumped whenever the players must reconnect: ours, or the linked Mac's (its quality changed).
     var activePlayerGeneration: Int {
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.streamRevision ?? 0 }
+        if syncClient.isLinked { return syncClient.state?.streamRevision ?? 0 }
         #endif
         return playerGeneration
     }
@@ -1281,7 +1445,7 @@ extension AppModel {
     /// already counts that change.
     var activeSecondPlayerGeneration: Int {
         #if os(iOS)
-        if syncClient.isConnected { return activePlayerGeneration }
+        if syncClient.isLinked { return activePlayerGeneration }
         #endif
         return playerGeneration + secondPlayerGeneration
     }
@@ -1309,7 +1473,7 @@ extension AppModel {
 
     var isRecordingNow: Bool {
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.recordingSince != nil }
+        if syncClient.isLinked { return syncClient.state?.recordingSince != nil }
         #endif
         #if DEBUG
         if Self.demoRecordingSince != nil { return true }
@@ -1329,7 +1493,7 @@ extension AppModel {
         if let since = Self.demoRecordingSince { return since }
         #endif
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.recordingSince }
+        if syncClient.isLinked { return syncClient.state?.recordingSince }
         #endif
         return localRecordingStartedAt
     }
@@ -1339,7 +1503,7 @@ extension AppModel {
         if let since = Self.demoRecordingSince { return now.timeIntervalSince(since) }
         #endif
         #if os(iOS)
-        if syncClient.isConnected { return syncClient.state?.recordingSince.map { now.timeIntervalSince($0) } ?? 0 }
+        if syncClient.isLinked { return syncClient.state?.recordingSince.map { now.timeIntervalSince($0) } ?? 0 }
         #endif
         return localRecordingStartedAt.map { now.timeIntervalSince($0) } ?? 0
     }
@@ -1348,26 +1512,31 @@ extension AppModel {
         guard !Self.isUIPreview || Self.isSyncTest else { return }
         #if os(macOS)
         syncHost.stateProvider = { [unowned self] in
-            SyncState(session: session?.snapshot,
-                      recordingSince: isRecordingLocally ? localRecordingStartedAt : nil,
-                      cameraReady: settings.isConfigured && (settings.connectionMode == .external || embedded.status.isRunning),
-                      cameraTitle: settings.cameraDisplayName,
-                      streamName: settings.streamName,
-                      lastRecord: lastRecord,
-                      pendingPlan: session == nil ? pendingPlan : nil,
-                      cameraSource: currentXiaomiSource,
-                      // Either camera's quality: the iPhone (also one from before the second camera's
-                      // quality) reconnects both of its players.
-                      streamRevision: playerGeneration + secondPlayerGeneration,
-                      secondStreamName: settings.hasSecondCamera ? settings.secondStreamName : nil,
-                      secondCameraTitle: settings.hasSecondCamera ? settings.secondCameraDisplayName : nil,
-                      secondCameraSource: settings.hasSecondCamera ? secondXiaomiSource : nil,
-                      showsSecondCamera: isShowingSecondCamera)
+            // The iPhone is given this Mac's built-in go2rtc only: with «Свой сервер» no camera (the built-in one,
+            // still running from before, would open a second session to a camera that allows one). The camera's
+            // name stays: the training and the recording still go from the iPhone.
+            let shares = settings.connectionMode == .embedded
+            let second = shares && settings.hasSecondCamera
+            return SyncState(session: session?.snapshot,
+                             recordingSince: isRecordingLocally ? localRecordingStartedAt : nil,
+                             cameraReady: shares && settings.isConfigured && embedded.status.isRunning,
+                             cameraTitle: settings.cameraDisplayName,
+                             streamName: shares ? settings.streamName : "",
+                             lastRecord: lastRecord,
+                             pendingPlan: session == nil ? pendingPlan : nil,
+                             cameraSource: shares ? currentXiaomiSource : nil,
+                             // Either camera's quality: the iPhone (also one from before the second camera's
+                             // quality) reconnects both of its players.
+                             streamRevision: playerGeneration + secondPlayerGeneration,
+                             secondStreamName: second ? settings.secondStreamName : nil,
+                             secondCameraTitle: second ? settings.secondCameraDisplayName : nil,
+                             secondCameraSource: second ? secondXiaomiSource : nil,
+                             showsSecondCamera: isShowingSecondCamera)
         }
         syncHost.commandHandler = { [unowned self] command in applyRemote(command) }
         syncHost.accessProvider = { [unowned self] in
             SyncHost.SyncWelcomeAccess(port: EmbeddedGo2RTC.apiPort, username: EmbeddedGo2RTC.lanUsername,
-                                       password: embedded.lanEnabled ? settings.lanPassword : "")
+                                       password: settings.connectionMode == .embedded && embedded.lanEnabled ? settings.lanPassword : "")
         }
         syncHost.onPairingRequest = { [unowned self] request in MacPairingPrompt.present(request, host: syncHost) }
         syncHost.onPairingCancelled = { request in MacPairingPrompt.cancel(request) }
@@ -1381,7 +1550,8 @@ extension AppModel {
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }
         syncClient.nameProvider = { [unowned self] in settings.linkName }
-        syncClient.canAutoConnect = { [unowned self] in session == nil && !isRecordingLocally }
+        // Not over a training or recording of this iPhone's own; a mirror kept while reconnecting is the host's.
+        syncClient.canAutoConnect = { [unowned self] in (session == nil || isMirroringSession) && !isRecordingLocally }
         syncClient.startBrowsing()
         #if DEBUG
         // `--demo-share-plan`: once linked, «paste» the sample schedule here (it should appear on the Mac).
@@ -1446,15 +1616,26 @@ extension AppModel {
         lastSyncState = state
         guard let state else {
             if isMirroringSession || previous?.recordingSince != nil {
+                // The link is gone (not restored in time, «Отключить синхронизацию», turned away): the training
+                // goes on there, it is just not seen here.
+                if isMirroringSession, let host = lastSyncHost {
+                    linkNotice = LinkNotice(title: String(localized: "Тренировка продолжается на \(host.kindTitle)"),
+                                            detail: String(localized: "Без связи с «\(host.name)» её здесь не видно."),
+                                            systemImage: "wifi.slash")
+                }
                 session = nil
                 keepAwake(false)
             }
             return
         }
+        lastSyncHost = syncClient.host ?? lastSyncHost
         let hostName = syncClient.host?.name ?? linkedHostKind
         let kind = linkedHostKind
-        // The camera on the Mac's screen (the one it records) is the one here: when it changes there, or on linking.
-        if let shown = state.showsSecondCamera, shown != previous?.showsSecondCamera, shown != showsSecondCamera {
+        let firstOfLink = syncClient.links != lastSyncLink
+        lastSyncLink = syncClient.links
+        // The camera on the Mac's screen (the one it records) is the one here: when it changes there, or on linking —
+        // also back after a drop, whatever was switched here meanwhile.
+        if let shown = state.showsSecondCamera, shown != showsSecondCamera, firstOfLink || shown != previous?.showsSecondCamera {
             panTilt.stop()
             showsSecondCamera = shown
             print("[sync] \(shown ? "second" : "first") camera on screen, as on the \(kind)")
@@ -1485,7 +1666,14 @@ extension AppModel {
                     syncClient.clock.hostTime(for: Date())
                 })
                 mirror.commandHandler = { [weak self, weak mirror] command, time in
-                    self?.syncClient.send(.session(command, at: time))
+                    guard let self else { return }
+                    guard syncClient.isConnected else {
+                        // The link is being restored: the press can't reach the Mac, so it doesn't show as done
+                        // either (its buttons are off meanwhile; this catches the rest).
+                        Task { mirror?.tick(at: .distantFuture) }
+                        return
+                    }
+                    syncClient.send(.session(command, at: time))
                     // Nothing else ticks a mirror: a press the Mac never answers stops showing then.
                     Task { [weak mirror] in
                         try? await Task.sleep(for: .seconds(TrainingSession.predictionLifetime + 0.5))
@@ -1496,6 +1684,7 @@ extension AppModel {
                     self?.syncClient.send(.updateSessionPlan(plan, quiet: quiet ? true : nil, since: since))
                 }
                 session = mirror
+                mirroredSession = (snapshot.plan.id, snapshot.startedAt)
                 lastRecord = nil
                 lastClip = nil
                 keepAwake(true)
@@ -1503,8 +1692,13 @@ extension AppModel {
         } else if isMirroringSession {
             session = nil
             keepAwake(false)
-            // The Mac saved the record together with the video; keep the log here too (the video stays on the Mac).
-            if var record = state.lastRecord, !history.contains(where: { $0.id == record.id }) {
+        }
+        // The Mac saved the record of the training mirrored here together with the video; keep its log here too (the
+        // video stays on the Mac) — also when the training ended while the link was down. Only that training's record.
+        if state.session == nil, let mirrored = mirroredSession, var record = state.lastRecord,
+           record.plan.id == mirrored.planID, record.startedAt == mirrored.startedAt {
+            mirroredSession = nil
+            if !history.contains(where: { $0.id == record.id }) {
                 record.recordingFileName = nil
                 try? store.save(record)
                 history.insert(record, at: 0)
@@ -1516,11 +1710,14 @@ extension AppModel {
 }
 
 #if os(iOS)
-/// What the tooltip under the Mac link pill says.
+/// What the tooltip under the Mac link pill (or the banner at the top without one) says.
 struct LinkNotice: Equatable, Identifiable {
     let id = UUID()
     var title: String
     var detail: String
+    var systemImage = "laptopcomputer.and.iphone"
+    /// Drawn in the warning colour (the link is down).
+    var isWarning = false
 }
 #endif
 

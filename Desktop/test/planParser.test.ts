@@ -294,6 +294,221 @@ describe('PlanParser (Russian)', () => {
     expect(DurationText.clock(-12)).toBe('−0:12')
     expect(DurationText.clock(3725)).toBe('1:02:05')
   })
+
+  // "inf" typed into a duration field crashed the Mac and iPhone apps: `Int(.infinity)` traps.
+  it('takes only real times for durations', () => {
+    for (const text of ['inf', 'nan', '1e400', '0x1p4', '99999999999999999:00', '100 часов']) {
+      expect(DurationText.parse(text), text).toBeNull()
+    }
+    expect(DurationText.parse('1e2')).toBe(100)
+    expect(DurationText.parse('-5')).toBe(-5)
+    expect(DurationText.short(Infinity)).toBe(DurationText.short(2 ** 31 - 1))
+    expect(DurationText.short(NaN)).toBe('0 с')
+    expect(DurationText.compact(1e300)).toBe(DurationText.compact(2 ** 31 - 1))
+    expect(DurationText.clock(-Infinity)).toBe('−596523:14:07')
+  })
+
+  // «🚩 … не заходите» became the condition «Залаяла, завыла → сразу»: the app said the opposite of the trainer.
+  it('keeps the rules against coming in', () => {
+    const plan = PlanParser.parse('6 выход - 4 минуты\n🚩 Если залаяла, завыла - ни в коем случае не заходите, ждите тишины')
+    expect(plan.exits[0].earlyEntries).toEqual([])
+    expect(plan.commonEarlyEntries).toEqual([])
+    expect(plan.notes).toEqual(['🚩 Если залаяла, завыла - ни в коем случае не заходите, ждите тишины'])
+    expect(TrainingPlan.doNotEnterRule(plan)?.title).toBe('Залаяла, завыла')
+    expect(TrainingPlan.doNotEnterRule(plan)?.detail).toBe('ни в коем случае не заходите, ждите тишины')
+    expect(PlanParser.sourceLines(plan.rawText).map((line) => line.kind)).toEqual(['exit', 'doNotEnter'])
+
+    // The flag alone says it, and it beats a note that only mentions not coming in.
+    const flagged = PlanParser.parse('1 выход - 5 секунд\n\nНе заходить в комнату без нужды\n🚩 Если залаяла - ждём тишины')
+    expect(TrainingPlan.doNotEnterRule(flagged)?.title).toBe('Залаяла')
+
+    for (const line of [
+      'Если залаяла - не входите',
+      'Если лает - нельзя возвращаться, входим когда замолчит',
+      'If she barks, do not return',
+      'If she barks - don’t come in, wait for silence',
+      'If she barks, never enter',
+    ]) {
+      expect(PlanParser.parseEarlyEntry(line), line).toBeNull()
+      expect(PlanParser.isDoNotEnterRule(line), line).toBe(true)
+    }
+    expect(PlanParser.isDoNotEnterRule('Если лает — ждём вне входа')).toBe(false)
+    expect(PlanParser.isDoNotEnterRule('Если лает — дальше не выходим')).toBe(false)
+    // A plan saved before the flag was kept: its words still say it.
+    expect(TrainingPlan.doNotEnterRule(TrainingPlan.make({ notes: ['Если залаяла, завыла - ни в коем случае не заходите'] }))).not.toBeNull()
+  })
+
+  // «через минуту», «через 0,5 минуты» were read as no time, and no time is «сразу».
+  it('reads delays in words and with a decimal comma', () => {
+    const delay = (line: string) => PlanParser.parseEarlyEntry(line)?.delay
+    expect(delay('🟡 Если встала - входим через минуту')).toBe(60)
+    expect(delay('Если встала - входим через 0,5 минуты')).toBe(30)
+    expect(delay('Если встала - входим через 1,5 минуты, когда отойдёт')).toBe(90)
+    expect(delay('Если встала - входим через полминуты')).toBe(30)
+    expect(delay('Если встала - входим через пол минуты')).toBe(30)
+    expect(delay('Если встала - входим через полторы минуты')).toBe(90)
+    expect(delay('Если легла - входим через десять секунд')).toBe(10)
+    expect(delay('If she stands up - come back in a minute')).toBe(60)
+    expect(delay('If she stands up - come back in half a minute')).toBe(30)
+    expect(delay('If she lies down - come back after ten seconds')).toBe(10)
+    const words = PlanParser.parseEarlyEntry('Если встала - входим через две минуты от начала движения, когда сняла фокус')!
+    expect(words.delay).toBe(120)
+    expect(words.detail).toBe('от начала движения, когда сняла фокус')
+    expect(EarlyEntry.unreadDelay(words)).toBeNull()
+
+    // Words it can't read stay in sight instead of «сразу».
+    const vague = PlanParser.parseEarlyEntry('🟡 Если встала - входим через пару минут от начала движения, когда отойдёт')!
+    expect(vague.delay).toBeNull()
+    expect(vague.detail).toBe('через пару минут от начала движения, когда отойдёт')
+    expect(EarlyEntry.unreadDelay(vague)).toBe('через пару минут')
+    expect(EarlyEntry.summary(vague)).toBe('встала → через пару минут')
+    expect(EarlyEntry.delayDescription(vague)).toBe('через пару минут')
+    expect(EarlyEntry.unreadDelay(PlanParser.parseEarlyEntry('If she lies down - come back in a couple of minutes')!)).toBe(
+      'in a couple of minutes',
+    )
+    // «сразу» is still «сразу», and an "in" that names a place is no time.
+    expect(EarlyEntry.summary(PlanParser.parseEarlyEntry('Если встала - входим сразу')!)).toBe('встала → сразу')
+    expect(EarlyEntry.unreadDelay(PlanParser.parseEarlyEntry('If she lies down - come back in the hallway')!)).toBeNull()
+  })
+
+  // 2/3/2/3-minute breaks: Swift took whichever its Dictionary gave first, different from launch to launch. The first
+  // one written wins.
+  it('breaks a tie of breaks by the first one written', () => {
+    const plan = PlanParser.parse(
+      '1 выход - 5 секунд\nПерерыв 3 минуты\n2 выход - 5 секунд\nПерерыв 2 минуты\n' +
+        '3 выход - 5 секунд\nПерерыв 3 минуты\n4 выход - 5 секунд\nПерерыв 2 минуты',
+    )
+    expect(plan.defaultBreak).toBe(180)
+    expect(plan.exits.map((exit) => exit.breakAfter)).toEqual([null, 120, null, 120])
+  })
+
+  // «🟡︎», «🔖︎», «🚩︎» (with a variation selector) are the trainer's marks all the same, as on the Mac and iPhone.
+  it('reads marks with a variation selector', () => {
+    expect(PlanParser.parseEarlyEntry('🟡\uFE0F Если встала - входим через 15 секунд')?.tone).toBe('yellow')
+    expect(PlanParser.parseEarlyEntry('🟢\uFE0E Если легла - входим через 15 секунд')?.tone).toBe('green')
+    const text =
+      '6 выход - 4 минуты\n🟡 Если встала - входим через 1 минуту\n' +
+      '🔖\uFE0E На третьей попытке завершаем тренировку\n🚩\uFE0F Если залаяла - ждём тишины'
+    const plan = PlanParser.parse(text)
+    expect(plan.exits[0].note).toBeNull()
+    expect(plan.notes).toEqual(['На третьей попытке завершаем тренировку', '🚩 Если залаяла - ждём тишины'])
+    expect(TrainingPlan.doNotEnterRule(plan)?.title).toBe('Залаяла')
+    expect(PlanParser.sourceLines(text).map((line) => line.kind)).toEqual(['exit', 'earlyEntry', 'falseStart', 'doNotEnter'])
+  })
+
+  // A lone «➡️» row at the top was taken for the header of the trainer's text, and the header for a note.
+  it('skips lines of decorations only', () => {
+    const text = '➡️\n🐹 Тренировка на понедельник - 19.10.2026\n1 выход - 5 секунд\n➡️\n🟢 Если легла - входим через 20 секунд'
+    const plan = PlanParser.parse(text)
+    expect(plan.title).toBe('Тренировка на понедельник')
+    expect(plan.exits[0].earlyEntries.length).toBe(1)
+    const lines = PlanParser.sourceLines(text)
+    expect(lines.map((line) => line.kind)).toEqual(['note', 'header', 'exit', 'note', 'earlyEntry'])
+    expect(lines.map((line) => line.exitNumber)).toEqual([null, null, 1, 1, 1])
+  })
+
+  // «…входим через 30 секунд, не заходя в комнату» was taken for a rule against coming in: the condition was lost and
+  // the line became the plan's «Не входить».
+  it('does not take how to come in for a rule against it', () => {
+    const plan = PlanParser.parse('3 выход - 2 минуты\n🟢 Если легла - входим через 30 секунд, не заходя в комнату')
+    expect(plan.exits[0].earlyEntries[0]?.delay).toBe(30)
+    expect(plan.exits[0].earlyEntries[0]?.detail).toBe('не заходя в комнату')
+    expect(TrainingPlan.doNotEnterRule(plan)).toBeNull()
+    expect(PlanParser.sourceLines(plan.rawText).map((line) => line.kind)).toEqual(['exit', 'earlyEntry'])
+
+    const quietly = PlanParser.parseEarlyEntry('Если встала - возвращаемся через минуту, не входя резко')
+    expect(quietly?.delay).toBe(60)
+    expect(quietly?.detail).toBe('не входя резко')
+    expect(PlanParser.parseEarlyEntry('Если встала - входим через минуту, не возвращаясь к двери')?.delay).toBe(60)
+    const bedroom = PlanParser.parseEarlyEntry('If she lies down - come back in 30 seconds, don’t enter the bedroom')
+    expect(bedroom?.delay).toBe(30)
+    expect(bedroom?.detail).toBe('don’t enter the bedroom')
+
+    for (const line of [
+      'Если залаяла - не входить',
+      'Если залаяла - не заходи',
+      'Если залаяла - не входим',
+      'Если залаяла - не возвращайтесь',
+      'Если лает - не возвращайся, жди',
+      'Если лает - нельзя заходить',
+      "If she barks, don't enter",
+      'If she barks, do not enter the flat',
+      'If she barks - never enter until she is quiet',
+    ]) {
+      expect(PlanParser.isDoNotEnterRule(line), line).toBe(true)
+      expect(PlanParser.parseEarlyEntry(line), line).toBeNull()
+    }
+    expect(PlanParser.isDoNotEnterRule('Если лает — в план не входит')).toBe(false)
+  })
+
+  // «1 выход - 99999999999999999999 секунд» pasted into a plan crashed the Mac: the plan's length went to `Int(_:)`.
+  it('takes huge times for no time', () => {
+    expect(DurationText.sumOfUnits('99999999999999999999 секунд')).toBeNull()
+    expect(DurationText.sumOfUnits('9'.repeat(400) + ' секунд')).toBeNull()
+    expect(DurationText.sumOfUnits('25 часов')).toBeNull()
+    expect(DurationText.sumOfUnits('24 часа')).toBe(86400)
+
+    const plan = PlanParser.parse(
+      '1 выход - 99999999999999999999 секунд\nПерерыв 99999999999999999999 минут\n2 выход - 5 секунд\n' +
+        '🟡 Если встала - входим через секунд 99999999999999999999',
+    )
+    expect(plan.exits.map((exit) => exit.duration)).toEqual([0, 5])
+    expect(plan.exits.map((exit) => exit.breakAfter)).toEqual([null, null])
+    expect(plan.notes).toEqual(['Перерыв 99999999999999999999 минут'])
+    expect(plan.exits[1].earlyEntries[0]?.delay).toBeNull()
+
+    expect(DurationText.wholeSeconds(Infinity)).toBe(2 ** 31 - 1)
+    expect(DurationText.wholeSeconds(-Infinity)).toBe(-(2 ** 31 - 1))
+    expect(DurationText.wholeSeconds(NaN)).toBe(0)
+    expect(DurationText.wholeSeconds(89.5)).toBe(90)
+  })
+
+  // «через секунд 30» was read as one second with «30» left over: «через 0:01 · 30».
+  it('reads the number after its unit', () => {
+    const entry = (line: string) => PlanParser.parseEarlyEntry(line)
+    expect(entry('Если встала - входим через секунд 30')?.delay).toBe(30)
+    expect(entry('Если встала - входим через секунд 30')?.detail).toBeNull()
+    expect(entry('Если встала - входим через минут 5, когда отойдёт')?.delay).toBe(300)
+    expect(entry('Если встала - входим через минут 5, когда отойдёт')?.detail).toBe('когда отойдёт')
+    expect(entry('Если легла - входим через секунд тридцать от укладки')?.delay).toBe(30)
+    expect(entry('Если легла - входим через секунд тридцать от укладки')?.detail).toBe('от укладки')
+    expect(entry('Если встала - входим через минуты две')?.delay).toBe(120)
+    // A word that is no number, or a time of its own, is not the count.
+    expect(entry('Если встала - входим через минуту после укладки')?.delay).toBe(60)
+    expect(entry('Если встала - входим через минуту после укладки')?.detail).toBe('после укладки')
+    expect(entry('Если встала - входим через минуту 30 секунд')?.delay).not.toBe(1800)
+  })
+
+  // "come back in several minutes" said "right away": only "in a …" and a single digit were taken for a time.
+  it('keeps English delays it cannot read', () => {
+    const words = (line: string) => EarlyEntry.unreadDelay(PlanParser.parseEarlyEntry(line)!)
+    expect(words('If she stands up - come back in several minutes')).toBe('in several minutes')
+    expect(words('If she stands up - come back in a few minutes')).toBe('in a few minutes')
+    expect(words('If she stands up - come back in few minutes')).toBe('in few minutes')
+    expect(words('If she lies down - come back in 15 breaths')).toBe('in 15 breaths')
+    expect(words('If she lies down - come back in some time')).toBe('in some time')
+    expect(words('If she stands up - come back in a couple of minutes after she lies down')).toBe('in a couple of minutes')
+    expect(words('If she stands up - come back after she settles')).toBe('after she settles')
+    expect(words('If she lies down - come back in the kitchen')).toBeNull()
+    expect(EarlyEntry.delayDescription(PlanParser.parseEarlyEntry('If she stands up - come back in several minutes')!)).toBe(
+      'in several minutes',
+    )
+  })
+
+  // «через пару минут» on the right and «через пару минут от начала движения, когда отойдёт» under the event: the
+  // trainer's words twice.
+  it('shows the detail beside an unread delay without its words', () => {
+    const beside = (line: string) => EarlyEntry.detailBesideTime(PlanParser.parseEarlyEntry(line)!)
+    const vague = PlanParser.parseEarlyEntry('🟡 Если встала - входим через пару минут от начала движения, когда отойдёт')!
+    expect(vague.detail).toBe('через пару минут от начала движения, когда отойдёт')
+    expect(EarlyEntry.detailBesideTime(vague)).toBe('от начала движения, когда отойдёт')
+    expect(beside('Если встала - входим через пару минут, когда отойдёт')).toBe('когда отойдёт')
+    expect(beside('Если встала - входим через пару минут')).toBeNull()
+    expect(beside('If she stands up - come back in a few minutes after she lies down')).toBe('after she lies down')
+    // A time it has read, or none: the detail as it is.
+    expect(beside('Если встала - входим через 2 минуты от начала движения')).toBe('от начала движения')
+    expect(beside('Если встала - входим сразу, тихо')).toBe('тихо')
+  })
 })
 
 // Not in the Swift suite: details of the port that the cases above do not reach.
@@ -377,7 +592,7 @@ describe('PlanParser details', () => {
     expect(PlanParser.parseEarlyEntry('Если легла - подвходим через 5 секунд')).toBeNull()
     expect(PlanParser.parseEarlyEntry('Если легла – входим через 5 секунд')?.delay).toBe(5)
     expect(PlanParser.isDoNotEnterRule('Если лает — не входим, ждём')).toBe(true)
-    expect(PlanParser.isDoNotEnterRule('Если лает — не входимость')).toBe(false)
+    expect(PlanParser.isDoNotEnterRule('Если лает — ждём вне входа')).toBe(false)
     expect(PlanParser.parseEarlyEntry('Если встала, входим сразу')?.delay).toBeNull()
   })
 

@@ -271,6 +271,10 @@ button {
 .textarea::placeholder {
   color: var(--text-tertiary);
 }
+.input:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .textarea {
   height: auto;
   padding: var(--space-2) var(--space-3);

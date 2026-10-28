@@ -263,7 +263,7 @@ struct MacCameraPickerSheet: View {
     /// `selecting`: an account just signed in to — its first camera gets selected.
     private func reload(force: Bool = false, selecting account: String? = nil) async {
         await catalog.load(model, account: onlyStreams || allAccounts ? nil : accountID)
-        if let account, let camera = catalog.accounts.first(where: { $0.id == account })?.cameras.first {
+        if let account, let camera = catalog.accounts.first(where: { $0.id == account })?.cameras.first(where: { $0.id != mainID }) {
             selection = camera.id
         } else if selection == nil || catalog.choice(for: selection) == nil {
             selection = catalog.currentID(model, target: target) ?? firstID
@@ -277,9 +277,14 @@ struct MacCameraPickerSheet: View {
 
     /// The first camera go2rtc already plays (or the first stream): a sensible default to confirm with Return.
     private var firstID: String? {
-        let cameras = visibleAccounts.flatMap(\.cameras)
+        let cameras = visibleAccounts.flatMap(\.cameras).filter { $0.id != mainID }
         if let camera = cameras.first(where: { $0.streamName != nil }) ?? cameras.first { return camera.id }
-        return catalog.otherStreams.first.map { SetupCameraCatalog.streamID($0.name) }
+        return catalog.otherStreams.map { SetupCameraCatalog.streamID($0.name) }.first { $0 != mainID }
+    }
+
+    /// Picking the second camera: the main one, never offered as the default (Return gave «Эта камера уже основная»).
+    private var mainID: String? {
+        target == .second ? catalog.currentID(model) : nil
     }
 
     private func choose() {

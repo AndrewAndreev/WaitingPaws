@@ -75,7 +75,7 @@ function TrainingCommands() {
       )}
       {!cameraOnline(app) && configured && <span className="badge badge--warning">{t('go2rtc не запущен')}</span>}
       {app.session && (
-        <Tooltip content={t('Завершить тренировку') + ' (Ctrl+E)'}>
+        <Tooltip content={t('Завершить тренировку') + ' (Ctrl+.)'}>
           <button className="tb-btn" onClick={() => ui.set({ confirmFinish: true })}>
             <FinishIcon />
             {finishTitle(app)}

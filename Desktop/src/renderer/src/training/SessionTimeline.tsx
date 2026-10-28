@@ -133,7 +133,7 @@ export function SessionTimeline({ live }: { live: LiveSession }) {
         </span>
         <span className="spacer" />
         <Stats live={live} />
-        <Button icon={<EditIcon />} onClick={() => ui.set({ editingSessionPlan: true })} title={t('Поправить выходы и перерывы прямо во время тренировки')}>
+        <Button icon={<EditIcon />} onClick={() => ui.set({ editingSessionPlan: true })} title={t('Поправить выходы и перерывы прямо во время тренировки') + ' (Ctrl+E)'}>
           {t('Расписание…')}
         </Button>
       </div>

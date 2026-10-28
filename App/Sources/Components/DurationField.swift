@@ -147,7 +147,7 @@ struct DurationButton: View {
     /// "2 с", "5 мин", or "1:30" when minutes and seconds mix ("1 мин 30 с" does not fit a chip).
     private var label: String {
         if shown == 0, let zeroTitle { return zeroTitle }
-        return shown >= 60 && Int(shown) % 60 != 0 ? DurationText.clock(shown) : DurationText.short(shown)
+        return shown >= 60 && DurationText.wholeSeconds(shown) % 60 != 0 ? DurationText.clock(shown) : DurationText.short(shown)
     }
 }
 
@@ -171,7 +171,7 @@ struct DurationEditor: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private var total: Int { Int((value ?? defaultValue ?? 0).rounded()) }
+    private var total: Int { DurationText.wholeSeconds(value ?? defaultValue ?? 0) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {

@@ -17,6 +17,34 @@ struct LinkPill: View {
         }
         #else
         let client = model.syncClient
+        if let host = client.reconnecting {
+            // The link dropped mid-training: the bubble under the pill says so (`LinkNoticeOverlay`); give up here.
+            Menu {
+                Section {
+                    Text(Self.reconnectingTitle(host))
+                }
+                Button("Отключить синхронизацию", systemImage: "xmark.circle", role: .destructive) {
+                    client.disconnect()
+                }
+            } label: {
+                Pill(text: "\(host.kindTitle)…", systemImage: "wifi.exclamationmark", tint: Theme.warning)
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .anchorPreference(key: LinkPillAnchorKey.self, value: .bounds) { $0 }
+        } else {
+            linkStatus(client)
+        }
+        #endif
+    }
+
+    #if os(iOS)
+    static func reconnectingTitle(_ host: SyncDevice) -> String {
+        String(localized: "Нет связи с \(host.kindTitle) — переподключаемся…")
+    }
+
+    @ViewBuilder
+    private func linkStatus(_ client: SyncClient) -> some View {
         switch client.status {
         case .connected(let host):
             Menu {
@@ -52,9 +80,8 @@ struct LinkPill: View {
         case .idle, .failed:
             EmptyView()
         }
-        #endif
     }
-
+    #endif
 }
 
 #if os(iOS)
@@ -129,7 +156,7 @@ struct MacLinkCard: View {
                             .foregroundStyle(.white.opacity(0.6))
                     }
                     Spacer(minLength: 0)
-                    IconButton(systemImage: "xmark") { client.disconnect() }
+                    IconButton(systemImage: "xmark", label: String(localized: "Отменить")) { client.disconnect() }
                 }
             }
         case .connected:
@@ -178,7 +205,7 @@ struct MacLinkCard: View {
                             .foregroundStyle(.white.opacity(0.6))
                     }
                     Spacer(minLength: 0)
-                    IconButton(systemImage: "xmark") { dismissed.insert(host.id) }
+                    IconButton(systemImage: "xmark", label: String(localized: "Скрыть")) { dismissed.insert(host.id) }
                 }
                 failure
                 BigButton(title: String(localized: "Синхронизировать тренировку с \(kind)"),
@@ -215,7 +242,7 @@ struct MacLinkCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
-                    IconButton(systemImage: "xmark") { dismissed.formUnion(hosts.map(\.id)) }
+                    IconButton(systemImage: "xmark", label: String(localized: "Скрыть")) { dismissed.formUnion(hosts.map(\.id)) }
                 }
                 failure
                 VStack(spacing: 6) {
@@ -329,7 +356,9 @@ struct LinkPillAnchorKey: PreferenceKey {
 }
 
 /// A short tooltip under the «Mac» pill: «Синхронизировано с …» after joining, «Видео сохранено на Mac»
-/// after a recording there. Fades after a few seconds, a tap closes it at once.
+/// after a recording there. Fades after a few seconds, a tap closes it at once. Without the pill (not linked:
+/// «Запись продолжена», a Mac's training gone from the screen) it is a banner under the top bar. While the link is
+/// being restored, «Нет связи…» stays under the pill.
 struct LinkNoticeOverlay: ViewModifier {
     @Environment(AppModel.self) private var model
 
@@ -337,21 +366,21 @@ struct LinkNoticeOverlay: ViewModifier {
         content
             .overlayPreferenceValue(LinkPillAnchorKey.self) { anchor in
                 GeometryReader { proxy in
-                    if let anchor, let notice = model.linkNotice {
-                        let pill = proxy[anchor]
-                        // Right edge under the pill's, but always on screen.
-                        let width = min(290, proxy.size.width - 24)
-                        let left = max(12, min(pill.maxX, proxy.size.width - 12) - width)
-                        LinkNoticeBubble(notice: notice, arrowX: pill.midX - left)
-                            .frame(width: width)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .offset(x: left, y: pill.maxY + 6)
-                            .onTapGesture { model.linkNotice = nil }
-                            .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .top)))
-                            .id(notice.id)
+                    if let notice = model.linkNotice ?? reconnectingNotice {
+                        if let anchor {
+                            let pill = proxy[anchor]
+                            // Right edge under the pill's, but always on screen.
+                            let width = min(290, proxy.size.width - 24)
+                            let left = max(12, min(pill.maxX, proxy.size.width - 12) - width)
+                            bubble(notice, arrowX: pill.midX - left, width: width, x: left, y: pill.maxY + 6)
+                        } else {
+                            let width = min(340, proxy.size.width - 24)
+                            bubble(notice, arrowX: nil, width: width, x: (proxy.size.width - width) / 2, y: 50)
+                        }
                     }
                 }
                 .animation(.smooth(duration: 0.3), value: model.linkNotice)
+                .animation(.smooth(duration: 0.3), value: model.syncClient.reconnecting)
             }
             .task(id: model.linkNotice?.id) {
                 guard model.linkNotice != nil else { return }
@@ -360,23 +389,45 @@ struct LinkNoticeOverlay: ViewModifier {
                 model.linkNotice = nil
             }
     }
+
+    /// While the link is being restored (when no other notice is up): why the training's buttons are off.
+    private var reconnectingNotice: LinkNotice? {
+        model.syncClient.reconnecting.map { host in
+            LinkNotice(title: LinkPill.reconnectingTitle(host),
+                       detail: String(localized: "Тренировка идёт на «\(host.name)». Кнопки заработают, когда связь вернётся."),
+                       systemImage: "wifi.exclamationmark", isWarning: true)
+        }
+    }
+
+    private func bubble(_ notice: LinkNotice, arrowX: CGFloat?, width: CGFloat, x: CGFloat, y: CGFloat) -> some View {
+        LinkNoticeBubble(notice: notice, arrowX: arrowX)
+            .frame(width: width)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .offset(x: x, y: y)
+            .onTapGesture { model.linkNotice = nil }
+            .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .top)))
+            // The «Нет связи» one has no notice id: it keeps its place while it stays.
+            .id(model.linkNotice?.id)
+    }
 }
 
 private struct LinkNoticeBubble: View {
     let notice: LinkNotice
-    /// Where the arrow points, from the bubble's leading edge.
-    let arrowX: CGFloat
+    /// Where the arrow points, from the bubble's leading edge; nil: a banner without one.
+    let arrowX: CGFloat?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Triangle()
-                .fill(Theme.panel)
-                .frame(width: 16, height: 8)
-                .offset(x: arrowX - 8)
+            if let arrowX {
+                Triangle()
+                    .fill(Theme.panel)
+                    .frame(width: 16, height: 8)
+                    .offset(x: arrowX - 8)
+            }
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "laptopcomputer.and.iphone")
+                Image(systemName: notice.systemImage)
                     .font(.system(size: 17))
-                    .foregroundStyle(Theme.info)
+                    .foregroundStyle(notice.isWarning ? Theme.warning : Theme.info)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(notice.title)
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))

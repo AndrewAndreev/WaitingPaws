@@ -2,16 +2,18 @@ import { app, clipboard, ClipboardItem, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { Go2RTCClient, Go2RTCServer } from '@core/go2rtcClient'
+import { Go2RTCClient, Go2RTCServer, queryValue } from '@core/go2rtcClient'
 import { TrainingSession, type TrainingSessionSnapshot } from '@core/trainingSession'
 import { TrainingPlan } from '@core/models'
 import { SessionLogFormatter, type TrainingRecord } from '@core/sessionLog'
-import { setCoreLanguage } from '@core/localization'
+import { SessionStore } from '@core/sessionStore'
+import { setCoreLanguage, setCoreRegion, tr } from '@core/localization'
 import type { AppState, RecordingClip, XiaomiQuality } from '@shared/api'
 import type { Settings } from '@shared/settings'
 import { EmbeddedGo2RTC, LAN_USERNAME } from './go2rtc'
 import { StreamRecorder } from './recorder'
 import { MediaFinalizer } from './finalizer'
+import { removeKeptFiles, removeRecordingParts, restoreKeptFiles } from './files'
 import { SettingsStore } from './settings'
 import { RecordStore } from './storage'
 import { CameraModesController } from './cameraModes'
@@ -28,7 +30,17 @@ interface RecordingSegment {
   path: string
   startedAt: number
   bytes: number
+  /// When its video began to arrive (`StreamRecorder.firstFragmentAt`): the camera's next keyframe after the request.
+  mediaStartedAt: number | null
 }
+
+/// Where a part's video lands in the recording.
+function placedAt(segment: RecordingSegment): number {
+  return segment.mediaStartedAt ?? segment.startedAt
+}
+
+/// The settings that choose the go2rtc server.
+const CONNECTION_KEYS: (keyof Settings)[] = ['connectionMode', 'serverURL', 'serverUsername', 'serverPassword']
 
 /// The backend of the app — the Mac app's `AppModel` without the UI: settings, the bundled go2rtc, the running
 /// training, recording (in parts when the camera drops out), finalizing, history and the iPhone link. The UI gets
@@ -58,6 +70,14 @@ export class AppBackend {
   private lastRequestedPart = 0
   private finalizing = new Set<string>()
   private finalizeTasks = new Map<string, Promise<void>>()
+  /// Starts and stops of the recording, one after another: a stop still closing its file must not be overtaken by
+  /// another stop (which would find no parts and delete the file) or by a start (whose new file it would take).
+  private recordingQueue: Promise<void> = Promise.resolve()
+  /// Changed by every stop (finishing and dropping a training stop too) and by quitting: a start still waiting for
+  /// go2rtc or a file name gives up then.
+  private recordingIntent = 0
+  /// The app is going away: nothing starts recording any more.
+  private quitting = false
 
   private xiaomiQuality: XiaomiQuality | null = null
   private xiaomiSource: string | null = null
@@ -78,15 +98,25 @@ export class AppBackend {
     this.sync = new SyncHost({
       state: () => this.syncState(),
       command: (command) => this.applyRemote(command),
-      access: () => ({ port: this.go2rtc.apiPort, username: LAN_USERNAME, password: this.go2rtc.lanEnabled ? this.settings.lanPassword : '' }),
+      // With the user's server the bundled go2rtc isn't used: a linked iPhone gets no access to it (as on the Mac).
+      access: () => {
+        const shares = this.settings.value.connectionMode === 'embedded' && this.go2rtc.lanEnabled
+        return { port: this.go2rtc.apiPort, username: LAN_USERNAME, password: shares ? this.settings.lanPassword : '' }
+      },
       onDeviceForgotten: () => void this.rotateLanPassword(),
       onChange: () => this.emit(),
     })
     this.recorder.onEnded = (reason) => this.recordingStreamEnded(reason)
+    this.recorder.onFirstFragment = () => {
+      const last = this.segments[this.segments.length - 1]
+      if (last && last.path === this.recorder.filePath) last.mediaStartedAt = this.recorder.firstFragmentAt
+    }
     this.go2rtc.onStatus((status) => {
       if (status.kind === 'running') {
         this.playerGeneration += 1
         void this.refreshCamera()
+        // A restart may land on other ports (the preferred pair was taken, or freed): linked iPhones get them.
+        this.sync.refreshAccess()
       }
       this.emit()
     })
@@ -97,6 +127,8 @@ export class AppBackend {
   }
 
   async start(): Promise<void> {
+    // Finished files that could not replace their recording last time go in before the history lists the folder.
+    await restoreKeptFiles(this.store.recordingsDirectory)
     await this.reloadHistory()
     this.applyDemoArguments()
     this.ready = true
@@ -144,11 +176,16 @@ export class AppBackend {
   }
 
   async shutdown(): Promise<void> {
+    this.quitting = true
+    // A recording still waiting for go2rtc does not begin now.
+    this.recordingIntent += 1
     if (this.session) {
-      // Closing the window during a training keeps what was done: the record and the video are saved.
+      // Closing the window during a training keeps what was done: the record and the video are saved (also when
+      // that is already under way).
       this.session.finish()
       await this.completeSessionIfNeeded()
-    } else if (this.isRecordingLocally) {
+    } else {
+      // Also waits for a stop under way, so that its finalizing is in the tasks below.
       await this.stopRecording(false)
     }
     await Promise.allSettled([...this.finalizeTasks.values()])
@@ -219,6 +256,14 @@ export class AppBackend {
     const preference = this.settings.value.language
     const language = preference === 'system' ? (app.getPreferredSystemLanguages()[0] ?? app.getLocale()).toLowerCase().startsWith('ru') ? 'ru' : 'en' : preference
     setCoreLanguage(language)
+    // Dates in the logs this process writes follow the system's region, as the UI's do (`useAppearance`) and as the
+    // Mac's `Locale.current.region`: English with a British region writes 05/10/2026. Node's own default locale
+    // here is the UI language's.
+    try {
+      setCoreRegion(new Intl.Locale(app.getSystemLocale()).region ?? null)
+    } catch {
+      // Keep the default.
+    }
   }
 
   private fail(message: string): void {
@@ -298,8 +343,10 @@ export class AppBackend {
     await this.completeSessionIfNeeded()
   }
 
-  /// Drops the running session without saving anything (asked explicitly by the user).
+  /// Drops the running session without saving anything (asked explicitly by the user). Nothing to drop once it has
+  /// finished (it is being saved, or is saved): a late command must not delete a recording started since.
   async abandonSession(): Promise<void> {
+    if (!this.session || this.session.isFinished) return
     await this.stopRecording(true)
     this.endSession()
     this.lastRecord = null
@@ -322,31 +369,84 @@ export class AppBackend {
     }, 500)
   }
 
-  private completing = false
+  /// The finished session being saved; callers meanwhile (quitting too) wait for the same one.
+  private completion: Promise<void> | null = null
+  /// Its record while it is being written (written again synchronously if Windows ends the session meanwhile).
+  private savingRecord: TrainingRecord | null = null
 
-  private async completeSessionIfNeeded(): Promise<void> {
+  private completeSessionIfNeeded(): Promise<void> {
+    if (this.completion) return this.completion
     const session = this.session
-    if (!session || !session.isFinished || this.completing) return
-    this.completing = true
+    if (!session || !session.isFinished) return Promise.resolve()
+    const completion = this.completeSession(session).finally(() => {
+      if (this.completion === completion) this.completion = null
+    })
+    this.completion = completion
+    return completion
+  }
+
+  private async completeSession(session: TrainingSession): Promise<void> {
+    await this.stopRecording(false)
+    // Saved meanwhile, as Windows ended its session.
+    if (this.session !== session) return
+    // Read after stopping: a recording that got nothing has just been deleted.
+    const path = this.currentRecordingPath
+    const fileName = path ? basename(path) : null
+    const record = session.makeRecord(fileName)
+    this.savingRecord = record
     try {
-      const fileName = this.currentRecordingPath ? basename(this.currentRecordingPath) : null
-      await this.stopRecording(false)
-      const record = session.makeRecord(fileName)
-      try {
-        await this.store.save(record)
-      } catch (error) {
-        this.fail(`Не удалось сохранить лог: ${(error as Error).message}`)
-      }
-      this.history = [record, ...this.history.filter((item) => item.id !== record.id)]
-      this.historyRevision += 1
-      this.lastRecord = record
-      this.currentRecordingPath = null
-      this.endSession()
-      log(`[session] finished, ${record.results.length} attempts, video ${fileName ?? 'none'}`)
-      this.emit()
+      await this.store.save(record)
+    } catch (error) {
+      const message = (error as Error).message
+      this.fail(tr(`Не удалось сохранить лог: ${message}`, `Couldn’t save the log: ${message}`))
     } finally {
-      this.completing = false
+      this.savingRecord = null
     }
+    this.history = [record, ...this.history.filter((item) => item.id !== record.id)]
+    this.historyRevision += 1
+    this.lastRecord = record
+    if (this.currentRecordingPath === path) this.currentRecordingPath = null
+    this.endSession()
+    log(`[session] finished, ${record.results.length} attempts, video ${fileName ?? 'none'}`)
+    this.emit()
+  }
+
+  /// Windows is shutting down, restarting or signing out: `before-quit` does not come, and the process may be ended
+  /// as soon as this returns. So the running training is finished and its record written right here, synchronously;
+  /// the video keeps what reached the disk (parts after a camera drop-out stay unjoined in `.parts`).
+  saveBeforeSessionEnd(): void {
+    this.quitting = true
+    this.recordingIntent += 1
+    const record = this.savingRecord ?? this.finishAtOnce()
+    if (!record) return
+    try {
+      this.store.saveNow(record)
+      log(`[session] saved as Windows ends its session, video ${record.recordingFileName ?? 'none'}`)
+    } catch (error) {
+      log(`[session] saving as Windows ends its session failed: ${(error as Error).message}`)
+    }
+  }
+
+  /// Finishes the running training without waiting for anything (the recording just stops) and gives its record.
+  private finishAtOnce(): TrainingRecord | null {
+    const session = this.session
+    if (!session) return null
+    session.finish()
+    const recording = this.isRecordingLocally
+    if (this.recorder.isRecording) {
+      void this.recorder.stop()
+      this.noteSegmentEnded()
+    }
+    if (this.resumeTimer) clearTimeout(this.resumeTimer)
+    this.resumeTimer = null
+    this.resuming = false
+    if (recording) session.noteRecording(false)
+    const path = this.currentRecordingPath
+    const hasVideo = path !== null && (!recording || this.segments.some((segment) => segment.bytes > 0))
+    const record = session.makeRecord(hasVideo ? basename(path) : null)
+    this.lastRecord = record
+    this.endSession()
+    return record
   }
 
   /// A button press here (`at` null: now) or on a linked iPhone (`at`: when it was pressed there).
@@ -409,21 +509,29 @@ export class AppBackend {
   }
 
   async startRecording(): Promise<void> {
+    if (this.quitting) return
+    const intent = this.recordingIntent
     await this.waitForServer()
+    // Stopped meanwhile (or the training finished or was dropped): no recording after all.
+    if (intent !== this.recordingIntent) return
+    await this.serially(() => this.beginRecording(intent))
+  }
+
+  private async beginRecording(intent: number): Promise<void> {
+    if (intent !== this.recordingIntent || this.isRecordingLocally) return
     const client = this.client()
     const stream = this.settings.value.streamName
     if (!client || !stream) {
-      this.fail('Камера не настроена')
+      this.fail(tr('Камера не настроена', 'No camera is set up'))
       return
     }
-    if (this.isRecordingLocally) return
-    const plan = this.session?.snapshot.plan ?? TrainingPlan.make({ title: 'Запись' })
+    const plan = this.session?.snapshot.plan ?? TrainingPlan.make({ title: tr('Запись', 'Record') })
     const path = await this.store.newRecordingPath(plan)
-    if (this.isRecordingLocally) return
+    if (intent !== this.recordingIntent || this.isRecordingLocally) return
     try {
       this.recorder.start(client.mp4URL(stream), Go2RTCServer.authorizationHeader(client.server), path)
       this.currentRecordingPath = path
-      this.segments = [{ path, startedAt: this.recorder.startedAt ?? Date.now(), bytes: 0 }]
+      this.segments = [{ path, startedAt: this.recorder.startedAt ?? Date.now(), bytes: 0, mediaStartedAt: null }]
       this.session?.noteRecording(true, basename(path))
       if (!this.session) {
         // A recording without a training replaces whatever summary was shown.
@@ -432,27 +540,43 @@ export class AppBackend {
       }
       log(`[rec] started ${basename(path)}`)
     } catch (error) {
-      this.fail(`Не удалось начать запись: ${(error as Error).message}`)
+      const message = (error as Error).message
+      this.fail(tr(`Не удалось начать запись: ${message}`, `Couldn’t start recording: ${message}`))
     }
     this.emit()
   }
 
-  async stopRecording(deleteFile: boolean): Promise<void> {
+  /// Stops the recording; also when a stop is already under way (it is waited for, never repeated).
+  stopRecording(deleteFile: boolean): Promise<void> {
+    // A start still waiting for go2rtc or a file name must not begin after this.
+    this.recordingIntent += 1
+    return this.serially(() => this.endRecording(deleteFile))
+  }
+
+  private serially(work: () => Promise<void>): Promise<void> {
+    const run = this.recordingQueue.then(work)
+    this.recordingQueue = run.catch(() => undefined)
+    return run
+  }
+
+  private async endRecording(deleteFile: boolean): Promise<void> {
     const wasRecording = this.isRecordingLocally
     if (this.resumeTimer) clearTimeout(this.resumeTimer)
     this.resumeTimer = null
     this.resuming = false
-    if (!wasRecording && !this.currentRecordingPath) return
+    // This stop's recording, taken before anything is awaited.
+    const main = this.currentRecordingPath
+    const segments = this.segments
+    this.segments = []
+    if (!wasRecording && !main) return
     if (this.recorder.isRecording) {
       await this.recorder.stop()
-      this.noteSegmentEnded()
+      this.noteSegmentEnded(segments)
     }
-    const main = this.currentRecordingPath
-    const startedAt = this.segments[0]?.startedAt ?? this.recorder.startedAt ?? Date.now()
+    const startedAt = segments[0]?.startedAt ?? this.recorder.startedAt ?? Date.now()
     // Parts that got nothing (the camera was still away) are dropped; the first file stays as the name.
-    const filled = this.segments.filter((segment) => segment.bytes > 0)
-    for (const part of this.segments.slice(1)) if (part.bytes === 0) removeQuietly(part.path)
-    this.segments = []
+    const filled = segments.filter((segment) => segment.bytes > 0)
+    for (const part of segments.slice(1)) if (part.bytes === 0) removeQuietly(part.path)
     if (wasRecording) {
       this.session?.noteRecording(false)
       log(`[rec] stopped ${main ? basename(main) : '?'} parts=${filled.length} error=${this.recorder.lastError ?? 'none'}`)
@@ -472,16 +596,11 @@ export class AppBackend {
     }
     if (!wasRecording || !main) return
     const needsJoin = filled.length > 1 || filled[0]?.path !== main
-    const task = (needsJoin ? this.joinRecording(main, filled, startedAt) : this.finalizeRecording(main)).then(async () => {
+    const work = needsJoin ? this.trackFinalizing(basename(main), () => this.joinRecording(main, filled, startedAt)) : this.finalizeRecording(main)
+    const task = work.then(async () => {
       await this.reloadClips()
       this.emit()
     })
-    // Quitting waits for it (see shutdown).
-    if (needsJoin) {
-      const key = `join:${basename(main)}`
-      this.finalizeTasks.set(key, task)
-      void task.finally(() => this.finalizeTasks.delete(key))
-    }
     if (!this.session) {
       // Without a training nothing else will claim the file: it becomes a standalone recording.
       this.currentRecordingPath = null
@@ -494,9 +613,11 @@ export class AppBackend {
     void task
   }
 
-  private noteSegmentEnded(): void {
-    const last = this.segments[this.segments.length - 1]
-    if (last && last.path === this.recorder.filePath) last.bytes = this.recorder.bytesWritten
+  private noteSegmentEnded(segments = this.segments): void {
+    const last = segments[segments.length - 1]
+    if (!last || last.path !== this.recorder.filePath) return
+    last.bytes = this.recorder.bytesWritten
+    last.mediaStartedAt = this.recorder.firstFragmentAt
   }
 
   /// The recording's stream ended without a stop: go2rtc lost the camera (it reconnects by itself) or refused the
@@ -505,6 +626,15 @@ export class AppBackend {
     const main = this.currentRecordingPath
     if (!main || !this.segments.length) return
     this.noteSegmentEnded()
+    if (this.recorder.writeFailed) {
+      // A new part would fail the same way (disk full, a folder Windows protects): the recording ends with what it has.
+      log(`[rec] the file could not be written (${reason ?? '?'}): recording stopped`)
+      // Still recording until the stop below (which keeps what was written).
+      this.resuming = true
+      this.fail(tr(`Запись остановлена: не удалось записать файл (${reason ?? '?'})`, `Recording stopped: couldn’t write the file (${reason ?? '?'})`))
+      void this.stopRecording(false)
+      return
+    }
     const last = this.segments[this.segments.length - 1]
     // A try that got nothing (the camera still away) is not a part, and not worth a line in the log each time.
     if (last && last.bytes === 0 && last.path !== main) {
@@ -530,7 +660,7 @@ export class AppBackend {
     const path = join(directory, `${basename(main, '.mp4')}-part${number}.mp4`)
     try {
       this.recorder.start(client.mp4URL(stream), Go2RTCServer.authorizationHeader(client.server), path)
-      this.segments.push({ path, startedAt: this.recorder.startedAt ?? Date.now(), bytes: 0 })
+      this.segments.push({ path, startedAt: this.recorder.startedAt ?? Date.now(), bytes: 0, mediaStartedAt: null })
       this.resuming = false
       if (number !== this.lastRequestedPart) log(`[rec] waiting for the camera to write part ${number}`)
       this.lastRequestedPart = number
@@ -541,18 +671,20 @@ export class AppBackend {
     this.emit()
   }
 
-  /// Puts the parts of a recording the camera broke off back into its first file, each at its own time.
+  /// Puts the parts of a recording the camera broke off back into its first file, each at the time its video began
+  /// to arrive (the Mac's `RecordingFinalizer.join`; the first part's first frame starts the video).
   private async joinRecording(output: string, parts: RecordingSegment[], startedAt: number): Promise<void> {
     const name = basename(output)
     this.finalizing.add(name)
     this.emit()
     try {
-      await this.finalizer.write(
-        parts.map((part) => ({ path: part.path, offset: Math.max(0, (part.startedAt - startedAt) / 1000) })),
+      const used = await this.finalizer.write(
+        parts.map((part) => ({ path: part.path, offset: Math.max(0, (placedAt(part) - startedAt) / 1000) })),
         output,
       )
-      for (const part of parts) if (part.path !== output) removeQuietly(part.path)
-      log(`[rec] joined ${parts.length} parts into ${name}`)
+      // A part left out of the join (no video, unreadable) stays in `.parts`, as on the Mac.
+      for (const path of used) if (path !== output) removeQuietly(path)
+      log(`[rec] joined ${used.length} parts into ${name}`)
     } catch (error) {
       log(`[rec] joining ${name} failed: ${(error as Error).message}`)
     } finally {
@@ -562,12 +694,12 @@ export class AppBackend {
   }
 
   /// Turns a finished recording into a regular MP4 with an AAC sound track. Cheap for files that are already done;
-  /// concurrent calls for one file share the work.
+  /// a call while the file is joined or finalized (the history opening it, copying it) waits for that instead.
   finalizeRecording(path: string): Promise<void> {
     const name = basename(path)
     const running = this.finalizeTasks.get(name)
     if (running) return running
-    const task = (async () => {
+    return this.trackFinalizing(name, async () => {
       this.finalizing.add(name)
       this.emit()
       try {
@@ -579,24 +711,24 @@ export class AppBackend {
         log(`[rec] finalize failed ${name}: ${(error as Error).message}`)
       } finally {
         this.finalizing.delete(name)
-        this.finalizeTasks.delete(name)
         this.emit()
       }
-    })()
+    })
+  }
+
+  /// The join or finalize of one file, under its name (quitting waits for them all, see `shutdown`). Never two at
+  /// once for a file: an in-place finalize reading the first part while its join waits to replace it (the file held
+  /// open) would write that part back over the joined video.
+  private trackFinalizing(name: string, work: () => Promise<void>): Promise<void> {
+    const previous = this.finalizeTasks.get(name)
+    const task: Promise<void> = (previous ? previous.then(work) : work()).finally(() => {
+      if (this.finalizeTasks.get(name) === task) this.finalizeTasks.delete(name)
+    })
     this.finalizeTasks.set(name, task)
     return task
   }
 
   // MARK: - Camera quality and modes
-
-  private static query(source: string, name: string): string | null {
-    const query = source.split('?')[1] ?? ''
-    for (const part of query.split('&')) {
-      const [key, value] = part.split('=')
-      if (key === name) return decodeURIComponent(value ?? '')
-    }
-    return null
-  }
 
   /// The selected stream's `xiaomi://` source. While the camera is live, `/api/streams` describes the running
   /// connection without the source URL, so the config file is read instead.
@@ -628,7 +760,7 @@ export class AppBackend {
     const source = await this.readXiaomiSource(client)
     this.xiaomiSource = source
     if (source) {
-      const raw = AppBackend.query(source, 'subtype')
+      const raw = queryValue(source, 'subtype')
       this.xiaomiQuality = raw === null || raw === 'hd' ? '2' : raw === 'sd' ? '1' : (['auto', '1', '2', '3'].includes(raw) ? raw : '2') as XiaomiQuality
     } else {
       this.xiaomiQuality = null
@@ -644,7 +776,7 @@ export class AppBackend {
     if (!client) return
     const source = await this.readXiaomiSource(client)
     if (!source) {
-      this.fail('Не удалось сменить качество: go2rtc не отдал адрес камеры')
+      this.fail(tr('Не удалось сменить качество: go2rtc не отдал адрес камеры', 'Couldn’t change quality: go2rtc didn’t return the camera address'))
       return
     }
     const [base, query = ''] = source.split('?')
@@ -659,7 +791,8 @@ export class AppBackend {
       this.playerGeneration += 1
       log(`[camera] quality ${quality}`)
     } catch (error) {
-      this.fail(`Не удалось сменить качество: ${(error as Error).message}`)
+      const message = (error as Error).message
+      this.fail(tr(`Не удалось сменить качество: ${message}`, `Couldn’t change quality: ${message}`))
     }
     this.emit()
   }
@@ -670,8 +803,8 @@ export class AppBackend {
     this.videoSize = { width, height }
     const quality = this.xiaomiQuality
     const source = this.xiaomiSource
-    if (quality && quality !== 'auto' && source && AppBackend.query(source, 'subtype') === quality) {
-      const did = AppBackend.query(source, 'did')
+    if (quality && quality !== 'auto' && source && queryValue(source, 'subtype') === quality) {
+      const did = queryValue(source, 'did')
       if (did) {
         const seen = `${width}x${height}`
         const all = this.settings.value.qualityResolutions
@@ -745,7 +878,8 @@ export class AppBackend {
       method: request.method ?? 'GET',
       headers,
       body: request.body as RequestInit['body'],
-      signal: AbortSignal.timeout(25_000),
+      // Signing in to Xiaomi and listing its cameras wait for Mi Cloud, page after page for shared homes.
+      signal: AbortSignal.timeout(/\/api\/xiaomi(\/|$)/.test(target.pathname) ? Go2RTCClient.cloudTimeoutMs : 25_000),
     })
     const body = new Uint8Array(await response.arrayBuffer())
     return { status: response.status, statusText: response.statusText, headers: Object.fromEntries(response.headers.entries()), body }
@@ -785,6 +919,7 @@ export class AppBackend {
     const record = this.history.find((item) => item.id === id)
     if (!record) return
     await this.store.delete(record, includingRecording)
+    if (includingRecording && record.recordingFileName) this.removeLeftovers(record.recordingFileName)
     this.history = this.history.filter((item) => item.id !== id)
     if (this.lastRecord?.id === id) this.lastRecord = null
     await this.reloadClips()
@@ -794,16 +929,40 @@ export class AppBackend {
 
   private deleteClip(fileName: string): void {
     removeQuietly(join(this.store.recordingsDirectory, basename(fileName)))
+    removeKeptFiles(this.store.recordingsDirectory, basename(fileName))
+    this.removeLeftovers(basename(fileName))
     this.clips = this.clips.filter((clip) => clip.fileName !== fileName)
     if (this.lastClip?.fileName === fileName) this.lastClip = null
     this.historyRevision += 1
     this.emit()
   }
 
+  /// What else goes with a deleted recording: its parts in `.parts` (one left out of a join, or a join cut short), and
+  /// — while it is still being joined or finalized — the file that work puts back when it ends: it goes again then (as
+  /// on the Mac).
+  private removeLeftovers(fileName: string): void {
+    if (!SessionStore.isRecordingFileName(fileName)) return
+    const directory = this.store.recordingsDirectory
+    const work = this.finalizeTasks.get(fileName)
+    if (!work) return removeRecordingParts(directory, fileName)
+    void work.finally(() => {
+      removeQuietly(join(directory, fileName))
+      removeKeptFiles(directory, fileName)
+      removeRecordingParts(directory, fileName)
+    })
+  }
+
   /// Removes every saved session with its log and video, and every standalone recording.
   private async deleteAll(): Promise<void> {
-    for (const record of this.history) await this.store.delete(record, true)
-    for (const clip of this.clips) removeQuietly(join(this.store.recordingsDirectory, clip.fileName))
+    for (const record of this.history) {
+      await this.store.delete(record, true)
+      if (record.recordingFileName) this.removeLeftovers(record.recordingFileName)
+    }
+    for (const clip of this.clips) {
+      removeQuietly(join(this.store.recordingsDirectory, clip.fileName))
+      removeKeptFiles(this.store.recordingsDirectory, clip.fileName)
+      this.removeLeftovers(clip.fileName)
+    }
     this.history = []
     this.clips = []
     this.lastRecord = null
@@ -816,17 +975,20 @@ export class AppBackend {
 
   private syncState() {
     const value = this.settings.value
+    // The iPhone watches through the bundled go2rtc only: with the user's server it gets the camera's name (the
+    // training and REC still work) but no stream, and shows that the video is on the PC (as with a Mac).
+    const shares = value.connectionMode === 'embedded'
     return {
       session: this.session?.snapshot ?? null,
       recordingSince: this.localRecordingStartedAt,
-      cameraReady: this.isConfigured && (value.connectionMode === 'external' || this.go2rtc.isRunning),
+      cameraReady: shares && this.isConfigured && this.go2rtc.isRunning,
       cameraTitle: value.cameraTitle || value.streamName,
-      streamName: value.streamName,
-      secondStreamName: value.secondStreamName || null,
-      secondCameraTitle: value.secondStreamName ? value.secondCameraTitle || value.secondStreamName : null,
+      streamName: shares ? value.streamName : '',
+      secondStreamName: shares ? value.secondStreamName || null : null,
+      secondCameraTitle: shares && value.secondStreamName ? value.secondCameraTitle || value.secondStreamName : null,
       lastRecord: this.lastRecord,
       pendingPlan: this.session ? null : this.pendingPlan,
-      cameraSource: this.xiaomiSource,
+      cameraSource: shares ? this.xiaomiSource : null,
       streamRevision: this.playerGeneration,
     }
   }
@@ -871,11 +1033,28 @@ export class AppBackend {
     }
   }
 
+  private serverTransition: Promise<void> = Promise.resolve()
+
+  /// Starts or stops the bundled go2rtc to match the connection mode, one change at a time: switched back while it is
+  /// still stopping, it starts again once stopped. With the user's server it is not used, as when the app starts in that
+  /// mode; left running it would stay open to the LAN with the password linked iPhones were given.
+  private reconcileBundledServer(): Promise<void> {
+    this.serverTransition = this.serverTransition.then(async () => {
+      const busy = this.go2rtc.status.kind === 'running' || this.go2rtc.status.kind === 'starting'
+      if (this.settings.value.connectionMode === 'embedded') {
+        if (!busy) await this.go2rtc.start(this.settings.value.shareWithIPhone ? this.settings.lanPassword : null)
+      } else if (busy) {
+        await this.go2rtc.stop()
+      }
+    }).catch((error: unknown) => log(`[go2rtc] switching the mode failed: ${(error as Error).message}`))
+    return this.serverTransition
+  }
+
   /// A forgotten iPhone must not keep watching the camera with the password it was given: new password, and the
-  /// bundled go2rtc restarts with it (the players reconnect by themselves).
+  /// bundled go2rtc restarts with it (the players reconnect by themselves) — in whatever mode, if it is open to the LAN.
   private async rotateLanPassword(): Promise<void> {
     const password = this.settings.rotateLanPassword()
-    if (this.settings.value.connectionMode === 'embedded' && this.go2rtc.lanEnabled) await this.go2rtc.restart(password)
+    if (this.go2rtc.isOpenToLAN) await this.go2rtc.restart(password)
     this.sync.refreshAccess()
   }
 
@@ -938,13 +1117,23 @@ export class AppBackend {
   }
 
   private handlers = {
-    'settings.update': (patch: Partial<Settings>) => {
+    'settings.update': (update: Partial<Settings>) => {
       const previous = this.settings.value
+      const patch = { ...update }
+      // Another server under a training or a recording would cut its video off: the connection stays as it is until
+      // they end (the settings lock these fields meanwhile, as on the Mac).
+      if (this.session !== null || this.isRecordingLocally) {
+        const refused = CONNECTION_KEYS.filter((key) => key in patch)
+        for (const key of refused) delete patch[key]
+        if (refused.length) log(`[app] not changed during a training or recording: ${refused.join(', ')}`)
+      }
       this.settings.update(patch)
       if (patch.shareWithIPhone !== undefined && patch.shareWithIPhone !== previous.shareWithIPhone) void this.setSharing(patch.shareWithIPhone)
       const serverChanged = ['connectionMode', 'serverURL', 'serverUsername', 'serverPassword', 'streamName'].some((key) => key in patch)
       if (serverChanged) {
-        if (patch.connectionMode === 'embedded' && !this.go2rtc.isRunning) void this.go2rtc.start(this.settings.value.shareWithIPhone ? this.settings.lanPassword : null)
+        if ('connectionMode' in patch) void this.reconcileBundledServer()
+        // With the user's server a linked iPhone gets no password; back on the bundled one it gets it once that runs.
+        this.sync.refreshAccess()
         this.playerGeneration += 1
         void this.refreshCamera()
       }
@@ -1025,8 +1214,10 @@ export class AppBackend {
       if (process.platform === 'win32') execFile('control.exe', ['/name', 'Microsoft.WindowsFirewall', '/page', 'pageConfigureApps'], { windowsHide: true }, () => undefined)
     },
     'shell.openFile': (fileName: string) => {
-      const path = join(this.store.recordingsDirectory, basename(fileName))
-      if (existsSync(path)) void shell.openPath(path)
+      // Only a video: the shell would run whatever else was put into the folder.
+      const name = basename(fileName)
+      const path = join(this.store.recordingsDirectory, name)
+      if (SessionStore.isRecordingFileName(name) && existsSync(path)) void shell.openPath(path)
     },
     'shell.copyFile': async (fileName: string) => {
       // Windows has no share sheet for desktop apps: the file goes to the clipboard as a file, ready to paste into
@@ -1115,9 +1306,13 @@ async function copyFileToClipboard(path: string): Promise<void> {
   } catch (error) {
     log(`[clipboard] raw CF_HDROP refused: ${(error as Error).message}`)
   }
+  // The path goes in an environment variable: `-Command` would read it as script text (spaces split it, `$(…)` runs).
   await new Promise<void>((resolve, reject) => {
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Set-Clipboard -LiteralPath $args[0]', path], { windowsHide: true }, (error) =>
-      error ? reject(error) : resolve(),
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', 'Set-Clipboard -LiteralPath $env:WP_CLIPBOARD_FILE'],
+      { windowsHide: true, env: { ...process.env, WP_CLIPBOARD_FILE: path } },
+      (error) => (error ? reject(error) : resolve()),
     )
   })
 }

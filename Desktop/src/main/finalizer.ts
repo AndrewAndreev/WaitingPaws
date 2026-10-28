@@ -1,23 +1,26 @@
-import { BrowserWindow, ipcMain } from 'electron'
-import { closeSync, existsSync, fstatSync, openSync, readSync, renameSync, statSync, unlinkSync, writeSync } from 'node:fs'
+import { BrowserWindow, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent, type WebContents } from 'electron'
+import { closeSync, existsSync, fstatSync, openSync, readSync, statSync, unlinkSync, writeSync } from 'node:fs'
 import { join, normalize, sep } from 'node:path'
+import { replaceFile } from './files'
 import { write as log } from './log'
 
 /// Recordings are finalized (remuxed, sound → AAC, parts joined) in a hidden window: WebCodecs live in Chromium,
-/// not in Node. See `renderer/src/media/finalizer.ts`. Files are touched only through the handlers below, and only
-/// inside the allowed roots (the recordings folder and the temp folder).
+/// not in Node. See `renderer/src/media/finalizer.ts`. Files are touched only through the handlers below, only by
+/// that window, only inside the allowed roots (the recordings folder and the temp folder), and only the files of the
+/// jobs under way: the parts it reads, the temporary file it writes.
 export interface RecordingPart {
   path: string
+  /// Seconds from the start of the recording to the part's first frame (see `writeRecording`).
   offset: number
 }
 
-type Job = { kind: 'check'; path: string } | { kind: 'write'; parts: RecordingPart[]; output: string }
+type Job = { kind: 'check'; path: string } | { kind: 'write'; parts: RecordingPart[]; output: string; replacing: string }
 
 export class MediaFinalizer {
   private window: BrowserWindow | null = null
   private ready: Promise<void> | null = null
   private nextId = 1
-  private pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>()
+  private pending = new Map<number, { job: Job; resolve: (value: unknown) => void; reject: (error: Error) => void }>()
   private handles = new Map<number, number>()
   private nextHandle = 1
   private idleTimer: NodeJS.Timeout | null = null
@@ -27,17 +30,23 @@ export class MediaFinalizer {
     private readonly load: (window: BrowserWindow) => Promise<void>,
     private readonly preload: string,
   ) {
-    const allowed = (path: string) => {
+    const allowed = (path: string, writing: boolean) => {
       const full = normalize(path)
-      return this.roots().some((root) => full.startsWith(normalize(root) + sep))
+      if (!this.roots().some((root) => full.startsWith(normalize(root) + sep))) return false
+      return [...this.pending.values()].some(({ job }) => {
+        if (job.kind === 'check') return !writing && normalize(job.path) === full
+        if (writing) return normalize(job.output) === full
+        return job.parts.some((part) => normalize(part.path) === full)
+      })
     }
-    const check = (path: string) => {
-      if (!allowed(path)) throw new Error(`not allowed: ${path}`)
+    const check = (event: IpcMainInvokeEvent, path: string, writing = false) => {
+      this.checkSender(event)
+      if (!allowed(path, writing)) throw new Error(`not allowed: ${path}`)
       return path
     }
-    ipcMain.handle('media:size', (_event, path: string) => statSync(check(path)).size)
-    ipcMain.handle('media:read', (_event, path: string, start: number, end: number) => {
-      const fd = openSync(check(path), 'r')
+    ipcMain.handle('media:size', (event, path: string) => statSync(check(event, path)).size)
+    ipcMain.handle('media:read', (event, path: string, start: number, end: number) => {
+      const fd = openSync(check(event, path), 'r')
       try {
         const length = Math.max(0, Math.min(end, fstatSync(fd).size) - start)
         const buffer = Buffer.alloc(length)
@@ -52,24 +61,27 @@ export class MediaFinalizer {
         closeSync(fd)
       }
     })
-    ipcMain.handle('media:create', (_event, path: string) => {
-      const fd = openSync(check(path), 'w')
+    ipcMain.handle('media:create', (event, path: string) => {
+      const fd = openSync(check(event, path, true), 'w')
       const handle = this.nextHandle++
       this.handles.set(handle, fd)
       return handle
     })
-    ipcMain.handle('media:write', (_event, handle: number, position: number, data: Uint8Array) => {
+    ipcMain.handle('media:write', (event, handle: number, position: number, data: Uint8Array) => {
+      this.checkSender(event)
       const fd = this.handles.get(handle)
       if (fd === undefined) throw new Error('closed')
       let done = 0
       while (done < data.byteLength) done += writeSync(fd, data, done, data.byteLength - done, position + done)
     })
-    ipcMain.handle('media:close', (_event, handle: number) => {
+    ipcMain.handle('media:close', (event, handle: number) => {
+      this.checkSender(event)
       const fd = this.handles.get(handle)
       if (fd !== undefined) closeSync(fd)
       this.handles.delete(handle)
     })
-    ipcMain.on('media:done', (_event, id: number, result: { ok: boolean; value?: unknown; error?: string }) => {
+    ipcMain.on('media:done', (event, id: number, result: { ok: boolean; value?: unknown; error?: string }) => {
+      if (!this.isMediaWindow(event)) return
       const pending = this.pending.get(id)
       if (!pending) return
       this.pending.delete(id)
@@ -84,23 +96,32 @@ export class MediaFinalizer {
     return (await this.run({ kind: 'check', path })) as boolean
   }
 
-  /// Finalizes one file in place (parts = [itself at 0]) or joins parts into `output`. The result is written to a
-  /// temporary file next to `output` first and replaces it only when complete.
-  async write(parts: RecordingPart[], output: string): Promise<void> {
+  /// Finalizes one file in place (parts = [itself at 0]) or joins parts into `output`; returns the parts that went
+  /// into it (one without video or unreadable is left out; `output` itself unreadable fails the write). The result
+  /// is written to a temporary file next to `output` first and replaces it only when complete. If it can't (the file
+  /// is held open for too long), the finished temporary file is kept next to it rather than lost, and goes in place at
+  /// the next launch (`restoreKeptFiles`).
+  async write(parts: RecordingPart[], output: string): Promise<string[]> {
     const temp = output.replace(/\.mp4$/i, '') + `.finalizing-${Date.now()}.mp4`
+    let used: string[]
     try {
-      await this.run({ kind: 'write', parts, output: temp })
-      if (!existsSync(temp) || statSync(temp).size === 0) throw new Error('пустой результат')
-      if (existsSync(output)) unlinkSync(output)
-      renameSync(temp, output)
+      used = ((await this.run({ kind: 'write', parts, output: temp, replacing: output })) as { used: string[] }).used
+      if (!existsSync(temp) || statSync(temp).size === 0) throw new Error('empty result')
     } catch (error) {
       try {
         if (existsSync(temp)) unlinkSync(temp)
       } catch {
-        // Locked: removed on a later run.
+        // Locked: removed at the next launch (`restoreKeptFiles`).
       }
       throw error
     }
+    try {
+      await replaceFile(temp, output)
+    } catch (error) {
+      log(`[rec] kept the finalized file as ${temp}: ${(error as Error).message}`)
+      throw error
+    }
+    return used
   }
 
   private async run(job: Job): Promise<unknown> {
@@ -108,9 +129,23 @@ export class MediaFinalizer {
     await this.ensureWindow()
     const id = this.nextId++
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject })
+      this.pending.set(id, { job, resolve, reject })
       this.window?.webContents.send('media:job', { id, ...job })
     })
+  }
+
+  /// Whether `sender` is the hidden media window (its log lines are taken too, see `main/index.ts`).
+  isMediaSender(sender: WebContents): boolean {
+    return !!this.window && !this.window.isDestroyed() && sender === this.window.webContents
+  }
+
+  private isMediaWindow(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
+    return this.isMediaSender(event.sender)
+  }
+
+  /// The file handlers serve the hidden media window only, never a page of the app's other windows.
+  private checkSender(event: IpcMainInvokeEvent): void {
+    if (!this.isMediaWindow(event)) throw new Error('not allowed')
   }
 
   private ensureWindow(): Promise<void> {

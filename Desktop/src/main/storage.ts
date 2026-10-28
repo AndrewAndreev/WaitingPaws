@@ -1,9 +1,10 @@
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { SessionStore, type StorageBackend } from '@core/sessionStore'
 import type { TrainingPlan } from '@core/models'
-import type { TrainingRecord } from '@core/sessionLog'
+import { SessionLogFormatter, type TrainingRecord } from '@core/sessionLog'
+import { removeKeptFiles } from './files'
 
 /// node:fs for the core's `StorageBackend` (sessions, logs, MIoT spec cache).
 export const nodeStorage: StorageBackend = {
@@ -61,8 +62,22 @@ export class RecordStore {
     return this.store.save(record)
   }
 
-  delete(record: TrainingRecord, includingRecording: boolean): Promise<void> {
-    return this.store.delete(record, includingRecording)
+  /// `save` without waiting on anything: Windows is ending the session and may end the process any moment.
+  saveNow(record: TrainingRecord): void {
+    mkdirSync(this.sessionsDirectory, { recursive: true })
+    for (const [path, text] of [
+      [this.store.jsonPath(record), SessionStore.encodeRecord(record)],
+      [this.store.logPath(record), SessionLogFormatter.text(record)],
+    ]) {
+      const temp = `${path}.${process.pid}.now.tmp`
+      writeFileSync(temp, text, 'utf8')
+      renameSync(temp, path)
+    }
+  }
+
+  async delete(record: TrainingRecord, includingRecording: boolean): Promise<void> {
+    await this.store.delete(record, includingRecording)
+    if (includingRecording && record.recordingFileName) removeKeptFiles(this.recordingsDirectory, record.recordingFileName)
   }
 
   async newRecordingPath(plan: TrainingPlan): Promise<string> {

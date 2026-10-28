@@ -64,6 +64,22 @@
     "«%@»" : {
       "shouldTranslate" : false
     },
+    "«%@» больше не узнаёт этот iPhone. Чтобы подключиться заново, выберите его в списке." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” no longer recognizes this iPhone. To connect again, choose it in the list."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» больше не узнаёт этот iPhone. Чтобы подключиться заново, выберите его в списке."
+          }
+        }
+      }
+    },
     "«%@» видит камеру и ведёт эту тренировку" : {
       "localizations" : {
         "en" : {
@@ -1094,6 +1110,22 @@
         }
       }
     },
+    "iPhone отключится." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iPhone will disconnect."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone отключится."
+          }
+        }
+      }
+    },
     "iPhone покажет камеру и станет пультом для этой тренировки, входить в Xiaomi не нужно." : {
       "localizations" : {
         "en" : {
@@ -1607,6 +1639,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без камеры"
+          }
+        }
+      }
+    },
+    "Без связи с «%@» её здесь не видно." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Without a connection to “%@”, it isn’t shown here."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без связи с «%@» её здесь не видно."
           }
         }
       }
@@ -2299,6 +2347,22 @@
         }
       }
     },
+    "Видео с камеры показывается только на %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The camera’s video is only shown on the %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видео с камеры показывается только на %@"
+          }
+        }
+      }
+    },
     "Видео сохранено на %@" : {
       "localizations" : {
         "en" : {
@@ -2423,6 +2487,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Во время тренировки заметка свёрнута в одну строку под условиями."
+          }
+        }
+      }
+    },
+    "Во время тренировки или записи сервер не меняется." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server can’t be changed during a training or recording."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Во время тренировки или записи сервер не меняется."
           }
         }
       }
@@ -4507,6 +4587,22 @@
         }
       }
     },
+    "Ещё" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё"
+          }
+        }
+      }
+    },
     "Ещё выход" : {
       "localizations" : {
         "en" : {
@@ -4631,6 +4727,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Забыть"
+          }
+        }
+      }
+    },
+    "Забыть «%@»?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forget “%@”?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Забыть «%@»?"
+          }
+        }
+      }
+    },
+    "Забыть…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forget…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Забыть…"
           }
         }
       }
@@ -5840,7 +5968,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "To long ones ≥ 1 min"
+            "value" : "Long ones ≥ 1 min"
           }
         },
         "ru" : {
@@ -5963,18 +6091,18 @@
         }
       }
     },
-    "Какую камеру показывать · ⌘1 / ⌘2. Записывается первая" : {
+    "Какую камеру показывать · ⌘1 / ⌘2. Записывается та, что на экране" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Which camera to show · ⌘1 / ⌘2. The first one is recorded"
+            "value" : "Which camera to show · ⌘1 / ⌘2. The one on screen is recorded"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Какую камеру показывать · ⌘1 / ⌘2. Записывается первая"
+            "value" : "Какую камеру показывать · ⌘1 / ⌘2. Записывается та, что на экране"
           }
         }
       }
@@ -6608,7 +6736,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "To all"
+            "value" : "All exits"
           }
         },
         "ru" : {
@@ -6759,6 +6887,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "конец по плану"
+          }
+        }
+      }
+    },
+    "Копии в Фото останутся." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The copies in Photos will remain."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копии в Фото останутся."
           }
         }
       }
@@ -7895,6 +8039,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет связи с %@"
+          }
+        }
+      }
+    },
+    "Нет связи с %@ — переподключаемся…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No connection to the %@ — reconnecting…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет связи с %@ — переподключаемся…"
           }
         }
       }
@@ -12011,6 +12171,22 @@
         }
       }
     },
+    "Синхронизация отключится." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Syncing will stop."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синхронизация отключится."
+          }
+        }
+      }
+    },
     "Синхронизировано" : {
       "localizations" : {
         "en" : {
@@ -12171,6 +12347,22 @@
         }
       }
     },
+    "Скрыть" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть"
+          }
+        }
+      }
+    },
     "Скрыть инспектор (⌥⌘I)" : {
       "localizations" : {
         "en" : {
@@ -12247,6 +12439,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сначала выберите камеру."
+          }
+        }
+      }
+    },
+    "Сначала ответьте на другой запрос на Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer the other request on the Mac first"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала ответьте на другой запрос на Mac"
+          }
+        }
+      }
+    },
+    "Со своим сервером go2rtc iPhone ведёт тренировку, но видео с камеры на нём не показывается." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With your own go2rtc server, the iPhone runs the training but doesn’t show the camera."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Со своим сервером go2rtc iPhone ведёт тренировку, но видео с камеры на нём не показывается."
           }
         }
       }
@@ -12875,6 +13099,22 @@
         }
       }
     },
+    "Тренировка идёт на «%@». Кнопки заработают, когда связь вернётся." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The training continues on “%@”. The buttons will work again once the connection is back."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тренировка идёт на «%@». Кнопки заработают, когда связь вернётся."
+          }
+        }
+      }
+    },
     "Тренировка идёт: изменения применятся сразу, и к идущему перерыву тоже. Прошедшие выходы и текущий нельзя удалить или переставить." : {
       "localizations" : {
         "en" : {
@@ -12887,6 +13127,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тренировка идёт: изменения применятся сразу, и к идущему перерыву тоже. Прошедшие выходы и текущий нельзя удалить или переставить."
+          }
+        }
+      }
+    },
+    "Тренировка продолжается на %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The training continues on the %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тренировка продолжается на %@"
           }
         }
       }
@@ -13291,6 +13547,38 @@
         }
       }
     },
+    "Удалить %@ и %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %1$@ and %2$@?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить %@ и %@?"
+          }
+        }
+      }
+    },
+    "Удалить %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %@?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить %@?"
+          }
+        }
+      }
+    },
     "Удалить вместе с видео" : {
       "localizations" : {
         "en" : {
@@ -13495,6 +13783,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Удалить только лог, видео оставить…"
+          }
+        }
+      }
+    },
+    "Удалить только логи, видео оставить" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Logs Only, Keep Videos"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить только логи, видео оставить"
           }
         }
       }
@@ -14203,6 +14507,38 @@
         }
       }
     },
+    "Чтобы снова подключиться, iPhone попросит разрешения на этом Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To connect again, the iPhone will ask for permission on this Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы снова подключиться, iPhone попросит разрешения на этом Mac."
+          }
+        }
+      }
+    },
+    "Чтобы снова синхронизироваться, на %@ понадобится «Разрешить»." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To sync again, you’ll need to allow it on the %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы снова синхронизироваться, на %@ понадобится «Разрешить»."
+          }
+        }
+      }
+    },
     "щёлкните, чтобы вписать, или тяните край (⇧ — по 5 с)" : {
       "localizations" : {
         "en" : {
@@ -14327,6 +14663,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Этот go2rtc не умеет поворачивать камеру — обновите Waiting Paws на компьютере с камерой"
+          }
+        }
+      }
+    },
+    "Этот iPhone уже был подключён, но не подтвердил это. Если на нём не нажимали «Забыть», нажмите «Отклонить»." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This iPhone was linked before but couldn’t confirm it. If it wasn’t forgotten on the iPhone, choose Decline."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот iPhone уже был подключён, но не подтвердил это. Если на нём не нажимали «Забыть», нажмите «Отклонить»."
           }
         }
       }

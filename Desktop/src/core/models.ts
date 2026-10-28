@@ -19,12 +19,26 @@ import {
 import { DurationText } from './durationText'
 import { formatDate, tr } from './localization'
 import { PlanParser } from './planParser'
-import { trimWhitespaces, trimWhitespacesAndNewlines } from './text'
+import { trimWhitespaces, trimWhitespacesAnd, trimWhitespacesAndNewlines } from './text'
 
 /** The trainer's mark in front of a condition line (`EarlyEntry.Tone`). */
 export type EarlyEntryTone = 'yellow' | 'green' | 'plain'
 
 const tones: readonly EarlyEntryTone[] = ['yellow', 'green', 'plain']
+
+/** ICU's `\b` after a letter or a digit. */
+const wordEnd = '(?![\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D])'
+
+/**
+ * `PlanParser`'s «через», «спустя», "after", "in" (only as in "in a couple of minutes", "in several minutes", "in 15
+ * breaths", not "in the kitchen"), up to the end of the part of the sentence or to where it says from what: «через
+ * пару минут | от начала движения», "in a few minutes | after she lies down" (`EarlyEntry.unreadDelayRegex`).
+ */
+const unreadDelayRegex = new RegExp(
+  `^(?:через|спустя|after|in(?=\\s+(?:an?|several|few|couple|some|[0-9]+)${wordEnd}))\\s+` +
+    `(?:(?!\\s(?:от|после|когда|from|after|when)${wordEnd})[^,;:])*[^,;:\\s.]`,
+  'iu',
+)
 
 /** «в первые 20 секунд», «в течение первых 30 секунд», "in the first 20 seconds" (`TrainingPlan.firstSecondsRegex`). */
 const firstSecondsRegex = /(?:перв\p{L}*|first)\s+(\d+(?:[.,]\d+)?\s*\p{L}+)/iu
@@ -55,9 +69,9 @@ export const EarlyEntry = {
     }
   },
 
-  /** «через 2 мин» / «сразу». */
+  /** «через 2 мин» / «сразу» / «через пару минут» (`unreadDelay`). */
   delayDescription(entry: EarlyEntry): string {
-    if (entry.delay === null || entry.delay <= 0) return tr('сразу', 'right away')
+    if (entry.delay === null || entry.delay <= 0) return EarlyEntry.unreadDelay(entry) ?? tr('сразу', 'right away')
     const text = DurationText.short(entry.delay)
     return tr(`через ${text}`, `in ${text}`)
   },
@@ -66,8 +80,29 @@ export const EarlyEntry = {
   summary(entry: EarlyEntry): string {
     const [first = '', ...rest] = Array.from(entry.event)
     const name = first.toLowerCase() + rest.join('')
-    if (entry.delay === null || entry.delay <= 0) return `${name} → ` + tr('сразу', 'right away')
+    if (entry.delay === null || entry.delay <= 0) return `${name} → ` + (EarlyEntry.unreadDelay(entry) ?? tr('сразу', 'right away'))
     return `${name} → ${DurationText.clock(entry.delay)}`
+  },
+
+  /**
+   * «через пару минут», "after she settles": the trainer's words for a time the parser couldn't read, which lead the
+   * detail. Such a condition is not «сразу». `null` when the time is known or there is none.
+   */
+  unreadDelay(entry: EarlyEntry): string | null {
+    if (entry.delay !== null || entry.detail === null) return null
+    return unreadDelayRegex.exec(entry.detail)?.[0] ?? null
+  },
+
+  /**
+   * The detail to show beside the time: without `unreadDelay`, which the time shows already («через пару минут»
+   * there, «от начала движения, когда отойдёт» here). `null` when nothing is left. The stored detail keeps the words
+   * for older builds.
+   */
+  detailBesideTime(entry: EarlyEntry): string | null {
+    const words = EarlyEntry.unreadDelay(entry)
+    if (words === null || entry.detail === null) return entry.detail
+    const rest = trimWhitespacesAnd(entry.detail.slice(words.length), ',;:.-–—')
+    return rest === '' ? null : rest
   },
 
   /** The condition is about the dog standing up («встала», «встала и пошла», "stands up"). */
@@ -354,14 +389,16 @@ export const TrainingPlan = {
     return null
   },
 
-  /** The note that says when not to come in. */
+  /**
+   * The note that says when not to come in: the trainer's 🚩 (the parser keeps it on the note), else the first note
+   * whose words say so.
+   */
   doNotEnterRule(plan: TrainingPlan): PlanRule | null {
-    for (const note of plan.notes) {
-      if (!PlanParser.isDoNotEnterRule(note)) continue
-      const { title, detail } = PlanParser.splitCondition(note)
-      return { title: title ?? tr('Не входить', 'Do not come in'), detail, text: note }
-    }
-    return null
+    const note =
+      plan.notes.find((text) => PlanParser.hasMark(text, '🚩')) ?? plan.notes.find((text) => PlanParser.isDoNotEnterRule(text))
+    if (note === undefined) return null
+    const { title, detail } = PlanParser.splitCondition(note)
+    return { title: title ?? tr('Не входить', 'Do not come in'), detail, text: note }
   },
 
   /**

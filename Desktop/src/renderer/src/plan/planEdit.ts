@@ -10,13 +10,13 @@ import { roundHalfAwayFromZero } from '@core/text'
 export const PlanFormat = {
   /// "2 мин", "1:30" when minutes and seconds mix, "45 с".
   cell(seconds: number): string {
-    const total = roundHalfAwayFromZero(seconds)
+    const total = DurationText.wholeSeconds(seconds)
     return total >= 60 && total % 60 !== 0 ? DurationText.clock(seconds) : DurationText.short(seconds)
   },
 
   /// "≈ 28 мин" for summaries (seconds dropped from ten minutes up).
   approx(seconds: number): string {
-    const total = roundHalfAwayFromZero(seconds)
+    const total = DurationText.wholeSeconds(seconds)
     if (total >= 600) return t('≈ %lld мин', roundHalfAwayFromZero(total / 60))
     return '≈ ' + DurationText.short(seconds)
   },
@@ -35,7 +35,8 @@ export const PlanFormat = {
 
   /// «через 2:00» / «сразу»: when to come back after the dog did it.
   entryDelay(entry: EarlyEntry): string {
-    return entry.delay !== null && entry.delay > 0 ? t('через %@', DurationText.clock(entry.delay)) : t('сразу')
+    if (entry.delay !== null && entry.delay > 0) return t('через %@', DurationText.clock(entry.delay))
+    return EarlyEntry.unreadDelay(entry) ?? t('сразу')
   },
 
   /// «встала и пошла → через 2:00» (the common conditions in the bar above the table).

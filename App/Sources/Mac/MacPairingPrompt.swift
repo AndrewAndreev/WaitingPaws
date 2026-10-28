@@ -17,6 +17,14 @@ enum MacPairingPrompt {
         alert.alertStyle = .informational
         alert.addButton(withTitle: String(localized: "Разрешить"))
         alert.addButton(withTitle: String(localized: "Отклонить"))
+        if request.wasPaired {
+            // Paired before, yet no proof of it: maybe another device under its name. Warn, and Return declines.
+            alert.informativeText = String(localized: "Этот iPhone уже был подключён, но не подтвердил это. Если на нём не нажимали «Забыть», нажмите «Отклонить».")
+                + "\n\n" + alert.informativeText
+            alert.alertStyle = .warning
+            alert.buttons[0].keyEquivalent = ""
+            alert.buttons[1].keyEquivalent = "\r"
+        }
         alert.icon = NSApp.applicationIconImage
 
         NSApp.requestUserAttention(.criticalRequest)

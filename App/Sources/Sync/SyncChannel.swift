@@ -2,7 +2,8 @@ import Foundation
 import Network
 import WaitingPawsCore
 
-/// One JSON `SyncMessage` per WebSocket text frame over an `NWConnection` (used on both ends).
+/// One JSON `SyncMessage` per WebSocket text frame over an `NWConnection` (used on both ends; `SyncWebSocket` makes
+/// the parameters).
 /// Everything runs on the main queue: the traffic is a few small messages a second.
 /// Once the key exchange set `cipher`, welcome / state / command messages go sealed; they are never sent or
 /// accepted in the clear, and a frame that does not open closes the connection.
@@ -15,15 +16,6 @@ final class SyncChannel {
 
     init(connection: NWConnection) {
         self.connection = connection
-    }
-
-    /// TCP + WebSocket framing, for the listener (Mac) and for outgoing connections (iPhone).
-    nonisolated static func parameters() -> NWParameters {
-        let parameters = NWParameters.tcp
-        let webSocket = NWProtocolWebSocket.Options()
-        webSocket.autoReplyPing = true
-        parameters.defaultProtocolStack.applicationProtocols.insert(webSocket, at: 0)
-        return parameters
     }
 
     func start() {

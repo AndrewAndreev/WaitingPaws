@@ -19,7 +19,8 @@ export function webSocketAccept(key: string): string {
 }
 
 /// Answers an HTTP upgrade request (`http.Server` 'upgrade' event). Returns the connection, not yet reading
-/// (set the handlers, then `start(head)`), or null after refusing a request that is not a WebSocket handshake.
+/// (set the handlers, then `start(head)`), or null after refusing a request that is not a WebSocket handshake or
+/// comes from a browser.
 export function acceptWebSocket(request: IncomingMessage, socket: Duplex, options: { maxMessage?: number } = {}): WebSocketConnection | null {
   const key = request.headers['sec-websocket-key']
   const upgrade = String(request.headers.upgrade ?? '').toLowerCase()
@@ -29,6 +30,12 @@ export function acceptWebSocket(request: IncomingMessage, socket: Duplex, option
   }
   if (request.headers['sec-websocket-version'] !== '13') {
     refuse(socket, '426 Upgrade Required', ['Sec-WebSocket-Version: 13'])
+    return null
+  }
+  // Browsers always send the page's Origin with a WebSocket handshake, the iPhone's NWProtocolWebSocket never does:
+  // a web page in a browser, here or elsewhere on the network, must not reach the pairing prompt.
+  if (request.headers.origin !== undefined) {
+    refuse(socket, '403 Forbidden')
     return null
   }
   const connection = new WebSocketConnection(socket, options.maxMessage)

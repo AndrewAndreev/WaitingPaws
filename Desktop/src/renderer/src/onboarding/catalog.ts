@@ -2,7 +2,7 @@
 // streams. Shared by the welcome page and the camera picker; choosing a camera registers its stream and saves it.
 // Port of the Mac app's `SetupCameraCatalog` (+ the text helpers of `SetupText`).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Go2RTCClient, Go2RTCError, Go2RTCServer, type Go2RTCSource, type Go2RTCStream, type XiaomiRegion } from '@core/go2rtcClient'
+import { Go2RTCClient, Go2RTCError, Go2RTCServer, queryValue as sourceQueryValue, type Go2RTCSource, type Go2RTCStream, type XiaomiRegion } from '@core/go2rtcClient'
 import type { Settings } from '@shared/settings'
 import { t } from '@shared/i18n'
 import { bridgeFetch } from '../platform/bridge'
@@ -49,21 +49,9 @@ export function choiceID(choice: Choice): string {
   return choice.kind === 'camera' ? cameraID(choice.camera) : streamID(choice.stream.name)
 }
 
-/// `name=value` from the query of a source URL (`xiaomi://…?did=…&model=…`).
+/// `name=value` from the query of a source URL (`xiaomi://…?did=…&model=…`), as the core reads it.
 export function queryValue(name: string, source: string): string | null {
-  const query = source.split('#')[0].split('?')[1]
-  if (!query) return null
-  for (const part of query.split('&')) {
-    const index = part.indexOf('=')
-    const key = index < 0 ? part : part.slice(0, index)
-    if (key !== name) continue
-    try {
-      return decodeURIComponent((index < 0 ? '' : part.slice(index + 1)).replace(/\+/g, ' '))
-    } catch {
-      return part.slice(index + 1)
-    }
-  }
-  return null
+  return sourceQueryValue(source, name)
 }
 
 /// Host of `scheme://user:pass@host:port/path?query`, `null` when there is none.

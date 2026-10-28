@@ -69,12 +69,15 @@ export function classifyLines(text: string): PlanTextLine[] {
     const parts = source.slice(sourceIndex, sourceIndex + PlanParser.lines(raw).length)
     sourceIndex += parts.length
     const stripped = PlanParser.stripDecorations(line)
+    // A row of decorations only («➡️») is not content, as in `PlanParser.sourceLines`: it is no header.
+    if (stripped === '') {
+      result.push({ id, text: line, kind: { kind: 'note' } })
+      return
+    }
     const lower = stripped.toLowerCase()
     let kind: PlanLineKind
-    const exit = stripped === '' ? null : PlanParser.parseExit(stripped)
-    if (stripped === '') {
-      kind = { kind: 'note' }
-    } else if (exit) {
+    const exit = PlanParser.parseExit(stripped)
+    if (exit) {
       kind = { kind: 'exit', number: exit.number, ordinal: exitOrdinal++ }
       lastExitLine = id
       exitLineOfNumber.set(exit.number, id)
@@ -106,7 +109,7 @@ export function classifyLines(text: string): PlanTextLine[] {
 
 /// «🔖 Фальстарт: …», «Фальстарт — …», "False start: …".
 export function isRule(line: string): boolean {
-  return line.startsWith('🔖') || PlanParser.isFalseStartRule(PlanParser.stripDecorations(line).toLowerCase())
+  return PlanParser.hasMark(line, '🔖') || PlanParser.isFalseStartRule(PlanParser.stripDecorations(line).toLowerCase())
 }
 
 // MARK: - Highlighting

@@ -50,6 +50,8 @@ export class SessionStore {
   static readonly folderName = 'Waiting Paws'
   static readonly sessionsFolderName = 'Sessions'
   static readonly recordingsFolderName = 'Recordings'
+  /** Characters of the schedule title kept in a recording's file name. */
+  static readonly maxTitleLength = 60
 
   constructor(
     readonly storage: StorageBackend,
@@ -70,10 +72,15 @@ export class SessionStore {
     await this.storage.makeDirectory(this.recordingsDirectory)
   }
 
-  /** A new file name; a second recording within the same minute gets a "-2" suffix instead of overwriting. */
+  /**
+   * A new file name; a second recording within the same minute gets a "-2" suffix instead of overwriting. A long
+   * schedule title is cut: Windows refuses paths over 260 characters, and the parts and temporary files of a
+   * recording add to its name.
+   */
   async newRecordingFile(plan: TrainingPlan, at: number = Date.now()): Promise<StoredFile> {
     await this.storage.makeDirectory(this.recordingsDirectory)
-    const base = `${SessionStore.fileStamp(at)}-${Go2RTCClient.streamName(plan.title)}`
+    const slug = Go2RTCClient.streamName(plan.title).slice(0, SessionStore.maxTitleLength).replace(/-+$/, '')
+    const base = `${SessionStore.fileStamp(at)}-${slug}`
     let name = `${base}.mp4`
     let counter = 2
     while (await this.storage.exists(this.storage.join(this.recordingsDirectory, name))) {
@@ -95,7 +102,7 @@ export class SessionStore {
   /** The record's video, when it has one and the file is still there. */
   async recordingFile(record: TrainingRecord): Promise<StoredFile | null> {
     const name = record.recordingFileName
-    if (name === null) return null
+    if (name === null || !SessionStore.isRecordingFileName(name)) return null
     const path = this.storage.join(this.recordingsDirectory, name)
     return (await this.storage.exists(path)) ? { name, path } : null
   }
@@ -147,6 +154,14 @@ export class SessionStore {
   /** Reads a `Sessions/*.json` file (throws `DecodingError` or `SyntaxError`). */
   static decodeRecord(text: string): TrainingRecord {
     return TrainingRecord.decode(JSON.parse(text), DISK_DATES)
+  }
+
+  /**
+   * Whether a record's `recordingFileName` can name a video in `Recordings`: a bare `.mp4` file name, never a path —
+   * a history file copied from elsewhere must not point the app (and «delete with the video») at another file.
+   */
+  static isRecordingFileName(name: string): boolean {
+    return pathExtension(name).toLowerCase() === 'mp4' && !/[\\/:\u0000-\u001f]/.test(name)
   }
 
   /** "2026-09-25_18-00-1F0C8A2B": the file name of a record without the extension. */

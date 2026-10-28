@@ -245,15 +245,17 @@ struct CameraPickerView: View {
         }
     }
 
-    /// The first camera that answers (a still came through), else the first one.
+    /// The first camera that answers (a still came through), else the first one. Never the main camera for the second
+    /// one: it can't be both («Эта камера уже основная»).
     private var firstID: String? {
-        let cameras = catalog.accounts.flatMap(\.cameras)
+        let main = target == .second ? catalog.currentID(model) : nil
+        let cameras = catalog.accounts.flatMap(\.cameras).filter { $0.id != main }
         let online = cameras.first { camera in
             if case .loaded = SetupStillStore.shared.state(for: camera.stillSource, model: model) { return true }
             return false
         }
         if let camera = online ?? cameras.first(where: { $0.host != nil }) ?? cameras.first { return camera.id }
-        return catalog.otherStreams.first.map { SetupCameraCatalog.streamID($0.name) }
+        return catalog.otherStreams.map { SetupCameraCatalog.streamID($0.name) }.first { $0 != main }
     }
 
     /// Registers the chosen camera's stream when needed and makes it the app's camera.

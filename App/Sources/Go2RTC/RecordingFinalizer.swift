@@ -98,9 +98,12 @@ enum RecordingFinalizer {
     /// frame (`startedAt` when that part got no video): the time a camera was away stays in the video as an empty stretch, so the training log (and the history's «jump to the
     /// exit») still lines up with the picture. A part that runs on past the next one's start (the camera switched:
     /// the old one is kept until the new one's first keyframe) ends there. Parts from two cameras may differ in size;
-    /// the track keeps each one's own format. Each part is finalized first (AAC sound, not fragmented); the parts
-    /// other than `output` are deleted afterwards. `output` may be one of the parts, or an empty file.
-    static func join(_ segments: [RecordingSegment], startedAt: Date, into output: URL) async throws {
+    /// the track keeps each one's own format. Each part is finalized first (AAC sound, not fragmented). A part without
+    /// frames (go2rtc writes the header before the camera's first keyframe) or one that cannot be read is left out: the
+    /// rest still make the video. Only the parts that went into it are deleted afterwards (other than `output`): one left
+    /// out stays where it is. `output` may be one of the parts, or an empty file; if it is a part with frames that
+    /// failed, nothing is joined (it would be lost under the result). Returns how many parts went into the video.
+    static func join(_ segments: [RecordingSegment], startedAt: Date, into output: URL) async throws -> Int {
         let composition = AVMutableComposition()
         guard let video = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
               let audio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
@@ -109,17 +112,29 @@ enum RecordingFinalizer {
         var assets: [AVURLAsset] = [] // a track does not retain its asset
         var parts: [(segment: RecordingSegment, video: AVAssetTrack, sound: AVAssetTrack?)] = []
         for segment in segments {
-            try await finalize(segment.url)
-            let asset = AVURLAsset(url: segment.url)
-            assets.append(asset)
-            guard let track = try await asset.loadTracks(withMediaType: .video).first else { continue }
-            parts.append((segment, track, try await asset.loadTracks(withMediaType: .audio).first))
+            let name = segment.url.lastPathComponent
+            do {
+                guard try await hasFrames(segment.url) else {
+                    print("[rec] \(name): no video, left out of the join")
+                    continue
+                }
+                try await finalize(segment.url)
+                let asset = AVURLAsset(url: segment.url)
+                guard let track = try await asset.loadTracks(withMediaType: .video).first else { throw FinalizeError.noVideo }
+                assets.append(asset)
+                parts.append((segment, track, try await asset.loadTracks(withMediaType: .audio).first))
+            } catch {
+                if segment.url.standardizedFileURL == output.standardizedFileURL { throw error }
+                print("[rec] \(name): left out of the join, kept (\(error.localizedDescription))")
+            }
         }
         guard !parts.isEmpty else { throw FinalizeError.noVideo }
 
         // The video starts with the first part's first frame, as a recording in one part does; without that part the
-        // wait from the start stays empty.
-        let origin = parts[0].segment == segments.first ? parts[0].segment.placedAt : startedAt
+        // wait from the start stays empty. The first part is `output` (its file keeps the recording's name): the
+        // caller passes only parts that got bytes, so `segments.first` may be a later one.
+        let first = parts[0].segment.url.standardizedFileURL == output.standardizedFileURL
+        let origin = first ? parts[0].segment.placedAt : startedAt
         func time(_ segment: RecordingSegment) -> CMTime {
             CMTime(seconds: max(0, segment.placedAt.timeIntervalSince(origin)), preferredTimescale: 600)
         }
@@ -165,10 +180,21 @@ enum RecordingFinalizer {
         } else {
             try FileManager.default.moveItem(at: joined, to: output)
         }
-        for segment in segments where segment.url.standardizedFileURL != output.standardizedFileURL {
-            try? FileManager.default.removeItem(at: segment.url)
+        for part in parts where part.segment.url.standardizedFileURL != output.standardizedFileURL {
+            try? FileManager.default.removeItem(at: part.segment.url)
         }
         withExtendedLifetime(assets) {}
+        return parts.count
+    }
+
+    /// Whether the file has any video frames: `false` for a part that got only go2rtc's header (or no video track).
+    /// Throws when the file cannot be read at all.
+    private static func hasFrames(_ url: URL) async throws -> Bool {
+        let asset = AVURLAsset(url: url)
+        guard let track = try await asset.loadTracks(withMediaType: .video).first else { return false }
+        let range = try await track.load(.timeRange)
+        withExtendedLifetime(asset) {}
+        return range.duration.seconds > 0
     }
 
     /// `export(to:as:)` where the system has it (iOS 18, macOS 15), the old completion-style export before.
