@@ -27,8 +27,12 @@ fi
 
 # MARK: iPhone
 
-PLAN_EN=$'🐶 Sunday training - Anna/Mark - 04.10.2026\n➡️ During breaks sit at the table and work\n➡️ All breaks 2 minutes\nExit 1 - 10 seconds\nExit 2 - 30 seconds\nExit 3 - 15 seconds\nExit 4 - 1 minute\nExit 5 - 45 seconds\nExit 6 - 2 minutes OR until the dog stands up\nBreak 5 minutes\nExit 7 - 30 seconds\nExit 8 - 3 minutes OR until the dog stands up'
-PLAN_RU=$'🐹 Тренировка на воскресенье - Таня/Андрей - 04.10.2026\n➡️ В перерывах сидите за столом, работаете\n➡️ Все перерывы 2 минуты\n1 выход - 10 секунд\n2 выход - 30 секунд\n3 выход - 15 секунд\n4 выход - 1 минута\n5 выход - 45 секунд\n6 выход - 2 минуты ИЛИ до вставания\nПерерыв 5 минут\n7 выход - 30 секунд\n8 выход - 3 минуты ИЛИ до вставания'
+# The schedule to check (plan and review shots) and the one being trained (session shots: exit 3 is under way, the
+# break shot waits for exit 4). Both carry triggers («+ jacket») and conditions for coming back early (🟡/🟢).
+PLAN_EN=$'🐶 Sunday training - Anna/Mark - 04.10.2026\n➡️ During breaks sit at the table and work\n➡️ All breaks 2 minutes\nExit 1 - 10 seconds\nExit 2 - 30 seconds + jacket\nExit 3 - 15 seconds\nExit 4 - 1 minute + take the keys\nExit 5 - 45 seconds\nExit 6 - 2 minutes OR until the dog stands up\n🟡 If she stands up and walks off - come back in 1 minute\n🟢 If she lies down - come back in 20 seconds\nBreak 5 minutes\nExit 7 - 30 seconds\nExit 8 - 3 minutes OR until the dog stands up'
+PLAN_RU=$'🐹 Тренировка на воскресенье - Таня/Андрей - 04.10.2026\n➡️ В перерывах сидите за столом, работаете\n➡️ Все перерывы 2 минуты\n1 выход - 10 секунд\n2 выход - 30 секунд + куртка\n3 выход - 15 секунд\n4 выход - 1 минута + взять ключи\n5 выход - 45 секунд\n6 выход - 2 минуты ИЛИ до вставания\n🟡 Если встала и пошла - входим через 1 минуту\n🟢 Если легла - входим через 20 секунд\nПерерыв 5 минут\n7 выход - 30 секунд\n8 выход - 3 минуты ИЛИ до вставания'
+SESSION_EN=$'🐶 Monday training - Anna/Mark - 05.10.2026\n➡️ All breaks 2 minutes\nExit 1 - 15 seconds\nExit 2 - 30 seconds\nExit 3 - 1 minute + jacket\n🟡 If she stands up and walks off - come back in 30 seconds\n🟢 If she lies down - come back in 20 seconds\nExit 4 - 45 seconds + take the keys\nExit 5 - 2 minutes OR until the dog stands up'
+SESSION_RU=$'🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 15 секунд\n2 выход - 30 секунд\n3 выход - 1 минута + куртка\n🟡 Если встала и пошла - входим через 30 секунд\n🟢 Если легла - входим через 20 секунд\n4 выход - 45 секунд + взять ключи\n5 выход - 2 минуты ИЛИ до вставания'
 
 if [[ $WHAT == all || $WHAT == ios ]]; then
   SIM=$(xcrun simctl list devices | awk -F'[()]' '/WP Screens/ {print $2; exit}')
@@ -58,10 +62,12 @@ if [[ $WHAT == all || $WHAT == ios ]]; then
   }
   WAIT=12 ios en warmup   # the first launch of a fresh simulator is slow and may show system banners
   for lang in en ru; do
-    [[ $lang == en ]] && plan=$PLAN_EN || plan=$PLAN_RU
-    ios $lang 01-outside --demo-session --demo-exits-done 2 --demo-phase away --demo-recording
+    if [[ $lang == en ]]; then plan=$PLAN_EN; session=$SESSION_EN; else plan=$PLAN_RU; session=$SESSION_RU; fi
+    ios $lang 01-outside -demoPlanText "$session" --demo-session --demo-exits-done 2 --demo-phase away --demo-recording \
+      --demo-second-camera
     ios $lang 02-plan --demo-screen plan --demo-parse -demoPlanText "$plan"
-    WAIT=9 ios $lang 03-break --demo-session --demo-exits-done 3 --demo-phase break --demo-recording
+    # The iPhone's «--demo-phase break» does one more exit first: 2 done + 1 → the break before exit 4 (the Mac's 3).
+    WAIT=9 ios $lang 03-break -demoPlanText "$session" --demo-session --demo-exits-done 2 --demo-phase break --demo-recording
     ios $lang 04-log --demo-history --demo-screen history-last
     ios $lang 05-history --demo-history --demo-screen history
     ios $lang 06-home --demo-history
@@ -88,11 +94,15 @@ if [[ $WHAT == all || $WHAT == mac ]]; then
   }
   for lang in en ru; do
     if [[ $lang == en ]]; then t1="Monday training"; t2="Sunday training"; th=History; ts=Camera; tw=Welcome
-    else t1="Тренировка на понедельник"; t2="Тренировка на воскресенье"; th=История; ts=Камера; tw="Добро пожаловать"; fi
-    mac $lang m01-session "$t1" -streamName hall --demo-exits-done 2 --demo-phase away --demo-session --demo-recording
-    mac $lang m02-plan "$t2" -streamName hall --demo-plan
-    WAIT=5 mac $lang m03-review "$t2" -streamName hall --demo-review   # -2: the window with its sheet
-    mac $lang m04-break "$t1" -streamName hall --demo-exits-done 3 --demo-break-left 70 --demo-session --demo-recording
+      plan=$PLAN_EN; session=$SESSION_EN
+    else t1="Тренировка на понедельник"; t2="Тренировка на воскресенье"; th=История; ts=Камера; tw="Добро пожаловать"
+      plan=$PLAN_RU; session=$SESSION_RU; fi
+    mac $lang m01-session "$t1" -streamName hall -demoPlanText "$session" --demo-exits-done 2 --demo-phase away \
+      --demo-session --demo-recording --demo-second-camera
+    mac $lang m02-plan "$t2" -streamName hall -demoPlanText "$plan" --demo-plan
+    WAIT=5 mac $lang m03-review "$t2" -streamName hall -demoPlanText "$plan" --demo-review   # -2: the window with its sheet
+    mac $lang m04-break "$t1" -streamName hall -demoPlanText "$session" --demo-exits-done 3 --demo-break-left 70 \
+      --demo-session --demo-recording
     WAIT=5 mac $lang m05-history "$th" -streamName hall --open history --demo-history
     WAIT=5 mac $lang m06-settings "$ts" --open settings --demo-pane camera --demo-cameras
     WAIT=5 mac $lang m07-welcome "$tw" --demo-cameras --preview-unconfigured
