@@ -54,7 +54,17 @@ func TestWaitingPawsGuardAndAuth(t *testing.T) {
 		{"web page origin", "GET", "/api/ws", "", "", local, []string{"Origin", "https://evil.example"}, 403},
 		{"own player origin", "GET", "/api/ws", "", "", local, []string{"Origin", "http://192.168.1.5:11984"}, 200},
 		{"dns rebinding", "GET", "/api", "", "", local, []string{"Host", "rebind.example:11984"}, 403},
-		{"bonjour name", "GET", "/api", "", "", local, []string{"Host", "mac.local:11984"}, 200},
+		{"mdns rebinding", "GET", "/api", "", "", local, []string{"Host", "evil.local:11984"}, 403},
+		{"lan bonjour name", "GET", "/api", "waitingpaws", "old", lan, []string{"Host", "mac.local:11984"}, 200},
+		{"local preload", "PUT", "/api/preload?src=cam", "", "", local, nil, 403},
+		{"lan preload", "GET", "/api/preload", "waitingpaws", "old", lan, nil, 403},
+		{"lan push", "POST", "/api/stream?dst=cam", "waitingpaws", "old", lan, nil, 403},
+		{"lan webrtc push", "POST", "/api/webrtc?dst=cam", "waitingpaws", "old", lan, nil, 403},
+		{"frame re-points a stream", "GET", "/api/frame.jpeg?name=cam&src=rtsp://evil/loop", "", "", local, nil, 403},
+		{"recording of a source url", "GET", "/api/stream.mp4?src=rtsp://192.168.1.9/live", "", "", local, nil, 403},
+		{"player of a source", "GET", "/api/ws?src=ffmpeg:cam%23video=h264", "waitingpaws", "old", lan, nil, 403},
+		{"recording of a stream", "GET", "/api/stream.mp4?src=cam&video=h264,h265", "", "", local, nil, 200},
+		{"local stream registration", "PUT", "/api/streams?name=cam&src=rtsp://192.168.1.9/live", "", "", local, nil, 200},
 	}
 	for _, c := range cases {
 		if got := do(c.method, c.path, c.remote, c.user, c.pass, c.header...); got != c.want {

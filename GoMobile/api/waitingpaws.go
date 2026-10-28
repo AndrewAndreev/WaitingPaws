@@ -36,14 +36,16 @@ func credentialsOK(user, pass, cfgUser, cfgPass string) bool {
 }
 
 // guard wraps the API mux (see build.sh):
-//   - Host must be an IP address, localhost or a .local name, so DNS rebinding can't reach the API;
+//   - Host must be an IP address or localhost (a .local name too for LAN clients), so DNS rebinding can't reach the API;
 //   - a browser Origin must be this server itself: no cross-site requests, WebSocket included;
 //   - /api/exit and /api/restart are gone and the config can't be rewritten over HTTP;
+//   - streams change only through /api/streams: elsewhere `name` and a source URL in `src` are refused;
 //   - LAN clients (a linked iPhone) only watch (and change camera modes, turn the camera): no config, log, Xiaomi
-//     accounts or stream changes.
+//     accounts, stream changes or pushing into a stream.
 func guard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !allowedHost(r.Host) {
+		loopback := isLoopback(r.RemoteAddr)
+		if !allowedHost(r.Host, loopback) {
 			http.Error(w, "forbidden host", http.StatusForbidden)
 			return
 		}
@@ -57,16 +59,21 @@ func guard(next http.Handler) http.Handler {
 		case path == "/api/exit", path == "/api/restart":
 			http.Error(w, "disabled", http.StatusForbidden)
 			return
-		case path == "/api/config" && r.Method != "GET":
+		case path == "/api/config" && r.Method != "GET", path == "/api/preload" && r.Method != "GET":
 			http.Error(w, "read only", http.StatusForbidden)
+			return
+		case path != "/api/streams" && changesStreams(r.URL.Query()):
+			// The players' GET endpoints patch a stream from `name` + `src` (upstream GetOrPatch), and a browser sends
+			// no Origin with an <img> or <video> request: any web page could re-point the camera.
+			http.Error(w, "streams change only through /api/streams", http.StatusForbidden)
 			return
 		}
 
-		if !isLoopback(r.RemoteAddr) {
+		if !loopback {
 			switch {
 			case path == "/api/config", path == "/api/log", path == "/api/xiaomi", path == "/api/xiaomi/logout",
-				path == "/api/xiaomi/cameras",
-				path == "/api/streams" && r.Method != "GET":
+				path == "/api/xiaomi/cameras", path == "/api/preload", path == "/api/stream",
+				path == "/api/streams" && r.Method != "GET", r.URL.Query().Has("dst"):
 				http.Error(w, "local only", http.StatusForbidden)
 				return
 			}
@@ -76,7 +83,23 @@ func guard(next http.Handler) http.Handler {
 	})
 }
 
-func allowedHost(hostPort string) bool {
+// changesStreams: the query would create a stream or change one's source (stream names the app makes have no colon,
+// sources always do: rtsp://…, xiaomi://…, ffmpeg:…).
+func changesStreams(query url.Values) bool {
+	if query.Has("name") {
+		return true
+	}
+	for _, src := range query["src"] {
+		if strings.Contains(src, ":") {
+			return true
+		}
+	}
+	return false
+}
+
+// allowedHost: loopback requests carry no password, so their Host must be an IP address or localhost — anyone on the
+// network can answer mDNS for a .local name with 127.0.0.1. LAN clients (Basic auth) may also use the Bonjour name.
+func allowedHost(hostPort string, loopback bool) bool {
 	if hostPort == "" {
 		return true
 	}
@@ -85,7 +108,7 @@ func allowedHost(hostPort string) bool {
 		host = h
 	}
 	host = strings.ToLower(strings.Trim(host, "[]"))
-	return host == "localhost" || net.ParseIP(host) != nil || strings.HasSuffix(host, ".local")
+	return host == "localhost" || net.ParseIP(host) != nil || !loopback && strings.HasSuffix(host, ".local")
 }
 
 func sameOrigin(origin, host string) bool {

@@ -60,7 +60,9 @@ go2rtc с модулями api, ws, streams, http, rtsp, webrtc, mp4, hls, mjpeg
 * **HEVC в MP4** пишется с тегом `hvc1` вместо `hev1` (`pkg/iso`): Apple читает только `hvc1`; без этого Фото
   отвечали ошибкой 3302, а плеер не открывал запись.
 * **Добавки к Xiaomi** — файлы из `GoMobile/xiaomi/` копируются в `internal/xiaomi` go2rtc:
-  * `/api/xiaomi/miot` читает и меняет настройки камеры (ночной режим и т. п.) через Mi Cloud;
+  * `/api/xiaomi/miot` читает и меняет настройки камеры (ночной режим и т. п.) через Mi Cloud — только камеры из
+    настроенных потоков (тот же аккаунт и `did`), иначе 403: токен аккаунта достаёт до любого устройства Mi Home.
+    Тесты: `go test ./internal/xiaomi -run Miot`;
   * `/api/xiaomi/logout` забывает аккаунт;
   * `/api/xiaomi/cameras` перечисляет камеры своих и общих домов, как Mi Home и интеграция Xiaomi для Home Assistant:
     `/v2/homeroom/gethome` с `fetch_share`, затем `/v2/home/device_list_page` по `dids`. Upstream `/api/xiaomi`
@@ -76,10 +78,13 @@ go2rtc с модулями api, ws, streams, http, rtsp, webrtc, mp4, hls, mjpeg
   Сторонний go2rtc их не знает — тогда режимы камеры не показываются, выход недоступен, камеры общих домов не
   находятся, а поворот отвечает «обновите Waiting Paws».
 * **Защита API** — `GoMobile/api/waitingpaws.go` копируется в `internal/api`:
-  * Host — только IP, localhost или `.local`, чужой Origin браузера — 403, в том числе для WebSocket;
-  * `/api/exit`, `/api/restart` и запись конфига выключены;
-  * клиентам из LAN недоступны конфиг, журнал, аккаунты Xiaomi и изменение потоков (режимы и поворот камеры —
-    можно: так их меняет подключённый iPhone);
+  * Host — только IP или localhost (`.local` — только клиентам из LAN с паролем: имя mDNS любой в сети может
+    направить на 127.0.0.1), чужой Origin браузера — 403, в том числе для WebSocket;
+  * `/api/exit`, `/api/restart`, запись конфига и `/api/preload` выключены;
+  * потоки меняются только через `/api/streams`: в остальных запросах `name` и `src` с адресом источника — 403
+    (плееры go2rtc создают и перенаправляют поток по `name` + `src`, а `<img>`/`<video>` браузер шлёт без Origin);
+  * клиентам из LAN недоступны конфиг, журнал, аккаунты Xiaomi, изменение потоков и запись в поток (`dst`,
+    `/api/stream`); режимы и поворот камеры — можно: так их меняет подключённый iPhone;
   * пароль для LAN, который меняется без перезапуска, и `Relisten` после приостановки на iOS;
   * `log.Fatal` при ошибке слушающего сокета заменён на ошибку в журнале: иначе приложение закрывалось бы при
     возврате из фона.
@@ -90,7 +95,7 @@ go2rtc с модулями api, ws, streams, http, rtsp, webrtc, mp4, hls, mjpeg
 cd GoMobile/build/go2rtc
 go test ./pkg/mp4 ./pkg/xiaomi/miss ./pkg/xiaomi/miss/cs2
 go test ./internal/api -run WaitingPaws   # защита API
-go test ./internal/xiaomi -run Motor      # поворот камеры
+go test ./internal/xiaomi -run 'Motor|Miot'   # поворот и настройки камеры
 ```
 
 ## Лицензии

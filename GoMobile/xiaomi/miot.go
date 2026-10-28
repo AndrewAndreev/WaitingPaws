@@ -12,13 +12,14 @@ import (
 	"net/url"
 
 	"github.com/AlexxIT/go2rtc/internal/api"
+	"github.com/AlexxIT/go2rtc/internal/streams"
 )
 
 // InitMiot registers POST /api/xiaomi/miot. Call it after Init.
 //
 // Form fields:
 //
-//	src    – the camera's xiaomi:// source; account, region and device id are taken from it
+//	src    – the xiaomi:// source of a configured stream (403 otherwise); account, region and device id are taken from it
 //	method – "get" or "set"
 //	params – JSON array of {"siid":2,"piid":3} for get, {"siid":2,"piid":3,"value":1} for set
 //
@@ -49,6 +50,11 @@ func apiMiot(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "src has no did", http.StatusBadRequest)
 		return
 	}
+	if !configuredCamera(src.User, did) {
+		// The account's token reaches every device of the Mi account (plugs, locks…): only cameras set up here.
+		http.Error(w, "no stream has this camera", http.StatusForbidden)
+		return
+	}
 
 	var path string
 	switch r.Form.Get("method") {
@@ -67,6 +73,10 @@ func apiMiot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, item := range items {
+		if item == nil {
+			http.Error(w, "params must be JSON objects", http.StatusBadRequest)
+			return
+		}
 		item["did"] = did // only the camera of this source, whatever the caller sent
 	}
 	params, err := json.Marshal(map[string]any{"params": items})
@@ -83,4 +93,18 @@ func apiMiot(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", api.MimeJSON)
 	_, _ = w.Write(res)
+}
+
+// configuredCamera: a stream of this app has a xiaomi:// source with this account and device id.
+func configuredCamera(user *url.Userinfo, did string) bool {
+	for _, sources := range streams.GetAllSources() {
+		for _, source := range sources {
+			u, err := url.Parse(source)
+			if err == nil && u.Scheme == "xiaomi" && u.User != nil && u.User.Username() == user.Username() &&
+				u.Query().Get("did") == did {
+				return true
+			}
+		}
+	}
+	return false
 }
