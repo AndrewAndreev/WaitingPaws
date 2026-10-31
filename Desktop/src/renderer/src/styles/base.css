@@ -289,6 +289,13 @@ button {
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
+/* The open list of a native select is painted over white: the dark theme's translucent --bg-input comes out white
+   there, under light text. Options carry the menus' opaque surface. */
+.select option,
+.select optgroup {
+  background-color: var(--bg-surface-2);
+  color: var(--text-primary);
+}
 .field {
   display: flex;
   flex-direction: column;
