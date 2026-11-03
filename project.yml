@@ -18,8 +18,11 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.5"
-    CURRENT_PROJECT_VERSION: "9"
+    # Placeholders for builds from Xcode: a release gets its version, build and commit from its git tag
+    # (Tools/release.sh passes them to xcodebuild), the same on iPhone, Mac and Windows. About shows "dev" here.
+    MARKETING_VERSION: "0.0.0"
+    CURRENT_PROJECT_VERSION: "0"
+    WP_GIT_COMMIT: dev
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 849CANCD26
     ENABLE_USER_SCRIPT_SANDBOXING: YES
@@ -49,6 +52,7 @@ targets:
         CFBundleName: Waiting Paws
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WPGitCommit: $(WP_GIT_COMMIT)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
         UILaunchScreen: {}
@@ -106,6 +110,7 @@ targets:
         CFBundleName: Waiting Paws
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WPGitCommit: $(WP_GIT_COMMIT)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
         LSApplicationCategoryType: public.app-category.lifestyle
@@ -125,10 +130,6 @@ targets:
         # Apple Development (automatic, team above) instead of ad-hoc: a stable signature keeps the
         # Local Network / firewall permissions across rebuilds.
         CODE_SIGN_IDENTITY: "Apple Development"
-        # The Mac's own version and build (the shared ones are in `settings.base` above): a Mac-only fix leaves the
-        # iPhone's as they are.
-        MARKETING_VERSION: "1.5"
-        CURRENT_PROJECT_VERSION: "9"
 
 schemes:
   WaitingPaws-iOS:

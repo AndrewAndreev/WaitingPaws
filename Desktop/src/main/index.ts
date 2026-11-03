@@ -9,7 +9,7 @@ import { handleMediaScheme, registerMediaScheme } from './media-protocol'
 import { AppBackend } from './backend'
 import { MediaFinalizer } from './finalizer'
 import type { ThemePreference } from '@shared/settings'
-import packageInfo from '../../package.json'
+import { appVersion } from './version'
 
 /// Waiting Paws for Windows: one window (training, history and settings are pages of it), the bundled go2rtc as a
 /// child process, recordings finalized in a hidden window. See Desktop/README.md.
@@ -63,7 +63,7 @@ function isAppWindow(sender: WebContents): boolean {
 async function start(): Promise<void> {
   await app.whenReady()
   startLog(paths.logsDirectory)
-  log(`[app] Waiting Paws ${packageInfo.version} on ${process.platform} ${release()} (Electron ${process.versions.electron})`)
+  log(`[app] Waiting Paws ${appVersion} on ${process.platform} ${release()} (Electron ${process.versions.electron})`)
   Menu.setApplicationMenu(null)
   // No page gets a permission (camera, microphone, notifications…): the app needs none.
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))

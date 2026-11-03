@@ -19,10 +19,15 @@ WHAT=${1:-all}
 mkdir -p $RAW
 
 if [[ $WHAT != compose ]]; then
+  # The Mac welcome shot shows the version: the latest release's (its tag, Tools/release.sh) instead of "dev".
+  VERSION=()
+  if TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null); then
+    VERSION=(MARKETING_VERSION=${TAG#v} CURRENT_PROJECT_VERSION=${TAG##*.} WP_GIT_COMMIT=$(git rev-parse --short=7 "$TAG^{commit}"))
+  fi
   xcodebuild -project WaitingPaws.xcodeproj -scheme WaitingPaws-iOS -configuration Debug \
-    -destination 'generic/platform=iOS Simulator' -derivedDataPath $DD CODE_SIGNING_ALLOWED=NO build -quiet
+    -destination 'generic/platform=iOS Simulator' -derivedDataPath $DD CODE_SIGNING_ALLOWED=NO "${VERSION[@]}" build -quiet
   xcodebuild -project WaitingPaws.xcodeproj -scheme WaitingPaws-macOS -configuration Debug \
-    -destination 'generic/platform=macOS' -derivedDataPath $DD CODE_SIGNING_ALLOWED=NO build -quiet
+    -destination 'generic/platform=macOS' -derivedDataPath $DD CODE_SIGNING_ALLOWED=NO "${VERSION[@]}" build -quiet
 fi
 
 # MARK: iPhone

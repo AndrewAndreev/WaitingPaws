@@ -18,6 +18,8 @@ go install golang.org/x/mobile/cmd/gomobile@latest && ~/go/bin/gomobile init
 Скрипт клонирует go2rtc нужного тега в `GoMobile/build/`, добавляет пакет `GoMobile/mobile` (повторяет `main()`
 go2rtc с модулями api, ws, streams, http, rtsp, webrtc, mp4, hls, mjpeg, xiaomi, ограничивает Go двумя ядрами),
 накладывает патчи ниже и собирает `Frameworks/Go2RTC.xcframework` для iOS, симулятора и macOS (~16 МБ в iOS-сборке).
+Рядом пишет `Frameworks/Go2RTC.source` — git-дерево `GoMobile/`, из которого собран фреймворк; `Tools/release.sh`
+сверяет его с тегом выпуска.
 
 Без фреймворка проект тоже собирается (`#if canImport(Go2RTC)`), но встроенный режим будет недоступен — приложение
 предложит указать свой сервер.

@@ -13,7 +13,19 @@ ROOT="$(dirname "$HERE")"
 BUILD="$HERE/build"
 SRC="$BUILD/go2rtc"
 OUT="$ROOT/Frameworks/Go2RTC.xcframework"
+STAMP="$ROOT/Frameworks/Go2RTC.source"
 export PATH="$HOME/go/bin:$PATH"
+
+# What the framework is built from: the git tree of GoMobile/ as it is on disk now, uncommitted changes included. The
+# framework is not in git, so Tools/release.sh compares this (written to $STAMP at the end) with the tag's GoMobile/.
+SOURCE=""
+if git -C "$ROOT" rev-parse --git-dir > /dev/null 2>&1; then
+  INDEX="$(mktemp -d)/index"
+  GIT_INDEX_FILE="$INDEX" git -C "$ROOT" read-tree HEAD
+  GIT_INDEX_FILE="$INDEX" git -C "$ROOT" add -A GoMobile
+  SOURCE="$(GIT_INDEX_FILE="$INDEX" git -C "$ROOT" write-tree --prefix=GoMobile/)"
+  rm -rf "$(dirname "$INDEX")"
+fi
 
 if [ ! -d "$SRC/.git" ]; then
   rm -rf "$SRC"
@@ -82,6 +94,7 @@ go mod tidy >/dev/null
 NEW="$BUILD/Go2RTC.xcframework"
 rm -rf "$NEW"
 gomobile bind -target ios,iossimulator,macos -iosversion 17.0 -ldflags="-s -w" -o "$NEW" ./mobile
-rm -rf "$OUT"
+rm -rf "$OUT" "$STAMP"
 mv "$NEW" "$OUT"
+[ -z "$SOURCE" ] || echo "$SOURCE" > "$STAMP"
 echo "Built $OUT"

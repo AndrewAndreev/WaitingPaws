@@ -52,5 +52,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>WPGitCommit</key>
+	<string>$(WP_GIT_COMMIT)</string>
 </dict>
 </plist>

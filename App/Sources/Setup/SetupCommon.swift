@@ -36,12 +36,10 @@ extension AppModel {
 
 
 enum SetupText {
-    /// "Версия 1.0 (1)".
+    /// "Версия 1.6.10 (9a8e796)" (the version and its commit, see AppInfo), "Версия dev" for a build from Xcode.
     static var appVersion: String {
-        let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let build = info?["CFBundleVersion"] as? String ?? "1"
-        return String(localized: "Версия \(version) (\(build))")
+        guard let release = AppInfo.release else { return String(localized: "Версия") + " dev" }
+        return String(localized: "Версия \(release.version) (\(release.commit))")
     }
 
     /// "1920×1080". H.265 streams report the coded height (1088 for 1080p): within a macroblock of 16:9 it is rounded.

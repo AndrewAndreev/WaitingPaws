@@ -42,5 +42,7 @@
 	<string>Waiting Paws connects to your camera and to Waiting Paws on your other devices over the local network.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Waiting Paws saves training videos to your Photos library.</string>
+	<key>WPGitCommit</key>
+	<string>$(WP_GIT_COMMIT)</string>
 </dict>
 </plist>

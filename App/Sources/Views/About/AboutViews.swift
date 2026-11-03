@@ -3,11 +3,20 @@ import WaitingPawsCore
 
 /// Version, the privacy policy and the open-source licenses (iOS Settings and the Mac «О приложении» pane).
 enum AppInfo {
+    /// "1.6.10 (9a8e796)": the version and the commit it was built from, the same on iPhone, Mac and Windows;
+    /// "dev" for a build from Xcode.
     static var version: String {
+        guard let release else { return "dev" }
+        return "\(release.version) (\(release.commit))"
+    }
+
+    /// A build made by Tools/release.sh: the version and the commit come from its git tag. Nil for a build from Xcode
+    /// (WP_GIT_COMMIT stays "dev").
+    static var release: (version: String, commit: String)? {
         let info = Bundle.main.infoDictionary
-        let short = info?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let build = info?["CFBundleVersion"] as? String ?? "1"
-        return "\(short) (\(build))"
+        guard let commit = info?["WPGitCommit"] as? String, !commit.isEmpty, commit != "dev",
+              let version = info?["CFBundleShortVersionString"] as? String else { return nil }
+        return (version, commit)
     }
 
     /// `Legal/PrivacyPolicy-<en|ru>.md` in the app's language.

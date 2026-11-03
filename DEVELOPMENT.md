@@ -92,23 +92,28 @@ Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает ката�
 
 ### Версии и выпуски
 
-* Версия `X.Y.Z`: исправления — последняя цифра (1.1 → 1.1.1), новые функции — средняя (1.2), крупные перемены —
-  первая. Номер сборки (`CURRENT_PROJECT_VERSION`) растёт на 1 с каждой сборкой, которую кто-то получает.
-* Общие для iPhone и Mac номера — в `settings.base` в `project.yml`, номера одной платформы — в `settings.base` её
-  таргета (у Mac сейчас свои: правка только для Mac не меняет версию iPhone). `Info.plist` берёт их из настроек
-  сборки. Менять и `project.yml`, и `project.pbxproj` (или `xcodegen generate`).
-* Выданная сборка — тег `mac-v<версия>` / `ios-v<версия>` (у Windows — `windows-v<версия>`). Архив для Mac — Release
-  из чистой копии тега:
-
-  ```bash
-  git worktree add --detach /tmp/wp-release mac-v1.1.1 && cp -R Frameworks /tmp/wp-release/
-  cd /tmp/wp-release && xcodebuild archive -scheme WaitingPaws-macOS -configuration Release \
-    -destination 'generic/platform=macOS' -archivePath /tmp/WaitingPaws.xcarchive -allowProvisioningUpdates
-  ditto -c -k --keepParent /tmp/WaitingPaws.xcarchive/Products/Applications/WaitingPaws.app WaitingPaws-1.1.1-mac.zip
-  ```
-
-  Подпись Apple Development, без нотаризации: на другом Mac первый запуск — «Открыть всё равно» в «Конфиденциальность
-  и безопасность» (или `xattr -dr com.apple.quarantine /Applications/WaitingPaws.app`).
+* Версия `X.Y.N` одна на iPhone, Mac и Windows. `X.Y` — набор функций, его поднимают руками: новые функции — `Y`,
+  крупные перемены — `X`. `N` — номер сборки: растёт на 1 с каждым выпуском и не сбрасывается при смене `X.Y`
+  (1.6.12 → 1.7.13). На iPhone и Mac он же `CFBundleVersion`.
+* Выпуск — один тег `vX.Y.N` на коммит, из которого собраны все платформы. Версия, номер сборки и коммит берутся
+  из тега при сборке, в файлах проекта только заглушки (`0.0.0` в `project.yml` и `Desktop/package.json`). «О
+  приложении» показывает `1.6.10 (9a8e796)`, а сборка в обход тега — `dev`: так видно, из какого кода сборка.
+  Одинаковая версия на двух платформах значит один и тот же коммит.
+* `Tools/release.sh tag 1.6` ставит на HEAD следующий тег `v1.6.N` (только при чистом дереве). `Tools/release.sh build
+  v1.6.N [ios] [mac]` архивирует iPhone и Mac из чистой копии тега (незакоммиченное и неотслеживаемое в сборку не
+  попадает) и проверяет версию и коммит в собранных `Info.plist`. Результат — в `DerivedData/Release/v1.6.N/`:
+  архивы, `WaitingPaws-1.6.N-mac.zip` и `manifest.txt` (коммит, версии, sha256 zip). Windows собирает GitHub
+  Actions после `git push origin v1.6.N`: версия из тега, установщик — в черновике релиза. Если Windows в этом
+  выпуске не выходит, черновик удаляют.
+* go2rtc для iPhone и Mac — `Frameworks/Go2RTC.xcframework`, его нет в git. `GoMobile/build.sh` записывает рядом
+  `Go2RTC.source` — git-дерево `GoMobile/`, из которого он собран, а `release.sh build` сверяет его с тегом. После
+  любой правки в `GoMobile/` перед выпуском — `GoMobile/build.sh`.
+* Пересобрать тот же код (например, загрузка в App Store не прошла) — ещё один тег на тот же коммит: номер сборки
+  новый, правило «версия = коммит» сохраняется.
+* Mac — подпись Apple Development, без нотаризации: на другом Mac первый запуск — «Открыть всё равно» в
+  «Конфиденциальность и безопасность» (или `xattr -dr com.apple.quarantine /Applications/WaitingPaws.app`).
+* Выпуски до 1.6 — теги `ios-v*`, `mac-v*`, `windows-v*` (у каждой платформы своя версия; последняя сборка iPhone и
+  Mac — 9).
 
 ### Тесты
 

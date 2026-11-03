@@ -22,7 +22,7 @@ import { clock, currentLogFile, write as log } from './log'
 import { argValue, paths, isUIPreview } from './paths'
 import { demoHistory, demoPlan, demoReplay } from './demo'
 import { legalText } from './legal'
-import packageInfo from '../../package.json'
+import { appVersion } from './version'
 
 /// One part of a recording: the file and when it was requested (a new part starts each time the camera stream
 /// breaks off and comes back).
@@ -218,8 +218,7 @@ export class AppBackend {
     const server = this.server()
     return {
       ready: this.ready,
-      // From package.json at build time: right in development builds started from another folder too.
-      version: packageInfo.version,
+      version: appVersion,
       platform: process.platform,
       systemLocale: app.getSystemLocale(),
       settings,

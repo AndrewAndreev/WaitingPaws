@@ -73,8 +73,10 @@ npm run dist            # dist/WaitingPaws-<version>-Setup.exe and dist/WaitingP
 `npm run icons` re-renders the icon from `Design/app-icon/AppIcon-ios.svg`; `npm run notices` refreshes the
 third-party notices (run by `dist`).
 
-Releases: push a `windows-v<version>` tag; `.github/workflows/windows.yml` builds on `windows-latest` and attaches
-the installer and the zip to that tag's release (a draft when it creates it).
+Releases: one tag `vX.Y.N` for iPhone, Mac and Windows (`Tools/release.sh tag X.Y`, see DEVELOPMENT.md «Версии и
+выпуски»); push it, and `.github/workflows/windows.yml` builds on `windows-latest` with the tag's version and attaches
+the installer and the zip to that tag's release (a draft when it creates it). `package.json` keeps `0.0.0`: any
+other build shows "dev (commit)" as its version.
 
 ## Installer
 
