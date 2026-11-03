@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — жалобы 03.11: вёрстка, оверлей, линия выходов</title>
+<style>
+:root {
+  color-scheme: dark;
+  --pink: #FFB8CC; --blue: #8CBFFF; --yellow: #FFB84D; --red: #FF6B6B; --green: #6EE7A0;
+  --panel: #1A1A1A; --control: #2E2E2E;
+  --t2: rgba(235,235,245,.62); --t3: rgba(235,235,245,.32);
+  --sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; font: 15px/1.5 var(--sf); background: #131315; color: #ececef; }
+a { color: var(--pink); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 5px; font-size: .92em; }
+header.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  padding: 12px 24px; background: rgba(19,19,21,.9); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); }
+header.top h1 { font-size: 16px; margin: 0 10px 0 0; }
+header.top nav { display: flex; gap: 6px; flex-wrap: wrap; }
+header.top nav a { border: 1px solid rgba(127,127,127,.35); border-radius: 999px; padding: 4px 11px; font-size: 13px; color: inherit; }
+main { padding: 0 24px 90px; max-width: 1700px; }
+.intro { padding: 26px 0 6px; max-width: 1000px; }
+.intro h2 { font-size: 22px; margin: 0 0 8px; }
+.intro p, .intro li { color: #cfcfd4; }
+section.area { padding-top: 40px; }
+section.area > h2 { font-size: 26px; margin: 0 0 6px; display: flex; align-items: center; gap: 12px; }
+.ab { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--pink); color: #000; font-size: 18px; }
+.ab.done { background: var(--green); }
+.lead { margin: 0 0 14px; max-width: 1000px; color: #cfcfd4; }
+.refs { background: rgba(140,191,255,.06); border: 1px solid rgba(140,191,255,.2); border-radius: 16px; padding: 12px 16px; max-width: 1100px; margin: 10px 0 18px; font-size: 14px; }
+.refs h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--blue); }
+.refs ul { margin: 0; padding-left: 18px; color: #d4d4da; }
+.refs li { margin: 3px 0; }
+.variant { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07); border-radius: 22px; padding: 18px 20px 22px; margin: 16px 0; }
+.variant.rec { border-color: rgba(110,231,160,.45); box-shadow: 0 0 0 1px rgba(110,231,160,.2) inset; }
+.vhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.vid { font: 800 15px/1 var(--rounded); background: #ececef; color: #111; padding: 7px 10px; border-radius: 9px; }
+.vhead h3 { margin: 0; font-size: 19px; }
+.tag { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 9px; }
+.tag.rec { color: #000; background: var(--green); }
+.tag.now { color: #000; background: #c8c8cc; }
+.tag.done { color: #000; background: var(--green); }
+.why { display: grid; grid-template-columns: minmax(280px, 1.15fr) minmax(280px, 1fr); gap: 8px 28px; margin: 10px 0 14px; max-width: 1150px; color: #d6d6db; font-size: 14.5px; }
+.why p { margin: 0; }
+.why ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.why li { padding-left: 20px; position: relative; }
+.why li::before { position: absolute; left: 0; top: 0; font-weight: 800; }
+.why li.pro::before { content: "+"; color: var(--green); }
+.why li.con::before { content: "−"; color: var(--red); }
+.why li.note::before { content: "·"; color: var(--t2); }
+@media (max-width: 800px) { .why { grid-template-columns: 1fr; } }
+.mocks { display: flex; flex-wrap: wrap; gap: 22px 28px; align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+figcaption { font-size: 13px; color: var(--t2); max-width: 300px; line-height: 1.4; }
+figcaption b { color: #ececef; }
+
+/* phone made of a real simulator shot (375×812 pt, iPhone 13 mini) */
+.ph { width: 375px; height: 812px; position: relative; overflow: hidden; border-radius: 44px; background: #000; flex: none;
+  box-shadow: 0 0 0 1px #2a2a2c, 0 0 0 9px #141416, 0 0 0 10px #3a3a3c, 0 18px 50px rgba(0,0,0,.55); zoom: .6; cursor: default; }
+.ph.z5 { zoom: .5; } .ph.z7 { zoom: .72; } .ph.z1 { zoom: 1; }
+.ph > img { position: absolute; left: 0; top: 0; width: 375px; height: 812px; display: block; user-select: none; -webkit-user-drag: none; }
+.ph .scrim { position: absolute; left: 0; right: 0; background: #000; cursor: pointer; }
+.ph .scrim.clear { background: transparent; }
+.ph .scrim.clear.show { background: repeating-linear-gradient(135deg, rgba(255,184,204,.0) 0 10px, rgba(255,184,204,.10) 10px 12px); }
+.ph .panel { pointer-events: none; }
+.ph.closed .scrim, .ph.closed .panel { display: none; }
+.ph .hint { position: absolute; left: 50%; transform: translateX(-50%); bottom: 26px; background: rgba(0,0,0,.75); color: #fff; font: 600 14px/1.2 var(--sf);
+  padding: 7px 12px; border-radius: 10px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .2s; }
+.ph.closed .hint { opacity: 1; }
+.ph .tap { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(255,255,255,.35); pointer-events: none; animation: tap .5s ease-out forwards; }
+@keyframes tap { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.legend { font-size: 12.5px; color: var(--t2); margin-top: 6px; }
+
+/* exit strip, in points like the app: 12 pt chips, 4 pt gaps */
+.stripbox { background: var(--panel); border-radius: 18px; padding: 10px 14px; display: inline-flex; flex-direction: column; gap: 4px; }
+.stripbox .cap { font: 600 6.5px/1.2 var(--sf); color: var(--t2); }
+.zoom2 { zoom: 2; }
+.strip { width: 323px; overflow: hidden; scrollbar-width: none; }
+.strip .row { display: flex; align-items: center; gap: 4px; padding: 2px 0; width: max-content; }
+.strip.badges .row { padding: 6px 0 2px; }
+.strip.under .row { align-items: flex-start; }
+.ch { display: inline-flex; align-items: center; gap: 2px; height: 22px; padding: 0 8px; border-radius: 11px; background: var(--control); color: #fff;
+  font: 600 12px/1 var(--rounded); font-variant-numeric: tabular-nums; position: relative; white-space: nowrap; }
+.ch.cur { background: var(--pink); color: #000; }
+.ch.done { opacity: .35; }
+.ch svg { width: 10px; height: 10px; flex: none; }
+.ch .y { color: var(--yellow); } .ch .b { color: var(--blue); }
+.ch.cur .y, .ch.cur .b { color: #000; }
+.gap { width: 6px; height: 2px; background: rgba(255,255,255,.18); flex: none; }
+.under .gap { margin-top: 10px; }
+.gap.on { background: var(--blue); }
+.badge { position: absolute; top: -6px; width: 13px; height: 13px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--panel); }
+.badge svg { width: 8px; height: 8px; color: #000; }
+.badge.y { background: var(--yellow); } .badge.b { background: var(--blue); }
+.col { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.marks { display: flex; gap: 2px; height: 9px; align-items: center; }
+.marks svg { width: 8px; height: 8px; }
+.marks .y { color: var(--yellow); } .marks .b { color: var(--blue); }
+.col.done .marks { opacity: .35; }
+.strips { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-start; }
+
+/* top bar mock (alternative C2) */
+.bar { width: 375px; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #000; border-radius: 12px; }
+.pill { height: 32px; border-radius: 16px; background: var(--control); display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; font: 600 13px/1 var(--rounded); white-space: nowrap; flex: none; }
+.pill svg { width: 14px; height: 14px; }
+.pill.rec { color: var(--red); } .pill.blue { color: var(--blue); }
+.pill.round { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 50%; }
+.seg { padding: 2px; gap: 2px; }
+.seg span { height: 28px; border-radius: 14px; padding: 0 9px; display: inline-flex; align-items: center; gap: 5px; color: var(--t2); }
+.seg span.on { background: rgba(255,255,255,.16); color: #fff; }
+.seg i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; }
+.bar .sp { flex: 1; }
+.menu { width: 250px; background: #2a2a2c; border-radius: 14px; overflow: hidden; font-size: 15px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.menu div { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 10px; }
+.menu div:last-child { border-bottom: 0; }
+.menu .head { font-size: 12.5px; color: var(--t2); }
+.menu svg { width: 16px; height: 16px; margin-left: auto; }
+.menu .red { color: var(--red); }
+
+table.sum { border-collapse: collapse; margin-top: 12px; font-size: 14.5px; }
+table.sum td, table.sum th { border-bottom: 1px solid rgba(255,255,255,.08); padding: 9px 14px 9px 0; text-align: left; vertical-align: top; }
+table.sum th { color: var(--t2); font-weight: 600; font-size: 13px; }
+.pair { display: flex; gap: 14px; align-items: flex-start; }
+.before figcaption b { color: var(--red); }
+.after figcaption b { color: var(--green); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Waiting Paws · жалобы 03.11</h1>
+  <nav><a href="#c">0 · Вёрстка (сделано)</a><a href="#a">A · Оверлей под шторками</a><a href="#b">B · Значки в линии выходов</a><a href="#pick">Что выбрать</a></nav>
+</header>
+<main>
+
+<div class="intro">
+  <h2>Три жалобы и что с ними</h2>
+  <ul>
+    <li><b>Вёрстка уехала на экранах меньше 6.9″.</b> Причина найдена и исправлена (раздел 0). Ниже — снимки «до/после» с симулятора iPhone 13 mini (375×812 pt, как на присланных скриншотах).</li>
+    <li><b>Оверлей под шторками и всплывашками.</b> Тап по нему закрывает шторку, а то, что под ним, не нажимается. Ниже четыре варианта, как он выглядит (раздел A). Все макеты собраны поверх настоящих снимков приложения. Тап по затемнению закрывает шторку, тап по телефону открывает её снова.</li>
+    <li><b>Линия выходов: ⚡ для триггеров и понятный человечек.</b> Сейчас человечек 🧍 стоит только у выходов «ИЛИ до вставания». ⚡ нет совсем, а в шапке карточки 🏃 значит «есть условия раннего входа». Ниже варианты правила и вида (раздел B).</li>
+  </ul>
+  <p>Расписание в макетах — то, что на скриншотах (вторник 03.11): «обувь» у выходов 3 и 4, выход 5 «2 минуты ИЛИ до вставания», общие 🟡 «встала и пошла → через 4 минуты» и 🟢 «легла → через 2 минуты» после списка выходов. По умолчанию они действуют на все выходы.</p>
+</div>
+
+<!-- ============================== 0 · LAYOUT ============================== -->
+<section class="area" id="c">
+  <h2><span class="ab done">0</span>Вёрстка на маленьких iPhone — исправлено</h2>
+  <p class="lead">Верхняя панель с камерами «1|2», «REC 23:22», «Mac», кнопкой текста и «•••» на 375 pt занимала около 420 pt. Экран — это колонка внутри <code>GeometryReader</code>, прижатая к левому краю. Поэтому вся колонка становилась шире телефона и обрезалась справа: камера, карточка, шторка, «Finish», «False Start». Теперь панель сворачивается по шагам и никогда не бывает шире экрана. На больших iPhone ничего не меняется, только зазоры между пилюлями стали 8 pt вместо 10.</p>
+  <div class="why">
+    <p><b>Порядок сворачивания:</b> сначала имена камер («Прихожая | Комната» → «1 | 2», так было и раньше). Потом «Mac» → значок ноутбука. Потом «REC 23:22» → «⏺ 23:22», а «Запись» → ⏺. На самых узких экранах (320 pt, Display Zoom) кнопка «Текст тренера» уходит в меню «•••». В шторке «Текст тренера» пилюля «Последний перерыв · 1:02» сворачивается до «1:02» в цвете фазы, а заголовок не обрезается.</p>
+    <ul>
+      <li class="pro">запись видна всегда: она сворачивается последней</li>
+      <li class="pro">даже при очень крупном шрифте панель не толкает остальной экран</li>
+      <li class="note">на 375 pt с «Mac» и идущей записью: «1|2», «⏺ 23:22», ноутбук, текст, •••</li>
+    </ul>
+  </div>
+  <div class="mocks">
+    <div class="pair">
+      <figure class="before"><div class="ph z5"><img src="shots/before-mac.jpg" alt=""></div><figcaption><b>До.</b> «•••» за краем, всё обрезано справа.</figcaption></figure>
+      <figure class="after"><div class="ph z5"><img src="shots/a-mac-rec.jpg" alt=""></div><figcaption><b>После.</b> «Mac» стал значком, всё на месте.</figcaption></figure>
+    </div>
+    <div class="pair">
+      <figure class="before"><div class="ph z5"><img src="shots/b-drawer.jpg" alt=""></div><figcaption><b>До.</b> В шторке ✕ и «False Start» за краем.</figcaption></figure>
+      <figure class="after"><div class="ph z5"><img src="shots/a-drawer.jpg" alt=""></div><figcaption><b>После.</b></figcaption></figure>
+    </div>
+    <div class="pair">
+      <figure class="before"><div class="ph z5"><img src="shots/b-details.jpg" alt=""></div><figcaption><b>До.</b> «in 4:00» и ⌄ обрезаны.</figcaption></figure>
+      <figure class="after"><div class="ph z5"><img src="shots/a-details.jpg" alt=""></div><figcaption><b>После.</b></figcaption></figure>
+    </div>
+    <figure class="after"><div class="ph z5"><img src="shots/c-320.jpg" alt=""></div><figcaption><b>320 pt</b> (Display Zoom). «Запись» → ⏺, текст тренера — в «•••».</figcaption></figure>
+    <figure class="after"><div class="ph z5"><img src="shots/r-drawer-ru.jpg" alt=""></div><figcaption><b>По-русски:</b> «Последний перерыв · 1:52» → «1:52».</figcaption></figure>
+  </div>
+  <div class="variant" style="margin-top:22px">
+    <div class="vhead"><span class="vid">C2</span><h3>Альтернатива: «Mac» уходит в «•••», а не в значок</h3></div>
+    <div class="why">
+      <p>Если значок ноутбука без подписи непонятен, на узких экранах его можно убрать совсем. Состояние связи тогда видно в заголовке меню «•••». Минус: со связью или без — на панели не видно.</p>
+      <ul><li class="con">пропадает быстрый взгляд «связано ли с Mac»</li><li class="con">«Отключить синхронизацию» уезжает глубже</li></ul>
+    </div>
+    <div class="mocks">
+      <figure><div class="bar" id="barC1"></div><figcaption><b>C1 (сделано):</b> значок ноутбука</figcaption></figure>
+      <figure><div class="bar" id="barC2"></div><figcaption><b>C2:</b> без «Mac», связь — в меню</figcaption></figure>
+      <figure><div class="menu"><div class="head">Синхронизировано с «MacBook Air — Татьяна»</div><div>Текст тренера<span data-i="doc"></span></div><div>Изменить расписание<span data-i="sliders"></span></div><div>Завершить<span data-i="flag"></span></div><div class="red">Отменить без сохранения<span data-i="xmark"></span></div></div><figcaption>меню «•••» в C2</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== A · SCRIM ============================== -->
+<section class="area" id="a">
+  <h2><span class="ab">A</span>Оверлей под шторками и всплывашками</h2>
+  <p class="lead">На iPhone их две, обе свои: <b>«Текст тренера»</b> (шторка снизу, 80 % экрана) и <b>подробности выхода</b> (выезжают над карточкой, если потянуть её или тапнуть ряд условий). Сейчас под ними ничего нет: «Back Inside» и «False Start» нажимаются сквозь открытые подробности. Во всех вариантах под шторкой появляется слой: тап по нему закрывает шторку и <b>ничего под ним не нажимает</b>. Свайп вниз и ⌄/✕ работают как раньше. Варианты отличаются только тем, как слой выглядит.</p>
+  <div class="refs">
+    <h4>Референсы</h4>
+    <ul>
+      <li><a href="https://m3.material.io/components/bottom-sheets/guidelines" target="_blank">Material 3 · Bottom sheets</a> — модальная шторка блокирует остальное приложение. Затемнение под ней (scrim, ~32 % чёрного) закрывает её по тапу. Немодальная (standard) живёт рядом с основным экраном без затемнения.</li>
+      <li><a href="https://developer.apple.com/design/human-interface-guidelines/sheets" target="_blank">Apple HIG · Sheets</a> — на iOS лист бывает модальным и немодальным. Затемнённый фон говорит, что с ним нельзя работать, пока лист открыт.</li>
+      <li><a href="https://developer.apple.com/documentation/uikit/uisheetpresentationcontroller/largestundimmeddetentidentifier" target="_blank">UIKit · largestUndimmedDetent</a> и <a href="https://developer.apple.com/documentation/swiftui/view/presentationbackgroundinteraction(_:)" target="_blank">presentationBackgroundInteraction</a> — Карты и Локатор не затемняют карту, пока лист низкий: главное содержимое остаётся видимым. Это прямой аналог нашей камеры.</li>
+      <li>Меню и поповеры iOS (наши «•••», «Mac», меню камеры) — фон не затемняется, тап мимо закрывает меню и никуда не проходит. Это вариант A3.</li>
+      <li>YouTube на iPhone — комментарии и описание открываются панелью под видео. Само видео не затемняется и продолжает играть: оно главное на экране. Это вариант A4.</li>
+    </ul>
+  </div>
+
+  <div class="variant">
+    <div class="vhead"><span class="vid">A1</span><h3>Затемнение 40 % — классика</h3></div>
+    <div class="why"><p>Как модальные шторки Material и листы iOS: всё вне шторки темнеет, включая камеру.</p>
+      <ul><li class="pro">сразу понятно, что фон «выключен»</li><li class="con">собака на камере темнее как раз тогда, когда читаешь условия выхода</li></ul></div>
+    <div class="mocks" data-variant="dim40"></div>
+  </div>
+
+  <div class="variant">
+    <div class="vhead"><span class="vid">A2</span><h3>Лёгкая вуаль 18 %</h3></div>
+    <div class="why"><p>Тот же слой, но едва заметный: камера почти не темнеет, а кнопки визуально «отходят».</p>
+      <ul><li class="pro">камера читается</li><li class="con">на тёмном интерфейсе вуаль почти не видна — непонятно, почему «Back Inside» не нажимается с первого раза</li></ul></div>
+    <div class="mocks" data-variant="dim18"></div>
+  </div>
+
+  <div class="variant">
+    <div class="vhead"><span class="vid">A3</span><h3>Невидимый слой, как у меню iOS</h3></div>
+    <div class="why"><p>Ничего не темнеет. Тап мимо шторки просто закрывает её. На макете слой показан розовой штриховкой, в приложении её нет.</p>
+      <ul><li class="pro">камера и экран выглядят как есть</li><li class="con">нет подсказки, что кнопки сейчас не работают: первый тап по «Back Inside» «проглатывается»</li></ul></div>
+    <div class="mocks" data-variant="clear"></div>
+  </div>
+
+  <div class="variant rec">
+    <div class="vhead"><span class="vid">A4</span><h3>Кнопки под вуалью, камера светлая</h3><span class="tag rec">рекомендую</span></div>
+    <div class="why"><p>Слой закрывает весь экран (тап в любом месте вне шторки закрывает её), но темнеет только там, где кнопки: верхняя панель и карточка. Камера остаётся яркой — за ней и следят, пока читают текст тренера или условия.</p>
+      <ul><li class="pro">собаку видно как без шторки</li><li class="pro">кнопки явно «выключены», первый тап по ним никого не удивит</li><li class="note">щипок-зум и кнопки в углу камеры тоже ждут, пока шторку закроют</li></ul></div>
+    <div class="mocks" data-variant="camera"></div>
+  </div>
+
+  <p class="legend">Не получат слоя: всплывающее уведомление под «Mac» («Синхронизировано…», «Нет связи…») — оно исчезает само и не мешает. Системные меню, листы и вопросы «Завершить тренировку?» уже ведут себя так, как нужно.</p>
+</section>
+
+<!-- ============================== B · STRIP ============================== -->
+<section class="area" id="b">
+  <h2><span class="ab">B</span>Значки в линии выходов</h2>
+  <p class="lead">⚡ ставится у выходов с триггерами («+ обувь», «+ куртка»). С человечком два вопроса: <b>когда</b> его ставить и <b>как</b> показывать значки. Сначала правило (все варианты — в одном виде B·L1), потом вид (все — по рекомендованному правилу).</p>
+  <div class="refs">
+    <h4>Референсы</h4>
+    <ul>
+      <li>Шапка нашей же карточки: ⚡ 🏃 📝 у выхода. Значки в линии должны значить то же самое, теми же символами (сейчас в линии 🧍 <code>figure.stand</code>, а в шапке 🏃 <code>figure.run</code>).</li>
+      <li>Список писем iOS Mail — флажок и скрепка прямо за текстом строки. Признаки встроены в строку, не добавляя высоты → L1.</li>
+      <li><a href="https://m3.material.io/components/badges" target="_blank">Material 3 · Badges</a> — маленький бейдж в углу элемента для статуса → L2.</li>
+      <li>Схемы линий метро (Яндекс Метро, транзит в Картах) — станции на линии, у особых станций под названием значки пересадок → L3.</li>
+      <li>Интервальные тренировки (Apple Watch «Своя тренировка», Garmin) — ряд шагов разного типа. Тип шага виден по значку или цвету, сам шаг остаётся коротким.</li>
+    </ul>
+  </div>
+
+  <h3 style="margin:22px 0 4px">Правило: у каких выходов человечек</h3>
+  <p class="lead" style="margin-bottom:8px">Слева в каждой строке — начало тренировки (всё впереди), справа — идёт выход 5. Выходы 3–4 с «обувью» получают ⚡ во всех вариантах.</p>
+
+  <div class="variant">
+    <div class="vhead"><span class="vid">B·R0</span><h3>Сейчас</h3><span class="tag now">как в 1.5</span></div>
+    <div class="why"><p>🧍 только у «ИЛИ до вставания», ⚡ нет.</p><ul><li class="con">у 8 минут есть условия «встала → 4:00 / легла → 2:00», а значка нет</li></ul></div>
+    <div class="strips" data-rule="R0" data-look="L1"></div>
+  </div>
+  <div class="variant">
+    <div class="vhead"><span class="vid">B·R1</span><h3>У каждого выхода с условиями — как в шапке</h3></div>
+    <div class="why"><p>🏃, если у выхода есть хоть одно условие раннего входа. Общие условия по умолчанию действуют на все выходы, поэтому человечек у всех.</p>
+      <ul><li class="pro">буквально совпадает с 🏃 в шапке</li><li class="con">когда значок у всех, он ничего не выделяет</li><li class="con">«легла → через 2:00» у выхода на 5 секунд не сработает никогда</li></ul></div>
+    <div class="strips" data-rule="R1" data-look="L1"></div>
+  </div>
+  <div class="variant rec">
+    <div class="vhead"><span class="vid">B·R2</span><h3>Только там, где можно войти раньше плана</h3><span class="tag rec">рекомендую</span></div>
+    <div class="why"><p>🏃 у выхода «ИЛИ до вставания», а ещё там, где время условия меньше плана выхода: за эти секунды условие успеет сработать. 5 с/10 с/15 с с «через 4:00» значка не получают, 8 минут получают, 2 минуты «ИЛИ до вставания» тоже.</p>
+      <ul><li class="pro">значок означает «этот выход может закончиться раньше — смотри условия»</li><li class="pro">общие условия к короткому выходу не шумят</li><li class="note">в шапке 🏃 и ряд условий остаются как есть: подробности выхода по-прежнему показывают все его условия</li></ul></div>
+    <div class="strips" data-rule="R2" data-look="L1"></div>
+  </div>
+  <div class="variant">
+    <div class="vhead"><span class="vid">B·R3</span><h3>Только «свои» условия выхода</h3></div>
+    <div class="why"><p>🏃 у «ИЛИ до вставания» и у выходов с условиями, написанными прямо под ними. Общие условия значка не дают.</p>
+      <ul><li class="con">8 минут без значка, хотя «встала → 4:00» там важнее всего</li><li class="con">зависит от того, где тренер написал строку</li></ul></div>
+    <div class="strips" data-rule="R3" data-look="L1"></div>
+  </div>
+  <div class="variant">
+    <div class="vhead"><span class="vid">B·R4</span><h3>Как R2, но «до вставания» — отдельным значком</h3></div>
+    <div class="why"><p>🧍 для «ИЛИ до вставания» (войти сразу, как встанет), 🏃 для выходов, где условие успеет сработать.</p>
+      <ul><li class="pro">сохраняется привычный 🧍</li><li class="con">два похожих человечка размером 10 pt — легко спутать на бегу</li></ul></div>
+    <div class="strips" data-rule="R4" data-look="L1"></div>
+  </div>
+
+  <h3 style="margin:26px 0 4px">Вид: где стоят значки</h3>
+  <div class="variant rec">
+    <div class="vhead"><span class="vid">B·L1</span><h3>В строке, после времени</h3><span class="tag rec">рекомендую</span></div>
+    <div class="why"><p>Как 🧍 сейчас: «15s ⚡», «8m 🏃». Цветные на серых фишках, чёрные на розовой текущей.</p>
+      <ul><li class="pro">высота карточки не меняется (она одна на всю тренировку)</li><li class="con">фишка с двумя значками шире — линия чуть длиннее и прокручивается к текущему</li></ul></div>
+    <div class="strips" data-rule="R2" data-look="L1"></div>
+  </div>
+  <div class="variant">
+    <div class="vhead"><span class="vid">B·L2</span><h3>Бейджи в углу фишки</h3></div>
+    <div class="why"><p>Фишки прежней ширины, кружок-бейдж (жёлтый ⚡, голубой 🏃) сидит на правом верхнем углу.</p>
+      <ul><li class="pro">время читается как раньше</li><li class="con">линия выше на 4 pt — карточка подрастёт, камера станет ниже</li><li class="con">бейджи 13 pt трудно разглядеть на бегу</li></ul></div>
+    <div class="strips" data-rule="R2" data-look="L2"></div>
+  </div>
+  <div class="variant">
+    <div class="vhead"><span class="vid">B·L3</span><h3>Значки под фишкой, как пересадки на схеме метро</h3></div>
+    <div class="why"><p>Под каждой фишкой своя строчка мелких значков.</p>
+      <ul><li class="pro">фишки и время без изменений</li><li class="con">линия выше на 11 pt; на маленьких iPhone карточка и так тесная</li></ul></div>
+    <div class="strips" data-rule="R2" data-look="L3"></div>
+  </div>
+
+  <h3 style="margin:26px 0 8px">В карточке: R2 + L1</h3>
+  <div class="mocks">
+    <figure><div class="ph z7" id="incard"><img src="shots/r-away5.jpg" alt=""></div><figcaption><b>Выход 5</b> идёт. Линия заменена макетом (R2 + L1), остальное — снимок приложения.</figcaption></figure>
+    <figure><div class="ph z7"><img src="shots/r-away5.jpg" alt=""></div><figcaption><b>Сейчас</b>, для сравнения.</figcaption></figure>
+  </div>
+  <p class="legend">На Mac и Windows та же линия («Пульт», крупнее), значки и правило будут те же.</p>
+</section>
+
+<!-- ============================== PICK ============================== -->
+<section class="area" id="pick">
+  <h2><span class="ab">?</span>Что выбрать</h2>
+  <table class="sum">
+    <tr><th>Вопрос</th><th>Варианты</th><th>Выбрано 03.11</th></tr>
+    <tr><td>0 · Как сворачивается панель на маленьких iPhone</td><td>C1 значок ноутбука · C2 «Mac» в меню</td><td><b>C1</b> — сделано</td></tr>
+    <tr><td>A · Как выглядит слой под шторками</td><td>A1 затемнение 40 % · A2 вуаль 18 % · A3 невидимый · A4 камера светлая</td><td><b>A4</b> — сделано</td></tr>
+    <tr><td>B · Когда человечек</td><td>R1 у всех с условиями · R2 где можно войти раньше · R3 только свои · R4 R2 с 🧍 отдельно</td><td><b>R2</b> — сделано</td></tr>
+    <tr><td>B · Где значки</td><td>L1 в строке · L2 бейджи · L3 под фишкой</td><td><b>L2</b> — сделано: линия не становится шире</td></tr>
+  </table>
+</section>
+</main>
+
+<script>
+(function () {
+  const S = 'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
+  const I = {
+    bolt: '<path d="M13.4 2.2 5.2 13.4h5.6l-1.3 8.4 8.3-11.2h-5.6l1.2-8.4z" fill="currentColor"/>',
+    run: '<circle cx="15.2" cy="4.3" r="2.3" fill="currentColor"/><path d="M13.3 8.6 10.9 14M13.3 8.6l-3.2 2-2.6-1.4M13.3 8.6l3 2.5 3.2-.4M10.9 14l3.6 2.6-.9 4.7M10.9 14l-3 3.4-2.4 3" ' + S + '/>',
+    stand: '<circle cx="12" cy="4.2" r="2.3" fill="currentColor"/><path d="M12 7.5v6.3M8.6 11.2 12 9.4l3.4 1.8M12 13.8l-2.4 7.4M12 13.8l2.4 7.4" ' + S + '/>',
+    video: '<rect x="3" y="6.5" width="13" height="11" rx="2.5" fill="currentColor"/><path d="M16 10.5l5-3v9l-5-3z" fill="currentColor"/>',
+    rec: '<circle cx="12" cy="12" r="8.5" ' + S + '/><circle cx="12" cy="12" r="4" fill="currentColor"/>',
+    laptop: '<rect x="5" y="5" width="14" height="10" rx="1.5" ' + S + '/><path d="M2.5 18.5h19" ' + S + '/>',
+    doc: '<path d="M6.5 3H14l5 5v11.5A1.5 1.5 0 0 1 17.5 21h-11A1.5 1.5 0 0 1 5 19.5v-15A1.5 1.5 0 0 1 6.5 3z" ' + S + '/><path d="M14 3v5h5M8.5 12h7M8.5 15.5h7" ' + S + '/>',
+    ellipsis: '<circle cx="6" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="18" cy="12" r="1.9" fill="currentColor"/>',
+    sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9" ' + S + '/><circle cx="15" cy="7" r="2" fill="currentColor"/><circle cx="9" cy="17" r="2" fill="currentColor"/>',
+    flag: '<path d="M6 21V4M6 4h11.5l-2.6 4.5 2.6 4.5H6" ' + S + '/>',
+    xmark: '<path d="M6 6l12 12M18 6 6 18" ' + S + '/>'
+  };
+  const svg = n => '<svg viewBox="0 0 24 24" aria-hidden="true">' + I[n] + '</svg>';
+  document.querySelectorAll('[data-i]').forEach(e => { e.outerHTML = svg(e.dataset.i); });
+
+  // ---------- A · scrim variants on real shots ----------
+  // Rects in points, measured on the 375×812 shots: the details panel (exit 5) and the trainer's text drawer.
+  const CTX = {
+    details: { open: 'shots/r-details5.jpg', clip: 'inset(191px 12px 393px 12px round 24px)', label: 'Подробности выхода' },
+    drawer: { open: 'shots/r-drawer5.jpg', clip: 'inset(196px 0 0 0 round 24px 24px 0 0)', label: 'Текст тренера' }
+  };
+  const CLOSED = 'shots/r-away5.jpg';
+  const CAMERA = { top: 90, bottom: 398 }; // the camera's area between the top bar and the card
+
+  function scrims(variant, ctx) {
+    if (variant === 'camera') {
+      // the layer covers everything; only the controls get the veil
+      const bottom = ctx === 'drawer' ? '' : '<div class="scrim" style="top:' + CAMERA.bottom + 'px;bottom:0;opacity:.45"></div>';
+      return '<div class="scrim" style="top:0;height:' + CAMERA.top + 'px;opacity:.45"></div>' +
+             '<div class="scrim clear" style="top:' + CAMERA.top + 'px;height:' + (CAMERA.bottom - CAMERA.top) + 'px"></div>' + bottom;
+    }
+    if (variant === 'clear') return '<div class="scrim clear show" style="top:0;bottom:0"></div>';
+    const a = variant === 'dim40' ? .4 : .18;
+    return '<div class="scrim" style="top:0;bottom:0;opacity:' + a + '"></div>';
+  }
+
+  function phone(variant, ctx) {
+    const c = CTX[ctx];
+    return '<figure><div class="ph z5" data-ctx="' + ctx + '"><img src="' + c.open + '" alt="">' + scrims(variant, ctx) +
+      '<img class="panel" src="' + c.open + '" style="clip-path:' + c.clip + '" alt="">' +
+      '<span class="hint">тап — открыть снова</span></div><figcaption><b>' + c.label + '.</b> Тап по слою закрывает.</figcaption></figure>';
+  }
+
+  document.querySelectorAll('[data-variant]').forEach(box => {
+    box.innerHTML = phone(box.dataset.variant, 'details') + phone(box.dataset.variant, 'drawer');
+  });
+  document.addEventListener('click', e => {
+    const ph = e.target.closest('.ph[data-ctx]');
+    if (!ph) return;
+    const r = ph.getBoundingClientRect(), z = parseFloat(getComputedStyle(ph).zoom) || 1;
+    const dot = document.createElement('span');
+    dot.className = 'tap';
+    dot.style.left = ((e.clientX - r.left) / z) + 'px';
+    dot.style.top = ((e.clientY - r.top) / z) + 'px';
+    if (ph.classList.contains('closed')) {
+      ph.classList.remove('closed');
+      ph.querySelector('img').src = CTX[ph.dataset.ctx].open;
+    } else if (e.target.classList.contains('scrim')) {
+      ph.classList.add('closed');
+      ph.querySelector('img').src = CLOSED;
+    }
+    ph.appendChild(dot);
+    setTimeout(() => dot.remove(), 600);
+  });
+
+  // ---------- B · exit strip ----------
+  // The schedule from the screenshots: durations, triggers, «ИЛИ до вставания», common conditions 4:00 and 2:00.
+  const EXITS = [
+    { t: '5s', d: 5 }, { t: '10s', d: 10 }, { t: '5s', d: 5, trig: 1 }, { t: '15s', d: 15, trig: 1 },
+    { t: '2m', d: 120, stand: 1 }, { t: '10s', d: 10 }, { t: '8m', d: 480 }
+  ];
+  const COMMON = [240, 120];
+
+  function marks(rule, e) {
+    const m = [];
+    if (rule !== 'R0' && e.trig) m.push('bolt');
+    const canFire = COMMON.some(delay => delay < e.d);
+    if (rule === 'R0' && e.stand) m.push('stand');
+    if (rule === 'R1') m.push('run');
+    if (rule === 'R2' && (e.stand || canFire)) m.push('run');
+    if (rule === 'R3' && e.stand) m.push('run');
+    if (rule === 'R4') { if (e.stand) m.push('stand'); else if (canFire) m.push('run'); }
+    return m;
+  }
+  const tone = n => n === 'bolt' ? 'y' : 'b';
+
+  function strip(rule, look, cur) {
+    let h = '';
+    EXITS.forEach((e, i) => {
+      const st = i + 1 < cur ? ' done' : i + 1 === cur ? ' cur' : '';
+      const m = marks(rule, e);
+      if (i > 0) h += '<span class="gap"></span>';
+      if (look === 'L1') {
+        h += '<span class="ch' + st + '">' + e.t + m.map(n => '<span class="' + (rule === 'R0' ? '' : tone(n)) + '" style="display:inline-flex">' + svg(n) + '</span>').join('') + '</span>';
+      } else if (look === 'L2') {
+        h += '<span class="ch' + st + '">' + e.t + m.map((n, k) => '<span class="badge ' + tone(n) + '" style="right:' + (-5 + k * 11) + 'px">' + svg(n) + '</span>').reverse().join('') + '</span>';
+      } else {
+        h += '<span class="col' + st + '"><span class="ch' + st + '">' + e.t + '</span><span class="marks">' + m.map(n => '<span class="' + tone(n) + '" style="display:inline-flex">' + svg(n) + '</span>').join('') + '</span></span>';
+      }
+    });
+    return '<div class="strip ' + (look === 'L2' ? 'badges' : look === 'L3' ? 'under' : '') + '" data-cur="' + cur + '"><div class="row">' + h + '</div></div>';
+  }
+
+  function centre(el) {
+    const cur = el.querySelector('.cur');
+    if (cur) el.scrollLeft = cur.offsetLeft + cur.offsetWidth / 2 - el.clientWidth / 2;
+  }
+
+  document.querySelectorAll('.strips[data-rule]').forEach(box => {
+    const rule = box.dataset.rule, look = box.dataset.look;
+    box.innerHTML = [1, 5].map(cur => '<div class="stripbox zoom2"><span class="cap">' + (cur === 1 ? 'Выход 1 — всё впереди' : 'идёт выход 5') + '</span>' + strip(rule, look, cur) + '</div>').join('');
+  });
+
+  // in the card: cover the app's strip (y 421–449 pt, x 26–349 pt) with the mock
+  const card = document.getElementById('incard');
+  card.insertAdjacentHTML('beforeend', '<div style="position:absolute;left:24px;top:419px;width:327px;height:31px;background:var(--panel);display:flex;align-items:center;padding-left:2px">' + strip('R2', 'L1', 5) + '</div>');
+
+  // ---------- C · top bar mocks ----------
+  const seg = '<span class="pill seg"><span class="on">' + svg('video') + '1</span><span><i></i>2</span></span>';
+  const rec = '<span class="pill rec">' + svg('rec') + '23:22</span>';
+  document.getElementById('barC1').innerHTML = seg + rec + '<span class="sp"></span><span class="pill blue" style="padding:0 11px">' + svg('laptop') + '</span><span class="pill round">' + svg('doc') + '</span><span class="pill round">' + svg('ellipsis') + '</span>';
+  document.getElementById('barC2').innerHTML = seg + '<span class="pill rec">' + svg('rec') + 'REC 23:22</span><span class="sp"></span><span class="pill round">' + svg('doc') + '</span><span class="pill round" style="color:var(--blue)">' + svg('ellipsis') + '</span>';
+
+  window.addEventListener('load', () => document.querySelectorAll('.strip').forEach(centre));
+})();
+</script>
+</body>
+</html>
