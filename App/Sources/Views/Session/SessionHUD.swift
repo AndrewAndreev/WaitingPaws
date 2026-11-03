@@ -4,19 +4,17 @@ import WaitingPawsCore
 /// The iPhone's heads-up display for the running session: the shared readout on a card. The card keeps one height:
 /// the exit's conditions, triggers and notes are a row of chips in it; pulled up (or the row tapped) they open in full
 /// above the card like a drawer, over the camera, and go back down the same way. Nothing a press shows resizes the
-/// card, so the camera above and the buttons below stay put; and the card is no taller than it needs to be.
+/// card, so the camera above and the buttons below stay put; and the card is no taller than it needs to be. While
+/// the details are open the card's buttons sit under a veil: a tap on it (or on the camera, `SessionScreen`) puts
+/// the details away and presses nothing.
 struct SessionHUD: View {
     let session: TrainingSession
     /// Smaller ring and tighter spacing for portrait phones.
     var compact = false
+    /// The details are open above the card. The screen knows too: it lays the same layer over the camera and the bar.
+    @Binding var expanded: Bool
     var onFinish: () -> Void
 
-    #if DEBUG
-    // `--demo-details`: the details open above the card (UI checks).
-    @State private var expanded = CommandLine.arguments.contains("--demo-details")
-    #else
-    @State private var expanded = false
-    #endif
     @GestureState private var drag: CGFloat = 0
     @State private var panelHeight: CGFloat = 0
 
@@ -28,11 +26,22 @@ struct SessionHUD: View {
             SessionReadout(session: session, size: size, onFinish: onFinish,
                            onDetails: hasDetails ? { withAnimation(.smooth(duration: 0.3)) { expanded.toggle() } } : nil)
         }
+        .overlay {
+            if expanded, content.brief.map({ !$0.isEmpty(inBreak: content.isBreak) }) == true {
+                ModalVeil(shape: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)) {
+                    withAnimation(.smooth(duration: 0.3)) { expanded = false }
+                }
+            }
+        }
         .overlay(alignment: .top) {
             if hasDetails {
                 grabber
                     .padding(.top, 5)
             }
+        }
+        // The exit changed under open details (a press on the linked Mac) to one without any: nothing to keep open.
+        .onChange(of: content.brief?.isEmpty(inBreak: content.isBreak) ?? true, initial: true) { _, empty in
+            if empty, expanded { expanded = false }
         }
         .overlay(alignment: .top) {
             if expanded, let brief = content.brief, !brief.isEmpty(inBreak: content.isBreak) {
@@ -67,6 +76,32 @@ struct SessionHUD: View {
             .accessibilityLabel(expanded ? "Свернуть подробности выхода" : "Развернуть подробности выхода")
             .accessibilityAddTraits(.isButton)
             .onTapGesture { withAnimation(.smooth(duration: 0.3)) { expanded.toggle() } }
+    }
+}
+
+/// The layer under an open drawer (the trainer's text, an exit's details): a tap on it closes the drawer, and what is
+/// under it is not pressed. Over the buttons it is a dark veil — they are off until the drawer is closed; over the
+/// camera `dims: false` keeps the picture as bright as before, the dog is what's watched.
+struct ModalVeil<S: Shape>: View {
+    var shape: S
+    var dims = true
+    var onClose: () -> Void
+
+    var body: some View {
+        shape
+            .fill(dims ? Color.black.opacity(0.45) : Color.clear)
+            .contentShape(shape)
+            .onTapGesture(perform: onClose)
+            .transition(.opacity)
+            .accessibilityLabel("Закрыть")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHidden(!dims)
+    }
+}
+
+extension ModalVeil where S == Rectangle {
+    init(dims: Bool = true, onClose: @escaping () -> Void) {
+        self.init(shape: Rectangle(), dims: dims, onClose: onClose)
     }
 }
 
@@ -467,7 +502,9 @@ struct ReadoutActions: View {
 }
 
 /// One chip per exit: done ones dimmed, the current one highlighted, breaks shown as thin gaps.
-/// Shows the whole plan and the position in it without any sentence.
+/// Shows the whole plan and the position in it without any sentence. A badge on a chip's corner: ⚡ the exit has
+/// triggers, 🏃 it may end before its plan (`TrainingPlan.canEndEarly`). On the corner, not after the time: the
+/// strip stays as wide as the plan.
 struct ExitStrip: View {
     let session: TrainingSession
     /// Mac: bigger chips for the wider panel.
@@ -487,7 +524,10 @@ struct ExitStrip: View {
                         }
                     }
                 }
-                .padding(.vertical, 2)
+                // Room for the badges over the chips' corners: the scroll view clips what sticks out.
+                .padding(.top, badgeSize / 2 + 2)
+                .padding(.bottom, 2)
+                .padding(.trailing, badgeSize / 2)
             }
             .onChange(of: session.currentExitIndex ?? -1, initial: true) { _, index in
                 guard session.plan.exits.indices.contains(index) else { return }
@@ -496,19 +536,47 @@ struct ExitStrip: View {
         }
     }
 
+    private var badgeSize: CGFloat { large ? 16 : 13 }
+
     private func chip(_ exit: PlannedExit, state: ChipState) -> some View {
-        HStack(spacing: 2) {
-            Text(exit.isOpen ? String(localized: "доп.") : DurationText.compact(exit.duration))
-            if exit.untilStanding {
-                Image(systemName: "figure.stand").font(.system(size: 9, weight: .bold))
+        let triggers = !exit.triggers.isEmpty
+        let early = session.plan.canEndEarly(exit)
+        return Text(exit.isOpen ? String(localized: "доп.") : DurationText.compact(exit.duration))
+            .font(.system(size: large ? 14 : 12, weight: .semibold, design: .rounded).monospacedDigit())
+            .padding(.horizontal, large ? 10 : 8)
+            .padding(.vertical, large ? 6 : 5)
+            .background(state == .current ? Theme.accent : Theme.control, in: Capsule())
+            .foregroundStyle(state == .current ? .black : .white)
+            .overlay(alignment: .topTrailing) {
+                if triggers || early {
+                    HStack(spacing: -badgeSize * 0.2) {
+                        if triggers { badge("bolt.fill", Theme.warning) }
+                        if early { badge("figure.run", Theme.info) }
+                    }
+                    .offset(x: badgeSize * 0.4, y: -badgeSize / 2)
+                }
             }
-        }
-        .font(.system(size: large ? 14 : 12, weight: .semibold, design: .rounded).monospacedDigit())
-        .padding(.horizontal, large ? 10 : 8)
-        .padding(.vertical, large ? 6 : 5)
-        .background(state == .current ? Theme.accent : Theme.control, in: Capsule())
-        .foregroundStyle(state == .current ? .black : .white)
-        .opacity(state == .done ? 0.35 : 1)
+            .opacity(state == .done ? 0.35 : 1)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(chipLabel(exit, triggers: triggers, early: early))
+    }
+
+    /// A coloured circle with a black symbol, ringed in the card's colour so it stands off the chip.
+    private func badge(_ symbol: String, _ tint: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: badgeSize * 0.58, weight: .bold))
+            .foregroundStyle(.black)
+            .frame(width: badgeSize, height: badgeSize)
+            .background(tint, in: Circle())
+            .overlay(Circle().strokeBorder(Theme.panel, lineWidth: 1.5).padding(-1.5))
+    }
+
+    private func chipLabel(_ exit: PlannedExit, triggers: Bool, early: Bool) -> String {
+        var parts = [String(localized: "Выход \(exit.number)"),
+                     exit.isOpen ? String(localized: "без времени") : DurationText.short(exit.duration)]
+        if triggers { parts.append(String(localized: "триггеры")) }
+        if early { parts.append(String(localized: "можно вернуться раньше")) }
+        return parts.joined(separator: ", ")
     }
 
     private func breakGap(_ duration: TimeInterval, highlighted: Bool) -> some View {

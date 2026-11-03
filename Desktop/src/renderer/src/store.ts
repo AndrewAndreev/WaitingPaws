@@ -26,6 +26,8 @@ interface UIStore {
   showXiaomiSignIn: boolean
   showServerSetup: boolean
   confirmFinish: boolean
+  /// «Остановить запись?»: a stop by mistake (Ctrl+R, REC in the title bar) cut many recordings short.
+  confirmStopRecording: boolean
   /// History: the record or clip selected in the table (opened from the summary dialog, "jump to exit"…).
   historySelection: { kind: 'record' | 'clip'; id: string } | null
   /// Seek request for the history player (seconds into the selected recording).
@@ -54,6 +56,7 @@ export const useStore = create<UIStore>((set) => ({
   showXiaomiSignIn: false,
   showServerSetup: false,
   confirmFinish: false,
+  confirmStopRecording: false,
   historySelection: null,
   historySeek: null,
   toasts: [],

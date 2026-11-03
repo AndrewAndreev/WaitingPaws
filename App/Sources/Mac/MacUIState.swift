@@ -17,6 +17,8 @@ final class MacUIState {
     var showXiaomiSignIn = false
     var confirmFinish = false
     var confirmAbandon = false
+    /// «Остановить запись?»: a stop by mistake (⌘R, REC in the toolbar) cut many recordings short.
+    var confirmStopRecording = false
     /// A copy of the running session's schedule open for edits («Изменить расписание…»).
     var editingSessionPlan: TrainingPlan?
     /// «Только камера»: before a training, the picture on the whole window without recording (someone else records,
@@ -32,7 +34,16 @@ final class MacUIState {
         #if DEBUG
         // `--demo-review` opens the sheet over the `--demo-plan` schedule (see AppModel).
         reviewingPlan = CommandLine.arguments.contains("--demo-review")
+        // `--demo-confirm-stop` (with a recording): «Остановить запись?» as after ⌘R.
+        if CommandLine.arguments.contains("--demo-confirm-stop") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.confirmStopRecording = true }
+        }
         #endif
+    }
+
+    /// ⌘R and REC: a start right away, a stop after the question.
+    func toggleRecording(_ model: AppModel) {
+        if model.isRecordingNow { confirmStopRecording = true } else { model.toggleRecording() }
     }
 
     /// ⌘⇧V: parse the trainer's message from the clipboard and show how it was read.
@@ -196,7 +207,7 @@ struct MacCommands: Commands {
             Button("Фальстарт (⌫)") { ui.falseStart(model) }
                 .disabled(!ui.canFalseStart(model))
             Divider()
-            Button(model.isRecordingNow ? "Остановить запись" : "Начать запись") { model.toggleRecording() }
+            Button(model.isRecordingNow ? "Остановить запись…" : "Начать запись") { ui.toggleRecording(model) }
                 .keyboardShortcut("r", modifiers: .command)
                 .disabled(!model.isRecordingNow && !model.settings.isConfigured)
             Button("Изменить расписание…") { ui.editSessionPlan(model) }

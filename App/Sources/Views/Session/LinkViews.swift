@@ -5,6 +5,8 @@ import WaitingPawsCore
 /// on the iPhone — which computer the training runs on (menu: switch to another one, disconnect).
 struct LinkPill: View {
     @Environment(AppModel.self) private var model
+    /// iPhone: folds to the computer's icon where the top bar has no room for «Mac» (small iPhones).
+    var foldsToIcon = false
 
     var body: some View {
         #if os(macOS)
@@ -27,7 +29,7 @@ struct LinkPill: View {
                     client.disconnect()
                 }
             } label: {
-                Pill(text: "\(host.kindTitle)…", systemImage: "wifi.exclamationmark", tint: Theme.warning)
+                label("\(host.kindTitle)…", systemImage: "wifi.exclamationmark", tint: Theme.warning)
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
@@ -39,6 +41,16 @@ struct LinkPill: View {
     }
 
     #if os(iOS)
+    /// «Mac», or only its icon when that is all that fits.
+    private func label(_ text: String, systemImage: String, tint: Color) -> some View {
+        ViewThatFits(in: .horizontal) {
+            Pill(text: text, systemImage: systemImage, tint: tint)
+            if foldsToIcon {
+                Pill(text: text, systemImage: systemImage, tint: tint, iconOnly: true)
+            }
+        }
+    }
+
     static func reconnectingTitle(_ host: SyncDevice) -> String {
         String(localized: "Нет связи с \(host.kindTitle) — переподключаемся…")
     }
@@ -70,13 +82,13 @@ struct LinkPill: View {
                 }
             } label: {
                 // The top bar has no room for a name («MacBoo…»): the tooltip after joining and this menu name the host.
-                Pill(text: host.kindTitle, systemImage: host.symbolName, tint: Theme.info)
+                label(host.kindTitle, systemImage: host.symbolName, tint: Theme.info)
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
             .anchorPreference(key: LinkPillAnchorKey.self, value: .bounds) { $0 }
         case .connecting(let host), .waitingApproval(let host):
-            Pill(text: "\(host.kindTitle)…", systemImage: "hourglass", tint: Theme.info)
+            label("\(host.kindTitle)…", systemImage: "hourglass", tint: Theme.info)
         case .idle, .failed:
             EmptyView()
         }

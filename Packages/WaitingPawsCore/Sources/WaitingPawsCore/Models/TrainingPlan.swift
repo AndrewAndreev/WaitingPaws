@@ -268,6 +268,17 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         return entries
     }
 
+    /// The exit may end before its planned time — the 🏃 on its chip in the exit strip: «ИЛИ до вставания», or a
+    /// condition that comes sooner than the plan does («встала → 4:00» on an 8-minute exit; on a 15-second one it
+    /// never comes). A time the parser couldn't read counts; an extra exit without a plan takes any condition.
+    public func canEndEarly(_ exit: PlannedExit) -> Bool {
+        if exit.untilStanding { return true }
+        return earlyEntries(of: exit).contains { entry in
+            guard let delay = entry.delay, !exit.isOpen else { return true }
+            return delay < exit.duration
+        }
+    }
+
     /// `exit` shows the plan's common conditions (none of its own).
     public func usesCommonEarlyEntries(_ exit: PlannedExit) -> Bool {
         exit.earlyEntries.isEmpty && exit.usesCommonEarlyEntries && !commonEarlyEntries.isEmpty

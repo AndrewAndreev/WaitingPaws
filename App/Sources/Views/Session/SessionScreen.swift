@@ -25,6 +25,10 @@ struct SessionScreen: View {
     @State private var cameraOnly = false
     /// The trainer's text in a drawer over the training screen (the camera stays as it is).
     @State private var showTrainerText = false
+    /// The exit's details open above the card (`SessionHUD`).
+    @State private var showDetails = false
+    /// «Остановить запись?»: a stop by mistake cut many recordings short.
+    @State private var confirmStopRecording = false
 
     var body: some View {
         @Bindable var model = model
@@ -40,23 +44,41 @@ struct SessionScreen: View {
             // camera again.
             let layout = wide ? AnyLayout(HStackLayout(spacing: 12)) : AnyLayout(VStackLayout(spacing: 10))
             let edge: CGFloat = clipMode ? 0 : 12
+            // Display Zoom on a small iPhone (320 pt), a phone on its side: the bar is under ~330 pt.
+            let narrowBar = (wide ? min(420, geometry.size.width * 0.45) : geometry.size.width - 24) < 326
+            // A drawer is open (the trainer's text, the exit's details): one layer under it over the rest of the
+            // screen closes it on a tap and presses nothing. It dims the bar and the card, not the camera.
+            let veiled = (showTrainerText || showDetails) && model.session != nil && !clipMode
             layout {
                 if !wide {
-                    topBar
+                    topBar(narrow: narrowBar)
                         .padding(.horizontal, 12)
-                    if model.performance.isRunning { performanceBar.padding(.horizontal, 12) }
+                        .overlay {
+                            if veiled {
+                                ModalVeil(onClose: closeDrawers)
+                                    .padding(.top, -geometry.safeAreaInsets.top)
+                                    .padding(.bottom, -5)
+                            }
+                        }
+                    if model.performance.isRunning {
+                        performanceBar.padding(.horizontal, 12)
+                            .overlay { if veiled { ModalVeil(onClose: closeDrawers).padding(.vertical, -5) } }
+                    }
                 }
                 cameraArea
                     .overlay(alignment: .top) {
-                        if wide && clipMode { topBar.padding(12).transition(.opacity) }
+                        if wide && clipMode { topBar(narrow: narrowBar).padding(12).transition(.opacity) }
                     }
                     .overlay(alignment: .bottom) { clipOverlay(clipMode) }
                     .overlay(alignment: .bottomTrailing) { cameraCorner(clipMode) }
                     .padding(.horizontal, wide ? 0 : edge)
+                    // Over the gaps to the bar and the card too: a tap there closes the drawer as well.
+                    .overlay { if veiled { ModalVeil(dims: false, onClose: closeDrawers).padding(.vertical, wide ? 0 : -10) } }
                 if !clipMode {
                     if wide {
                         VStack(spacing: 12) {
-                            topBar
+                            topBar(narrow: narrowBar)
+                                .overlay { if veiled { ModalVeil(onClose: closeDrawers).padding(-6) } }
                             if model.performance.isRunning { performanceBar }
                             Spacer(minLength: 0)
                             bottomContent(compact: false)
@@ -107,6 +129,7 @@ struct SessionScreen: View {
                 cameraOnly = false
             } else {
                 showTrainerText = false
+                showDetails = false
                 // Ended elsewhere (on the linked Mac, or the last break ran out): these would act on no training, and
                 // «Отменить без сохранения» would delete a recording started after it.
                 confirmFinish = false
@@ -119,6 +142,7 @@ struct SessionScreen: View {
             if reconnecting {
                 confirmFinish = false
                 confirmAbandon = false
+                confirmStopRecording = false
             }
         }
         .onChange(of: model.settings.isConfigured) { _, configured in
@@ -147,6 +171,12 @@ struct SessionScreen: View {
             // `--demo-camera-only`: «Только камера»; `--demo-pan-tilt` (with `--demo-camera-modes`): the turning mode on;
             // `--demo-trainer-text`: the trainer's text open over the running training.
             if CommandLine.arguments.contains("--demo-camera-only") { cameraOnly = true }
+            // `--demo-confirm-stop` (with `--demo-recording`): «Остановить запись?» as after a press on REC.
+            if CommandLine.arguments.contains("--demo-confirm-stop") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { confirmStopRecording = model.isRecordingNow }
+            }
+            // `--demo-details`: the exit's details open above the card.
+            if CommandLine.arguments.contains("--demo-details") { showDetails = true }
             if CommandLine.arguments.contains("--demo-trainer-text") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { showTrainerText = true }
             }
@@ -240,6 +270,28 @@ struct SessionScreen: View {
             Button("Отменить без сохранения", role: .destructive) { model.abandonSession() }
             Button("Продолжить", role: .cancel) {}
         }
+        .confirmationDialog("Остановить запись?", isPresented: $confirmStopRecording, titleVisibility: .visible) {
+            Button("Остановить запись", role: .destructive) { model.stopRecording(deleteFile: false) }
+            Button("Продолжить запись", role: .cancel) {}
+        } message: {
+            if model.session != nil {
+                Text("Тренировка продолжится без видео. То, что уже записано, сохранится.")
+            } else if model.isLinkedToMac {
+                Text("Видео сохранится на \(model.linkedHostKind).")
+            } else {
+                Text("Видео сохранится в истории.")
+            }
+        }
+        // Stopped elsewhere (on the linked Mac, by «Завершить»): nothing left to stop.
+        .onChange(of: model.isRecordingNow) { _, recording in if !recording { confirmStopRecording = false } }
+    }
+
+    /// A tap on the layer under the trainer's text or the exit's details.
+    private func closeDrawers() {
+        withAnimation(.smooth(duration: 0.3)) {
+            showTrainerText = false
+            showDetails = false
+        }
     }
 
     /// The paste screen opens empty. DEBUG `--demo-parse` with `-demoPlanText <text>`: that text, already parsed
@@ -273,7 +325,7 @@ struct SessionScreen: View {
         if clipMode {
             Group {
                 if model.isRecordingClip {
-                    ClipRecordingOverlay()
+                    ClipRecordingOverlay(onStop: { confirmStopRecording = true })
                 } else {
                     CameraOnlyOverlay(onRecord: { model.startRecording() },
                                       onClose: { cameraOnly = false })
@@ -384,8 +436,11 @@ struct SessionScreen: View {
 
     // MARK: - Top bar
 
-    private var topBar: some View {
-        HStack(spacing: 10) {
+    /// What fits folds in turn: the cameras' names first, then «Mac» to its icon, then «REC» to the clock; on the
+    /// narrowest bars (Display Zoom) the trainer's text goes into •••. Never wider than the screen: a wider bar pushed
+    /// the whole screen, camera and card, past its right edge.
+    private func topBar(narrow: Bool) -> some View {
+        HStack(spacing: 8) {
             if hasNoCamera {
                 Button { showCameraSetup = true } label: {
                     Pill(text: String(localized: "Без камеры"), systemImage: "video.slash", tint: .white.opacity(0.85))
@@ -400,20 +455,27 @@ struct SessionScreen: View {
                     CameraMenu(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true },
                                onPickSecondCamera: { showSecondCameraPicker = true })
                 }
-                RecordingPill()
+                RecordingPill(onStop: { confirmStopRecording = true })
                     .disabled(model.isReconnecting)
+                    // Folds last: the cameras' names and «Mac» go first.
+                    .layoutPriority(1)
             }
-            Spacer()
-            LinkPill()
-            if let session = model.session, !session.plan.rawText.isEmpty {
+            Spacer(minLength: 4)
+            LinkPill(foldsToIcon: true)
+                .layoutPriority(-0.5)
+            let hasTrainerText = model.session.map { !$0.plan.rawText.isEmpty } ?? false
+            if hasTrainerText, !narrow {
                 IconButton(systemImage: showTrainerText ? "doc.text.fill" : "doc.text",
                            tint: showTrainerText ? Theme.accent : .white) {
-                    withAnimation(.smooth(duration: 0.3)) { showTrainerText.toggle() }
+                    withAnimation(.smooth(duration: 0.3)) { showDetails = false; showTrainerText.toggle() }
                 }
                 .accessibilityLabel("Текст тренера")
             }
             if model.session != nil {
-                SessionMenu(onEditPlan: {
+                SessionMenu(onTrainerText: hasTrainerText && narrow ? {
+                                withAnimation(.smooth(duration: 0.3)) { showDetails = false; showTrainerText.toggle() }
+                            } : nil,
+                            onEditPlan: {
                                 if let session = model.session, !session.isFinished { editingSessionPlan = session.plan }
                             },
                             onFinish: { confirmFinish = true },
@@ -424,6 +486,7 @@ struct SessionScreen: View {
                 IconButton(systemImage: "gearshape", label: String(localized: "Настройки")) { showSettings = true }
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity)
     }
 
     /// Only rendered while the diagnostics overlay is on; it observes the sampler on its own.
@@ -446,7 +509,7 @@ struct SessionScreen: View {
     @ViewBuilder
     private func bottomContent(compact: Bool) -> some View {
         if let session = model.session {
-            SessionHUD(session: session, compact: compact, onFinish: { confirmFinish = true })
+            SessionHUD(session: session, compact: compact, expanded: $showDetails, onFinish: { confirmFinish = true })
                 // A Mac's training while its link is being restored: presses could not reach it.
                 .disabled(model.isReconnecting)
                 .frame(maxWidth: 560)
@@ -671,12 +734,17 @@ private struct CameraSegmentLabel: View {
 /// ••• during a training. Its own view: the screen's updates don't rebuild an open menu (it used to blink).
 private struct SessionMenu: View {
     @Environment(AppModel.self) private var model
+    /// The trainer's text when the bar has no room for its button.
+    var onTrainerText: (() -> Void)? = nil
     var onEditPlan: () -> Void
     var onFinish: () -> Void
     var onAbandon: () -> Void
 
     var body: some View {
         Menu {
+            if let onTrainerText {
+                Button("Текст тренера", systemImage: "doc.text", action: onTrainerText)
+            }
             Button("Изменить расписание", systemImage: "slider.horizontal.3", action: onEditPlan)
             Button(model.finishTitle, systemImage: "flag.checkered", action: onFinish)
             Button("Отменить без сохранения", systemImage: "xmark.circle", role: .destructive, action: onAbandon)
@@ -693,30 +761,43 @@ private struct SessionMenu: View {
     }
 }
 
-/// REC indicator / toggle; the one-second clock lives inside this view only.
+/// REC indicator / toggle; the one-second clock lives inside this view only. Where the bar has no room it folds to the
+/// clock alone («⏺ 23:22»), or to the icon when nothing is recorded.
 private struct RecordingPill: View {
     @Environment(AppModel.self) private var model
+    /// A stop asks first (`SessionScreen`); a start doesn't.
+    var onStop: () -> Void
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             Button {
-                model.toggleRecording()
+                if model.isRecordingNow { onStop() } else { model.toggleRecording() }
             } label: {
-                if model.isRecordingNow {
-                    // Digits of one width and room for «REC 00:00»: the bar is not laid out anew every second.
-                    let clock = DurationText.clock(model.recordingDuration(at: context.date))
-                    ZStack {
-                        Pill(text: "REC " + (clock.count > 5 ? "0:00:00" : "00:00"), systemImage: "record.circle.fill").hidden()
-                        Pill(text: "REC " + clock, systemImage: "record.circle.fill", tint: Theme.danger)
-                    }
-                    .monospacedDigit()
-                } else if !model.isLinkedToMac, model.recorder.lastError != nil {
-                    Pill(text: String(localized: "Запись не идёт"), systemImage: "exclamationmark.triangle.fill", tint: Theme.warning)
-                } else {
-                    Pill(text: String(localized: "Запись"), systemImage: "record.circle", tint: .white.opacity(0.85))
+                ViewThatFits(in: .horizontal) {
+                    label(at: context.date, short: false)
+                    label(at: context.date, short: true)
                 }
             }
             .buttonStyle(PressableButtonStyle())
+        }
+    }
+
+    @ViewBuilder
+    private func label(at date: Date, short: Bool) -> some View {
+        if model.isRecordingNow {
+            // Digits of one width and room for «REC 00:00»: the bar is not laid out anew every second.
+            let clock = DurationText.clock(model.recordingDuration(at: date))
+            let prefix = short ? "" : "REC "
+            ZStack {
+                Pill(text: prefix + (clock.count > 5 ? "0:00:00" : "00:00"), systemImage: "record.circle.fill").hidden()
+                Pill(text: prefix + clock, systemImage: "record.circle.fill", tint: Theme.danger)
+            }
+            .monospacedDigit()
+        } else if !model.isLinkedToMac, model.recorder.lastError != nil {
+            Pill(text: String(localized: "Запись не идёт"), systemImage: "exclamationmark.triangle.fill", tint: Theme.warning,
+                 iconOnly: short)
+        } else {
+            Pill(text: String(localized: "Запись"), systemImage: "record.circle", tint: .white.opacity(0.85), iconOnly: short)
         }
     }
 }

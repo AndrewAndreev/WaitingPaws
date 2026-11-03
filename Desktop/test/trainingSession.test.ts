@@ -368,6 +368,34 @@ describe('TrainingSession', () => {
     expect(window('Первые 20 секунд не смотреть на собаку')).toBeNull()
   })
 
+  it('knows the exits that can end before their plan', () => {
+    // The schedule of 03.11: common conditions after the exits apply to all of them.
+    let plan = TrainingPlan.make({
+      exits: [
+        PlannedExit.make({ number: 1, duration: 5 }),
+        PlannedExit.make({ number: 5, duration: 120, untilStanding: true }),
+        PlannedExit.make({ number: 7, duration: 480 }),
+      ],
+    })
+    expect(plan.exits.map((exit) => TrainingPlan.canEndEarly(plan, exit))).toEqual([false, true, false])
+    plan = {
+      ...plan,
+      commonEarlyEntries: [
+        EarlyEntry.make({ event: 'Встала и пошла', delay: 240, tone: 'yellow' }),
+        EarlyEntry.make({ event: 'Легла', delay: 120, tone: 'green' }),
+      ],
+    }
+    // 4:00 and 2:00 never come within 5 s; 2:00 isn't sooner than a 2-minute plan, but «до вставания» is.
+    expect(plan.exits.map((exit) => TrainingPlan.canEndEarly(plan, exit))).toEqual([false, true, true])
+    // «Сразу» and a time the parser couldn't read («через пару минут») may come at any moment.
+    expect(TrainingPlan.canEndEarly(plan, { ...plan.exits[0], earlyEntries: [EarlyEntry.make({ event: 'Встала' })] })).toBe(true)
+    expect(TrainingPlan.canEndEarly(plan, { ...plan.exits[0], earlyEntries: [EarlyEntry.make({ event: 'Легла', detail: 'через пару минут' })] })).toBe(true)
+    // An extra exit has no plan to come before.
+    const open = PlannedExit.make({ number: 8, duration: 0, isOpen: true })
+    expect(TrainingPlan.canEndEarly(plan, open)).toBe(true)
+    expect(TrainingPlan.canEndEarly(plan, { ...open, usesCommonEarlyEntries: false })).toBe(false)
+  })
+
   it('reads a plan from an older build', () => {
     // A plan saved before conditions: «🟡 Если встала…» among the notes, no triggers or conditions in the exits.
     const json = `{"id":"${newUUID()}","title":"Тренировка","trainers":"","notes":["Все перерывы 2 минуты",

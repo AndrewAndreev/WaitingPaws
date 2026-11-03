@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
-import { call, useApp, useNow } from '../store'
+import { ui, useApp, useNow } from '../store'
 import { StopFilledIcon } from '../ui/icons'
 import { Button, Tooltip } from '../ui/kit'
 
@@ -76,7 +76,7 @@ export function ClipRecordingHUD() {
             <strong>{t('Запись без тренировки')}</strong>
             <span>{app.recording.resuming ? t('Камера пропала — продолжим, когда вернётся') : t('Видео появится в истории')}</span>
           </div>
-          <Button variant="danger-solid" size="lg" icon={<StopFilledIcon />} shortcut="Ctrl+R" onClick={() => void call('recording.stop')}>
+          <Button variant="danger-solid" size="lg" icon={<StopFilledIcon />} shortcut="Ctrl+R" onClick={() => ui.set({ confirmStopRecording: true })}>
             {t('Остановить')}
           </Button>
         </div>

@@ -422,7 +422,7 @@ struct ClipRecordingHUD: View {
                     Text("Запись без тренировки").font(.system(size: 13, weight: .semibold))
                     Text("Видео появится в истории").font(.system(size: 11)).foregroundStyle(.secondary)
                 }
-                Button { model.stopRecording(deleteFile: false) } label: {
+                Button { ui.confirmStopRecording = true } label: {
                     ShortcutLabel(title: String(localized: "Остановить"), symbol: "stop.fill", key: "⌘R", prominent: true)
                 }
                 .buttonStyle(.borderedProminent)

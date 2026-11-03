@@ -230,14 +230,18 @@
   --tint: var(--phase-leaving);
 }
 .exit-strip {
+  /* The chips' offsetLeft counts from here: the current one is scrolled to the middle. */
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 2px 0;
+  /* Room for the badges over the chips' corners: the scrolling strip clips what sticks out. */
+  padding: 10px 8px 2px 0;
 }
 .exit-chip {
+  position: relative;
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -259,6 +263,36 @@
 }
 .exit-chip--done {
   opacity: 0.35;
+}
+/* ⚡ / 🏃 on the chip's top right corner, ringed in the card's colour. */
+.exit-chip__badges {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  display: flex;
+}
+.exit-chip__badge {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #000;
+  box-shadow: 0 0 0 1.5px var(--bg-sunken);
+}
+.exit-chip__badge + .exit-chip__badge {
+  margin-left: -3px;
+}
+.exit-chip .exit-chip__badge svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2.6;
+}
+.exit-chip__badge--trigger {
+  background: var(--warning);
+}
+.exit-chip__badge--early {
+  background: var(--info);
 }
 .exit-strip__gap {
   flex: none;

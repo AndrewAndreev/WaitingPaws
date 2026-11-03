@@ -9,6 +9,12 @@ import { canFalseStartNow } from './training/live'
 
 /// What menus, keys, the title bar and the panels do — the Mac app's `MacUIState`.
 
+/// Ctrl+R and REC: a start right away, a stop after the question (`GlobalDialogs`).
+export function toggleRecording(app: AppState): void {
+  if (isRecording(app)) ui.set({ confirmStopRecording: true })
+  else void call('recording.toggle')
+}
+
 /// Ctrl+Shift+V: parse the trainer's message from the clipboard and show how it was read.
 export async function pasteSchedule(text?: string): Promise<void> {
   const app = ui.get().app

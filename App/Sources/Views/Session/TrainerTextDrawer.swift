@@ -60,11 +60,17 @@ struct TrainerTextDrawer: View {
             HStack(spacing: 10) {
                 Text("Текст тренера")
                     .font(Theme.display(18, weight: .bold))
+                    .lineLimit(1)
+                    .layoutPriority(1)
                 Spacer(minLength: 0)
                 TimelineView(.periodic(from: .now, by: 0.5)) { context in
                     let timer = content.timer(at: context.date)
-                    Pill(text: "\(content.title) · \(timer.text)", tint: timer.tint)
-                        .monospacedDigit()
+                    // «Последний перерыв · 1:02», or only the clock in its colour on a small iPhone.
+                    ViewThatFits(in: .horizontal) {
+                        Pill(text: "\(content.title) · \(timer.text)", tint: timer.tint)
+                        Pill(text: timer.text, tint: timer.tint)
+                    }
+                    .monospacedDigit()
                 }
                 IconButton(systemImage: detent == .full ? "chevron.down" : "chevron.up") {
                     withAnimation(.smooth(duration: 0.3)) { detent = detent == .full ? .middle : .full }

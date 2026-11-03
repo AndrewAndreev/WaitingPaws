@@ -209,7 +209,9 @@ function capitalized(text: string): string {
   return first.toUpperCase() + rest.join('')
 }
 
-/// One chip per exit: done ones dimmed, the current one highlighted, breaks as thin gaps (the iPhone's strip).
+/// One chip per exit: done ones dimmed, the current one highlighted, breaks as thin gaps (the iPhone's strip). A badge
+/// on a chip's corner: ⚡ the exit has triggers, 🏃 it may end before its plan (`TrainingPlan.canEndEarly`). On the
+/// corner, not after the time: the strip stays as wide as the plan.
 function ExitStrip({ live }: { live: LiveSession }) {
   const ref = useRef<HTMLDivElement>(null)
   const current = live.currentExitIndex
@@ -227,11 +229,32 @@ function ExitStrip({ live }: { live: LiveSession }) {
       {exits.map((exit, index) => {
         const state = current === null || index < current ? 'done' : index === current ? 'current' : 'upcoming'
         const pause = TrainingPlan.breakAfter(live.plan, index)
+        const triggers = exit.triggers.length > 0
+        const early = TrainingPlan.canEndEarly(live.plan, exit)
+        const label = [
+          t('Выход %lld', exit.number),
+          exit.isOpen ? t('без времени') : DurationText.short(exit.duration),
+          ...(triggers ? [t('триггеры')] : []),
+          ...(early ? [t('можно вернуться раньше')] : []),
+        ].join(', ')
         return (
           <Fragment key={exit.id}>
-            <span className={`exit-chip exit-chip--${state} tabular`}>
+            <span className={`exit-chip exit-chip--${state} tabular`} aria-label={label}>
               {exit.isOpen ? t('доп.') : DurationText.compact(exit.duration)}
-              {exit.untilStanding && <StandIcon />}
+              {(triggers || early) && (
+                <span className="exit-chip__badges" aria-hidden>
+                  {triggers && (
+                    <span className="exit-chip__badge exit-chip__badge--trigger">
+                      <TriggerIcon />
+                    </span>
+                  )}
+                  {early && (
+                    <span className="exit-chip__badge exit-chip__badge--early">
+                      <EarlyEntryIcon />
+                    </span>
+                  )}
+                </span>
+              )}
             </span>
             {index < exits.length - 1 && (
               <span className={'exit-strip__gap' + (breakAfter === index ? ' exit-strip__gap--active' : '')} style={{ width: Math.max(6, Math.min(28, pause / 20)) }} />

@@ -121,6 +121,9 @@ private struct MinimizedStrip: View {
     /// Neither a training nor a recording any more (finished from the iPhone, the last break ran out): nothing to
     /// show or stop, the capsule goes.
     var onIdle: () -> Void
+    /// «Остановить» asks right in the capsule: «Продолжить» takes its place, «Остановить» moves to its right, so a
+    /// double click lands on the safe one.
+    @State private var askingStop = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
@@ -168,9 +171,19 @@ private struct MinimizedStrip: View {
                                 .buttonStyle(HUDButtonStyle(height: 36))
                         }
                     } else {
-                        Text("Запись без тренировки").font(.system(size: 12.5, weight: .semibold))
-                        Button { model.stopRecording(deleteFile: false) } label: { Label("Остановить", systemImage: "stop.fill") }
-                            .buttonStyle(HUDButtonStyle(tint: MacPalette.red, height: 36))
+                        Text(askingStop ? "Остановить запись?" : "Запись без тренировки").font(.system(size: 12.5, weight: .semibold))
+                        if askingStop {
+                            Button { askingStop = false } label: { Label("Продолжить", systemImage: "record.circle") }
+                                .buttonStyle(HUDButtonStyle(height: 36))
+                            Button {
+                                askingStop = false
+                                model.stopRecording(deleteFile: false)
+                            } label: { Label("Остановить", systemImage: "stop.fill") }
+                                .buttonStyle(HUDButtonStyle(tint: MacPalette.red, height: 36))
+                        } else {
+                            Button { askingStop = true } label: { Label("Остановить", systemImage: "stop.fill") }
+                                .buttonStyle(HUDButtonStyle(tint: MacPalette.red, height: 36))
+                        }
                     }
                     Button(action: onRestore) { Image(systemName: "arrow.up.left.and.arrow.down.right") }
                         .buttonStyle(HUDButtonStyle(height: 36, circle: true))
@@ -184,6 +197,12 @@ private struct MinimizedStrip: View {
             .padding(10)
         }
         .onChange(of: model.session == nil && !model.isRecordingNow) { _, idle in if idle { onIdle() } }
+        // The question goes away by itself: the capsule is back to «Остановить» a few seconds later.
+        .task(id: askingStop) {
+            guard askingStop else { return }
+            try? await Task.sleep(for: .seconds(5))
+            askingStop = false
+        }
     }
 }
 #endif

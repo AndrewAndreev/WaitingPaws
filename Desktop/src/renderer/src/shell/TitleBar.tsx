@@ -6,7 +6,7 @@ import { cameraName, cameraOnline, formatTime, isConfigured, isRecording } from 
 import { FinishIcon, PhoneIcon, RecordIcon, SoundOffIcon, SoundOnIcon } from '../ui/icons'
 import { Tooltip } from '../ui/kit'
 import { CameraMenu } from '../training/CameraMenu'
-import { finishTitle } from '../actions'
+import { finishTitle, toggleRecording } from '../actions'
 
 /// The window's title bar: identity on the left, the camera's status and the training's global commands on the
 /// right, then the system caption buttons (drawn by Windows: Snap Layouts keep working).
@@ -95,7 +95,7 @@ function RecordButton() {
     const since = app.recording.since
     return (
       <Tooltip content={t('Остановить запись') + ' (Ctrl+R)'}>
-        <button className="tb-btn tb-btn--rec" onClick={() => void call('recording.toggle')}>
+        <button className="tb-btn tb-btn--rec" onClick={() => toggleRecording(app)}>
           <span className="dot dot--rec" />
           REC {since ? DurationText.clock((now - since) / 1000) : '…'}
         </button>

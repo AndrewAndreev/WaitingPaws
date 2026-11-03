@@ -23,17 +23,23 @@ struct Pill: View {
     var tint: Color = .white
     /// `true` keeps the pill at its natural width; `false` lets the text truncate when space is tight.
     var fixed: Bool = true
+    /// Only the icon where the bar has no room for the words (small iPhones); the words are what VoiceOver says.
+    var iconOnly: Bool = false
 
     var body: some View {
         HStack(spacing: 6) {
             if let systemImage {
                 Image(systemName: systemImage)
             }
-            Text(text)
-                .lineLimit(1)
-                .truncationMode(.tail)
+            if !iconOnly || systemImage == nil {
+                Text(text)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
         }
         .fixedSize(horizontal: fixed, vertical: false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
         .font(.system(.footnote, design: .rounded, weight: .semibold))
         .foregroundStyle(tint)
         .padding(.horizontal, 12)

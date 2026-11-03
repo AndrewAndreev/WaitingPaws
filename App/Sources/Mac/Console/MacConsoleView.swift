@@ -240,6 +240,16 @@ struct MacConsoleView: View {
         } message: {
             Text("Запись остановится, лог и видео сохранятся в истории.")
         }
+        // Return keeps the recording going: a stop needs its own click.
+        .alert("Остановить запись?", isPresented: $ui.confirmStopRecording) {
+            Button("Продолжить запись", role: .cancel) {}
+                .keyboardShortcut(.defaultAction)
+            Button("Остановить запись", role: .destructive) { model.stopRecording(deleteFile: false) }
+        } message: {
+            Text(model.session != nil ? "Тренировка продолжится без видео. То, что уже записано, сохранится." : "Видео сохранится в истории.")
+        }
+        // Stopped elsewhere (from the iPhone, by «Завершить»): nothing left to stop.
+        .onChange(of: model.isRecordingNow) { _, recording in if !recording { ui.confirmStopRecording = false } }
         .alert("Ошибка", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("Ок", role: .cancel) {}
         } message: {
@@ -591,11 +601,12 @@ extension PanTiltDirection {
 /// REC with the running time, or «Запись» to start one (⌘R).
 private struct RecordingToolbarButton: View {
     @Environment(AppModel.self) private var model
+    @Environment(MacUIState.self) private var ui
     var compact = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            Button { model.toggleRecording() } label: {
+            Button { ui.toggleRecording(model) } label: {
                 if model.isRecordingNow {
                     RecBadge(text: DurationText.clock(model.recordingDuration(at: context.date)))
                         .padding(.horizontal, ToolbarLook.padding + 4)

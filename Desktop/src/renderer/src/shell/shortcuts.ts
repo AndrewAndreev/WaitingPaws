@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { call, ui } from '../store'
-import { falseStart, pasteSchedule, primaryStep, startPending } from '../actions'
+import { ui } from '../store'
+import { falseStart, pasteSchedule, primaryStep, startPending, toggleRecording } from '../actions'
 import { hasSecondCamera, isConfigured, isRecording } from '../model'
 
 /// Keyboard shortcuts of the window: the Mac app's (`MacCommands`) with Ctrl for ⌘ — Ctrl+E edits the running
@@ -37,7 +37,7 @@ export function useGlobalShortcuts(): void {
             return ui.set({ route: 'settings' })
           case 'r':
             event.preventDefault()
-            if (isRecording(app) || isConfigured(app.settings)) void call('recording.toggle')
+            if (isRecording(app) || isConfigured(app.settings)) toggleRecording(app)
             return
           case 'enter':
             if (dialogOpen && !store.reviewingPlan) return

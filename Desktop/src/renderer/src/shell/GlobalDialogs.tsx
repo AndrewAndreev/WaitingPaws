@@ -4,7 +4,7 @@ import { DurationText } from '@core/durationText'
 import { SessionLogFormatter, ExitResult, type TrainingRecord } from '@core/sessionLog'
 import type { RecordingClip } from '@shared/api'
 import { call, callStrict, toast, ui, useApp, useStore } from '../store'
-import { formatTime } from '../model'
+import { formatTime, isRecording } from '../model'
 import { CheckIcon, ClipIcon, CopyIcon, ErrorIcon, FolderIcon, HistoryIcon, PhoneIcon, WarningIcon } from '../ui/icons'
 import { Button, Dialog, InfoBar } from '../ui/kit'
 import { PlanReviewDialog, SessionPlanDialog } from '../plan/PlanReviewDialog'
@@ -19,6 +19,7 @@ import { formatBytes } from '../format'
 export function GlobalDialogs() {
   const app = useApp()
   const confirmFinish = useStore((store) => store.confirmFinish)
+  const confirmStopRecording = useStore((store) => store.confirmStopRecording)
   const reviewingPlan = useStore((store) => store.reviewingPlan)
   const editingSessionPlan = useStore((store) => store.editingSessionPlan)
   const showCameraPicker = useStore((store) => store.showCameraPicker)
@@ -56,6 +57,33 @@ export function GlobalDialogs() {
               }}
             >
               {t('Завершить и сохранить')}
+            </Button>
+          </>
+        }
+      />
+
+      {/* Enter keeps the recording going: a stop needs its own click. Gone when it stopped elsewhere. */}
+      <Dialog
+        open={confirmStopRecording && isRecording(app)}
+        onOpenChange={(open) => ui.set({ confirmStopRecording: open })}
+        title={t('Остановить запись?')}
+        description={app.session ? t('Тренировка продолжится без видео. То, что уже записано, сохранится.') : t('Видео сохранится в истории.')}
+        hideClose
+        width={460}
+        footer={
+          <>
+            <Button
+              variant="danger"
+              onClick={() => {
+                ui.set({ confirmStopRecording: false })
+                void call('recording.stop')
+              }}
+            >
+              {t('Остановить запись')}
+            </Button>
+            <span className="spacer" />
+            <Button variant="primary" autoFocus onClick={() => ui.set({ confirmStopRecording: false })}>
+              {t('Продолжить запись')}
             </Button>
           </>
         }

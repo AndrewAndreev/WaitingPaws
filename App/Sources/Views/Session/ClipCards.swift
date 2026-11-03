@@ -5,6 +5,8 @@ import WaitingPawsCore
 /// with a stop button floats over it on a translucent panel (stop on a linked iPhone stops the Mac).
 struct ClipRecordingOverlay: View {
     @Environment(AppModel.self) private var model
+    /// Asks before stopping (`SessionScreen`).
+    var onStop: () -> Void
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -28,9 +30,7 @@ struct ClipRecordingOverlay: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
-                Button {
-                    model.stopRecording(deleteFile: false)
-                } label: {
+                Button(action: onStop) {
                     Image(systemName: "stop.fill")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(.white)

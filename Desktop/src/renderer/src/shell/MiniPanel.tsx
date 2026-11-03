@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { call, ui, useNow, useStore } from '../store'
@@ -6,7 +6,7 @@ import { isRecording } from '../model'
 import { falseStart, primaryStep, primaryStepTitle } from '../actions'
 import { LiveSession } from '../training/live'
 import { useAppearance } from './appearance'
-import { FalseStartIcon, PawFilledIcon, RestoreIcon, StopFilledIcon } from '../ui/icons'
+import { FalseStartIcon, PawFilledIcon, RecordIcon, RestoreIcon, StopFilledIcon } from '../ui/icons'
 
 /// While the main window is minimized during a training or a recording, a compact always-on-top strip with the timer
 /// and the next step floats at the bottom of the screen (the Mac app's minimized panel, Windows Clock's compact
@@ -14,6 +14,14 @@ import { FalseStartIcon, PawFilledIcon, RestoreIcon, StopFilledIcon } from '../u
 export function MiniPanel() {
   const app = useStore((store) => store.app)
   const now = useNow(500)
+  // «Остановить» asks right in the strip: «Продолжить» takes its place and «Остановить» moves to its right, so a
+  // double click lands on the safe one. The question goes away by itself after a few seconds.
+  const [askingStop, setAskingStop] = useState(false)
+  useEffect(() => {
+    if (!askingStop) return
+    const timer = setTimeout(() => setAskingStop(false), 5000)
+    return () => clearTimeout(timer)
+  }, [askingStop])
   useEffect(() => window.wp.onState((state) => ui.set({ app: state })), [])
   useAppearance(app ?? null)
   useEffect(() => {
@@ -60,12 +68,31 @@ export function MiniPanel() {
       ) : (
         <>
           <span className="mini__text">
-            <strong>{t('Запись без тренировки')}</strong>
+            <strong>{askingStop ? t('Остановить запись?') : t('Запись без тренировки')}</strong>
           </span>
-          <button className="mini__btn mini__btn--stop" onClick={() => void call('recording.stop')}>
-            <StopFilledIcon />
-            {t('Остановить')}
-          </button>
+          {askingStop ? (
+            <>
+              <button className="mini__btn" onClick={() => setAskingStop(false)}>
+                <RecordIcon />
+                {t('Продолжить')}
+              </button>
+              <button
+                className="mini__btn mini__btn--stop"
+                onClick={() => {
+                  setAskingStop(false)
+                  void call('recording.stop')
+                }}
+              >
+                <StopFilledIcon />
+                {t('Остановить')}
+              </button>
+            </>
+          ) : (
+            <button className="mini__btn mini__btn--stop" onClick={() => setAskingStop(true)}>
+              <StopFilledIcon />
+              {t('Остановить')}
+            </button>
+          )}
         </>
       )}
       <button className="mini__btn mini__btn--round" onClick={() => void call('window.restore')} title={t('Развернуть окно тренировки')}>
