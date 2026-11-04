@@ -339,6 +339,37 @@ final class PlanParserTests: XCTestCase {
         XCTAssertNil(PlanParser.commonBreak(in: "Breakfast 30 minutes before the training"))
     }
 
+    /// The screenshot of 04.11: «ключ ИЛИ до вставания» was one trigger. «ИЛИ до вставания» is the exit's condition.
+    func testUntilStandingAfterTriggers() throws {
+        let plan = PlanParser.parse("""
+        3 выход - 15 секунд + куртка + ключ
+        4 выход - 45 секунд + куртка + ключ ИЛИ до вставания
+        5 выход - 15 секунд + ключ или телефон
+        6 выход - 20 секунд + ключ или телефон ИЛИ пока не встанет
+
+        🟡 Если встала и пошла - входим через 3 минуты от начала движения
+        🟢 Если легла - входим через 1 минуту от укладки
+        """)
+        XCTAssertEqual(plan.exits.map(\.duration), [15, 45, 15, 20])
+        XCTAssertEqual(plan.exits.map(\.triggers), [["куртка", "ключ"], ["куртка", "ключ"], ["ключ или телефон"],
+                                                     ["ключ или телефон"]])
+        XCTAssertEqual(plan.exits.map(\.endsWhenStanding), [false, true, false, true])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]).map(\.summary), ["встала → сразу", "легла → 1:00"])
+        XCTAssertEqual(plan.exits[1].durationDescription, "45 с или до вставания")
+
+        let english = try XCTUnwrap(PlanParser.parseExit("Exit 4 - 45 seconds + jacket + keys OR until the dog stands up"))
+        XCTAssertEqual(english.triggers, ["jacket", "keys"])
+        XCTAssertTrue(english.untilStanding)
+        XCTAssertEqual(PlanParser.parseExit("4 выход - 45 секунд + ИЛИ до вставания")?.triggers, [])
+
+        // A plan an older build saved with the trigger «ключ ИЛИ до вставания» comes back right.
+        var saved = TrainingPlan(exits: [PlannedExit(number: 4, duration: 45)])
+        saved.exits[0].triggers = ["куртка", "ключ ИЛИ до вставания"]
+        let decoded = try JSONDecoder().decode(TrainingPlan.self, from: JSONEncoder().encode(saved))
+        XCTAssertEqual(decoded.exits[0].triggers, ["куртка", "ключ"])
+        XCTAssertTrue(decoded.exits[0].endsWhenStanding)
+    }
+
     func testAlternativeSpellings() {
         let plan = PlanParser.parse("""
         Тренировка

@@ -102,6 +102,39 @@ describe('PlanParser (Russian)', () => {
     expect(plan.exits.map((e) => e.breakAfter)).toEqual([null, 300, null])
   })
 
+  // The screenshot of 04.11: «ключ ИЛИ до вставания» was one trigger. «ИЛИ до вставания» is the exit's condition.
+  it('takes «ИЛИ до вставания» after the triggers as the exit’s condition', () => {
+    const plan = PlanParser.parse(`3 выход - 15 секунд + куртка + ключ
+4 выход - 45 секунд + куртка + ключ ИЛИ до вставания
+5 выход - 15 секунд + ключ или телефон
+6 выход - 20 секунд + ключ или телефон ИЛИ пока не встанет
+
+🟡 Если встала и пошла - входим через 3 минуты от начала движения
+🟢 Если легла - входим через 1 минуту от укладки`)
+    expect(plan.exits.map((e) => e.duration)).toEqual([15, 45, 15, 20])
+    expect(plan.exits.map((e) => e.triggers)).toEqual([
+      ['куртка', 'ключ'],
+      ['куртка', 'ключ'],
+      ['ключ или телефон'],
+      ['ключ или телефон'],
+    ])
+    expect(plan.exits.map(PlannedExit.endsWhenStanding)).toEqual([false, true, false, true])
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[1]).map(EarlyEntry.summary)).toEqual(['встала → сразу', 'легла → 1:00'])
+    expect(PlannedExit.durationDescription(plan.exits[1])).toBe('45 с или до вставания')
+
+    const english = PlanParser.parseExit('Exit 4 - 45 seconds + jacket + keys OR until the dog stands up')
+    expect(english?.triggers).toEqual(['jacket', 'keys'])
+    expect(english?.untilStanding).toBe(true)
+    expect(PlanParser.parseExit('4 выход - 45 секунд + ИЛИ до вставания')?.triggers).toEqual([])
+
+    // A plan an older build saved with the trigger «ключ ИЛИ до вставания» comes back right.
+    const saved = TrainingPlan.make({
+      exits: [PlannedExit.make({ number: 4, duration: 45, triggers: ['куртка', 'ключ ИЛИ до вставания'] })],
+    })
+    expect(saved.exits[0].triggers).toEqual(['куртка', 'ключ'])
+    expect(PlannedExit.endsWhenStanding(saved.exits[0])).toBe(true)
+  })
+
   it('understands alternative spellings', () => {
     const plan = PlanParser.parse(`Тренировка
 Выход 1 — 1 мин 30 сек

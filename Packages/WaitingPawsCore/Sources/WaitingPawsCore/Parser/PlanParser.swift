@@ -406,8 +406,7 @@ public enum PlanParser {
         var triggers = parts.filter { !$0.isEmpty }
 
         let lower = rest.lowercased()
-        let untilStanding = lower.contains("до вставания") || lower.contains("пока не встанет")
-            || (lower.contains("until") && lower.contains("stand"))
+        let untilStanding = saysUntilStanding(lower)
 
         let durationPart: String
         if let orRange = lower.range(of: #"(^|\s)(или|or)(\s|$)"#, options: .regularExpression) {
@@ -431,7 +430,29 @@ public enum PlanParser {
             }
         }
 
-        return PlannedExit(number: number, duration: duration, untilStanding: untilStanding, note: note, triggers: triggers)
+        var exit = PlannedExit(number: number, duration: duration, untilStanding: untilStanding, note: note, triggers: triggers)
+        exit.takeUntilStandingOutOfTriggers()
+        return exit
+    }
+
+    /// «до вставания», «пока не встанет», "until the dog stands up" (lowercased).
+    static func saysUntilStanding(_ lower: String) -> Bool {
+        lower.contains("до вставания") || lower.contains("пока не встанет")
+            || (lower.contains("until") && lower.contains("stand"))
+    }
+
+    /// «ключ ИЛИ до вставания» → «ключ», "keys or until the dog stands up" → "keys": the exit's «ИЛИ до вставания»
+    /// written after its last trigger («45 секунд + куртка + ключ ИЛИ до вставания») is not a part of the trigger.
+    /// `nil` when the trigger has no such tail; «ключ или телефон» stays one trigger.
+    static func triggerBeforeUntilStanding(_ trigger: String) -> String? {
+        let range = NSRange(trigger.startIndex..., in: trigger)
+        // The last «или» that the standing up follows: «ключ или телефон ИЛИ до вставания» → «ключ или телефон».
+        for match in orRegex.matches(in: trigger, range: range).reversed() {
+            guard let orRange = Range(match.range, in: trigger),
+                  saysUntilStanding(trigger[orRange.upperBound...].lowercased()) else { continue }
+            return trigger[..<orRange.lowerBound].trimmingCharacters(in: .whitespaces)
+        }
+        return nil
     }
 
     static func parseHeader(_ line: String, into plan: inout TrainingPlan) {
@@ -500,6 +521,9 @@ public enum PlanParser {
     )
 
     private static let parenthesesRegex = try! NSRegularExpression(pattern: #"\(([^)]*)\)"#)
+
+    /// «ИЛИ», "or" between words.
+    private static let orRegex = try! NSRegularExpression(pattern: #"(?:^|\s)(?:или|or)\s+"#, options: [.caseInsensitive])
 
     /// «выйти», «выходим», «выйти из квартиры», "go out", "leave": the exit itself, not a trigger.
     private static let goingOutRegex = try! NSRegularExpression(

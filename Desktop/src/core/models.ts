@@ -210,6 +210,22 @@ export const PlannedExit = {
     return exit.untilStanding || exit.earlyEntries.some(EarlyEntry.isUntilStanding)
   },
 
+  /**
+   * «45 секунд + куртка + ключ ИЛИ до вставания»: the «ИЛИ до вставания» after the last trigger is the exit's
+   * (`untilStanding`), not a part of the trigger «ключ». Older builds kept the trigger «ключ ИЛИ до вставания»;
+   * `TrainingPlan.foldUntilStanding` takes it out of their plans too.
+   */
+  takeUntilStandingOutOfTriggers(exit: PlannedExit): PlannedExit {
+    let found = false
+    const triggers = exit.triggers.flatMap((trigger) => {
+      const before = PlanParser.triggerBeforeUntilStanding(trigger)
+      if (before === null) return [trigger]
+      found = true
+      return before === '' ? [] : [before]
+    })
+    return found ? { ...exit, triggers, untilStanding: true } : exit
+  },
+
   /** Human readable planned duration, e.g. "30 с или до вставания" / "30 s or until the dog stands". */
   durationDescription(exit: PlannedExit): string {
     if (exit.isOpen) return PlannedExit.openText()
@@ -364,8 +380,10 @@ export const TrainingPlan = {
    *   together were a contradiction on the screen). Common ones that already say «встала → сразу» stay common.
    */
   foldUntilStanding(plan: TrainingPlan): TrainingPlan {
-    if (!plan.exits.some((exit) => exit.untilStanding)) return plan
-    const exits = plan.exits.map((exit): PlannedExit => {
+    // Taking «ИЛИ до вставания» out of a trigger sets `untilStanding`, so without it nothing changed.
+    const untangled = plan.exits.map(PlannedExit.takeUntilStandingOutOfTriggers)
+    if (!untangled.some((exit) => exit.untilStanding)) return plan
+    const exits = untangled.map((exit): PlannedExit => {
       if (!exit.untilStanding) return exit
       const cleared = { ...exit, untilStanding: false }
       if (exit.earlyEntries.length > 0) {

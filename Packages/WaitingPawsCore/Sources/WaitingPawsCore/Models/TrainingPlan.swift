@@ -171,6 +171,19 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
         untilStanding || earlyEntries.contains(where: \.isUntilStanding)
     }
 
+    /// «45 секунд + куртка + ключ ИЛИ до вставания»: the «ИЛИ до вставания» after the last trigger is the exit's
+    /// (`untilStanding`), not a part of the trigger «ключ». Older builds kept the trigger «ключ ИЛИ до вставания»;
+    /// `TrainingPlan.foldUntilStanding` takes it out of their plans too.
+    mutating func takeUntilStandingOutOfTriggers() {
+        var found = false
+        triggers = triggers.compactMap { trigger in
+            guard let before = PlanParser.triggerBeforeUntilStanding(trigger) else { return trigger }
+            found = true
+            return before.isEmpty ? nil : before
+        }
+        if found { untilStanding = true }
+    }
+
     /// Human readable planned duration, e.g. "30 с или до вставания" / "30 s or until the dog stands".
     public var durationDescription: String {
         if isOpen { return Self.openText }
@@ -288,6 +301,9 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     ///   ones without those about standing up («встала и пошла → 4:00» never comes after «встала → сразу»; the two
     ///   together were a contradiction on the screen). Common ones that already say «встала → сразу» stay common.
     public mutating func foldUntilStanding() {
+        for index in exits.indices {
+            exits[index].takeUntilStandingOutOfTriggers()
+        }
         for index in exits.indices where exits[index].untilStanding {
             exits[index].untilStanding = false
             let exit = exits[index]

@@ -33,6 +33,8 @@ const exitRegex =
 const parenthesesRegex = /\(([^)]*)\)/u
 const allParenthesesRegex = /\(([^)]*)\)/gu
 const orRegex = /(^|\s)(или|or)(\s|$)/u
+/** «ИЛИ», "or" between words, every one in the text. */
+const everyOrRegex = /(?:^|\s)(?:или|or)\s+/giu
 const dateRegex = /(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})/u
 
 /** ICU's `\b` around "break": word characters are letters, marks, digits and connectors (not only ASCII). */
@@ -536,10 +538,7 @@ export const PlanParser = {
     const triggers = parts.slice(1).filter((part) => part !== '')
 
     const lower = rest.toLowerCase()
-    const untilStanding =
-      lower.includes('до вставания') ||
-      lower.includes('пока не встанет') ||
-      (lower.includes('until') && lower.includes('stand'))
+    const untilStanding = PlanParser.saysUntilStanding(lower)
 
     const or = orRegex.exec(lower)
     const durationPart = or ? rest.slice(0, or.index) : rest
@@ -557,7 +556,32 @@ export const PlanParser = {
       }
     }
 
-    return PlannedExit.make({ number, duration, untilStanding, note, triggers })
+    return PlannedExit.takeUntilStandingOutOfTriggers(PlannedExit.make({ number, duration, untilStanding, note, triggers }))
+  },
+
+  /** «до вставания», «пока не встанет», "until the dog stands up" (lowercased). */
+  saysUntilStanding(lower: string): boolean {
+    return (
+      lower.includes('до вставания') ||
+      lower.includes('пока не встанет') ||
+      (lower.includes('until') && lower.includes('stand'))
+    )
+  },
+
+  /**
+   * «ключ ИЛИ до вставания» → «ключ», "keys or until the dog stands up" → "keys": the exit's «ИЛИ до вставания»
+   * written after its last trigger («45 секунд + куртка + ключ ИЛИ до вставания») is not a part of the trigger.
+   * `null` when the trigger has no such tail; «ключ или телефон» stays one trigger.
+   */
+  triggerBeforeUntilStanding(trigger: string): string | null {
+    // The last «или» that the standing up follows: «ключ или телефон ИЛИ до вставания» → «ключ или телефон».
+    for (const match of [...trigger.matchAll(everyOrRegex)].reverse()) {
+      const end = match.index + match[0].length
+      if (PlanParser.saysUntilStanding(trigger.slice(end).toLowerCase())) {
+        return trimWhitespaces(trigger.slice(0, match.index))
+      }
+    }
+    return null
   },
 
   parseHeader(line: string, plan: TrainingPlan): TrainingPlan {
