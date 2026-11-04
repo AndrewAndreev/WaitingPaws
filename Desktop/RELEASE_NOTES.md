@@ -1,6 +1,19 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.6.11**
+**New in 1.6.12**
+
+* «45 секунд + куртка + ключ ИЛИ до вставания» is read right: «ключ» is a trigger and «до вставания» the exit's
+  condition, «встала → сразу». It used to become one trigger, «ключ ИЛИ до вставания». Plans saved with it come back
+  right; «ключ или телефон» stays one trigger.
+* Conditions the trainer wrote once for the whole training now go to the exits of a minute and longer by default
+  («К длинным ≥ 1 мин» in the schedule check): on a 15-second exit «легла → 1:00» never comes. «Ко всем» and «Выбрать»
+  are still there.
+* «К длинным» / «Ко всем» stays when you add an exit or change an exit's time, in the schedule check, in the timeline
+  and in the running schedule: a new short exit doesn't get the common conditions, an exit stretched past a minute
+  does. Exits picked one by one are left as they are.
+* The trainer's 🚩 rule reads ⛔ «ждать тишины» instead of 🚩 «не входить», which looked like a command for right now.
+
+**In 1.6.11**
 
 * «ИЛИ до вставания» is no longer a separate switch beside the exit's conditions: it is one of them, «Встала →
   сразу», and can be changed or removed like the others. The «До вставания» column in the schedule check, the switch
