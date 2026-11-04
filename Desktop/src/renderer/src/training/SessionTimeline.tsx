@@ -264,7 +264,8 @@ function withValue(plan: TrainingPlan, edge: PlanEdge, value: number | null): Tr
     edge.kind === 'exit'
       ? { ...exit, duration: Math.max(0, value ?? exit.duration) }
       : { ...exit, breakAfter: value === null || value === plan.defaultBreak ? null : value }
-  return { ...plan, exits: plan.exits.map((item, index) => (index === edge.index ? changed : item)) }
+  // An exit stretched over the minute keeps «к длинным».
+  return TrainingPlan.keepingCommonEntriesScope({ ...plan, exits: plan.exits.map((item, index) => (index === edge.index ? changed : item)) }, plan)
 }
 
 /// The schedule laid out from the first exit; every block can be edited.

@@ -39,7 +39,7 @@ struct ExitEditorView: View {
                 HStack {
                     Text("За дверью")
                     Spacer()
-                    DurationButton(value: $draft.exits[index].duration, title: String(localized: "Выход \(exit.number)"),
+                    DurationButton(value: $draft.keepingCommonEntriesScope.exits[index].duration, title: String(localized: "Выход \(exit.number)"),
                                    presets: DurationPresets.exits)
                 }
                 if index < draft.exits.count - 1 {

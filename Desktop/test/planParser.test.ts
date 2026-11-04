@@ -136,6 +136,57 @@ describe('PlanParser (Russian)', () => {
     expect(PlannedExit.endsWhenStanding(saved.exits[0])).toBe(true)
   })
 
+  // «К длинным» (the default) and «ко всем» survive an added exit and a new time; «Выбрать» and the switches flipped
+  // by hand stay as they are.
+  it('keeps the common conditions’ scope through edits', () => {
+    const plan = PlanParser.parse(`1 выход - 15 секунд
+2 выход - 2 минуты
+3 выход - 45 секунд
+
+🟢 Если легла - входим через 30 секунд от укладки`)
+    expect(TrainingPlan.commonEntriesScope(plan)).toBe('long')
+    const uses = (value: TrainingPlan) => value.exits.map((e) => e.usesCommonEarlyEntries)
+
+    // A short exit added, the 45-second one stretched to 2 minutes.
+    const edited = TrainingPlan.keepingCommonEntriesScope(
+      {
+        ...plan,
+        exits: [...plan.exits.map((e, i) => (i === 2 ? { ...e, duration: 120 } : e)), PlannedExit.make({ number: 4, duration: 10 })],
+      },
+      plan,
+    )
+    expect(TrainingPlan.commonEntriesScope(edited)).toBe('long')
+    expect(uses(edited)).toEqual([false, true, true, false])
+
+    // A switch flipped by hand makes it «Выбрать», and a later new time doesn't undo it.
+    const flipped = { ...edited, exits: edited.exits.map((e, i) => (i === 0 ? { ...e, usesCommonEarlyEntries: true } : e)) }
+    const picked = TrainingPlan.keepingCommonEntriesScope(flipped, edited)
+    expect(TrainingPlan.commonEntriesScope(picked)).toBeNull()
+    const retimed = TrainingPlan.keepingCommonEntriesScope(
+      { ...picked, exits: picked.exits.map((e, i) => (i === 3 ? { ...e, duration: 90 } : e)) },
+      picked,
+    )
+    expect(uses(retimed)).toEqual([true, true, true, false])
+
+    // «Ко всем»: an added short exit gets them too.
+    const all = TrainingPlan.applyCommonEarlyEntries(plan, 'all')
+    expect(TrainingPlan.commonEntriesScope(all)).toBe('all')
+    const added = TrainingPlan.keepingCommonEntriesScope(
+      { ...all, exits: [...all.exits, PlannedExit.make({ number: 4, duration: 10, usesCommonEarlyEntries: false })] },
+      all,
+    )
+    expect(TrainingPlan.commonEntriesScope(added)).toBe('all')
+
+    // Only long exits: both fit and the switch says «к длинным», so a short exit added later doesn't get them.
+    const long = PlanParser.parse('1 выход - 2 минуты\n2 выход - 3 минуты\n\n🟢 Если легла - входим через 30 секунд')
+    expect(TrainingPlan.commonEntriesScope(long)).toBe('long')
+    const longAdded = TrainingPlan.keepingCommonEntriesScope({ ...long, exits: [...long.exits, PlannedExit.make({ number: 3, duration: 20 })] }, long)
+    expect(longAdded.exits[2].usesCommonEarlyEntries).toBe(false)
+
+    // «Ещё выход» has no planned time and counts as long.
+    expect(TrainingPlan.commonEntriesScope({ ...plan, exits: [...plan.exits, PlannedExit.open(4)] })).toBe('long')
+  })
+
   it('understands alternative spellings', () => {
     const plan = PlanParser.parse(`Тренировка
 Выход 1 — 1 мин 30 сек

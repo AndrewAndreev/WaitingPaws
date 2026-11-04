@@ -108,7 +108,8 @@ struct PlanEditorView: View {
             }
 
             Section {
-                ForEach(Array($plan.exits.enumerated()), id: \.element.id) { index, $exit in
+                // A new time through the row keeps «к длинным» / «ко всем».
+                ForEach(Array($plan.keepingCommonEntriesScope.exits.enumerated()), id: \.element.id) { index, $exit in
                     ExitRow(exit: $exit, plan: plan, defaultBreak: plan.defaultBreak) {
                         editingExit = EditedExit(id: exit.id)
                     }
@@ -125,8 +126,9 @@ struct PlanEditorView: View {
                     plan.renumber()
                 }
                 Button {
-                    let last = plan.exits.last
-                    plan.exits.append(PlannedExit(number: plan.exits.count + 1, duration: last?.duration ?? 5))
+                    let old = plan
+                    plan.exits.append(PlannedExit(number: plan.exits.count + 1, duration: old.exits.last?.duration ?? 5))
+                    plan = plan.keepingCommonEntriesScope(from: old)
                 } label: {
                     Label("Добавить выход", systemImage: "plus.circle.fill")
                 }
@@ -380,5 +382,14 @@ private struct ExitRow: View {
                 .background(Theme.control, in: Circle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+extension Binding where Value == TrainingPlan {
+    /// The plan written back with its exits still following «ко всем» / «к длинным»
+    /// (`TrainingPlan.keepingCommonEntriesScope`): an added exit or a new time gets the common conditions as the
+    /// switch says, instead of turning it into «Выбрать». The plan editors of the iPhone and the Mac write through it.
+    var keepingCommonEntriesScope: Binding<TrainingPlan> {
+        Binding(get: { wrappedValue }, set: { wrappedValue = $0.keepingCommonEntriesScope(from: wrappedValue) })
     }
 }

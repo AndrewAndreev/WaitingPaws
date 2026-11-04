@@ -398,15 +398,16 @@ struct SessionTimelineView: View {
 
     /// `plan` with the block at `edge` set to `value` (a break other than the common one becomes the exit's own).
     private func setting(_ edge: PlanEdge, to value: TimeInterval?, in plan: TrainingPlan) -> TrainingPlan {
-        var plan = plan
-        guard plan.exits.indices.contains(edge.index) else { return plan }
+        var edited = plan
+        guard edited.exits.indices.contains(edge.index) else { return plan }
         switch edge.kind {
         case .exit:
-            plan.exits[edge.index].duration = max(0, value ?? plan.exits[edge.index].duration)
+            edited.exits[edge.index].duration = max(0, value ?? edited.exits[edge.index].duration)
         case .pause:
-            plan.exits[edge.index].breakAfter = value == nil || value == plan.defaultBreak ? nil : value
+            edited.exits[edge.index].breakAfter = value == nil || value == edited.defaultBreak ? nil : value
         }
-        return plan
+        // An exit stretched over the minute keeps «к длинным».
+        return edited.keepingCommonEntriesScope(from: plan)
     }
 
     /// One step of an edit: applied at once, without a note.

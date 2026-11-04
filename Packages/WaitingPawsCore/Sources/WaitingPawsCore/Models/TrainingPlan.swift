@@ -343,17 +343,33 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         /// «К длинным»: an exit this long or longer.
         public static let longExit: TimeInterval = 60
 
+        /// «Ещё выход» has no planned time: its timer counts up, so it is a long one.
         func includes(_ exit: PlannedExit) -> Bool {
-            self == .all || exit.duration >= Self.longExit
+            self == .all || exit.isOpen || exit.duration >= Self.longExit
         }
     }
 
-    /// The scope the exits now follow; `nil` when they were picked one by one.
+    /// The scope the exits now follow; `nil` when they were picked one by one. When both fit (no exit under a minute
+    /// follows the common conditions or not), «к длинным»: the parser's default, and an exit added later keeps it.
     public var commonEntriesScope: CommonEntriesScope? {
         let candidates = exits.filter(\.earlyEntries.isEmpty)
-        return CommonEntriesScope.allCases.first { scope in
+        return [CommonEntriesScope.long, .all].first { scope in
             candidates.allSatisfy { $0.usesCommonEarlyEntries == scope.includes($0) }
         }
+    }
+
+    /// This plan, an edit of `old`, with the exits still following `old`'s scope: a new exit or one with a new time
+    /// gets the common conditions as «ко всем» / «к длинным» says (a 45-second exit stretched to 2 minutes gets them
+    /// under «к длинным»). The switches flipped one by one stay, and under «Выбрать» nothing changes.
+    public func keepingCommonEntriesScope(from old: TrainingPlan) -> TrainingPlan {
+        guard let scope = old.commonEntriesScope else { return self }
+        let durations = Dictionary(old.exits.map { ($0.id, $0.duration) }, uniquingKeysWith: { first, _ in first })
+        var plan = self
+        for index in plan.exits.indices where plan.exits[index].earlyEntries.isEmpty
+            && durations[plan.exits[index].id] != plan.exits[index].duration {
+            plan.exits[index].usesCommonEarlyEntries = scope.includes(plan.exits[index])
+        }
+        return plan
     }
 
     public mutating func applyCommonEarlyEntries(to scope: CommonEntriesScope) {

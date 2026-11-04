@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { TrainingPlan } from '@core/models'
+import { TrainingPlan } from '@core/models'
 import { call, ui, useStore } from '../store'
 import { DraftSync } from './draftSync'
 
@@ -31,7 +31,8 @@ export function usePendingPlan(): {
   const setPlan = useCallback((next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) => {
     const current = draftRef.current
     if (!current) return
-    const value = typeof next === 'function' ? next(current) : next
+    // An added exit or a new time keeps «к длинным» / «ко всем» (the table, the inspector and the timeline come here).
+    const value = TrainingPlan.keepingCommonEntriesScope(typeof next === 'function' ? next(current) : next, current)
     if (value === current) return
     const json = JSON.stringify(value)
     if (json === draftJSON.current) return

@@ -292,8 +292,9 @@ export const CommonEntriesScope = {
   /** «К длинным»: an exit this long or longer. */
   longExit: 60,
 
+  /** «Ещё выход» has no planned time: its timer counts up, so it is a long one. */
   includes(scope: CommonEntriesScope, exit: PlannedExit): boolean {
-    return scope === 'all' || exit.duration >= CommonEntriesScope.longExit
+    return scope === 'all' || exit.isOpen || exit.duration >= CommonEntriesScope.longExit
   },
 }
 
@@ -415,11 +416,35 @@ export const TrainingPlan = {
   /** The scope the exits now follow; `null` when they were picked one by one. */
   commonEntriesScope(plan: TrainingPlan): CommonEntriesScope | null {
     const candidates = plan.exits.filter((exit) => exit.earlyEntries.length === 0)
+    // When both fit (no exit under a minute follows the common conditions or not), «к длинным»: the parser's default,
+    // and an exit added later keeps it.
+    const order: CommonEntriesScope[] = ['long', 'all']
     return (
-      CommonEntriesScope.allCases.find((scope) =>
+      order.find((scope) =>
         candidates.every((exit) => exit.usesCommonEarlyEntries === CommonEntriesScope.includes(scope, exit)),
       ) ?? null
     )
+  },
+
+  /**
+   * `plan`, an edit of `old`, with the exits still following `old`'s scope: a new exit or one with a new time gets
+   * the common conditions as «ко всем» / «к длинным» says (a 45-second exit stretched to 2 minutes gets them under
+   * «к длинным»). The switches flipped one by one stay, and under «Выбрать» nothing changes.
+   */
+  keepingCommonEntriesScope(plan: TrainingPlan, old: TrainingPlan): TrainingPlan {
+    const scope = TrainingPlan.commonEntriesScope(old)
+    if (scope === null) return plan
+    const durations = new Map<string, number>()
+    for (const exit of old.exits) if (!durations.has(exit.id)) durations.set(exit.id, exit.duration)
+    let changed = false
+    const exits = plan.exits.map((exit) => {
+      if (exit.earlyEntries.length > 0 || durations.get(exit.id) === exit.duration) return exit
+      const uses = CommonEntriesScope.includes(scope, exit)
+      if (uses === exit.usesCommonEarlyEntries) return exit
+      changed = true
+      return { ...exit, usesCommonEarlyEntries: uses }
+    })
+    return changed ? { ...plan, exits } : plan
   },
 
   /** Exits with their own conditions keep them. */

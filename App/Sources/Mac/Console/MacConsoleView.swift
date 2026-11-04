@@ -198,7 +198,8 @@ struct MacConsoleView: View {
                 .environment(model)
         }
         .sheet(item: $ui.editingSessionPlan, onDismiss: { focused = true }) { _ in
-            MacPlanReviewSheet(plan: Binding(get: { ui.editingSessionPlan ?? TrainingPlan() }, set: { ui.editingSessionPlan = $0 }),
+            MacPlanReviewSheet(plan: Binding(get: { ui.editingSessionPlan ?? TrainingPlan() }, set: { ui.editingSessionPlan = $0 })
+                                .keepingCommonEntriesScope,
                                fixedExits: model.session?.fixedExitCount ?? 0,
                                onStart: { ui.saveSessionPlan(model) },
                                onDone: { ui.editingSessionPlan = nil })
@@ -294,8 +295,9 @@ struct MacConsoleView: View {
                          recordingSince: model.isRecordingNow ? model.recordingStartedAt : nil)
     }
 
+    /// The table, the inspector and the timeline write through it: an added exit or a new time keeps «к длинным».
     private var pendingPlanBinding: Binding<TrainingPlan> {
-        Binding(get: { model.pendingPlan ?? TrainingPlan() }, set: { model.pendingPlan = $0 })
+        Binding(get: { model.pendingPlan ?? TrainingPlan() }, set: { model.pendingPlan = $0 }).keepingCommonEntriesScope
     }
 
     private var lastRecordBinding: Binding<TrainingRecord?> {

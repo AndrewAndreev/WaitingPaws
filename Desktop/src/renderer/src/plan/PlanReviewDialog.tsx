@@ -59,7 +59,7 @@ export function SessionPlanDialog() {
   const setPlan = (next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) =>
     setDraft((current) => {
       if (!current) return current
-      const value = typeof next === 'function' ? next(current) : next
+      const value = TrainingPlan.keepingCommonEntriesScope(typeof next === 'function' ? next(current) : next, current)
       return TrainingSession.canUpdatePlan(session, value) ? value : current
     })
   const save = async () => {

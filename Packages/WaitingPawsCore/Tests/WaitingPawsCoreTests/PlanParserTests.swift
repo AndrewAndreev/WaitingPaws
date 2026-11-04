@@ -374,6 +374,58 @@ final class PlanParserTests: XCTestCase {
         XCTAssertTrue(decoded.exits[0].endsWhenStanding)
     }
 
+    /// «К длинным» (the default) and «ко всем» survive an added exit and a new time; «Выбрать» and the switches flipped
+    /// by hand stay as they are.
+    func testCommonScopeSurvivesEdits() {
+        let plan = PlanParser.parse("""
+        1 выход - 15 секунд
+        2 выход - 2 минуты
+        3 выход - 45 секунд
+
+        🟢 Если легла - входим через 30 секунд от укладки
+        """)
+        XCTAssertEqual(plan.commonEntriesScope, .long)
+
+        // A short exit added, the 45-second one stretched to 2 minutes.
+        var edited = plan
+        edited.exits.append(PlannedExit(number: 4, duration: 10))
+        edited.exits[2].duration = 120
+        edited = edited.keepingCommonEntriesScope(from: plan)
+        XCTAssertEqual(edited.commonEntriesScope, .long)
+        XCTAssertEqual(edited.exits.map(\.usesCommonEarlyEntries), [false, true, true, false])
+
+        // A switch flipped by hand makes it «Выбрать», and a later new time doesn't undo it.
+        var picked = edited
+        picked.exits[0].usesCommonEarlyEntries = true
+        picked = picked.keepingCommonEntriesScope(from: edited)
+        XCTAssertNil(picked.commonEntriesScope)
+        var retimed = picked
+        retimed.exits[3].duration = 90
+        retimed = retimed.keepingCommonEntriesScope(from: picked)
+        XCTAssertEqual(retimed.exits.map(\.usesCommonEarlyEntries), [true, true, true, false])
+
+        // «Ко всем»: an added short exit gets them too.
+        var all = plan
+        all.applyCommonEarlyEntries(to: .all)
+        XCTAssertEqual(all.commonEntriesScope, .all)
+        var added = all
+        added.exits.append(PlannedExit(number: 4, duration: 10, usesCommonEarlyEntries: false))
+        added = added.keepingCommonEntriesScope(from: all)
+        XCTAssertEqual(added.commonEntriesScope, .all)
+
+        // Only long exits: both fit and the switch says «к длинным», so a short exit added later doesn't get them.
+        let long = PlanParser.parse("1 выход - 2 минуты\n2 выход - 3 минуты\n\n🟢 Если легла - входим через 30 секунд")
+        XCTAssertEqual(long.commonEntriesScope, .long)
+        var longAdded = long
+        longAdded.exits.append(PlannedExit(number: 3, duration: 20))
+        XCTAssertFalse(longAdded.keepingCommonEntriesScope(from: long).exits[2].usesCommonEarlyEntries)
+
+        // «Ещё выход» has no planned time and counts as long.
+        var open = plan
+        open.exits.append(.init(number: 4, duration: 0, isOpen: true))
+        XCTAssertEqual(open.commonEntriesScope, .long)
+    }
+
     func testAlternativeSpellings() {
         let plan = PlanParser.parse("""
         Тренировка
