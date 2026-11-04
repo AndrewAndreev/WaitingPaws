@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — 🚩 «не входить»: варианты</title>
+<style>
+:root {
+  color-scheme: dark;
+  --pink: #FFB8CC; --blue: #8CBFFF; --yellow: #FFB84D; --red: #FF6B6B; --green: #6EE7A0;
+  --panel: #1A1A1A; --control: #2E2E2E;
+  --t2: rgba(235,235,245,.62); --t3: rgba(235,235,245,.32);
+  --sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+  --w: 351px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; font: 15px/1.5 var(--sf); background: #131315; color: #ececef; }
+a { color: var(--pink); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 5px; font-size: .92em; }
+header.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  padding: 10px 24px; background: rgba(19,19,21,.92); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); }
+header.top h1 { font-size: 16px; margin: 0 6px 0 0; }
+header.top nav { display: flex; gap: 6px; flex-wrap: wrap; }
+header.top nav a { border: 1px solid rgba(127,127,127,.35); border-radius: 999px; padding: 3px 10px; font-size: 13px; color: inherit; }
+.switches { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--t2); }
+.seg { display: inline-flex; background: #232326; border-radius: 9px; padding: 2px; gap: 2px; }
+.seg button { all: unset; cursor: pointer; padding: 4px 9px; border-radius: 7px; font-size: 12.5px; color: var(--t2); white-space: nowrap; }
+.seg button.on { background: #3a3a3e; color: #fff; }
+main { padding: 0 24px 100px; max-width: 1500px; }
+.intro { padding: 24px 0 4px; max-width: 1050px; }
+.intro h2 { font-size: 22px; margin: 0 0 8px; }
+.intro p, .intro li { color: #cfcfd4; }
+blockquote { margin: 10px 0 14px; padding: 12px 16px; border-left: 3px solid var(--red); background: rgba(255,107,107,.07); border-radius: 0 12px 12px 0; color: #e6e6ea; }
+table.parse { border-collapse: collapse; font-size: 14.5px; margin: 6px 0 4px; }
+table.parse th, table.parse td { text-align: left; vertical-align: top; padding: 7px 18px 7px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+table.parse th { color: var(--t2); font-weight: 600; font-size: 13px; }
+table.parse .r { color: var(--red); font-weight: 600; } table.parse .y { color: var(--yellow); } table.parse .g { color: var(--green); }
+section.area { padding-top: 36px; }
+section.area > h2 { font-size: 26px; margin: 0 0 6px; display: flex; align-items: center; gap: 12px; }
+.lead { margin: 0 0 14px; max-width: 1050px; color: #cfcfd4; }
+.variant { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07); border-radius: 22px; padding: 18px 20px 22px; margin: 16px 0; scroll-margin-top: 70px; }
+.variant.rec { border-color: rgba(110,231,160,.45); box-shadow: 0 0 0 1px rgba(110,231,160,.2) inset; }
+.vhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.vid { font: 800 15px/1 var(--rounded); background: #ececef; color: #111; padding: 7px 10px; border-radius: 9px; }
+.vhead h3 { margin: 0; font-size: 19px; }
+.tag { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 9px; color: #000; }
+.tag.rec { background: var(--green); } .tag.now { background: #c8c8cc; } .tag.new { background: var(--blue); }
+.why { display: grid; grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 1fr); gap: 8px 28px; margin: 10px 0 16px; max-width: 1150px; color: #d6d6db; font-size: 14.5px; }
+.why p { margin: 0; }
+.why ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.why li { padding-left: 20px; position: relative; }
+.why li::before { position: absolute; left: 0; top: 0; font-weight: 800; }
+.why li.pro::before { content: "+"; color: var(--green); }
+.why li.con::before { content: "−"; color: var(--red); }
+.why li.note::before { content: "·"; color: var(--t2); }
+@media (max-width: 800px) { .why { grid-template-columns: 1fr; } }
+.mocks { display: flex; flex-wrap: wrap; gap: 22px 30px; align-items: flex-start; overflow-x: auto; padding-bottom: 4px; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+figcaption { font-size: 13px; color: var(--t2); max-width: 360px; line-height: 1.4; }
+figcaption b { color: #ececef; }
+
+/* real simulator shots */
+.ph { width: 375px; height: 812px; position: relative; overflow: hidden; border-radius: 44px; background: #000; flex: none;
+  box-shadow: 0 0 0 1px #2a2a2c, 0 0 0 9px #141416, 0 0 0 10px #3a3a3c, 0 18px 50px rgba(0,0,0,.55); zoom: .62; }
+.ph > img { width: 375px; height: 812px; display: block; }
+.ph .ring { position: absolute; border: 3px solid var(--red); border-radius: 14px; box-shadow: 0 0 0 4px rgba(255,107,107,.25); pointer-events: none; }
+ol.problems { margin: 0; padding-left: 20px; max-width: 560px; color: #d6d6db; font-size: 14.5px; }
+ol.problems li { margin: 0 0 7px; }
+ol.problems b { color: #fff; }
+
+/* ---------- app mock: the exit details drawer (points = px) ---------- */
+.ic { width: 1em; height: 1em; flex: none; display: inline-block; vertical-align: -0.12em; }
+.sheet { width: var(--w); background: var(--panel); border: 1px solid rgba(255,255,255,.1); border-radius: 24px; padding: 14px; color: #fff;
+  box-shadow: 0 16px 40px rgba(0,0,0,.5); font-family: var(--rounded); }
+.sheet__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sheet__head > span:first-child { font: 700 17px/1 var(--rounded); }
+.chev { width: 32px; height: 32px; border-radius: 50%; background: var(--control); display: grid; place-items: center; color: rgba(255,255,255,.7); font-size: 15px; }
+.sheet__body { display: flex; flex-direction: column; gap: 6px; }
+.plate { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 12px; border-radius: 12px; background: rgba(255,255,255,.07); }
+.plate .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.dot.y { background: var(--yellow); } .dot.g { background: var(--green); }
+.plate .what { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.plate .ev { font: 600 15.4px/1.2 var(--rounded); }
+.plate .det { font: 11.5px/1.3 var(--sf); color: var(--t2); }
+.plate .det.one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate .then { margin-left: auto; display: inline-flex; align-items: baseline; gap: 6px; font: 700 22px/1 var(--rounded); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plate .then small { font: 600 13px/1 var(--rounded); color: var(--t2); }
+.note { display: flex; gap: 8px; align-items: flex-start; font: 13.5px/1.35 var(--rounded); color: rgba(255,255,255,.55); padding: 2px 4px 0; }
+.note .ic { font-size: 16px; margin-top: 1px; }
+.lead-ic { font-size: 18px; flex: none; }
+.red { color: var(--red); } .yel { color: var(--yellow); } .grn { color: var(--green); }
+.seg-stop { color: var(--red); font-weight: 600; } .seg-go { color: var(--green); font-weight: 600; } .seg-wait { color: #fff; }
+.plate.stop { background: rgba(255,107,107,.13); }
+
+/* the red box several variants share */
+.flagbox { border-radius: 14px; background: rgba(255,107,107,.10); border: 1px solid rgba(255,107,107,.28); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.flagbox__head { display: flex; align-items: center; gap: 7px; font: 700 14.5px/1.2 var(--rounded); color: var(--red); }
+.flagbox__head .ic { font-size: 16px; }
+.cases { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.wide .cases { grid-template-columns: 1fr 1fr; }
+.case { background: rgba(0,0,0,.25); border-radius: 11px; padding: 9px 10px 10px; display: flex; flex-direction: column; gap: 7px; }
+.case__ev { display: flex; align-items: center; gap: 8px; font: 650 15px/1.2 var(--rounded); }
+.case__ev .ic { font-size: 18px; color: var(--red); }
+.steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0; }
+.st { display: grid; grid-template-columns: 22px 1fr; column-gap: 8px; position: relative; padding-bottom: 7px; }
+.st:last-child { padding-bottom: 0; }
+.st .sic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #000; position: relative; z-index: 1; }
+.st:not(:last-child)::after { content: ""; position: absolute; left: 10px; top: 22px; bottom: 0; width: 2px; background: rgba(255,255,255,.14); }
+.st.wait .sic { background: var(--yellow); } .st.go .sic { background: var(--green); }
+.st .stx { font: 13.5px/1.3 var(--rounded); color: #e8e8ec; padding-top: 2px; }
+.st .stx b { font-weight: 700; margin-right: 4px; }
+.st.wait .stx b { color: var(--yellow); } .st.go .stx b { color: var(--green); }
+.tpill { display: inline-block; margin-left: 4px; font: 700 12.5px/1 var(--rounded); font-variant-numeric: tabular-nums; color: #000; background: var(--green); border-radius: 7px; padding: 3px 6px; vertical-align: 1px; }
+
+/* F1: plates in the early-entry grammar */
+.f1cap { display: flex; align-items: center; gap: 6px; font: 700 12.5px/1 var(--rounded); color: var(--red); margin: 6px 2px 0; }
+.f1cap .ic { font-size: 13px; }
+.plate.stop .lead-ic { color: var(--red); }
+.plate .det b { color: var(--green); font-weight: 600; }
+.plate .then.go { color: #fff; }
+
+/* F3: diagrams */
+.diag { display: flex; flex-direction: column; gap: 6px; }
+.diag + .diag { border-top: 1px solid rgba(255,107,107,.2); padding-top: 10px; }
+.diag__head { display: flex; align-items: center; gap: 7px; font: 650 14.5px/1.2 var(--rounded); }
+.diag__head .ic { font-size: 17px; color: var(--red); }
+.diag__head .red { font-weight: 700; }
+.diag__cap { font: 13px/1.35 var(--rounded); color: #dcdce0; }
+.diag__cap .grn { font-weight: 600; }
+.diag__cap small { color: var(--t2); font-size: 12px; }
+svg.tl text { font-family: var(--rounded); }
+
+/* F4: the silence counter */
+.counter { border-radius: 14px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 9px; background: rgba(255,107,107,.10); border: 1px solid rgba(255,107,107,.28); transition: background .3s, border-color .3s; }
+.counter.done { background: rgba(110,231,160,.12); border-color: rgba(110,231,160,.4); }
+.counter__head { display: flex; align-items: center; gap: 7px; font: 650 14.5px/1.2 var(--rounded); }
+.counter__head .ic { font-size: 17px; color: var(--red); }
+.counter__state { font: 13.5px/1.35 var(--rounded); color: #dcdce0; min-height: 36px; }
+.counter__state b { font-weight: 700; }
+.counter__bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+.counter__bar i { display: block; height: 100%; width: 0; background: var(--green); border-radius: 4px; }
+.counter__row { display: flex; gap: 8px; align-items: center; }
+.cbtn { all: unset; cursor: pointer; height: 40px; padding: 0 14px; border-radius: 12px; background: var(--red); color: #000; font: 700 15px/40px var(--rounded); display: inline-flex; align-items: center; gap: 7px; }
+.cbtn .ic { font-size: 17px; }
+.cbtn.ghost { background: rgba(255,255,255,.1); color: #fff; }
+.counter__digits { margin-left: auto; font: 700 24px/1 var(--rounded); font-variant-numeric: tabular-nums; }
+.counter__digits small { font: 600 13px var(--rounded); color: var(--t2); margin-left: 3px; }
+.counter .other { font: 13px/1.35 var(--rounded); color: #dcdce0; border-top: 1px solid rgba(255,255,255,.08); padding-top: 8px; display: flex; gap: 7px; }
+.counter .other .ic { font-size: 16px; color: var(--red); margin-top: 1px; }
+.speed { font-size: 12.5px; color: var(--t2); display: inline-flex; gap: 6px; align-items: center; margin-top: 4px; }
+
+/* F5 */
+.plate.full { align-items: flex-start; padding: 10px 12px; }
+.plate.full .lead-ic { color: var(--red); margin-top: 2px; }
+.plate.full p { margin: 0 0 6px; font: 14px/1.38 var(--rounded); color: #e8e8ec; }
+.plate.full p:last-child { margin: 0; }
+.plate.full p b { font-weight: 700; color: #fff; }
+
+/* ---------- card fragment with the chip row ---------- */
+.card { width: var(--w); background: var(--panel); border: 1px solid rgba(255,255,255,.1); border-radius: 24px; padding: 12px 14px 0; height: 150px; overflow: hidden; position: relative; font-family: var(--rounded); }
+.card__title { display: flex; align-items: center; justify-content: space-between; font: 700 30px/1.1 var(--rounded); margin: 4px 0 10px; }
+.card__marks { display: flex; gap: 10px; font: 600 15px var(--rounded); color: rgba(255,255,255,.35); align-items: center; }
+.card__marks .b { color: var(--blue); }
+.chips { display: flex; gap: 6px; overflow: hidden; white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 14px; background: rgba(255,255,255,.08); font: 500 13px/1 var(--rounded); color: rgba(255,255,255,.92); flex: none; position: relative; overflow: hidden; }
+.chip b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+.chip .ic { font-size: 13px; }
+.chip.flag .ic { color: var(--red); }
+.chip.counting { background: rgba(255,107,107,.18); }
+.chip.counting i.fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(110,231,160,.28); z-index: 0; }
+.chip.counting > :not(i) { position: relative; z-index: 1; }
+.chip.done { background: rgba(110,231,160,.22); color: var(--green); }
+.chip.done .ic { color: var(--green); }
+.chip.kbtn { border: 1.5px solid rgba(255,107,107,.7); background: rgba(255,107,107,.12); cursor: pointer; }
+.flagline { margin-top: 8px; font: 500 12.5px/1.2 var(--rounded); color: rgba(255,255,255,.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 6px; align-items: center; }
+.flagline .ic { color: var(--red); font-size: 13px; }
+.flagline span { overflow: hidden; text-overflow: ellipsis; }
+.ringtop { position: absolute; left: 50%; bottom: -150px; width: 180px; height: 180px; transform: translateX(-50%); border-radius: 50%; border: 6px solid rgba(255,255,255,.12); }
+.ringtop::after { content: ""; position: absolute; left: 50%; top: -6px; width: 34px; height: 6px; margin-left: -17px; border-radius: 3px; background: var(--pink); }
+.edge { position: absolute; top: 0; bottom: 0; right: 0; width: 14px; background: linear-gradient(90deg, transparent, var(--panel)); }
+
+/* ---------- choice ---------- */
+.pickgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px 28px; max-width: 1100px; }
+.pickgrid fieldset { border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 12px 16px 14px; margin: 0; }
+.pickgrid legend { padding: 0 6px; font-weight: 700; }
+.pickgrid label { display: flex; gap: 9px; align-items: baseline; padding: 4px 0; cursor: pointer; }
+.pickgrid label small { color: var(--t2); }
+textarea { width: 100%; max-width: 1100px; min-height: 90px; margin-top: 14px; background: #1c1c1f; color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 10px 12px; font: 14.5px/1.4 var(--sf); }
+.actions { display: flex; gap: 12px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.btn { all: unset; cursor: pointer; background: var(--pink); color: #000; font-weight: 700; padding: 9px 16px; border-radius: 11px; }
+.btn.sec { background: #2c2c30; color: #fff; }
+#saved { color: var(--green); font-size: 14px; }
+#saved.err { color: var(--red); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Waiting Paws · 🚩 «не входить»</h1>
+  <nav><a href="#now">Как сейчас</a><a href="#F1">F1</a><a href="#F2">F2</a><a href="#F3">F3</a><a href="#F4">F4</a><a href="#F5">F5</a><a href="#K">Чип K1–K4</a><a href="#pick">Выбор</a></nav>
+  <div class="switches">
+    <span class="switch">Текст тренера <span class="seg" id="textSeg"></span></span>
+    <span class="switch">Ширина <span class="seg" id="widthSeg"></span></span>
+  </div>
+</header>
+<main>
+  <div class="intro">
+    <h2>Что должна объяснить плашка</h2>
+    <blockquote>🚩 Если залаяла, завыла - ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд. Если скребёт дверь - ждём отхода от двери и возвращаемся на хорошем отвлечении от двери</blockquote>
+    <p>В правиле два случая, и в каждом есть два шага: сначала <b>ждём</b>, потом <b>входим, когда…</b>. Если нужно глянуть за пару секунд во время выхода, вся суть такая:</p>
+    <table class="parse">
+      <tr><th>Если</th><th>Ждём</th><th>Входим</th></tr>
+      <tr><td class="r">Залаяла, завыла</td><td class="y">станет чуть спокойнее или отойдёт от двери</td><td class="g">молчала 30 секунд</td></tr>
+      <tr><td class="r">Скребёт дверь</td><td class="y">отойдёт от двери</td><td class="g">хорошо отвлеклась от двери</td></tr>
+    </table>
+    <p>Сейчас из всего этого крупно видно только «Залаяла, завыла — не входить». Когда входить, мелко и обрезано, а второго случая нет вообще. Все макеты ниже собраны из этого же текста. Переключатель «Текст тренера» вверху показывает, как вариант справится с коротким правилом другого тренера, а «Ширина» — как он ляжет в панель на Mac и Windows.</p>
+  </div>
+
+  <section class="area" id="now">
+    <h2>Как сейчас <span class="tag now">iPhone 13 mini, реальный снимок</span></h2>
+    <div class="mocks">
+      <figure>
+        <div class="ph"><img src="shots/before-details.jpg" alt=""><span class="ring" style="left:21px;top:265px;width:333px;height:60px"></span></div>
+        <figcaption><b>Шторка «Выход 6».</b> Видно две строки, а дальше «…отой…» обрезано.</figcaption>
+      </figure>
+      <figure>
+        <div class="ph"><img src="shots/before-card.jpg" alt=""><span class="ring" style="left:306px;top:492px;width:52px;height:38px"></span></div>
+        <figcaption><b>Карточка.</b> Чип «🚩 не входить» стоит последним и на mini виден как «🚩 н».</figcaption>
+      </figure>
+      <ol class="problems">
+        <li><b>Второго случая нет.</b> «Скребёт дверь — ждём отхода…» оказывается за обрезкой, заголовок говорит только «Залаяла, завыла».</li>
+        <li><b>Не видно, когда входить.</b> «Входим, когда молчала 30 секунд» самое важное, но это третья строка мелкого серого текста, и её срезает.</li>
+        <li><b>«Не входить» сказано два раза.</b> Красное справа и ещё раз в начале серого текста («ни в коем случае не входить»), и на это уходит место.</li>
+        <li><b>Чип на карточке не виден</b> на маленьком iPhone, а «не входить» без контекста звучит как команда «не входите сейчас».</li>
+        <li><b>Windows ещё хуже:</b> <code>StopPlate</code> показывает подробности одной строкой с многоточием. На Mac та же плашка, что на iPhone.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="area">
+    <h2>Плашка в шторке выхода</h2>
+    <p class="lead">Шторка такая же, как в приложении: два условия раннего входа, под ними блок 🚩, ниже заметки. Меняется только блок 🚩. На Mac и Windows этот же блок стоит в правой панели (переключите «Ширина»).</p>
+
+    <div class="variant" id="F1">
+      <div class="vhead"><span class="vid">F1</span><h3>Как ранний вход: «Залаяла — тишина 0:30»</h3></div>
+      <div class="why">
+        <p>Каждый случай становится отдельной красной плашкой в той же грамматике, что «Встала и пошла — через 1:00». Справа крупно то, чего ждём для входа, а под событием мелко, что делать пока ждём. Над плашками подпись «Не входить, если».</p>
+        <ul>
+          <li class="pro">Похоже на соседние плашки, учить новое не нужно: справа всегда «когда входить».</li>
+          <li class="pro">«0:30» читается одним взглядом, как «1:00» у раннего входа.</li>
+          <li class="con">«тишина 0:30» легко спутать с «через 0:30» (от лая), а слово «подряд» туда не помещается.</li>
+          <li class="con">У случая без времени («скребёт») правая часть пустая, и условие уходит в мелкий текст.</li>
+          <li class="note">Разбор: делим правило на предложения по «Если…», внутри ищем «ждём…», «входим / возвращаемся…» и «N секунд».</li>
+        </ul>
+      </div>
+      <div class="mocks" data-v="F1"></div>
+    </div>
+
+    <div class="variant rec" id="F2">
+      <div class="vhead"><span class="vid">F2</span><h3>Два шага: «Ждём → Входим»</h3><span class="tag rec">рекомендую</span></div>
+      <div class="why">
+        <p>Одна красная рамка «🚩 Не входить, если», внутри по карточке на случай. В каждой две ступеньки: <span class="yel">⏳ Ждём</span> и <span class="grn">🚪 Входим</span>, со словами тренера без пересказа. Время из текста дублируется зелёной меткой «0:30». На широкой панели Mac/Windows случаи стоят рядом.</p>
+        <ul>
+          <li class="pro">Объясняет порядок действий, а не только запрет: что делать сейчас и что будет сигналом войти.</li>
+          <li class="pro">Слова тренера целиком, ничего не обрезано и не перефразировано, видны оба случая.</li>
+          <li class="pro">Хорошо деградирует: если в тексте только «ждём тишины», остаётся одна ступенька.</li>
+          <li class="con">Самый высокий блок: на mini шторка прокручивается, заметки уходят ниже.</li>
+          <li class="note">Разбор тот же, что у F1: предложения по «Если», глаголы «ждём / ждите», «входим / заходим / возвращаемся».</li>
+        </ul>
+      </div>
+      <div class="mocks" data-v="F2"></div>
+    </div>
+
+    <div class="variant" id="F3">
+      <div class="vhead"><span class="vid">F3</span><h3>Схема: шкала тишины и «отошла от двери»</h3></div>
+      <div class="why">
+        <p>Правило нарисовано. Для лая показана шкала: каждый лай сбрасывает отсчёт, и только 30 секунд тишины подряд ведут к двери. Для «скребёт» маленькая сцена: скребёт → отошла → отвлеклась. Под рисунком слова тренера.</p>
+        <ul>
+          <li class="pro">Единственный вариант, который показывает главный подвох: <b>тишина подряд</b>, пауза в 10 секунд между лаем не считается.</li>
+          <li class="pro">Запоминается: увидев схему раз-другой, читать её уже не нужно.</li>
+          <li class="con">«Каждый лай — заново» и «подряд» добавляет приложение, у тренера этих слов нет. Надо, чтобы тренер это подтвердил.</li>
+          <li class="con">Картинки есть только для знакомых случаев (лай/вой, скребёт). Для остальных показываются ступеньки как в F2.</li>
+        </ul>
+      </div>
+      <div class="mocks" data-v="F3"></div>
+    </div>
+
+    <div class="variant" id="F4">
+      <div class="vhead"><span class="vid">F4</span><h3>Счётчик тишины: кнопка «Лает»</h3><span class="tag new">новая функция</span></div>
+      <div class="why">
+        <p>Плашка не только объясняет, но и считает за вас. Залаяла — жмёте «Лает», и пошёл отсчёт тишины 0:30. Снова залаяла — жмёте ещё раз, и отсчёт начинается заново. На 0:30 плашка становится зелёной: «можно входить». Кнопку можно нажимать прямо в чипе на карточке (K4 ниже), шторку открывать не нужно. <b>Попробуйте нажать.</b></p>
+        <ul>
+          <li class="pro">Не нужно считать 30 секунд в голове, пока нервничаешь у двери.</li>
+          <li class="pro">Нажатия можно писать в историю тренировки («лай 11:31:05, 11:31:20»), и тренер увидит, когда и сколько она лаяла.</li>
+          <li class="con">Это новая функция, а не визуал: кнопка, синхронизация с Mac и Windows, запись в историю.</li>
+          <li class="con">Ещё одно нажатие, пока смотришь в камеру. Есть риск спутать с «Вернулись».</li>
+          <li class="note">Потом можно попробовать, чтобы приложение само слышало лай по звуку камеры. Сейчас этого нет.</li>
+        </ul>
+      </div>
+      <div class="mocks" data-v="F4"></div>
+      <label class="speed"><input type="checkbox" id="fast"> ускорить отсчёт в 5 раз (для демо)</label>
+    </div>
+
+    <div class="variant" id="F5">
+      <div class="vhead"><span class="vid">F5</span><h3>Текст тренера целиком, с цветом</h3></div>
+      <div class="why">
+        <p>Минимальная правка: убираем обрезку и показываем правило полностью, по абзацу на случай. Событие жирным, «не входить» красным, «входим, когда…» зелёным.</p>
+        <ul>
+          <li class="pro">Ничего не нужно разбирать: подойдёт любой текст любого тренера.</li>
+          <li class="pro">Дёшево, правка на час во всех трёх приложениях.</li>
+          <li class="con">Это всё равно абзац, а во время выхода его некогда читать. Порядок «ждём → входим» глазами не видно.</li>
+        </ul>
+      </div>
+      <div class="mocks" data-v="F5"></div>
+    </div>
+  </section>
+
+  <section class="area" id="K">
+    <h2>Чип на карточке</h2>
+    <p class="lead">Карточка видна всю тренировку, а шторку открывают по тапу. Сейчас красный чип стоит последним и на mini уходит за край. Он нужен как напоминание «здесь есть правило 🚩». Объяснение живёт в шторке.</p>
+    <div class="mocks" id="chips"></div>
+  </section>
+
+  <section class="area" id="pick">
+    <h2>Выбор</h2>
+    <p class="lead">Отметьте вариант плашки и чипа и напишите, что поменять. Кнопка сохранит выбор рядом со страницей (<code>Design/red-flag-lab/choice.json</code>), так что потом достаточно написать мне «выбрал».</p>
+    <div class="pickgrid">
+      <fieldset id="pickPlate"><legend>Плашка в шторке</legend></fieldset>
+      <fieldset id="pickChip"><legend>Чип на карточке</legend></fieldset>
+    </div>
+    <textarea id="comment" placeholder="Комментарий: что поменять, что смешать (например «F2, но время крупно как в F1»)…"></textarea>
+    <div class="actions">
+      <button class="btn" id="save">Сохранить выбор</button>
+      <button class="btn sec" id="copy">Скопировать текстом</button>
+      <span id="saved"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+// ---------- the trainer's texts, as the app would split them ----------
+const TEXTS = {
+  full: {
+    label: 'Полный (19.10)',
+    cases: [
+      { icon: 'bark', event: 'Залаяла, завыла', stop: 'ни в коем случае не входить', waitVerb: 'ждём', wait: 'когда станет чуть спокойнее или отойдёт от двери',
+        enterVerb: 'входим', enter: 'когда молчала 30 секунд', silence: 30 },
+      { icon: 'scratch', event: 'Скребёт дверь', stop: null, waitVerb: 'ждём', wait: 'отхода от двери',
+        enterVerb: 'возвращаемся', enter: 'на хорошем отвлечении от двери', silence: null },
+    ],
+  },
+  short: {
+    label: '«ждём тишины»',
+    cases: [{ icon: 'bark', event: 'Залаяла', stop: null, waitVerb: 'ждём', wait: 'тишины', enterVerb: null, enter: null, silence: null }],
+  },
+  other: {
+    label: '«входим когда замолчит»',
+    cases: [{ icon: 'bark', event: 'Лает', stop: 'нельзя возвращаться', waitVerb: null, wait: null, enterVerb: 'входим', enter: 'когда замолчит', silence: null }],
+  },
+};
+const WIDTHS = { phone: { label: 'iPhone mini', w: 351 }, mac: { label: 'Mac', w: 400 }, win: { label: 'Windows', w: 520 } };
+const state = { text: 'full', width: 'phone' };
+
+// ---------- icons (24 grid, line drawings like the app's) ----------
+const svg = (body, fill) => `<svg class="ic" viewBox="0 0 24 24" fill="${fill ? 'currentColor' : 'none'}" stroke="${fill ? 'none' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const I = {
+  flag: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V3.6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M6.4 4h11.8l-2.8 4.6 2.8 4.6H6.4z" fill="currentColor"/></svg>`,
+  bark: svg('<path d="M4 10.5v3M8 7.5v9M12 4.5v15M16 7.5v9M20 10.5v3"/>'),
+  scratch: svg('<path d="M8.5 4C8 8.6 6.6 12.2 4.5 15M13.6 4.4c-.4 5.4-2 9.6-4.4 12.6M18.8 5.4c-.4 4.9-1.9 8.7-4.1 11.4"/><path d="M4 20h16" opacity=".5"/>'),
+  wait: svg('<path d="M7 3.5h10M7 20.5h10M8 3.5c0 4.6 8 4.8 8 8.5s-8 3.9-8 8.5M16 3.5c0 4.6-8 4.8-8 8.5s8 3.9 8 8.5"/>'),
+  door: svg('<path d="M13 4h5a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 18 20h-5"/><path d="M3.5 12H14M10.5 8.5 14 12l-3.5 3.5"/>'),
+  check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  chev: svg('<path d="M6 9l6 6 6-6"/>'),
+  bubble: svg('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4h-.5A2.5 2.5 0 0 1 4 13.5z"/><path d="M8 8h8M8 11.5h5"/>'),
+  bolt: svg('<path d="M13.4 2.6 5.6 13.2h5.6l-1.2 8.2 7.9-10.8h-5.6l1.1-8z"/>', true),
+  run: svg('<circle cx="15.2" cy="4.3" r="2.1" fill="currentColor" stroke="none"/><path d="M13.3 8.6 10.9 14M13.3 8.6l-3.2 2-2.6-1.4M13.3 8.6l3 2.5 3.2-.4M10.9 14l3.6 2.6-.9 4.7M10.9 14l-3 3.4-2.4 3"/>'),
+};
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const caseIcon = (c) => (c.icon === 'scratch' ? I.scratch : I.bark);
+const model = () => TEXTS[state.text];
+const W = () => WIDTHS[state.width].w;
+
+/// The case in the trainer's words, coloured: «ни в коем случае не входить» red, «входим когда…» green.
+function verbatim(c) {
+  const parts = [];
+  if (c.stop) parts.push(['stop', c.stop]);
+  if (c.wait) parts.push(['wait', `${c.waitVerb} ${c.wait}`]);
+  if (c.enter) parts.push(['go', `${c.enterVerb} ${c.enter}`]);
+  return parts.map((p, i) => (i ? (p[0] === 'go' && parts[i - 1][0] === 'wait' ? ' и ' : ', ') : '') + `<span class="seg-${p[0]}">${esc(p[1])}</span>`).join('');
+}
+
+// ---------- the drawer around a variant ----------
+function entryPlate(tone, event, detail, time) {
+  return `<div class="plate"><span class="dot ${tone}"></span><span class="what"><span class="ev">${event}</span><span class="det one">${detail}</span></span><span class="then"><small>через</small>${time}</span></div>`;
+}
+function sheet(block) {
+  return `<div class="sheet${W() >= 440 ? ' wide' : ''}">
+    <div class="sheet__head"><span>Выход 6</span><span class="chev">${I.chev}</span></div>
+    <div class="sheet__body">
+      ${entryPlate('y', 'Встала и пошла', 'от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру', '1:00')}
+      ${entryPlate('g', 'Легла', 'от укладки', '0:20')}
+      ${block}
+      <div class="note">${I.bubble}<span>Встала и пошла: от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру</span></div>
+      <div class="note">${I.bubble}<span>Легла: от укладки</span></div>
+    </div>
+  </div>`;
+}
+const fig = (inner, caption) => `<figure>${inner}<figcaption>${caption}</figcaption></figure>`;
+
+// ---------- F1: plates in the early-entry grammar ----------
+function F1(m) {
+  const plates = m.cases.map((c) => {
+    const right = c.silence ? `<span class="then go"><small>тишина</small>${clock(c.silence)}</span>` : '';
+    const lines = [];
+    if (c.wait) lines.push(`${cap(c.waitVerb)} ${esc(c.wait)}`);
+    if (c.enter && !c.silence) lines.push(`<b>${cap(c.enterVerb)} ${esc(c.enter)}</b>`);
+    if (!c.wait && !c.enter && c.stop) lines.push(esc(cap(c.stop)));
+    return `<div class="plate stop"><span class="lead-ic">${caseIcon(c)}</span><span class="what"><span class="ev">${esc(c.event)}</span>${lines.map((l) => `<span class="det">${l}</span>`).join('')}</span>${right}</div>`;
+  });
+  return `<div class="f1cap">${I.flag} Не входить, если</div>${plates.join('')}`;
+}
+
+// ---------- F2: «Ждём → Входим» steps ----------
+function steps(c) {
+  const rows = [];
+  if (c.wait) rows.push(`<li class="st wait"><span class="sic">${I.wait}</span><span class="stx"><b>${cap(c.waitVerb)}</b>${esc(c.wait)}</span></li>`);
+  if (c.enter) rows.push(`<li class="st go"><span class="sic">${I.door}</span><span class="stx"><b>${cap(c.enterVerb)}</b>${esc(c.enter)}${c.silence ? `<span class="tpill">${clock(c.silence)}</span>` : ''}</span></li>`);
+  return `<ol class="steps">${rows.join('')}</ol>`;
+}
+function F2(m) {
+  const cases = m.cases.map((c) => `<div class="case"><div class="case__ev">${caseIcon(c)}<span>${esc(c.event)}</span></div>${steps(c)}</div>`);
+  return `<div class="flagbox"><div class="flagbox__head">${I.flag}<span>Не входить, если</span></div><div class="cases">${cases.join('')}</div></div>`;
+}
+
+// ---------- F3: diagrams ----------
+function silenceLine(width, c) {
+  const H = 80, y = 50, end = width - 40;
+  const barks = [6, 56, 106];
+  const wave = (x) => [6, 12, 18, 12, 6].map((h, i) => `<line x1="${x + i * 4}" y1="${y - 14 - h / 2}" x2="${x + i * 4}" y2="${y - 14 + h / 2}"/>`).join('');
+  let s = `<svg class="tl" width="${width}" height="${H}" viewBox="0 0 ${width} ${H}">`;
+  s += `<line x1="0" y1="${y}" x2="${end}" y2="${y}" stroke="rgba(255,255,255,.16)" stroke-width="2" stroke-linecap="round"/>`;
+  barks.forEach((x, i) => {
+    s += `<g stroke="#FF6B6B" stroke-width="2.2" stroke-linecap="round">${wave(x)}</g>`;
+    s += `<text x="${x + 8}" y="${y - 31}" fill="#FF6B6B" font-size="11" font-weight="700" text-anchor="middle">лай</text>`;
+    if (i < barks.length - 1) {
+      const a = x + 22, b = barks[i + 1] - 6;
+      s += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="#6EE7A0" stroke-opacity=".45" stroke-width="5" stroke-linecap="round"/>`;
+      s += `<text x="${(a + b) / 2}" y="${y + 17}" fill="rgba(235,235,245,.6)" font-size="10.5" text-anchor="middle">заново</text>`;
+    }
+  });
+  const a = barks[barks.length - 1] + 22, b = end - 4;
+  s += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="#6EE7A0" stroke-width="6" stroke-linecap="round"/>`;
+  s += `<text x="${(a + b) / 2}" y="${y + 18}" fill="#6EE7A0" font-size="12.5" font-weight="700" text-anchor="middle">${c.silence ? `${clock(c.silence)} тишины подряд` : 'тишина'}</text>`;
+  s += `<g transform="translate(${end + 6},${y - 13}) scale(1.05)" fill="none" stroke="#6EE7A0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h5a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 18 20h-5"/><path d="M3.5 12H14M10.5 8.5 14 12l-3.5 3.5"/></g>`;
+  s += `<text x="${end + 18}" y="${y + 24}" fill="#6EE7A0" font-size="11" font-weight="700" text-anchor="middle">входим</text>`;
+  return s + '</svg>';
+}
+function doorScene(width) {
+  const H = 78, y = 34;
+  const p1 = 52, p2 = Math.round(width * 0.47), p3 = width - 46;
+  const paw = (x, color) => `<g fill="${color}" transform="translate(${x},${y})"><ellipse cx="0" cy="4" rx="6.2" ry="5.2"/><circle cx="-6.4" cy="-3.6" r="2.4"/><circle cx="-2.3" cy="-7.6" r="2.4"/><circle cx="2.3" cy="-7.6" r="2.4"/><circle cx="6.4" cy="-3.6" r="2.4"/></g>`;
+  const arrow = (a, b) => `<line x1="${a}" y1="${y}" x2="${b - 6}" y2="${y}" stroke="rgba(255,255,255,.4)" stroke-width="1.8" stroke-dasharray="3 4"/><path d="M${b - 9} ${y - 4}l5 4-5 4" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.8" stroke-linecap="round"/>`;
+  const label = (x, t, color) => `<text x="${x}" y="${y + 30}" fill="${color}" font-size="11.5" font-weight="700" text-anchor="middle">${t}</text>`;
+  let s = `<svg class="tl" width="${width}" height="${H}" viewBox="0 0 ${width} ${H}">`;
+  s += `<rect x="3" y="${y - 26}" width="20" height="50" rx="2.5" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.45)" stroke-width="1.6"/><circle cx="18" cy="${y}" r="1.8" fill="rgba(255,255,255,.6)"/>`;
+  s += `<g stroke="#FF6B6B" stroke-width="1.8" stroke-linecap="round"><path d="M9 ${y + 4}l-3 9M13 ${y + 3}l-3 10M17 ${y + 5}l-3 8"/></g>`;
+  s += `<text x="1" y="${y + 38}" fill="rgba(235,235,245,.6)" font-size="10.5">дверь</text>`;
+  s += paw(p1, '#FF6B6B') + label(p1, 'скребёт', '#FF6B6B');
+  s += arrow(p1 + 12, p2 - 10) + paw(p2, '#FFB84D') + label(p2, 'отошла от двери', '#FFB84D');
+  s += arrow(p2 + 12, p3 - 10) + paw(p3, '#6EE7A0') + label(p3, 'отвлеклась', '#6EE7A0');
+  s += `<g transform="translate(${p3 + 9},${y - 17})"><circle r="7" fill="#6EE7A0"/><path d="M-3.2 0.2l2.2 2.2 4.2-4.4" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+  return s + '</svg>';
+}
+function F3(m) {
+  const inner = W() - 28 - 26;
+  const blocks = m.cases.map((c) => {
+    const head = `<div class="diag__head">${caseIcon(c)}<span>${esc(c.event)} — <span class="red">не входить</span></span></div>`;
+    if (c.icon === 'bark' && (c.silence || /тишин|замолч|молча/.test(`${c.wait} ${c.enter}`))) {
+      const parts = [c.wait && `${c.waitVerb} ${esc(c.wait)}`, c.enter && `<span class="grn">${c.enterVerb} ${esc(c.enter)}</span>`].filter(Boolean);
+      const words = cap(parts.join(parts.length > 1 ? ' и ' : '')).replace(/^<span class="grn">(.)/, (_, ch) => `<span class="grn">${ch.toUpperCase()}`);
+      return `<div class="diag">${head}${silenceLine(inner, c)}<div class="diag__cap">${words}.${c.silence ? ' <small>Залаяла снова — отсчёт заново.</small>' : ''}</div></div>`;
+    }
+    if (c.icon === 'scratch') {
+      return `<div class="diag">${head}${doorScene(inner)}<div class="diag__cap">${cap(c.waitVerb)} ${esc(c.wait)}, <span class="grn">${c.enterVerb} ${esc(c.enter)}</span>.</div></div>`;
+    }
+    return `<div class="diag">${head}${steps(c)}</div>`;
+  });
+  return `<div class="flagbox">${blocks.join('')}</div>`;
+}
+
+// ---------- F4: the silence counter (one state for the drawer and the K4 chip) ----------
+const counter = { start: null, barks: 0 };
+const speed = () => (document.getElementById('fast').checked ? 5 : 1);
+const target = () => model().cases.find((c) => c.silence)?.silence ?? null;
+let virtual = 0, lastTick = performance.now();
+function silenceNow() { return counter.start === null ? null : virtual - counter.start; }
+function bark() { counter.start = virtual; counter.barks += 1; tick(true); }
+function F4(m) {
+  const c = m.cases.find((x) => x.icon === 'bark') ?? m.cases[0];
+  const others = m.cases.filter((x) => x !== c);
+  return `<div class="counter" data-counter>
+    <div class="counter__head">${caseIcon(c)}<span>${esc(c.event)} — <span class="red">не входить</span></span></div>
+    <div class="counter__state" data-cstate></div>
+    <div class="counter__bar"><i data-cbar></i></div>
+    <div class="counter__row"><button class="cbtn" data-bark>${I.bark}<span data-blabel>Лает</span></button><span class="counter__digits" data-cdigits></span></div>
+    ${others.map((o) => `<div class="other">${caseIcon(o)}<span><b>${esc(o.event)}:</b> ${verbatim(o)}</span></div>`).join('')}
+  </div>`;
+}
+function tick(force) {
+  const now = performance.now();
+  virtual += ((now - lastTick) / 1000) * speed();
+  lastTick = now;
+  const t = silenceNow(), goal = target();
+  const c = model().cases.find((x) => x.icon === 'bark') ?? model().cases[0];
+  const done = t !== null && goal !== null && t >= goal;
+  document.querySelectorAll('[data-counter]').forEach((box) => {
+    box.classList.toggle('done', done);
+    const st = box.querySelector('[data-cstate]'), bar = box.querySelector('[data-cbar]'), dg = box.querySelector('[data-cdigits]');
+    box.querySelector('[data-blabel]').textContent = t === null ? 'Лает' : 'Снова лает';
+    if (t === null) {
+      st.innerHTML = goal ? `Залает — нажмите «Лает», приложение отсчитает <b class="grn">${clock(goal)} тишины</b>. Каждое нажатие начинает отсчёт заново.` : `Залает — нажмите «Лает», приложение покажет, сколько она молчит. ${c.enter ? `<span class="grn">${cap(c.enterVerb)} ${esc(c.enter)}.</span>` : c.wait ? `${cap(c.waitVerb)} ${esc(c.wait)}.` : ''}`;
+      bar.style.width = '0'; dg.innerHTML = '';
+    } else if (done) {
+      st.innerHTML = `<b class="grn">Молчит ${clock(goal)} — можно входить.</b> Лаяла ${counter.barks} ${counter.barks % 10 === 1 && counter.barks % 100 !== 11 ? 'раз' : 'раза'}, это попадёт в историю.`;
+      bar.style.width = '100%'; dg.innerHTML = `<span class="grn">${I.door}</span>`;
+    } else {
+      st.innerHTML = `${c.wait ? `${cap(c.waitVerb)} ${esc(c.wait)}` : 'Ждём'}${goal ? `, <span class="grn">${c.enterVerb ?? 'входим'} после ${clock(goal)} тишины</span>` : c.enter ? `, <span class="grn">${c.enterVerb} ${esc(c.enter)}</span>` : ''}.`;
+      bar.style.width = goal ? `${Math.min(100, (t / goal) * 100)}%` : `${Math.min(100, (t / 60) * 100)}%`;
+      dg.innerHTML = `${clock(t)}${goal ? `<small>из ${clock(goal)}</small>` : ''}`;
+    }
+  });
+  document.querySelectorAll('[data-kchip]').forEach((chip) => {
+    chip.className = 'chip flag ' + (t === null ? 'kbtn' : done ? 'done' : 'counting kbtn');
+    chip.innerHTML = t === null ? `${I.flag}<span>Лает</span>`
+      : done ? `${I.check}<span>Тишина ${clock(goal)} — <b>входим</b></span>`
+      : `<i class="fill" style="width:${goal ? Math.min(100, (t / goal) * 100) : 0}%"></i>${I.flag}<span>тишина <b>${clock(t)}</b>${goal ? ` из ${clock(goal)}` : ''}</span>`;
+  });
+}
+
+// ---------- F5: the text in full ----------
+function F5(m) {
+  return `<div class="plate stop full"><span class="lead-ic">${I.flag}</span><span class="what">${m.cases.map((c) => `<p><b>${esc(c.event)}</b> — ${verbatim(c)}.</p>`).join('')}</span></div>`;
+}
+
+// ---------- chips on the card ----------
+function card(chipsHtml, extra = '') {
+  return `<div class="card"><div class="card__title"><span>Выход 6</span><span class="card__marks">${I.bolt}<span class="b">${I.run} 2</span>${I.bubble}</span></div><div class="chips">${chipsHtml}</div>${extra}<div class="ringtop"></div></div>`;
+}
+const entryChips = `<span class="chip"><span class="dot y"></span>Встала и пошла <b>1:00</b></span><span class="chip"><span class="dot g"></span>Легла <b>0:20</b></span>`;
+function k2Text(m) {
+  const c = m.cases[0];
+  if (c.silence) return `тишина <b>${clock(c.silence)}</b>`;
+  if (c.wait) return `${c.waitVerb} ${esc(c.wait)}`;
+  if (c.enter) return esc(c.enter);
+  return 'не входить';
+}
+function chipsSection() {
+  const m = model();
+  const flagChip = (text) => `<span class="chip flag">${I.flag}<span>${text}</span></span>`;
+  const line = m.cases.map((c) => `${esc(c.event)} — ${c.silence ? `тишина ${clock(c.silence)}` : c.wait ? `${c.waitVerb} ${esc(c.wait)}` : esc(c.enter ?? 'не входить')}`).join(' · ');
+  const items = [
+    ['Сейчас', 'Чип последним, за краем на mini.', card(entryChips + flagChip('не входить'))],
+    ['K1 · Первым, как есть', 'Тот же «🚩 не входить», но первым: никогда не уходит за край. Остальные чипы сдвигаются.', card(flagChip('не входить') + entryChips)],
+    ['K2 · Первым, с условием входа', `Первым, и вместо «не входить» сказано, чего ждём: «${k2Text(m).replace(/<[^>]+>/g, '')}». Красный флаг уже значит «не входить». <b>Рекомендую с F1–F3.</b>`, card(flagChip(k2Text(m)) + entryChips)],
+    ['K3 · Отдельная строка под чипами', 'Оба случая одной красной строкой. Карточка становится на 20 pt выше, только в тренировках с 🚩.', card(entryChips, `<div class="flagline">${I.flag}<span>${line}</span></div>`)],
+    ['K4 · Кнопка-счётчик (с F4)', 'Чип и есть кнопка «Лает»: отсчёт тишины прямо на карточке. Шторку тогда открывает тап по остальным чипам. Нажмите.', card(`<span class="chip flag kbtn" data-kchip></span>` + entryChips)],
+  ];
+  document.getElementById('chips').innerHTML = items.map(([t, c, html]) => fig(html, `<b>${t}.</b> ${c}`)).join('');
+}
+
+// ---------- render ----------
+const VARIANTS = { F1, F2, F3, F4, F5 };
+const CAPTIONS = {
+  F1: 'Подпись «Не входить, если», под ней плашка на каждый случай. Время входа справа, как у раннего входа.',
+  F2: 'Рамка 🚩 и карточка на случай с двумя ступеньками: <span class="yel">ждём</span> → <span class="grn">входим</span>.',
+  F3: 'Шкала тишины для лая и сцена у двери для «скребёт». Под ними слова тренера.',
+  F4: 'Нажмите «Лает» несколько раз и посмотрите, как сбрасывается отсчёт.',
+  F5: 'Правило целиком, без обрезки, по абзацу на случай.',
+};
+function render() {
+  document.documentElement.style.setProperty('--w', W() + 'px');
+  const m = model();
+  for (const [id, fn] of Object.entries(VARIANTS)) {
+    document.querySelector(`[data-v="${id}"]`).innerHTML = fig(sheet(fn(m)), `<b>${WIDTHS[state.width].label} · ${m.label}.</b> ${CAPTIONS[id]}`);
+  }
+  chipsSection();
+  document.querySelectorAll('[data-bark]').forEach((b) => (b.onclick = bark));
+  document.querySelectorAll('[data-kchip]').forEach((b) => (b.onclick = bark));
+  tick(true);
+}
+function segmented(id, options, key) {
+  const el = document.getElementById(id);
+  el.innerHTML = Object.entries(options).map(([k, o]) => `<button data-k="${k}" class="${state[key] === k ? 'on' : ''}">${o.label}</button>`).join('');
+  el.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    state[key] = b.dataset.k;
+    el.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    if (key === 'text') { counter.start = null; counter.barks = 0; }
+    render();
+  };
+}
+segmented('textSeg', TEXTS, 'text');
+segmented('widthSeg', WIDTHS, 'width');
+render();
+setInterval(tick, 200);
+
+// ---------- the choice ----------
+const PLATES = [['F1', 'Как ранний вход'], ['F2', 'Ждём → Входим'], ['F3', 'Схема'], ['F4', 'Счётчик тишины'], ['F5', 'Текст целиком'], ['mix', 'Смешать — в комментарии']];
+const CHIPS = [['K1', 'Первым, как есть'], ['K2', 'Первым, с условием входа'], ['K3', 'Отдельная строка'], ['K4', 'Кнопка-счётчик'], ['keep', 'Оставить как сейчас']];
+const radios = (name, list) => list.map(([v, t]) => `<label><input type="radio" name="${name}" value="${v}"><span><b>${v.length <= 2 ? v : ''}</b> ${t}</span></label>`).join('');
+document.getElementById('pickPlate').insertAdjacentHTML('beforeend', radios('plate', PLATES));
+document.getElementById('pickChip').insertAdjacentHTML('beforeend', radios('chip', CHIPS));
+const picked = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value ?? null;
+const summary = () => {
+  const p = picked('plate'), k = picked('chip'), c = document.getElementById('comment').value.trim();
+  return `🚩 не входить: плашка ${p ?? '—'}, чип ${k ?? '—'}${c ? `. ${c}` : ''}`;
+};
+const saved = document.getElementById('saved');
+document.getElementById('save').onclick = async () => {
+  saved.className = '';
+  try {
+    const r = await fetch('choice', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plate: picked('plate'), chip: picked('chip'), comment: document.getElementById('comment').value.trim(), summary: summary() }) });
+    if (!r.ok) throw new Error(r.status);
+    saved.textContent = 'Сохранено. Напишите мне «выбрал».';
+  } catch (e) { saved.className = 'err'; saved.textContent = 'Не сохранилось (' + e.message + '). Скопируйте текстом.'; }
+};
+document.getElementById('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(summary()); saved.className = ''; saved.textContent = 'Скопировано: ' + summary(); }
+  catch { saved.className = ''; saved.textContent = summary(); }
+};
+</script>
+</body>
+</html>

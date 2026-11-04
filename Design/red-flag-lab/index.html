@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — иконка вместо 🚩 «не входить»</title>
+<style>
+:root {
+  color-scheme: dark;
+  --pink: #FFB8CC; --blue: #8CBFFF; --yellow: #FFB84D; --red: #FF6B6B; --green: #6EE7A0;
+  --panel: #1A1A1A; --control: #2E2E2E;
+  --t2: rgba(235,235,245,.62); --t3: rgba(235,235,245,.32);
+  --sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 var(--sf); background: #131315; color: #ececef; padding-bottom: 120px; }
+a { color: var(--pink); text-decoration: none; }
+code { background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 5px; font-size: .9em; }
+header.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  padding: 10px 24px; background: rgba(19,19,21,.92); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); }
+header.top h1 { font-size: 16px; margin: 0; }
+.switches { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--t2); }
+.seg { display: inline-flex; background: #232326; border-radius: 9px; padding: 2px; gap: 2px; flex-wrap: wrap; }
+.seg button { all: unset; cursor: pointer; padding: 4px 9px; border-radius: 7px; font-size: 12.5px; color: var(--t2); white-space: nowrap; }
+.seg button.on { background: #3a3a3e; color: #fff; }
+main { padding: 0 24px; max-width: 1500px; }
+.intro { padding: 22px 0 4px; max-width: 980px; color: #cfcfd4; }
+.intro h2 { font-size: 22px; margin: 0 0 8px; color: #fff; }
+.intro p { margin: 0 0 10px; }
+.now { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; margin: 8px 0 4px; }
+.now img { display: block; border-radius: 14px; }
+.now figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.now figcaption { font-size: 12.5px; color: var(--t2); }
+h2.sec { font-size: 22px; margin: 30px 0 4px; }
+.lead { margin: 0 0 14px; color: #cfcfd4; max-width: 980px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+.card { background: rgba(255,255,255,.035); border: 1.5px solid rgba(255,255,255,.07); border-radius: 20px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+.card:hover { border-color: rgba(255,255,255,.2); }
+.card.sel { border-color: var(--green); background: rgba(110,231,160,.06); }
+.card.current { cursor: default; border-style: dashed; }
+.chead { display: flex; gap: 14px; align-items: flex-start; }
+.tile { width: 64px; height: 64px; border-radius: 16px; background: var(--panel); display: grid; place-items: center; color: var(--red); flex: none; border: 1px solid rgba(255,255,255,.06); }
+.tile svg { width: 36px; height: 36px; }
+.cmeta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cname { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cname b { font-size: 16px; }
+.cid { font: 800 12px/1 var(--rounded); background: #ececef; color: #111; padding: 4px 6px; border-radius: 6px; }
+.by { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 7px; color: #000; }
+.by.claude { background: var(--pink); } .by.codex { background: var(--blue); } .by.now { background: #c8c8cc; }
+.idea { font-size: 13.5px; color: #d0d0d6; line-height: 1.4; }
+.sf { font-size: 12px; color: var(--t2); }
+.pick { margin-left: auto; flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); display: grid; place-items: center; }
+.card.sel .pick { border-color: var(--green); background: var(--green); }
+.card.sel .pick::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #000; }
+
+/* app mocks at real size (pt = px) */
+.ic { width: 1em; height: 1em; flex: none; display: inline-block; }
+.mock { background: var(--panel); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 351px; font-family: var(--rounded); }
+.chips { display: flex; gap: 6px; overflow: hidden; white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 14px; background: rgba(255,255,255,.08); font: 500 13px/1 var(--rounded); color: rgba(255,255,255,.92); flex: none; }
+.chip b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+.dot.y { background: var(--yellow); } .dot.g { background: var(--green); }
+.chip.rule .ic { color: var(--red); font-size: 14px; }
+.plate { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 12px; border-radius: 12px; background: rgba(255,107,107,.13); color: #fff; }
+.plate .lead-ic { color: var(--red); font-size: 16px; flex: none; display: inline-flex; }
+.plate .what { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.plate .ev { font: 600 15.4px/1.2 var(--rounded); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate .det { font: 11.4px/1.3 var(--sf); color: var(--t2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.plate .then { font: 700 15px/1.1 var(--rounded); color: var(--red); white-space: nowrap; flex: none; text-align: right; }
+.plate .then small { font: 600 12px var(--rounded); color: rgba(255,107,107,.8); margin-right: 4px; }
+.plate .then.digits { font-size: 21px; }
+.mlabel { font-size: 11px; color: var(--t3); margin: -4px 0 -6px; }
+
+.strip { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 6px; }
+.st { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.st .big { width: 84px; height: 84px; border-radius: 18px; background: var(--panel); display: grid; place-items: center; color: var(--red); border: 1.5px solid rgba(255,255,255,.06); }
+.st .big svg { width: 50px; height: 50px; }
+.st.sel .big { border-color: var(--green); }
+.st .mini { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border-radius: 12px; background: rgba(255,255,255,.08); font: 600 12px/1 var(--rounded); color: #eee; }
+.st .mini svg { width: 13px; height: 13px; color: var(--red); }
+.st.now { cursor: default; opacity: .8; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: rgba(24,24,27,.96); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.1);
+  padding: 10px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.bar .what { font-size: 14px; }
+.bar .what b { color: var(--green); }
+.bar input { flex: 1; min-width: 220px; background: #1c1c1f; color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 8px 10px; font: 14px var(--sf); }
+.btn { all: unset; cursor: pointer; background: var(--pink); color: #000; font-weight: 700; padding: 8px 14px; border-radius: 10px; }
+#saved { font-size: 13px; color: var(--green); }
+#saved.err { color: var(--red); }
+.note { font-size: 13px; color: var(--t2); margin-top: 6px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Waiting Paws · иконка вместо 🚩</h1>
+  <div class="switches">
+    <span class="switch">Подпись <span class="seg" id="labelSeg"></span></span>
+    <span class="switch">Язык <span class="seg" id="langSeg"></span></span>
+  </div>
+</header>
+<main>
+  <div class="intro">
+    <h2>Меняем только иконку и подпись</h2>
+    <p>Чип на карточке и плашка в шторке остаются того же размера, без новых кнопок. Меняются только 🚩 и «не входить» / «don’t come in». Сейчас флаг не означает «подожди», а «не входить» без контекста звучит как команда прямо сейчас.</p>
+    <div class="now">
+      <figure><img src="shots/now-chips.png" width="467" height="42" alt=""><figcaption>Сейчас: чип на карточке (iPhone mini, обрезан краем)</figcaption></figure>
+      <figure><img src="shots/now-plate.png" width="467" height="75" alt=""><figcaption>Сейчас: плашка в шторке выхода</figcaption></figure>
+    </div>
+    <p class="note">В макетах ниже чип стоит первым, потому что на mini последний чип уходит за край. Карточка от этого не растёт. Если не нужно, оставлю его на прежнем месте.</p>
+  </div>
+
+  <h2 class="sec">Варианты</h2>
+  <p class="lead">Нажмите на карточку, чтобы выбрать. Переключатель «Подпись» вверху меняет текст рядом с иконкой во всех вариантах сразу. <span style="color:var(--pink)">Розовая</span> метка значит, что иконку нарисовал Claude, <span style="color:var(--blue)">голубая</span> — Codex (GPT-6 Astra).</p>
+  <div class="strip" id="strip"></div>
+  <p class="lead" style="margin-top:14px">Ниже каждая иконка в чипе и в плашке, в реальном размере iPhone.</p>
+  <div class="grid" id="grid"></div>
+</main>
+
+<div class="bar">
+  <span class="what" id="what">Ничего не выбрано</span>
+  <input id="comment" placeholder="Комментарий (необязательно)">
+  <button class="btn" id="save">Сохранить выбор</button>
+  <span id="saved"></span>
+</div>
+
+<script>
+const svg = (body, { fill = false, evenodd = false } = {}) =>
+  `<svg class="ic" viewBox="0 0 24 24" fill="${fill ? 'currentColor' : 'none'}" stroke="${fill ? 'none' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${evenodd ? ' fill-rule="evenodd"' : ''} aria-hidden="true">${body}</svg>`;
+
+// The current one, for comparison.
+const CURRENT = { id: 'now', by: 'now', name: 'Флаг (как сейчас)', idea: 'Флаг обычно значит «важно», «финиш» или «пожаловаться», но не «подожди».', sf: 'SF flag.fill',
+  svg: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V3.6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M6.4 4h11.8l-2.8 4.6 2.8 4.6H6.4z" fill="currentColor"/></svg>` };
+
+const MINE = [
+  { id: 'M1', name: 'Знак «нет входа»', idea: 'Дорожный знак ⛔ «въезд запрещён». Понятен без слов, даже в 13 pt.', sf: 'SF minus.circle.fill',
+    svg: svg('<path d="M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19zM7.2 10.7a1.3 1.3 0 0 0 0 2.6h9.6a1.3 1.3 0 0 0 0-2.6z"/>', { fill: true, evenodd: true }) },
+  { id: 'M2', name: 'Песочные часы', idea: 'Значит «подожди». С подписью «ждать тишины» читается как «ждём, а не входим».', sf: 'SF hourglass',
+    svg: svg('<path d="M6.5 3h11M6.5 21h11M7.5 3c0 4.6 4.5 5.4 4.5 9s-4.5 4.4-4.5 9M16.5 3c0 4.6-4.5 5.4-4.5 9s4.5 4.4 4.5 9"/><path d="M9.3 19.6 12 16.8l2.7 2.8z" fill="currentColor" stroke-width="1.2"/>') },
+  { id: 'M3', name: 'Затихает', idea: 'Звук уменьшается и переходит в ровную линию: «ждём, пока станет тихо».', sf: 'своя иконка',
+    svg: svg('<path d="M3.5 6v12M7 8v8M10.5 10v4M14 12h6.5"/>') },
+  { id: 'M4', name: 'Дверь и часы', idea: 'Закрытая дверь, на ней часы: «у двери ждём время».', sf: 'своя (door + clock)',
+    svg: svg('<path d="M4.5 21V4.5A1.5 1.5 0 0 1 6 3h8a1.5 1.5 0 0 1 1.5 1.5v5.6M2.5 21h8"/><circle cx="11" cy="11.6" r="1.1" fill="currentColor" stroke="none"/><path d="M17.5 11.6a5.4 5.4 0 1 1 0 10.8 5.4 5.4 0 0 1 0-10.8zM16.8 14.3v3.4h3v-1.4h-1.6v-2z" fill="currentColor" stroke="none" fill-rule="evenodd"/>') },
+  { id: 'M5', name: 'Лает', idea: 'Голова собаки и звук. Иконка о событии («лает»), а что делать, говорит подпись: «ждать тишины».', sf: 'своя (SF dog.fill + волны)',
+    svg: svg('<path d="M4.6 21c-1.1-2.9-1.5-6-1.1-8.9l.5-3.6.7-3.3c.2-.8 1.1-.9 1.5-.2L8.1 7.2c1-.3 2.1-.2 3 .3l2.4 1.3 1.9.7c.7.3.9 1.3.4 1.9l-.4.4-2.6.5-1 .3 2.2 1.1c.5.3.4 1-.1 1.2l-2.5.6c-.5 1.8-.6 3.7-.4 5.6z"/>', { fill: true }).replace('</svg>', '<path d="M17.6 10.6a3.3 3.3 0 0 1 0 4.2M20.2 8.3a6.8 6.8 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>') },
+  { id: 'M6', name: 'Ухо', idea: 'Слушаем у двери: тишина значит можно входить. Хорошо сочетается с «тишина 0:30».', sf: 'SF ear',
+    svg: svg('<path d="M6.8 9.6a5.2 5.2 0 0 1 10.4 0c0 2.4-1.4 3.5-2.5 4.5-.9.8-1.3 1.7-1.6 2.9-.4 1.7-1.6 2.9-3.2 2.9a3 3 0 0 1-3-2.8"/><path d="M9.9 9.9a2.1 2.1 0 0 1 4.2 0c0 1.1-.8 1.7-1.6 2.2"/>') },
+  { id: 'M7', name: 'Ладонь «стоп»', idea: 'Поднятая ладонь: «стой, подожди». Жест понятен всем.', sf: 'SF hand.raised.fill',
+    svg: svg('<path d="M8.5 12.5V5.6a1.5 1.5 0 0 1 3 0V11M11.5 11V4.1a1.5 1.5 0 0 1 3 0V11M14.5 11V5.6a1.5 1.5 0 0 1 3 0v8M8.5 12.5V9.4a1.5 1.5 0 0 0-3 0v5.1c0 3.9 2.8 6.5 6.4 6.5h.6c2.9 0 5-2.3 5-5.5v-1.9"/>') },
+];
+
+const LABELS = {
+  wait: { label: '«ждать тишины»', ru: { chip: 'ждать тишины', plate: 'ждать тишины' }, en: { chip: 'wait for quiet', plate: 'wait for quiet' } },
+  time: { label: '«тишина 0:30»', ru: { chip: 'тишина <b>0:30</b>', plate: '<small>тишина</small>0:30', digits: true }, en: { chip: 'quiet <b>0:30</b>', plate: '<small>quiet</small>0:30', digits: true } },
+  event: { label: 'событие тренера', ru: { chip: 'Залаяла, завыла', plate: 'ждать тишины' }, en: { chip: 'Залаяла, завыла', plate: 'wait for quiet' } },
+  now: { label: '«не входить» (как сейчас)', ru: { chip: 'не входить', plate: 'не входить' }, en: { chip: 'don’t come in', plate: 'don’t come in' } },
+};
+const LANGS = { ru: { label: 'RU' }, en: { label: 'EN' } };
+const state = { label: 'wait', lang: 'ru', pick: null };
+let ICONS = [CURRENT, ...MINE.map((i) => ({ ...i, by: 'claude' }))];
+
+function mocks(icon) {
+  // The current card always says what the app says today.
+  const l = LABELS[icon.id === 'now' ? 'now' : state.label][state.lang];
+  return `<div class="mock">
+    <div class="chips"><span class="chip rule">${icon.svg}<span>${l.chip}</span></span><span class="chip"><span class="dot y"></span>Встала и пошла <b>1:00</b></span><span class="chip"><span class="dot g"></span>Легла <b>0:20</b></span></div>
+    <div class="plate"><span class="lead-ic">${icon.svg}</span><span class="what"><span class="ev">Залаяла, завыла</span><span class="det">ни в коем случае не входить, ждём когда станет чуть спокойнее или отойдёт от двери и входим когда молчала 30 секунд…</span></span><span class="then${l.digits ? ' digits' : ''}">${l.plate}</span></div>
+  </div>`;
+}
+function card(icon) {
+  const cur = icon.id === 'now';
+  return `<div class="card${cur ? ' current' : ''}${state.pick === icon.id ? ' sel' : ''}" data-id="${icon.id}">
+    <div class="chead">
+      <div class="tile">${icon.svg}</div>
+      <div class="cmeta">
+        <div class="cname">${cur ? '' : `<span class="cid">${icon.id}</span>`}<b>${icon.name}</b><span class="by ${icon.by}">${icon.by === 'now' ? 'сейчас' : icon.by === 'claude' ? 'Claude' : 'Codex'}</span></div>
+        <div class="idea">${icon.idea}</div>
+        <div class="sf">iPhone/Mac: ${icon.sf}. На Windows — SVG в <code>conditionIcons.tsx</code></div>
+      </div>
+      ${cur ? '' : '<span class="pick"></span>'}
+    </div>
+    ${mocks(icon)}
+  </div>`;
+}
+function render() {
+  document.getElementById('grid').innerHTML = ICONS.map(card).join('');
+  document.getElementById('strip').innerHTML = ICONS.map((i) => `<div class="st${i.id === 'now' ? ' now' : ''}${state.pick === i.id ? ' sel' : ''}" data-id="${i.id}"><div class="big">${i.svg}</div><span class="mini">${i.svg}${i.id === 'now' ? 'сейчас' : i.id}</span></div>`).join('');
+  const icon = ICONS.find((i) => i.id === state.pick);
+  document.getElementById('what').innerHTML = icon ? `Выбрано: <b>${icon.id} · ${icon.name}</b>, подпись ${LABELS[state.label].label}` : `Ничего не выбрано · подпись ${LABELS[state.label].label}`;
+}
+const pick = (e) => {
+  const c = e.target.closest('.card, .st'); if (!c || c.classList.contains('current') || c.classList.contains('now')) return;
+  state.pick = state.pick === c.dataset.id ? null : c.dataset.id;
+  render();
+};
+document.getElementById('grid').onclick = pick;
+document.getElementById('strip').onclick = pick;
+function segmented(id, options, key) {
+  const el = document.getElementById(id);
+  el.innerHTML = Object.entries(options).map(([k, o]) => `<button data-k="${k}" class="${state[key] === k ? 'on' : ''}">${o.label}</button>`).join('');
+  el.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    state[key] = b.dataset.k;
+    el.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    render();
+  };
+}
+segmented('labelSeg', LABELS, 'label');
+segmented('langSeg', LANGS, 'lang');
+render();
+
+// Codex's icons, when codex.json is there: [{id, name, idea, svg}].
+fetch('codex.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])).then((list) => {
+  const clean = (raw) => {
+    const box = document.createElement('div');
+    box.innerHTML = raw;
+    const s = box.querySelector('svg');
+    if (!s) return null;
+    s.querySelectorAll('script, foreignObject').forEach((n) => n.remove());
+    s.removeAttribute('width'); s.removeAttribute('height');
+    s.setAttribute('class', 'ic'); s.setAttribute('aria-hidden', 'true');
+    return s.outerHTML;
+  };
+  const extra = list.map((i) => ({ id: i.id, by: 'codex', name: i.name, idea: i.idea, sf: i.sf || 'своя иконка', svg: clean(i.svg) })).filter((i) => i.svg);
+  ICONS = [...ICONS, ...extra];
+  render();
+}).catch(() => {});
+
+const saved = document.getElementById('saved');
+document.getElementById('save').onclick = async () => {
+  saved.className = '';
+  const icon = ICONS.find((i) => i.id === state.pick);
+  const payload = { page: 'icons', icon: state.pick, iconName: icon?.name ?? null, label: state.label, lang: state.lang, comment: document.getElementById('comment').value.trim() };
+  try {
+    const r = await fetch('choice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!r.ok) throw new Error(r.status);
+    saved.textContent = 'Сохранено. Напишите мне «выбрал».';
+  } catch (e) { saved.className = 'err'; saved.textContent = 'Не сохранилось: ' + e.message; }
+};
+</script>
+</body>
+</html>
