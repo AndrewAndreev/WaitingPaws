@@ -23,7 +23,7 @@ type SetPlan = (next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) 
 
 // MARK: - Rules for the whole training
 
-/// «Правила тренировки: 🚩 Залаяла, завыла — не входить · 🔖 Фальстарт · ➡️ Подготовка · 4» above the table: the plan's
+/// «Правила тренировки: ⛔ Залаяла, завыла — ждать тишины · 🔖 Фальстарт · ➡️ Подготовка · 4» above the table: the plan's
 /// notes that are about the whole training. A click marks their lines in the trainer's text.
 export function PlanRuleChips({ plan, lines, focused, onFocus }: { plan: TrainingPlan; lines: PlanTextLine[]; focused: string | null; onFocus: (key: string | null, lines: number[]) => void }) {
   const stop = TrainingPlan.doNotEnterRule(plan)
@@ -33,7 +33,7 @@ export function PlanRuleChips({ plan, lines, focused, onFocus }: { plan: Trainin
   )
   const ids = (kind: PlanTextLine['kind']['kind']) => lines.filter((line) => line.kind.kind === kind).map((line) => line.id)
   const chips = [
-    stop && { key: 'stop', tone: 'stop', icon: <DoNotEnterIcon />, text: t('%@ — не входить', stop.title), help: stop.text, lines: ids('doNotEnter') },
+    stop && { key: 'stop', tone: 'stop', icon: <DoNotEnterIcon />, text: t('%@ — ждать тишины', stop.title), help: stop.text, lines: ids('doNotEnter') },
     falseStart && { key: 'rule', tone: 'rule', icon: <RuleIcon />, text: t('Фальстарт'), help: falseStart, lines: ids('rule') },
     prep.length > 0 && { key: 'prep', tone: 'prep', icon: <PrepIcon />, text: t('Подготовка · %lld', prep.length), help: prep.join('\n'), lines: ids('note') },
   ].filter((chip) => !!chip)

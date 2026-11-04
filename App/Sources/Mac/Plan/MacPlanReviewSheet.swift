@@ -672,13 +672,13 @@ private struct PlanTablePane: View {
         let help: String
     }
 
-    /// «🚩 не входить», «🔖 фальстарт», «➡️ ещё 5»: the trainer's notes for the whole training.
+    /// «⛔ ждать тишины» (the trainer's 🚩), «🔖 фальстарт», «➡️ ещё 5»: the trainer's notes for the whole training.
     private var ruleChips: [RuleChip] {
         var chips: [RuleChip] = []
         var others: [String] = []
         for note in plan.notes {
             if PlanParser.isDoNotEnterRule(note) {
-                chips.append(RuleChip(title: String(localized: "не входить"), symbol: "flag.fill", tint: MacPalette.red, help: note))
+                chips.append(RuleChip(title: String(localized: "ждать тишины"), symbol: "minus.circle.fill", tint: MacPalette.red, help: note))
             } else if PlanParser.isFalseStartRule(note.lowercased()) {
                 chips.append(RuleChip(title: String(localized: "фальстарт"), symbol: "bookmark.fill", tint: MacPlanTint.rule(scheme), help: note))
             } else {

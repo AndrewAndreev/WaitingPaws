@@ -88,7 +88,7 @@ function ExitCluster({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit }) 
 }
 
 /// Outside: «Ранний вход» — a plate per condition (the trainer's colour, what the dog does, «через 2:00» large), the
-/// «не входить» rule in red, then the exit's note folded to one line.
+/// «⛔ ждать тишины» rule in red, then the exit's note folded to one line.
 function OutsideBrief({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit }) {
   const entries = TrainingPlan.earlyEntries(plan, exit)
   const stop = TrainingPlan.doNotEnterRule(plan)
@@ -156,7 +156,7 @@ function StopPlate({ rule }: { rule: PlanRule }) {
           </span>
         )}
       </span>
-      <span className="plate__then plate__then--stop">{t('не входить')}</span>
+      <span className="plate__then plate__then--stop">{t('ждать тишины')}</span>
     </div>
   )
 }

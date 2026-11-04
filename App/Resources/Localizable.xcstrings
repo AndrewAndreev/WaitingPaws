@@ -4619,6 +4619,22 @@
         }
       }
     },
+    "ждать тишины" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wait for quiet"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ждать тишины"
+          }
+        }
+      }
+    },
     "Журнал приложения" : {
       "localizations" : {
         "en" : {
@@ -7559,22 +7575,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не в сети"
-          }
-        }
-      }
-    },
-    "не входить" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "don’t come in"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "не входить"
           }
         }
       }

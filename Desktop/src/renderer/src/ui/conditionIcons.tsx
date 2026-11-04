@@ -42,11 +42,16 @@ export function ExitNoteIcon(props: IconProps) {
   )
 }
 
-/// 🚩 When not to come in.
+/// ⛔ When not to come in (the trainer's 🚩): the «no entry» sign, SF `minus.circle.fill` on the Mac and iPhone.
 export function DoNotEnterIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M6 21V4M6 4h11.5l-2.6 4.5 2.6 4.5H6" />
+      <path
+        d="M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19zM7.2 10.7a1.3 1.3 0 0 0 0 2.6h9.6a1.3 1.3 0 0 0 0-2.6z"
+        fill="currentColor"
+        fillRule="evenodd"
+        stroke="none"
+      />
     </Icon>
   )
 }

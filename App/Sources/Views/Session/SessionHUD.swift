@@ -393,7 +393,7 @@ struct SessionReadout: View {
 }
 
 /// The exit's details in one row of chips under the title, the same height on every exit: outside its conditions with
-/// their times and «не входить», in a break the next exit's triggers; 📝 when it has notes. A tap opens them in full.
+/// their times and «⛔ ждать тишины», in a break the next exit's triggers; 📝 when it has notes. A tap opens them in full.
 private struct ExitChips: View {
     let brief: ExitBrief?
     let isBreak: Bool
@@ -419,7 +419,7 @@ private struct ExitChips: View {
                         .opacity(isBreak ? 0.7 : 1)
                     }
                     if !isBreak, brief.doNotEnter != nil {
-                        chip { Image(systemName: "flag.fill").foregroundStyle(Theme.danger); Text("не входить") }
+                        chip { Image(systemName: "minus.circle.fill").foregroundStyle(Theme.danger); Text("ждать тишины") }
                     }
                     if !brief.notes.isEmpty {
                         chip { Image(systemName: "text.bubble.fill") }

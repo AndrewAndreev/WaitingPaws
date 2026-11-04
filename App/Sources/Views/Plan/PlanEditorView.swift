@@ -229,9 +229,9 @@ struct PlanEditorView: View {
         }
     }
 
-    /// «🚩 не входить», «🔖 фальстарт», the rest as points.
+    /// «⛔ ждать тишины» (the trainer's 🚩), «🔖 фальстарт», the rest as points.
     private func ruleIcon(_ note: String) -> (String, Color) {
-        if PlanParser.isDoNotEnterRule(note) { return ("flag.fill", Theme.danger) }
+        if PlanParser.isDoNotEnterRule(note) { return ("minus.circle.fill", Theme.danger) }
         if PlanParser.isFalseStartRule(note.lowercased()) { return ("bookmark.fill", Theme.warning) }
         return ("arrow.right.circle", .secondary)
     }

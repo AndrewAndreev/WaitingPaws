@@ -152,7 +152,8 @@ struct EarlyEntryPlate: View {
     }
 }
 
-/// «⚑ Залаяла, завыла          не входить»: the trainer's rule against coming in, red.
+/// «⛔ Залаяла, завыла        ждать тишины»: the trainer's rule against coming in, red. The «no entry» sign and what
+/// to wait for: a flag with «не входить» read as a command for right now.
 struct DoNotEnterPlate: View {
     let rule: TrainingPlan.Rule
     var showsDetail = false
@@ -161,8 +162,8 @@ struct DoNotEnterPlate: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "flag.fill")
-                .font(.system(size: digits * 0.5, weight: .semibold))
+            Image(systemName: "minus.circle.fill")
+                .font(.system(size: digits * 0.68, weight: .semibold))
                 .foregroundStyle(Theme.danger)
             VStack(alignment: .leading, spacing: 1) {
                 Text(rule.title)
@@ -177,7 +178,7 @@ struct DoNotEnterPlate: View {
             }
             .minimumScaleFactor(0.8)
             Spacer(minLength: 8)
-            Text("не входить")
+            Text("ждать тишины")
                 .font(.system(size: digits * 0.68, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.danger)
                 .lineLimit(1)
