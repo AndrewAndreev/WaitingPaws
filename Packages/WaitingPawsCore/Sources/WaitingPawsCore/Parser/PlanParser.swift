@@ -92,6 +92,9 @@ public enum PlanParser {
         plan.exits = exits
         plan.notes = notes
         plan.commonEarlyEntries = common
+        // The training's common conditions go to the exits of a minute and longer: on a short exit «легла → 1:00» or
+        // «встала и пошла → 3:00» never comes. Before the fold, so a short «ИЛИ до вставания» gets no copy of them.
+        plan.applyCommonEarlyEntries(to: .long)
         plan.foldUntilStanding()
         normalizeBreaks(&plan, defaultFromText: defaultFromText)
         return plan

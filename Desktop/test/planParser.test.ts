@@ -119,7 +119,8 @@ describe('PlanParser (Russian)', () => {
       ['ключ или телефон'],
     ])
     expect(plan.exits.map(PlannedExit.endsWhenStanding)).toEqual([false, true, false, true])
-    expect(TrainingPlan.earlyEntries(plan, plan.exits[1]).map(EarlyEntry.summary)).toEqual(['встала → сразу', 'легла → 1:00'])
+    // A 45-second exit gets no common conditions, only its own word.
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[1]).map(EarlyEntry.summary)).toEqual(['встала → сразу'])
     expect(PlannedExit.durationDescription(plan.exits[1])).toBe('45 с или до вставания')
 
     const english = PlanParser.parseExit('Exit 4 - 45 seconds + jacket + keys OR until the dog stands up')
@@ -189,8 +190,11 @@ describe('PlanParser (Russian)', () => {
     )
     expect(plan.commonEarlyEntries[1].detail).toBe('от укладки')
     expect(plan.exits.every((e) => e.earlyEntries.length === 0)).toBe(true)
-    expect(TrainingPlan.commonEntriesScope(plan)).toBe('all')
+    // By default the common conditions go to the exits of a minute and longer: here only the 3-minute one.
+    expect(TrainingPlan.commonEntriesScope(plan)).toBe('long')
+    expect(plan.exits.map((e) => TrainingPlan.usesCommonEarlyEntries(plan, e))).toEqual([false, false, false, false, false, false, true])
     expect(TrainingPlan.earlyEntries(plan, plan.exits[6]).map(EarlyEntry.summary)).toEqual(['встала и пошла → 2:00', 'легла → 0:30'])
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[0])).toEqual([])
   })
 
   // The training of 19.10.2026: conditions under exits 6 and 8 with their own times, rules for the whole training.

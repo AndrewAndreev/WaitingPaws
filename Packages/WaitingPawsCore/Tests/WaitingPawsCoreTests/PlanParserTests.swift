@@ -178,8 +178,11 @@ final class PlanParserTests: XCTestCase {
                        "от начала движения, когда сняла фокус внимания с двери: села (пусть даже у двери), исследует квартиру")
         XCTAssertEqual(plan.commonEarlyEntries[1].detail, "от укладки")
         XCTAssertTrue(plan.exits.allSatisfy { $0.earlyEntries.isEmpty })
-        XCTAssertEqual(plan.commonEntriesScope, .all)
+        // By default the common conditions go to the exits of a minute and longer: here only the 3-minute one.
+        XCTAssertEqual(plan.commonEntriesScope, .long)
+        XCTAssertEqual(plan.exits.map(plan.usesCommonEarlyEntries), [false, false, false, false, false, false, true])
         XCTAssertEqual(plan.earlyEntries(of: plan.exits[6]).map(\.summary), ["встала и пошла → 2:00", "легла → 0:30"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]), [])
     }
 
     /// The training of 19.10.2026: conditions under exits 6 and 8 with their own times, rules for the whole training.
@@ -354,7 +357,8 @@ final class PlanParserTests: XCTestCase {
         XCTAssertEqual(plan.exits.map(\.triggers), [["куртка", "ключ"], ["куртка", "ключ"], ["ключ или телефон"],
                                                      ["ключ или телефон"]])
         XCTAssertEqual(plan.exits.map(\.endsWhenStanding), [false, true, false, true])
-        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]).map(\.summary), ["встала → сразу", "легла → 1:00"])
+        // A 45-second exit gets no common conditions, only its own word.
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]).map(\.summary), ["встала → сразу"])
         XCTAssertEqual(plan.exits[1].durationDescription, "45 с или до вставания")
 
         let english = try XCTUnwrap(PlanParser.parseExit("Exit 4 - 45 seconds + jacket + keys OR until the dog stands up"))
