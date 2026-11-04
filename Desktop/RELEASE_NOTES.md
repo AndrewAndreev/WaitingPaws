@@ -1,6 +1,27 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.2.0**
+**New in 1.6.11**
+
+* «ИЛИ до вставания» is no longer a separate switch beside the exit's conditions: it is one of them, «Встала →
+  сразу», and can be changed or removed like the others. The «До вставания» column in the schedule check, the switch
+  in the exit's panel and «Или до вставания» in the timeline menu are gone. The switch could contradict the
+  conditions («до вставания» ticked, «встала и пошла → 4:00» below it).
+* The exit's «до вставания» wins over the training's common conditions about standing up: such an exit gets
+  «встала → сразу» and keeps the rest of them («легла → 3:00»). Lines written right under the exit stay as they are
+  («3 минуты ИЛИ до вставания» with «встала и пошла → 1:00» under it). Plans saved by older versions are read the
+  same way. «или до вставания» in the timeline and the * in the history now follow the exit's conditions.
+
+**In 1.6.10**
+
+* One version for iPhone, Mac and Windows: this release follows 1.2.0 and matches iPhone and Mac 1.6.10, built from
+  the same code. About and Diagnostics show the version with the commit it was built from, e.g. «1.6.10 (ab24690)».
+* The exit strip marks exits: ⚡ the exit has triggers («+ куртка»), 🏃 it may end before its planned time («ИЛИ до
+  вставания» or a condition that comes sooner). The strip scrolls to the current exit.
+* «Остановить запись?» before a recording stops by a press (REC, Ctrl+R, the clip panel); Enter keeps recording.
+  The compact window asks right in its strip. Starting a recording never asks.
+* The open list of a select is readable in the dark theme.
+
+**In 1.2.0**
 
 * Exits get triggers («+ куртка»), conditions for coming back early («🟡 Если встала — входим через 2 минуты») and
   their own notes; the trainer's «🚩 … не входить» rule stands out in red. The schedule check shows them under each
