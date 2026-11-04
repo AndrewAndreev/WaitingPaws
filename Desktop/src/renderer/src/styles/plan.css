@@ -1002,15 +1002,6 @@ body.is-resizing-columns * {
   width: 14px;
   height: 14px;
 }
-.plan-entry--standing {
-  color: var(--text-secondary);
-}
-.plan-entry__stand {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  color: var(--text-secondary);
-}
 .plan-entry--add {
   align-self: flex-start;
   min-height: 26px;

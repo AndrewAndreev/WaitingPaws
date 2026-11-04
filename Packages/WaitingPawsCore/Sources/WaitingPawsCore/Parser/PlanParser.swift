@@ -92,6 +92,7 @@ public enum PlanParser {
         plan.exits = exits
         plan.notes = notes
         plan.commonEarlyEntries = common
+        plan.foldUntilStanding()
         normalizeBreaks(&plan, defaultFromText: defaultFromText)
         return plan
     }

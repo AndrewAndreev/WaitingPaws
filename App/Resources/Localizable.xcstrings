@@ -131,22 +131,6 @@
         }
       }
     },
-    "«ИЛИ до вставания»: собака встала — сразу возвращаться" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“OR until the dog stands”: if the dog stands up, go back right away"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«ИЛИ до вставания»: собака встала — сразу возвращаться"
-          }
-        }
-      }
-    },
     "* план: или до вставания" : {
       "localizations" : {
         "en" : {
@@ -4043,38 +4027,6 @@
         }
       }
     },
-    "До вставания" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Until Dog Stands"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "До вставания"
-          }
-        }
-      }
-    },
-    "До вставания — сразу" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Until she stands up — right away"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "До вставания — сразу"
-          }
-        }
-      }
-    },
     "Добавить" : {
       "localizations" : {
         "en" : {
@@ -5751,22 +5703,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изображение и звук"
-          }
-        }
-      }
-    },
-    "Или до вставания" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Or until the dog stands"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Или до вставания"
           }
         }
       }

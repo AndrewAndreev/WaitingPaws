@@ -62,7 +62,7 @@ final class PlanParserTests: XCTestCase {
         XCTAssertEqual(plan.defaultBreak, 120)
         XCTAssertEqual(plan.exits.count, 7)
         XCTAssertEqual(plan.exits.map(\.duration), [5, 10, 5, 15, 30, 10, 60])
-        XCTAssertEqual(plan.exits.map(\.untilStanding), [false, false, false, false, true, false, true])
+        XCTAssertEqual(plan.exits.map(\.endsWhenStanding), [false, false, false, false, true, false, true])
         XCTAssertTrue(plan.exits.allSatisfy { $0.breakAfter == nil })
         XCTAssertEqual(plan.breakAfter(exitAt: 3), 120)
         XCTAssertEqual(plan.notes.count, 5)
@@ -82,7 +82,7 @@ final class PlanParserTests: XCTestCase {
         XCTAssertEqual(plan.exits.map(\.breakAfter), [nil, nil, 300, nil, nil, 300, nil, nil, nil])
         XCTAssertEqual(plan.breakAfter(exitAt: 0), 120)
         XCTAssertEqual(plan.exits[8].duration, 20)
-        XCTAssertTrue(plan.exits[8].untilStanding)
+        XCTAssertTrue(plan.exits[8].endsWhenStanding)
         XCTAssertNil(plan.exits[8].breakAfter)
         XCTAssertEqual(plan.notes.count, 3)
     }
@@ -348,7 +348,7 @@ final class PlanParserTests: XCTestCase {
         XCTAssertEqual(plan.exits.count, 2)
         XCTAssertEqual(plan.exits[0].duration, 90)
         XCTAssertEqual(plan.exits[1].duration, 120)
-        XCTAssertTrue(plan.exits[1].untilStanding)
+        XCTAssertTrue(plan.exits[1].endsWhenStanding)
     }
 
     func testDurationText() {

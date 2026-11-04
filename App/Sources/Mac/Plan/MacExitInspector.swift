@@ -98,19 +98,14 @@ struct MacExitInspector: View {
             }
             Button("Своё условие", systemImage: "plus") { plan.addEarlyEntry(toExitAt: index) }
                 .buttonStyle(.borderless)
-            HStack(spacing: 12) {
-                Toggle("До вставания — сразу", isOn: $plan.exits[index].untilStanding)
-                    .toggleStyle(.checkbox)
-                    .help("«ИЛИ до вставания»: собака встала — сразу возвращаться")
-                if !plan.commonEarlyEntries.isEmpty {
-                    if exit.earlyEntries.isEmpty {
-                        Toggle("Общие условия", isOn: $plan.exits[index].usesCommonEarlyEntries)
-                            .toggleStyle(.checkbox)
-                            .help("Условия, которые тренер написал для всей тренировки")
-                    } else {
-                        Button("Вернуть общие") { plan.restoreCommonEarlyEntries(ofExitAt: index) }
-                            .buttonStyle(.borderless)
-                    }
+            if !plan.commonEarlyEntries.isEmpty {
+                if exit.earlyEntries.isEmpty {
+                    Toggle("Общие условия", isOn: $plan.exits[index].usesCommonEarlyEntries)
+                        .toggleStyle(.checkbox)
+                        .help("Условия, которые тренер написал для всей тренировки")
+                } else {
+                    Button("Вернуть общие") { plan.restoreCommonEarlyEntries(ofExitAt: index) }
+                        .buttonStyle(.borderless)
                 }
             }
         }

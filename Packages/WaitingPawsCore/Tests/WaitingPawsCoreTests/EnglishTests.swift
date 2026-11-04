@@ -33,8 +33,9 @@ final class EnglishTests: XCTestCase {
         XCTAssertEqual(plan.exits.map(\.number), [1, 2, 3, 4])
         XCTAssertEqual(plan.exits.map(\.duration), [5, 10, 30, 0])
         XCTAssertEqual(plan.exits[1].breakAfter, 300)
-        XCTAssertTrue(plan.exits[2].untilStanding)
-        XCTAssertFalse(plan.exits[0].untilStanding)
+        XCTAssertTrue(plan.exits[2].endsWhenStanding)
+        XCTAssertFalse(plan.exits[0].endsWhenStanding)
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[2]).map(\.summary), ["stands up → right away"])
         XCTAssertEqual(plan.exits[3].note, "step out and come right back")
         XCTAssertEqual(plan.notes, ["All breaks 2 minutes", "Stay calm at the door."])
     }
@@ -49,7 +50,7 @@ final class EnglishTests: XCTestCase {
     func testRussianScheduleStillParsesInEnglishUI() {
         let plan = PlanParser.parse("Тренировка\nВсе перерывы 3 минуты\n1 выход - 5 секунд\n2 выход - 1 минута ИЛИ до вставания")
         XCTAssertEqual(plan.exits.map(\.duration), [5, 60])
-        XCTAssertTrue(plan.exits[1].untilStanding)
+        XCTAssertTrue(plan.exits[1].endsWhenStanding)
         XCTAssertEqual(plan.defaultBreak, 180)
     }
 

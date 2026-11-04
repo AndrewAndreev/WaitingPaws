@@ -1,6 +1,6 @@
 // Port of PlanParserTests.swift.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { DurationText, EarlyEntry, PlanParser, TrainingPlan, setCoreLanguage, setCoreRegion } from '@core/index'
+import { DurationText, EarlyEntry, PlanParser, PlannedExit, TrainingPlan, setCoreLanguage, setCoreRegion } from '@core/index'
 
 const sampleWithDefaultBreaks = `🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
 
@@ -56,7 +56,7 @@ describe('PlanParser (Russian)', () => {
     expect(plan.defaultBreak).toBe(120)
     expect(plan.exits).toHaveLength(7)
     expect(plan.exits.map((e) => e.duration)).toEqual([5, 10, 5, 15, 30, 10, 60])
-    expect(plan.exits.map((e) => e.untilStanding)).toEqual([false, false, false, false, true, false, true])
+    expect(plan.exits.map(PlannedExit.endsWhenStanding)).toEqual([false, false, false, false, true, false, true])
     expect(plan.exits.every((e) => e.breakAfter === null)).toBe(true)
     expect(TrainingPlan.breakAfter(plan, 3)).toBe(120)
     expect(plan.notes).toHaveLength(5)
@@ -76,7 +76,7 @@ describe('PlanParser (Russian)', () => {
     expect(plan.exits.map((e) => e.breakAfter)).toEqual([null, null, 300, null, null, 300, null, null, null])
     expect(TrainingPlan.breakAfter(plan, 0)).toBe(120)
     expect(plan.exits[8].duration).toBe(20)
-    expect(plan.exits[8].untilStanding).toBe(true)
+    expect(PlannedExit.endsWhenStanding(plan.exits[8])).toBe(true)
     expect(plan.exits[8].breakAfter).toBeNull()
     expect(plan.notes).toHaveLength(3)
   })
@@ -109,7 +109,7 @@ describe('PlanParser (Russian)', () => {
     expect(plan.exits).toHaveLength(2)
     expect(plan.exits[0].duration).toBe(90)
     expect(plan.exits[1].duration).toBe(120)
-    expect(plan.exits[1].untilStanding).toBe(true)
+    expect(PlannedExit.endsWhenStanding(plan.exits[1])).toBe(true)
   })
 
   // The triggering session of 19.10.2026: triggers after «+», an exit written as a sentence, the conditions once

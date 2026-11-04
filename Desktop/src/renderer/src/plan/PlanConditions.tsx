@@ -3,8 +3,8 @@ import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
 import { EarlyEntry, PlannedExit, TrainingPlan, type CommonEntriesScope } from '@core/models'
 import { PlanParser } from '@core/planParser'
-import { AddIcon, CloseIcon, DoNotEnterIcon, EarlyEntryIcon, ExitNoteIcon, PrepIcon, RuleIcon, StandIcon, TriggerIcon } from '../ui/icons'
-import { Checkbox, Segmented, Switch, Tooltip } from '../ui/kit'
+import { AddIcon, CloseIcon, DoNotEnterIcon, EarlyEntryIcon, ExitNoteIcon, PrepIcon, RuleIcon, TriggerIcon } from '../ui/icons'
+import { Checkbox, Segmented, Tooltip } from '../ui/kit'
 import { DurationPopover } from './DurationEditor'
 import {
   PlanFormat,
@@ -114,8 +114,9 @@ export function CommonEntriesBar({ plan, setPlan, lines, picking, setPicking }: 
 // MARK: - Inspector of the selected exit
 
 /// Below the table: the selected exit's triggers (chips, «+ Добавить»), its conditions for coming back early (the
-/// trainer's colour, what the dog does, «через 2:00» / «сразу»), «До вставания — сразу», and its note. A condition
-/// shown from the plan's common ones is marked «общее»; changing it gives this exit its own copy.
+/// trainer's colour, what the dog does, «через 2:00» / «сразу»; «ИЛИ до вставания» is one of them, «Встала →
+/// сразу»), and its note. A condition shown from the plan's common ones is marked «общее»; changing it gives this
+/// exit its own copy.
 export function ExitInspector({
   plan,
   setPlan,
@@ -292,11 +293,6 @@ function EntriesEditor({ plan, exit, setPlan }: { plan: TrainingPlan; exit: Plan
             </Tooltip>
           </div>
         ))}
-        <div className="plan-entry plan-entry--standing">
-          <StandIcon className="plan-entry__stand" />
-          <span className="grow">{t('До вставания — сразу')}</span>
-          <Switch checked={exit.untilStanding} label={t('До вставания — сразу')} onChange={(value) => setPlan((current) => updateExit(current, exit.id, { untilStanding: value }))} />
-        </div>
         <button
           type="button"
           className="plan-entry plan-entry--add"

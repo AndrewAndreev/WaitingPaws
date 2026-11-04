@@ -497,14 +497,6 @@ private struct PlanTablePane: View {
                 ExitDurationCell(exit: binding(exit))
             }
             .width(min: 70, ideal: 78)
-            TableColumn("До вставания") { exit in
-                Toggle("Или до вставания", isOn: binding(exit).untilStanding)
-                    .toggleStyle(.checkbox)
-                    .labelsHidden()
-                    .frame(maxWidth: .infinity)
-                    .help("«ИЛИ до вставания»: собака встала — сразу возвращаться")
-            }
-            .width(86)
             TableColumn("Перерыв после") { exit in
                 BreakAfterCell(exit: binding(exit), defaultBreak: plan.defaultBreak,
                                isLast: exit.id == plan.exits.last?.id)
@@ -514,7 +506,7 @@ private struct PlanTablePane: View {
                 ExitSummaryText(plan: plan, exit: exit, size: 12)
                     .help(summaryHelp(exit))
             }
-            .width(min: 150, ideal: 190)
+            .width(min: 150, ideal: 244)
             TableColumn("Строка") { exit in
                 lineCell(exit)
             }

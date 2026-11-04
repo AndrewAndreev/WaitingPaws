@@ -364,7 +364,6 @@ private struct ExitRow: View {
         }
         .contextMenu {
             Button("Триггеры, условия, заметка…", systemImage: "slider.horizontal.3", action: onEdit)
-            Toggle("Или до вставания", systemImage: "figure.stand", isOn: $exit.untilStanding)
         }
     }
 

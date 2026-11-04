@@ -186,7 +186,7 @@ const swiftRecord = `{
         "triggers" : [
           "куртка"
         ],
-        "untilStanding" : true,
+        "untilStanding" : false,
         "usesCommonEarlyEntries" : false
       }
     ],
@@ -224,7 +224,8 @@ describe('Sessions/*.json compatibility', () => {
     expect(record.id).toBe('1F0C8A2B-9E4D-4C3B-A2F1-0E9D8C7B6A59')
     expect(record.startedAt).toBe(Date.UTC(2026, 8, 25, 15, 0, 0))
     expect(record.plan.date).toBe(Date.UTC(2026, 8, 25, 9, 0, 0))
-    expect(record.plan.exits[1]).toMatchObject({ breakAfter: 300, note: 'выйти и сразу вернуться', untilStanding: true })
+    expect(record.plan.exits[1]).toMatchObject({ breakAfter: 300, note: 'выйти и сразу вернуться', untilStanding: false })
+    expect(PlannedExit.endsWhenStanding(record.plan.exits[1])).toBe(true)
     expect(record.plan.exits[0]).toMatchObject({ breakAfter: null, note: null })
     expect(record.plan.exits[1]).toMatchObject({ triggers: ['куртка'], usesCommonEarlyEntries: false })
     expect(record.plan.exits[1].earlyEntries[0]).toMatchObject({ event: 'Встала', delay: null, detail: null, tone: 'yellow' })

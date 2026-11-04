@@ -3,7 +3,7 @@
 // (5 s steps, everything after it moves, a changed break becomes the exit's own break).
 import { t } from '@shared/i18n'
 import { DurationText } from '@core/durationText'
-import { TrainingPlan } from '@core/models'
+import { PlannedExit, TrainingPlan } from '@core/models'
 
 export type BlockKind = 'exit' | 'pause'
 
@@ -45,7 +45,7 @@ export function planBlocks(plan: TrainingPlan, original: TrainingPlan | null): P
       original: source >= 0 ? original!.exits[source].duration : null,
       number: exit.number,
       own: false,
-      untilStanding: exit.untilStanding,
+      untilStanding: PlannedExit.endsWhenStanding(exit),
     })
     time += exit.duration
     if (index < plan.exits.length - 1) {
@@ -85,7 +85,6 @@ export function differs(plan: TrainingPlan, original: TrainingPlan): boolean {
       id: exit.id,
       duration: exit.duration,
       pause: index < item.exits.length - 1 ? TrainingPlan.breakAfter(item, index) : 0,
-      untilStanding: exit.untilStanding,
     }))
   return JSON.stringify(schedule(plan)) !== JSON.stringify(schedule(original))
 }

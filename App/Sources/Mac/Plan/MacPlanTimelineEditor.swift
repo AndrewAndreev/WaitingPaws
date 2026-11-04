@@ -189,13 +189,11 @@ struct MacPlanTimelineEditor: View {
             let id: UUID
             let duration: TimeInterval
             let pause: TimeInterval
-            let untilStanding: Bool
         }
         func schedule(_ plan: TrainingPlan) -> [Slot] {
             plan.exits.indices.map { i in
                 Slot(id: plan.exits[i].id, duration: plan.exits[i].duration,
-                     pause: i < plan.exits.count - 1 ? plan.breakAfter(exitAt: i) : 0,
-                     untilStanding: plan.exits[i].untilStanding)
+                     pause: i < plan.exits.count - 1 ? plan.breakAfter(exitAt: i) : 0)
             }
         }
         return schedule(plan) != schedule(original)
@@ -449,18 +447,9 @@ struct MacPlanTimelineEditor: View {
                 withAnimation(.snappy) { set(block.edge, to: value) }
             }
         }
-        switch block.edge.kind {
-        case .exit:
-            if plan.exits.indices.contains(block.edge.index) {
-                Toggle("Или до вставания", isOn: Binding(
-                    get: { plan.exits[block.edge.index].untilStanding },
-                    set: { plan.exits[block.edge.index].untilStanding = $0 }))
-            }
-        case .pause:
-            if block.own {
-                Button("Как у всех — \(DurationText.short(plan.defaultBreak))") {
-                    withAnimation(.snappy) { plan.exits[block.edge.index].breakAfter = nil }
-                }
+        if block.edge.kind == .pause, block.own {
+            Button("Как у всех — \(DurationText.short(plan.defaultBreak))") {
+                withAnimation(.snappy) { plan.exits[block.edge.index].breakAfter = nil }
             }
         }
     }
@@ -735,7 +724,7 @@ struct MacPlanTimelineEditor: View {
             let source = original?.exits.firstIndex { $0.id == exit.id }
             result.append(Block(edge: BlockEdge(index: index, kind: .exit), start: t, duration: exit.duration,
                                 original: source.map { original!.exits[$0].duration }, number: exit.number,
-                                own: false, untilStanding: exit.untilStanding))
+                                own: false, untilStanding: exit.endsWhenStanding))
             t += exit.duration
             if index < plan.exits.count - 1 {
                 let pause = plan.breakAfter(exitAt: index)

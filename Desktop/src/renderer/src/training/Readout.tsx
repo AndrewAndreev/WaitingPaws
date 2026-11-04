@@ -117,7 +117,7 @@ function EntryPlate({ entry }: { entry: EarlyEntry }) {
   const unread = soon ? null : EarlyEntry.unreadDelay(entry)
   // The words on the right not again under the event.
   const detail = EarlyEntry.detailBesideTime(entry)
-  const standing = entry.id === EarlyEntry.untilStanding().id
+  const standing = EarlyEntry.isUntilStanding(entry)
   return (
     <div className="plate">
       {standing ? <StandIcon className="plate__lead" /> : <span className={`tone-dot tone-dot--${entry.tone}`} />}

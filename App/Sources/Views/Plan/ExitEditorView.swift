@@ -176,10 +176,6 @@ struct ExitEditorView: View {
             .onDelete { offsets in
                 withAnimation { draft.removeEarlyEntries(at: offsets, ofExitAt: index) }
             }
-            Toggle(isOn: $draft.exits[index].untilStanding) {
-                Label("До вставания — сразу", systemImage: "figure.stand")
-            }
-            .tint(Theme.accent)
             Button {
                 withAnimation { draft.addEarlyEntry(toExitAt: index) }
             } label: {

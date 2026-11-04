@@ -80,9 +80,17 @@ public struct EarlyEntry: Codable, Equatable, Hashable, Identifiable {
         EarlyEntry(event: event, delay: delay, detail: detail, tone: tone)
     }
 
-    /// «До вставания»: an exit's «ИЛИ до вставания» shown as a condition.
+    /// «Сразу»: no time to wait, and no trainer's words for one (`unreadDelay`).
+    public var isRightAway: Bool {
+        (delay ?? 0) <= 0 && unreadDelay == nil
+    }
+
+    /// «Встала → сразу»: come back as soon as the dog stands up, what «ИЛИ до вставания» says.
+    public var isUntilStanding: Bool { isStandingUp && isRightAway }
+
+    /// «Встала → сразу»: an exit's «ИЛИ до вставания» as a condition of its own (`TrainingPlan.foldUntilStanding`).
     public static var untilStanding: EarlyEntry {
-        EarlyEntry(id: UUID(uuidString: "00000000-0000-0000-0000-00000000057A")!, event: tr("Встала", "Stands up"))
+        EarlyEntry(event: tr("Встала", "Stands up"))
     }
 }
 
@@ -93,7 +101,9 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
     public var number: Int
     /// Planned time behind the door, in seconds.
     public var duration: TimeInterval
-    /// "ИЛИ до вставания" — come back as soon as the dog stands up.
+    /// «ИЛИ до вставания» as the schedule or an older build says it. `TrainingPlan` turns it into the exit's own
+    /// condition «Встала → сразу» and clears it (`foldUntilStanding`): what the exit does is in `earlyEntries`
+    /// (`endsWhenStanding`). Still written, false, for the older builds that require the key.
     public var untilStanding: Bool
     /// The exit's own notes: a remark in parentheses («выйти и сразу вернуться»), the trainer's wording of the exit, the
     /// owner's own words.
@@ -155,11 +165,17 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
         PlannedExit(number: number, duration: 0, isOpen: true)
     }
 
+    /// The exit's own conditions say to come back as soon as the dog stands up («Встала → сразу»): «… или до
+    /// вставания» after its time, the * in the history.
+    public var endsWhenStanding: Bool {
+        untilStanding || earlyEntries.contains(where: \.isUntilStanding)
+    }
+
     /// Human readable planned duration, e.g. "30 с или до вставания" / "30 s or until the dog stands".
     public var durationDescription: String {
         if isOpen { return Self.openText }
         var text = DurationText.short(duration)
-        if untilStanding { text += " " + Self.untilStandingText }
+        if endsWhenStanding { text += " " + Self.untilStandingText }
         return text
     }
 
@@ -211,6 +227,7 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         self.exits = exits
         self.rawText = rawText
         self.commonEarlyEntries = commonEarlyEntries
+        foldUntilStanding()
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -235,6 +252,7 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
             commonEarlyEntries = notes.compactMap { PlanParser.parseEarlyEntry($0) }
             notes.removeAll { PlanParser.parseEarlyEntry($0) != nil }
         }
+        foldUntilStanding()
     }
 
     /// Break that follows the exit at `index` (falls back to the default break).
@@ -259,21 +277,38 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     // MARK: - Conditions for coming back early
 
     /// Conditions that apply to `exit`: its own, or the plan's common ones when it has none and they apply to it.
-    /// An «ИЛИ до вставания» exit without a condition about standing up gets «Встала → сразу».
     public func earlyEntries(of exit: PlannedExit) -> [EarlyEntry] {
-        var entries = exit.earlyEntries.isEmpty && exit.usesCommonEarlyEntries ? commonEarlyEntries : exit.earlyEntries
-        if exit.untilStanding, !entries.contains(where: \.isStandingUp) {
-            entries.insert(.untilStanding, at: 0)
-        }
-        return entries
+        exit.earlyEntries.isEmpty && exit.usesCommonEarlyEntries ? commonEarlyEntries : exit.earlyEntries
     }
 
-    /// The exit may end before its planned time — the 🏃 on its chip in the exit strip: «ИЛИ до вставания», or a
-    /// condition that comes sooner than the plan does («встала → 4:00» on an 8-minute exit; on a 15-second one it
-    /// never comes). A time the parser couldn't read counts; an extra exit without a plan takes any condition.
+    /// «ИЛИ до вставания» of the schedule or of an older build becomes the exit's own «Встала → сразу»:
+    /// - The lines under the exit keep the word when one of them is about standing up («встала и пошла → 1:00»
+    ///   says what standing up means for this exit); otherwise «Встала → сразу» goes in front of them.
+    /// - Over the training's common conditions the exit's word wins: it gets «Встала → сразу» and a copy of the common
+    ///   ones without those about standing up («встала и пошла → 4:00» never comes after «встала → сразу»; the two
+    ///   together were a contradiction on the screen). Common ones that already say «встала → сразу» stay common.
+    public mutating func foldUntilStanding() {
+        for index in exits.indices where exits[index].untilStanding {
+            exits[index].untilStanding = false
+            let exit = exits[index]
+            if !exit.earlyEntries.isEmpty {
+                if !exit.earlyEntries.contains(where: \.isStandingUp) {
+                    exits[index].earlyEntries.insert(.untilStanding, at: 0)
+                }
+                continue
+            }
+            let common = exit.usesCommonEarlyEntries ? commonEarlyEntries : []
+            if common.contains(where: \.isUntilStanding) { continue }
+            exits[index].earlyEntries = [.untilStanding] + common.filter { !$0.isStandingUp }.map { $0.copy() }
+            exits[index].usesCommonEarlyEntries = false
+        }
+    }
+
+    /// The exit may end before its planned time — the 🏃 on its chip in the exit strip: a condition that comes sooner
+    /// than the plan does («встала → сразу»; «встала → 4:00» on an 8-minute exit, while on a 15-second one it never
+    /// comes). A time the parser couldn't read counts; an extra exit without a plan takes any condition.
     public func canEndEarly(_ exit: PlannedExit) -> Bool {
-        if exit.untilStanding { return true }
-        return earlyEntries(of: exit).contains { entry in
+        earlyEntries(of: exit).contains { entry in
             guard let delay = entry.delay, !exit.isOpen else { return true }
             return delay < exit.duration
         }
@@ -370,7 +405,8 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
                 continue
             }
             let was = old.exits[oldIndex]
-            if was.duration != exit.duration || was.untilStanding != exit.untilStanding {
+            // «или до вставания» is a condition now: «ранний вход» below says it changed.
+            if was.duration != exit.duration {
                 changes.append(tr("выход \(exit.number): \(was.durationDescription) → \(exit.durationDescription)",
                                   "exit \(exit.number): \(was.durationDescription) → \(exit.durationDescription)"))
             }

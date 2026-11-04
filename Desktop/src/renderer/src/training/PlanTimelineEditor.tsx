@@ -4,7 +4,7 @@ import { DurationText } from '@core/durationText'
 import { TrainingPlan } from '@core/models'
 import { isConfigured } from '../model'
 import { ui, useApp } from '../store'
-import { BreakFilledIcon, CheckIcon, FinishLineIcon, ResizeIcon, RevertIcon, StandIcon, ZoomInIcon, ZoomOutIcon } from '../ui/icons'
+import { BreakFilledIcon, FinishLineIcon, ResizeIcon, RevertIcon, StandIcon, ZoomInIcon, ZoomOutIcon } from '../ui/icons'
 import { Button, ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, Tooltip } from '../ui/kit'
 import { PlanFormat, updateExit } from '../plan/planEdit'
 import {
@@ -28,7 +28,7 @@ import '../styles/plan.css'
 /// The waiting plan on the timeline under the camera (port of `MacPlanTimelineEditor`). Drawn like the live
 /// «план и факт» timeline: pink exits, blue breaks, a ruler with time from the start, «Факт» and «Запись» lanes under
 /// the plan. Edited with the mouse: drag the right edge of an exit or a break (5 s steps, everything after it moves,
-/// a changed break becomes the exit's own break); right click for «Как у тренера», «Или до вставания», «Как у всех».
+/// a changed break becomes the exit's own break); right click for «Как у тренера», «Как у всех».
 /// Zoom with Ctrl+wheel (or a touchpad pinch), Ctrl+−/Ctrl+=/Ctrl+0 or the buttons; scroll sideways with the wheel
 /// when zoomed in, or click/drag the overview strip.
 
@@ -286,7 +286,6 @@ export function PlanTimelineEditor() {
                       help={drag ? null : blockHelp(block)}
                       plan={plan}
                       onRevert={(value) => setPlan((current) => withBlockValue(current, original, block.edge, value))}
-                      onToggleStanding={() => setPlan((current) => updateExit(current, current.exits[block.edge.index].id, { untilStanding: !current.exits[block.edge.index].untilStanding }))}
                       onCommonBreak={() => setPlan((current) => updateExit(current, current.exits[block.edge.index].id, { breakAfter: null }))}
                     />
                   ))}
@@ -418,7 +417,6 @@ function Block({
   help,
   plan,
   onRevert,
-  onToggleStanding,
   onCommonBreak,
 }: {
   block: PlanBlock
@@ -431,14 +429,13 @@ function Block({
   help: string | null
   plan: TrainingPlan
   onRevert: (value: number) => void
-  onToggleStanding: () => void
   onCommonBreak: () => void
 }) {
   const width = Math.max(2, block.duration * pps - 1)
   const exit = block.edge.kind === 'exit'
   const changed = blockChanged(block)
   const className = 'pte-block ' + (exit ? 'pte-block--exit' : block.own ? 'pte-block--pause pte-block--own' : 'pte-block--pause') + (active ? ' is-active' : '') + (lit ? ' is-lit' : '')
-  const hasMenu = (changed && block.original !== null) || exit || block.own
+  const hasMenu = (changed && block.original !== null) || (!exit && block.own)
   const element = (
     <div className={className} style={{ left: Timeline.inset + block.start * pps, top, width, height }}>
       {exit ? (
@@ -466,7 +463,6 @@ function Block({
       </Tooltip>
     )
   }
-  const exitState = exit ? plan.exits[block.edge.index] : null
   return (
     <ContextMenu>
       <Tooltip content={help} side="top">
@@ -476,11 +472,6 @@ function Block({
         {changed && block.original !== null && (
           <ContextMenuItem icon={<RevertIcon />} onSelect={() => onRevert(block.original!)}>
             {t('Как у тренера — %@', DurationText.short(block.original))}
-          </ContextMenuItem>
-        )}
-        {exitState && (
-          <ContextMenuItem icon={exitState.untilStanding ? <CheckIcon /> : null} onSelect={onToggleStanding}>
-            {t('Или до вставания')}
           </ContextMenuItem>
         )}
         {!exit && block.own && <ContextMenuItem onSelect={onCommonBreak}>{t('Как у всех — %@', DurationText.short(plan.defaultBreak))}</ContextMenuItem>}

@@ -212,11 +212,10 @@ export function suggestedTriggers(plan: TrainingPlan, id: string, limit = 4): st
   return result.slice(0, limit)
 }
 
-/// The conditions the editor lists for an exit: what `TrainingPlan.earlyEntries` gives, without «Встала → сразу» of
-/// «ИЛИ до вставания» (the editor shows that one as a switch).
+/// The conditions the editor lists for an exit: what `TrainingPlan.earlyEntries` gives, «Встала → сразу» of «ИЛИ до
+/// вставания» too.
 export function editableEntries(plan: TrainingPlan, exit: PlannedExit): EarlyEntry[] {
-  const untilStanding = EarlyEntry.untilStanding().id
-  return TrainingPlan.earlyEntries(plan, exit).filter((entry) => entry.id !== untilStanding)
+  return TrainingPlan.earlyEntries(plan, exit)
 }
 
 /// An edit of the exit's conditions (`editableEntries` in, the new list out). The common conditions it shows become

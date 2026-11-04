@@ -525,7 +525,7 @@ public final class TrainingSession {
         let result = ExitResult(number: exit.number,
                                 attempt: attempt,
                                 plannedDuration: exit.duration,
-                                untilStanding: exit.untilStanding,
+                                untilStanding: exit.endsWhenStanding,
                                 startedAt: since,
                                 leftAt: leftAt,
                                 endedAt: now,

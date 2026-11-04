@@ -116,9 +116,19 @@ export const EarlyEntry = {
     return { ...entry, id: newUUID() }
   },
 
-  /** «До вставания»: an exit's «ИЛИ до вставания» shown as a condition. */
+  /** «Сразу»: no time to wait, and no trainer's words for one (`unreadDelay`). */
+  isRightAway(entry: EarlyEntry): boolean {
+    return (entry.delay ?? 0) <= 0 && EarlyEntry.unreadDelay(entry) === null
+  },
+
+  /** «Встала → сразу»: come back as soon as the dog stands up, what «ИЛИ до вставания» says. */
+  isUntilStanding(entry: EarlyEntry): boolean {
+    return EarlyEntry.isStandingUp(entry) && EarlyEntry.isRightAway(entry)
+  },
+
+  /** «Встала → сразу»: an exit's «ИЛИ до вставания» as a condition of its own (`TrainingPlan.foldUntilStanding`). */
   untilStanding(): EarlyEntry {
-    return EarlyEntry.make({ id: '00000000-0000-0000-0000-00000000057A', event: tr('Встала', 'Stands up') })
+    return EarlyEntry.make({ event: tr('Встала', 'Stands up') })
   },
 
   encode(entry: EarlyEntry): JSONObject {
@@ -148,7 +158,11 @@ export interface PlannedExit {
   number: number
   /** Planned time behind the door, in seconds. */
   duration: number
-  /** "ИЛИ до вставания" — come back as soon as the dog stands up. */
+  /**
+   * «ИЛИ до вставания» as the schedule or an older build says it. `TrainingPlan` turns it into the exit's own
+   * condition «Встала → сразу» and clears it (`foldUntilStanding`): what the exit does is in `earlyEntries`
+   * (`endsWhenStanding`). Still written, false, for the older builds that require the key.
+   */
   untilStanding: boolean
   /**
    * The exit's own notes: a remark in parentheses («выйти и сразу вернуться»), the trainer's wording of the exit, the
@@ -188,11 +202,19 @@ export const PlannedExit = {
     return PlannedExit.make({ number, duration: 0, isOpen: true })
   },
 
+  /**
+   * The exit's own conditions say to come back as soon as the dog stands up («Встала → сразу»): «… или до вставания»
+   * after its time, the * in the history.
+   */
+  endsWhenStanding(exit: PlannedExit): boolean {
+    return exit.untilStanding || exit.earlyEntries.some(EarlyEntry.isUntilStanding)
+  },
+
   /** Human readable planned duration, e.g. "30 с или до вставания" / "30 s or until the dog stands". */
   durationDescription(exit: PlannedExit): string {
     if (exit.isOpen) return PlannedExit.openText()
     let text = DurationText.short(exit.duration)
-    if (exit.untilStanding) text += ' ' + PlannedExit.untilStandingText()
+    if (PlannedExit.endsWhenStanding(exit)) text += ' ' + PlannedExit.untilStandingText()
     return text
   },
 
@@ -293,7 +315,7 @@ export const TrainingPlan = {
   },
 
   make(fields: Partial<TrainingPlan> = {}): TrainingPlan {
-    return {
+    return TrainingPlan.foldUntilStanding({
       id: fields.id ?? newUUID(),
       title: fields.title ?? TrainingPlan.defaultTitle(),
       trainers: fields.trainers ?? '',
@@ -303,7 +325,7 @@ export const TrainingPlan = {
       exits: fields.exits ?? [],
       rawText: fields.rawText ?? '',
       commonEarlyEntries: fields.commonEarlyEntries ?? [],
-    }
+    })
   },
 
   /** Break that follows the exit at `index` (falls back to the default break). */
@@ -328,23 +350,42 @@ export const TrainingPlan = {
 
   // MARK: - Conditions for coming back early
 
-  /**
-   * Conditions that apply to `exit`: its own, or the plan's common ones when it has none and they apply to it.
-   * An «ИЛИ до вставания» exit without a condition about standing up gets «Встала → сразу».
-   */
+  /** Conditions that apply to `exit`: its own, or the plan's common ones when it has none and they apply to it. */
   earlyEntries(plan: TrainingPlan, exit: PlannedExit): EarlyEntry[] {
-    const entries = exit.earlyEntries.length === 0 && exit.usesCommonEarlyEntries ? plan.commonEarlyEntries : exit.earlyEntries
-    if (exit.untilStanding && !entries.some(EarlyEntry.isStandingUp)) return [EarlyEntry.untilStanding(), ...entries]
-    return entries
+    return exit.earlyEntries.length === 0 && exit.usesCommonEarlyEntries ? plan.commonEarlyEntries : exit.earlyEntries
   },
 
   /**
-   * The exit may end before its planned time — the 🏃 on its chip in the exit strip: «ИЛИ до вставания», or a
-   * condition that comes sooner than the plan does («встала → 4:00» on an 8-minute exit; on a 15-second one it
-   * never comes). A time the parser couldn't read counts; an extra exit without a plan takes any condition.
+   * «ИЛИ до вставания» of the schedule or of an older build becomes the exit's own «Встала → сразу»:
+   * - The lines under the exit keep the word when one of them is about standing up («встала и пошла → 1:00» says
+   *   what standing up means for this exit); otherwise «Встала → сразу» goes in front of them.
+   * - Over the training's common conditions the exit's word wins: it gets «Встала → сразу» and a copy of the common
+   *   ones without those about standing up («встала и пошла → 4:00» never comes after «встала → сразу»; the two
+   *   together were a contradiction on the screen). Common ones that already say «встала → сразу» stay common.
+   */
+  foldUntilStanding(plan: TrainingPlan): TrainingPlan {
+    if (!plan.exits.some((exit) => exit.untilStanding)) return plan
+    const exits = plan.exits.map((exit): PlannedExit => {
+      if (!exit.untilStanding) return exit
+      const cleared = { ...exit, untilStanding: false }
+      if (exit.earlyEntries.length > 0) {
+        if (exit.earlyEntries.some(EarlyEntry.isStandingUp)) return cleared
+        return { ...cleared, earlyEntries: [EarlyEntry.untilStanding(), ...exit.earlyEntries] }
+      }
+      const common = exit.usesCommonEarlyEntries ? plan.commonEarlyEntries : []
+      if (common.some(EarlyEntry.isUntilStanding)) return cleared
+      const rest = common.filter((entry) => !EarlyEntry.isStandingUp(entry)).map(EarlyEntry.copy)
+      return { ...cleared, earlyEntries: [EarlyEntry.untilStanding(), ...rest], usesCommonEarlyEntries: false }
+    })
+    return { ...plan, exits }
+  },
+
+  /**
+   * The exit may end before its planned time — the 🏃 on its chip in the exit strip: a condition that comes sooner
+   * than the plan does («встала → сразу»; «встала → 4:00» on an 8-minute exit, while on a 15-second one it never
+   * comes). A time the parser couldn't read counts; an extra exit without a plan takes any condition.
    */
   canEndEarly(plan: TrainingPlan, exit: PlannedExit): boolean {
-    if (exit.untilStanding) return true
     return TrainingPlan.earlyEntries(plan, exit).some((entry) => entry.delay === null || exit.isOpen || entry.delay < exit.duration)
   },
 
@@ -431,7 +472,8 @@ export const TrainingPlan = {
         return
       }
       const was = old.exits[oldIndex]
-      if (was.duration !== exit.duration || was.untilStanding !== exit.untilStanding) {
+      // «или до вставания» is a condition now: «ранний вход» below says it changed.
+      if (was.duration !== exit.duration) {
         const before = PlannedExit.durationDescription(was)
         changes.push(tr(`выход ${exit.number}: ${before} → ${description}`, `exit ${exit.number}: ${before} → ${description}`))
       }
@@ -508,7 +550,7 @@ export const TrainingPlan = {
       commonEarlyEntries = notes.flatMap((note) => PlanParser.parseEarlyEntry(note) ?? [])
       notes = notes.filter((note) => PlanParser.parseEarlyEntry(note) === null)
     }
-    return {
+    return TrainingPlan.foldUntilStanding({
       id: json.uuid('id'),
       title: json.string('title'),
       trainers: json.string('trainers'),
@@ -518,6 +560,6 @@ export const TrainingPlan = {
       exits: json.array('exits', (item, itemPath) => PlannedExit.decode(item, itemPath)),
       rawText: json.string('rawText'),
       commonEarlyEntries,
-    }
+    })
   },
 }

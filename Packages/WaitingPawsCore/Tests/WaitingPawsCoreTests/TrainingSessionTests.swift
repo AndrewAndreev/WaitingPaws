@@ -268,22 +268,19 @@ final class TrainingSessionTests: XCTestCase {
     }
 
     func testEarlyEntriesOfExits() {
-        var plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 30, untilStanding: true),
+        var plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 30),
                                         PlannedExit(number: 2, duration: 120)])
-        // «ИЛИ до вставания» alone: come back as soon as she stands.
-        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.summary), ["встала → сразу"])
-        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]), [])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]), [])
 
         plan.commonEarlyEntries = [EarlyEntry(event: "Встала и пошла", delay: 15, tone: .yellow),
                                    EarlyEntry(event: "Легла", delay: 30, tone: .green)]
         XCTAssertEqual(plan.commonEntriesScope, .all)
-        // A condition about standing up takes the place of «до вставания».
         XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.summary), ["встала и пошла → 0:15", "легла → 0:30"])
         XCTAssertTrue(plan.usesCommonEarlyEntries(plan.exits[1]))
 
         plan.applyCommonEarlyEntries(to: .long)
         XCTAssertEqual(plan.commonEntriesScope, .long)
-        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.summary), ["встала → сразу"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]), [])
         XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]).count, 2)
 
         // Changed for one exit: its own copy, the common ones stay.
@@ -299,6 +296,53 @@ final class TrainingSessionTests: XCTestCase {
         edited.exits[1].note = "Ключами звякнуть за дверью"
         edited.exits[1].earlyEntries.removeLast()
         XCTAssertEqual(edited.changes(from: plan), ["выход 2: триггеры", "выход 2: ранний вход", "выход 2: заметка"])
+    }
+
+    /// «ИЛИ до вставания» is the exit's own «Встала → сразу», not a switch beside its conditions: the screenshot of
+    /// 04.11 had «до вставания» ticked on an exit whose common conditions said «встала и пошла → 4:00».
+    func testUntilStandingBecomesTheExitsOwnCondition() throws {
+        let common = [EarlyEntry(event: "Встала и пошла", delay: 240, tone: .yellow),
+                      EarlyEntry(event: "Легла", delay: 180, tone: .green)]
+        let plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 120, untilStanding: true),
+                                        PlannedExit(number: 2, duration: 480),
+                                        PlannedExit(number: 3, duration: 60, untilStanding: true, usesCommonEarlyEntries: false),
+                                        PlannedExit(number: 4, duration: 60, untilStanding: true,
+                                                    earlyEntries: [EarlyEntry(event: "Легла", delay: 20)],
+                                                    usesCommonEarlyEntries: false),
+                                        // The README's «3 минуты ИЛИ до вставания» with «встала и пошла» right under it.
+                                        PlannedExit(number: 5, duration: 180, untilStanding: true,
+                                                    earlyEntries: [EarlyEntry(event: "Встала и пошла", delay: 60)],
+                                                    usesCommonEarlyEntries: false)],
+                                commonEarlyEntries: common)
+        // The exit's word wins over the training's: one answer on the screen, the rest of the common ones stay.
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.summary), ["встала → сразу", "легла → 3:00"])
+        XCTAssertFalse(plan.usesCommonEarlyEntries(plan.exits[0]))
+        XCTAssertNotEqual(plan.exits[0].earlyEntries[1].id, common[1].id)
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]).map(\.summary), ["встала и пошла → 4:00", "легла → 3:00"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[2]).map(\.summary), ["встала → сразу"])
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[3]).map(\.summary), ["встала → сразу", "легла → 0:20"])
+        // The lines under the exit say what standing up means for it.
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[4]).map(\.summary), ["встала и пошла → 1:00"])
+        XCTAssertEqual(plan.exits.map(\.untilStanding), [false, false, false, false, false])
+        XCTAssertEqual(plan.exits.map(\.endsWhenStanding), [true, false, true, true, false])
+        XCTAssertEqual(plan.exits[0].durationDescription, "2 мин или до вставания")
+        XCTAssertEqual(plan.exits.map(plan.canEndEarly), [true, true, true, true, true])
+
+        // Without «встала → сразу» the exit is just its time, and a saved plan doesn't bring it back.
+        var edited = plan
+        edited.exits[0].earlyEntries.removeFirst()
+        XCTAssertFalse(edited.exits[0].endsWhenStanding)
+        XCTAssertEqual(edited.exits[0].durationDescription, "2 мин")
+        XCTAssertEqual(edited.changes(from: plan), ["выход 1: ранний вход"])
+        XCTAssertEqual(try JSONDecoder().decode(TrainingPlan.self, from: JSONEncoder().encode(edited)), edited)
+
+        // Common conditions that already say «встала → сразу» stay common.
+        let same = TrainingPlan(exits: [PlannedExit(number: 1, duration: 60, untilStanding: true)],
+                                commonEarlyEntries: [EarlyEntry(event: "Встала"), EarlyEntry(event: "Легла", delay: 30)])
+        XCTAssertTrue(same.usesCommonEarlyEntries(same.exits[0]))
+        XCTAssertEqual(same.earlyEntries(of: same.exits[0]).map(\.summary), ["встала → сразу", "легла → 0:30"])
+        // «через пару минут» is not «сразу».
+        XCTAssertFalse(EarlyEntry(event: "Встала", detail: "через пару минут").isUntilStanding)
     }
 
     func testExitsThatCanEndEarly() {
@@ -331,14 +375,18 @@ final class TrainingSessionTests: XCTestCase {
         let json = """
         {"id":"\(UUID().uuidString)","title":"Тренировка","trainers":"","notes":["Все перерывы 2 минуты",
         "Если встала - входим через 15 секунд от вставания"],"defaultBreak":120,"rawText":"",
-        "exits":[{"id":"\(UUID().uuidString)","number":1,"duration":30,"untilStanding":true}]}
+        "exits":[{"id":"\(UUID().uuidString)","number":1,"duration":30,"untilStanding":true},
+        {"id":"\(UUID().uuidString)","number":2,"duration":60,"untilStanding":false}]}
         """
         let plan = try JSONDecoder().decode(TrainingPlan.self, from: Data(json.utf8))
         XCTAssertEqual(plan.notes, ["Все перерывы 2 минуты"])
         XCTAssertEqual(plan.commonEarlyEntries.map(\.summary), ["встала → 0:15"])
-        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.detail), ["от вставания"])
-        XCTAssertEqual(plan.exits[0].triggers, [])
-        XCTAssertTrue(plan.exits[0].usesCommonEarlyEntries)
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[1]).map(\.detail), ["от вставания"])
+        XCTAssertEqual(plan.exits[1].triggers, [])
+        XCTAssertTrue(plan.exits[1].usesCommonEarlyEntries)
+        // «ИЛИ до вставания» became the exit's own «Встала → сразу» in place of the common «встала → 0:15».
+        XCTAssertEqual(plan.earlyEntries(of: plan.exits[0]).map(\.summary), ["встала → сразу"])
+        XCTAssertFalse(plan.exits[0].untilStanding)
 
         let again = try JSONDecoder().decode(TrainingPlan.self, from: JSONEncoder().encode(plan))
         XCTAssertEqual(again, plan)

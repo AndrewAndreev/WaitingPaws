@@ -351,10 +351,10 @@ struct ExitSummaryText: View {
 // MARK: - Editing an exit's conditions
 
 extension TrainingPlan {
-    /// The conditions to edit for the exit at `index`: those it shows, without «до вставания» (the exit's own switch).
+    /// The conditions to edit for the exit at `index`: those it shows, «Встала → сразу» of «ИЛИ до вставания» too.
     func editableEarlyEntries(ofExitAt index: Int) -> [EarlyEntry] {
         guard exits.indices.contains(index) else { return [] }
-        return earlyEntries(of: exits[index]).filter { $0.id != EarlyEntry.untilStanding.id }
+        return earlyEntries(of: exits[index])
     }
 
     /// Changes condition `offset` of the exit; one of the common ones becomes the exit's own copy first, so the other

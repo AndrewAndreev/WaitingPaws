@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   DurationText,
+  EarlyEntry,
   PlanParser,
   PlannedExit,
   SessionLogFormatter,
@@ -33,8 +34,9 @@ describe('English', () => {
     expect(plan.exits.map((e) => e.number)).toEqual([1, 2, 3, 4])
     expect(plan.exits.map((e) => e.duration)).toEqual([5, 10, 30, 0])
     expect(plan.exits[1].breakAfter).toBe(300)
-    expect(plan.exits[2].untilStanding).toBe(true)
-    expect(plan.exits[0].untilStanding).toBe(false)
+    expect(PlannedExit.endsWhenStanding(plan.exits[2])).toBe(true)
+    expect(PlannedExit.endsWhenStanding(plan.exits[0])).toBe(false)
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[2]).map(EarlyEntry.summary)).toEqual(['stands up → right away'])
     expect(plan.exits[3].note).toBe('step out and come right back')
     expect(plan.notes).toEqual(['All breaks 2 minutes', 'Stay calm at the door.'])
   })
@@ -49,7 +51,7 @@ describe('English', () => {
   it('still parses a Russian schedule in the English UI', () => {
     const plan = PlanParser.parse('Тренировка\nВсе перерывы 3 минуты\n1 выход - 5 секунд\n2 выход - 1 минута ИЛИ до вставания')
     expect(plan.exits.map((e) => e.duration)).toEqual([5, 60])
-    expect(plan.exits[1].untilStanding).toBe(true)
+    expect(PlannedExit.endsWhenStanding(plan.exits[1])).toBe(true)
     expect(plan.defaultBreak).toBe(180)
   })
 

@@ -312,11 +312,9 @@ describe('TrainingSession', () => {
 
   it('gives every exit its conditions for coming back early', () => {
     let plan = TrainingPlan.make({
-      exits: [PlannedExit.make({ number: 1, duration: 30, untilStanding: true }), PlannedExit.make({ number: 2, duration: 120 })],
+      exits: [PlannedExit.make({ number: 1, duration: 30 }), PlannedExit.make({ number: 2, duration: 120 })],
     })
-    // «ИЛИ до вставания» alone: come back as soon as she stands.
-    expect(TrainingPlan.earlyEntries(plan, plan.exits[0]).map(EarlyEntry.summary)).toEqual(['встала → сразу'])
-    expect(TrainingPlan.earlyEntries(plan, plan.exits[1])).toEqual([])
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[0])).toEqual([])
 
     plan = {
       ...plan,
@@ -326,13 +324,12 @@ describe('TrainingSession', () => {
       ],
     }
     expect(TrainingPlan.commonEntriesScope(plan)).toBe('all')
-    // A condition about standing up takes the place of «до вставания».
     expect(TrainingPlan.earlyEntries(plan, plan.exits[0]).map(EarlyEntry.summary)).toEqual(['встала и пошла → 0:15', 'легла → 0:30'])
     expect(TrainingPlan.usesCommonEarlyEntries(plan, plan.exits[1])).toBe(true)
 
     plan = TrainingPlan.applyCommonEarlyEntries(plan, 'long')
     expect(TrainingPlan.commonEntriesScope(plan)).toBe('long')
-    expect(TrainingPlan.earlyEntries(plan, plan.exits[0]).map(EarlyEntry.summary)).toEqual(['встала → сразу'])
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[0])).toEqual([])
     expect(TrainingPlan.earlyEntries(plan, plan.exits[1])).toHaveLength(2)
 
     // Changed for one exit: its own copy, the common ones stay.
@@ -353,6 +350,54 @@ describe('TrainingSession', () => {
       ],
     }
     expect(TrainingPlan.changes(edited, plan)).toEqual(['выход 2: триггеры', 'выход 2: ранний вход', 'выход 2: заметка'])
+  })
+
+  // «ИЛИ до вставания» is the exit's own «Встала → сразу», not a switch beside its conditions: the screenshot of 04.11
+  // had «до вставания» ticked on an exit whose common conditions said «встала и пошла → 4:00».
+  it('turns «until the dog stands» into the exit\'s own condition', () => {
+    const common = [EarlyEntry.make({ event: 'Встала и пошла', delay: 240, tone: 'yellow' }), EarlyEntry.make({ event: 'Легла', delay: 180, tone: 'green' })]
+    const plan = TrainingPlan.make({
+      exits: [
+        PlannedExit.make({ number: 1, duration: 120, untilStanding: true }),
+        PlannedExit.make({ number: 2, duration: 480 }),
+        PlannedExit.make({ number: 3, duration: 60, untilStanding: true, usesCommonEarlyEntries: false }),
+        PlannedExit.make({ number: 4, duration: 60, untilStanding: true, earlyEntries: [EarlyEntry.make({ event: 'Легла', delay: 20 })], usesCommonEarlyEntries: false }),
+        // The README's «3 минуты ИЛИ до вставания» with «встала и пошла» right under it.
+        PlannedExit.make({ number: 5, duration: 180, untilStanding: true, earlyEntries: [EarlyEntry.make({ event: 'Встала и пошла', delay: 60 })], usesCommonEarlyEntries: false }),
+      ],
+      commonEarlyEntries: common,
+    })
+    const summaries = (index: number) => TrainingPlan.earlyEntries(plan, plan.exits[index]).map(EarlyEntry.summary)
+    // The exit's word wins over the training's: one answer on the screen, the rest of the common ones stay.
+    expect(summaries(0)).toEqual(['встала → сразу', 'легла → 3:00'])
+    expect(TrainingPlan.usesCommonEarlyEntries(plan, plan.exits[0])).toBe(false)
+    expect(plan.exits[0].earlyEntries[1].id).not.toBe(common[1].id)
+    expect(summaries(1)).toEqual(['встала и пошла → 4:00', 'легла → 3:00'])
+    expect(summaries(2)).toEqual(['встала → сразу'])
+    expect(summaries(3)).toEqual(['встала → сразу', 'легла → 0:20'])
+    // The lines under the exit say what standing up means for it.
+    expect(summaries(4)).toEqual(['встала и пошла → 1:00'])
+    expect(plan.exits.map((exit) => exit.untilStanding)).toEqual([false, false, false, false, false])
+    expect(plan.exits.map(PlannedExit.endsWhenStanding)).toEqual([true, false, true, true, false])
+    expect(PlannedExit.durationDescription(plan.exits[0])).toBe('2 мин или до вставания')
+    expect(plan.exits.map((exit) => TrainingPlan.canEndEarly(plan, exit))).toEqual([true, true, true, true, true])
+
+    // Without «встала → сразу» the exit is just its time, and a saved plan doesn't bring it back.
+    const edited = { ...plan, exits: [{ ...plan.exits[0], earlyEntries: plan.exits[0].earlyEntries.slice(1) }, ...plan.exits.slice(1)] }
+    expect(PlannedExit.endsWhenStanding(edited.exits[0])).toBe(false)
+    expect(PlannedExit.durationDescription(edited.exits[0])).toBe('2 мин')
+    expect(TrainingPlan.changes(edited, plan)).toEqual(['выход 1: ранний вход'])
+    expect(TrainingPlan.decode(JSON.parse(JSON.stringify(TrainingPlan.encode(edited, DISK_DATES))), DISK_DATES)).toEqual(edited)
+
+    // Common conditions that already say «встала → сразу» stay common.
+    const same = TrainingPlan.make({
+      exits: [PlannedExit.make({ number: 1, duration: 60, untilStanding: true })],
+      commonEarlyEntries: [EarlyEntry.make({ event: 'Встала' }), EarlyEntry.make({ event: 'Легла', delay: 30 })],
+    })
+    expect(TrainingPlan.usesCommonEarlyEntries(same, same.exits[0])).toBe(true)
+    expect(TrainingPlan.earlyEntries(same, same.exits[0]).map(EarlyEntry.summary)).toEqual(['встала → сразу', 'легла → 0:30'])
+    // «через пару минут» is not «сразу».
+    expect(EarlyEntry.isUntilStanding(EarlyEntry.make({ event: 'Встала', detail: 'через пару минут' }))).toBe(false)
   })
 
   it('reads the false start window from the rule', () => {
@@ -400,13 +445,17 @@ describe('TrainingSession', () => {
     // A plan saved before conditions: «🟡 Если встала…» among the notes, no triggers or conditions in the exits.
     const json = `{"id":"${newUUID()}","title":"Тренировка","trainers":"","notes":["Все перерывы 2 минуты",
       "Если встала - входим через 15 секунд от вставания"],"defaultBreak":120,"rawText":"",
-      "exits":[{"id":"${newUUID()}","number":1,"duration":30,"untilStanding":true}]}`
+      "exits":[{"id":"${newUUID()}","number":1,"duration":30,"untilStanding":true},
+      {"id":"${newUUID()}","number":2,"duration":60,"untilStanding":false}]}`
     const plan = TrainingPlan.decode(JSON.parse(json), DISK_DATES)
     expect(plan.notes).toEqual(['Все перерывы 2 минуты'])
     expect(plan.commonEarlyEntries.map(EarlyEntry.summary)).toEqual(['встала → 0:15'])
-    expect(TrainingPlan.earlyEntries(plan, plan.exits[0]).map((entry) => entry.detail)).toEqual(['от вставания'])
-    expect(plan.exits[0].triggers).toEqual([])
-    expect(plan.exits[0].usesCommonEarlyEntries).toBe(true)
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[1]).map((entry) => entry.detail)).toEqual(['от вставания'])
+    expect(plan.exits[1].triggers).toEqual([])
+    expect(plan.exits[1].usesCommonEarlyEntries).toBe(true)
+    // «ИЛИ до вставания» became the exit's own «Встала → сразу» in place of the common «встала → 0:15».
+    expect(TrainingPlan.earlyEntries(plan, plan.exits[0]).map(EarlyEntry.summary)).toEqual(['встала → сразу'])
+    expect(plan.exits[0].untilStanding).toBe(false)
 
     const again = TrainingPlan.decode(JSON.parse(JSON.stringify(TrainingPlan.encode(plan, DISK_DATES))), DISK_DATES)
     expect(again).toEqual(plan)

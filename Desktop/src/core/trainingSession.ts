@@ -751,7 +751,7 @@ export class TrainingSession {
       number: exit.number,
       attempt,
       plannedDuration: exit.duration,
-      untilStanding: exit.untilStanding,
+      untilStanding: PlannedExit.endsWhenStanding(exit),
       startedAt: since,
       leftAt,
       endedAt: now,

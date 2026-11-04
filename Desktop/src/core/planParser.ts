@@ -208,7 +208,7 @@ export const PlanParser = {
     plan.exits = exits
     plan.notes = notes
     plan.commonEarlyEntries = common
-    return PlanParser.normalizeBreaks(plan, defaultFromText)
+    return PlanParser.normalizeBreaks(TrainingPlan.foldUntilStanding(plan), defaultFromText)
   },
 
   /**
