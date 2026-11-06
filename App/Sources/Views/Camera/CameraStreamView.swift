@@ -75,6 +75,9 @@ struct CameraStreamView: View {
     var status: CameraStatus? = nil
     var onVideoSize: ((CGSize) -> Void)? = nil
     var onDelay: ((Double, Double?) -> Void)? = nil
+    /// The Mac's training window: how far up the zoomed picture may run past the player's top, under the toolbar
+    /// (`MacCameraArea`). 0: cut at the player's edges.
+    var bleedTop: CGFloat = 0
 
     @State private var own = CameraStatus()
     /// Set inside `ZoomableView(contentZooms: true)`: the player zooms the picture itself (the Mac's `PlayerWebView`).
@@ -82,7 +85,7 @@ struct CameraStreamView: View {
 
     init(server: Go2RTCServer, stream: String, mode: PlayerMode, audioEnabled: Bool, fill: Bool = false,
          reloadToken: Int = 0, showsStatus: Bool = true, status: CameraStatus? = nil,
-         onVideoSize: ((CGSize) -> Void)? = nil, onDelay: ((Double, Double?) -> Void)? = nil) {
+         onVideoSize: ((CGSize) -> Void)? = nil, onDelay: ((Double, Double?) -> Void)? = nil, bleedTop: CGFloat = 0) {
         self.server = server
         self.stream = stream
         self.mode = mode
@@ -93,13 +96,15 @@ struct CameraStreamView: View {
         self.status = status
         self.onVideoSize = onVideoSize
         self.onDelay = onDelay
+        self.bleedTop = bleedTop
     }
 
     var body: some View {
         let status = self.status ?? own
         CameraWebView(server: server, stream: stream, mode: mode, audioEnabled: audioEnabled, fill: fill,
                       reloadToken: reloadToken, onVideoSize: onVideoSize, onDelay: onDelay,
-                      onPhase: { status.update($0) }, zoomScale: zoom?.scale ?? 1, zoomOffset: zoom?.offset ?? .zero)
+                      onPhase: { status.update($0) }, zoomScale: zoom?.scale ?? 1, zoomOffset: zoom?.offset ?? .zero,
+                      bleedTop: bleedTop)
             .overlay {
                 if showsStatus && self.status == nil { CameraStatusOverlay(status: own) }
             }
@@ -115,6 +120,9 @@ struct CameraStatusOverlay: View {
     let status: CameraStatus
     /// Under «Нет кадра 18 с», what the recording does (off: the screen's REC says it already — the iPhone).
     var showsRecording = true
+    /// Off where the picture runs past the area (`ZoomableView.overflows`): the caller darkens the frame itself, all of
+    /// it, not only the part in the area.
+    var dimsFrozenFrame = true
     /// Absent where the overlay stands outside the app's windows (previews): no recording line then.
     @Environment(AppModel.self) private var model: AppModel?
     /// Still connecting after 10 s.
@@ -135,7 +143,7 @@ struct CameraStatusOverlay: View {
                     .padding(10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     // The last frame a little darker: it reads as old, not as a calm dog, and the dog stays clear on it.
-                    .background(Color.black.opacity(Self.frozenDim))
+                    .background(Color.black.opacity(dimsFrozenFrame ? Self.frozenDim : 0))
                     .transition(.opacity)
             } else {
                 switch phase {
@@ -360,6 +368,8 @@ struct CameraWebView {
     /// the centre, then shifted by the offset. (The iPhone's picture zooms in SwiftUI.)
     var zoomScale: CGFloat = 1
     var zoomOffset: CGSize = .zero
+    /// The Mac: how far up the zoomed picture may run past the view (`PlayerWebView.bleedTop`).
+    var bleedTop: CGFloat = 0
 
     private var client: Go2RTCClient { Go2RTCClient(server: server) }
 
@@ -921,13 +931,22 @@ final class PlayerWebView: WKWebView {
     var fill = false {
         didSet { if fill != oldValue { fitPicture(animated: false) } }
     }
+    /// How far up the zoomed picture may run past the view's top: the training window's camera reaches up under the
+    /// toolbar (`MacCameraArea`). 0: the picture is cut at the view's edges. The sides and the bottom are cut at the
+    /// view's own: the panel and the timeline are there.
+    var bleedTop: CGFloat = 0 {
+        didSet { if bleedTop != oldValue { updateCut() } }
+    }
     private var zoomScale: CGFloat = 1
     private var zoomOffset: CGSize = .zero
+    /// The cut with `bleedTop`: the view's bounds and the strip above them.
+    private let cut = CALayer()
 
     override init(frame: CGRect, configuration: WKWebViewConfiguration) {
         super.init(frame: frame, configuration: configuration)
         // The zoomed picture stays inside.
         clipsToBounds = true
+        cut.backgroundColor = NSColor.black.cgColor
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
@@ -942,7 +961,27 @@ final class PlayerWebView: WKWebView {
     override func setFrameSize(_ newSize: NSSize) {
         let changed = newSize != frame.size
         super.setFrameSize(newSize)
-        if changed { fitPicture(animated: false) }
+        if changed {
+            fitPicture(animated: false)
+            updateCut()
+        }
+    }
+
+    /// Cut at the bounds, or at the bounds and `bleedTop` above them (a mask: the layer itself no longer clips).
+    private func updateCut() {
+        guard let layer else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        if bleedTop > 0 {
+            // The backing layer is flipped (see `fitPicture`): the strip above is at negative y.
+            cut.frame = CGRect(x: 0, y: -bleedTop, width: bounds.width, height: bounds.height + bleedTop)
+            if layer.mask !== cut { layer.mask = cut }
+            clipsToBounds = false
+        } else {
+            if layer.mask === cut { layer.mask = nil }
+            clipsToBounds = true
+        }
+        CATransaction.commit()
     }
 
     /// `ZoomState`: scaled around the centre, then shifted by the offset; gliding there when `animated`.
@@ -1005,6 +1044,7 @@ extension CameraWebView: NSViewRepresentable {
     func updateNSView(_ webView: PlayerWebView, context: Context) {
         load(into: webView, coordinator: context.coordinator)
         webView.fill = fill
+        webView.bleedTop = bleedTop
         webView.zoom(scale: zoomScale, offset: zoomOffset, animated: context.transaction.animation != nil)
     }
 }

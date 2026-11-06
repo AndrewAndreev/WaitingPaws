@@ -35,6 +35,8 @@ struct SessionScreen: View {
     /// What each camera's player is doing: shown over the part of the picture on screen, unzoomed.
     @State private var firstStatus = CameraStatus()
     @State private var secondStatus = CameraStatus()
+    /// The camera's area on the screen: whether a zoomed picture runs up under the clock.
+    @State private var cameraFrame: CGRect = .zero
 
     var body: some View {
         @Bindable var model = model
@@ -92,6 +94,8 @@ struct SessionScreen: View {
                     .frame(maxHeight: underBar ? pictureHeight : .infinity)
                     // Upright, the card is laid out first and the camera takes what is left.
                     .layoutPriority(fillsArea && !underBar ? -1 : 1)
+                    // Under the bar and the card: a zoomed picture runs on behind them (`cameraArea`).
+                    .zIndex(-1)
                 if underBar {
                     Spacer(minLength: 0)
                         .overlay { if veiled { ModalVeil(dims: false, onClose: closeDrawers) } }
@@ -120,6 +124,21 @@ struct SessionScreen: View {
             .padding(wide ? EdgeInsets(top: edge, leading: edge, bottom: edge, trailing: edge)
                           : EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // The clock and the battery over a zoomed picture run up behind them: a frosted band from the screen's
+            // edge to just above the bar's buttons (the owner, 2026-11-06, from the variants in Design/shade-lab).
+            // Only while there is picture under it: over the black it would be a grey strip.
+            .overlay(alignment: .top) {
+                let top = geometry.safeAreaInsets.top
+                let band = max(0, top - Self.frostGap)
+                if band > 0 {
+                    let shown = pictureRunsUp(to: band)
+                    StatusBarFrost()
+                        .frame(height: band)
+                        .offset(y: -top)
+                        .opacity(shown ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.2), value: shown)
+                }
+            }
             .animation(.smooth(duration: 0.35), value: clipMode)
             .overlay(alignment: wide ? .bottomTrailing : .bottom) {
                 if showTrainerText, let session = model.session, !clipMode {
@@ -363,7 +382,9 @@ struct SessionScreen: View {
 
     /// The picture in the area it has: pinch, drag and double tap frame it, per camera (both cameras keep their own
     /// framing, across launches). Over the part of it on screen, unzoomed: the stream's state, the turning frame and,
-    /// outside «Только камера», the corner buttons.
+    /// outside «Только камера», the corner buttons. Zoomed in, the picture past the area's edges is not cut off: it
+    /// fills the black round the area — the margins, behind the bar and the card, under the clock up to the screen's
+    /// edges — wherever there is picture to show (the owner, 2026-11-06). The area itself is still what is framed.
     @ViewBuilder
     private func cameraArea(clipMode: Bool) -> some View {
         if hasNoCamera {
@@ -374,12 +395,14 @@ struct SessionScreen: View {
             let second = model.isShowingSecondCamera
             // In a training the way back to the whole picture is the corner's `CameraZoomButton`, not a pill at the top.
             ZoomableView(zoom: second ? secondZoom : firstZoom, aspect: cameraAspect,
-                         showsZoomPill: !(model.session != nil && !clipMode)) {
+                         showsZoomPill: !(model.session != nil && !clipMode), overflows: true) {
                 camera
             } chrome: {
                 if showsStreamStatus {
-                    // «Нет кадра 18 с» alone: REC in the bar says the recording goes on.
-                    CameraStatusOverlay(status: second ? secondStatus : firstStatus, showsRecording: false)
+                    // «Нет кадра 18 с» alone: REC in the bar says the recording goes on. The frame is darkened with
+                    // the picture (`PictureFrame`), past the area too.
+                    CameraStatusOverlay(status: second ? secondStatus : firstStatus, showsRecording: false,
+                                        dimsFrozenFrame: false)
                 }
                 if model.panTilt.isActive && model.canPanTilt { PanTiltFrame().transition(.opacity) }
                 if !clipMode {
@@ -389,6 +412,7 @@ struct SessionScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.black)
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { cameraFrame = $0 }
             .modifier(RememberedFraming(zoom: firstZoom, camera: model.activeStreamName, settings: model.settings))
             .modifier(RememberedFraming(zoom: secondZoom, camera: model.activeSecondStreamName, settings: model.settings))
         }
@@ -484,6 +508,7 @@ struct SessionScreen: View {
                         .opacity(model.isShowingSecondCamera ? 1 : 0)
                 }
             }
+            .modifier(PictureFrame(aspect: cameraAspect, frozen: shownFrameIsFrozen))
         } else {
             liveCamera
         }
@@ -493,12 +518,28 @@ struct SessionScreen: View {
     }
 
     #if DEBUG && os(iOS)
-    /// The demo still letterboxed in the area on black, as the live player shows it.
+    /// The demo still, as the live player shows it.
     private func demoPicture(_ image: UIImage) -> some View {
         Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     #endif
+
+    /// The frosted band under the clock ends this far above the safe area's edge: between the status bar and the bar's
+    /// buttons, which start right at that edge.
+    static let frostGap: CGFloat = 6
+
+    /// The shown camera's zoomed picture reaches above `y` (screen points from the top).
+    private func pictureRunsUp(to y: CGFloat) -> Bool {
+        guard cameraFrame.height > 0, !hasNoCamera else { return false }
+        let zoom = model.isShowingSecondCamera ? secondZoom : firstZoom
+        return cameraFrame.minY + zoom.pictureFrame(in: cameraFrame.size, aspect: cameraAspect).minY < y - 0.5
+    }
+
+    /// The shown camera's picture stands still under «Нет кадра 18 с»: darkened (`CameraStatusOverlay.frozenDim`).
+    private var shownFrameIsFrozen: Bool {
+        let status = model.isShowingSecondCamera ? secondStatus : firstStatus
+        return showsStreamStatus && status.phase != .playing && status.frozenSince != nil
+    }
 
     /// Width over height of the picture shown (16:9 until the stream says).
     private var cameraAspect: CGFloat {
@@ -545,6 +586,8 @@ struct SessionScreen: View {
                         .allowsHitTesting(model.isShowingSecondCamera)
                 }
             }
+            // The player as large as the picture: no black of its own round it to cover what is past the area.
+            .modifier(PictureFrame(aspect: cameraAspect, frozen: shownFrameIsFrozen))
         } else if model.isLinkedCameraNotShared {
             CameraPlaceholder(text: String(localized: "Видео с камеры показывается только на \(model.linkedHostKind)"))
         } else {
@@ -1141,5 +1184,39 @@ struct CameraOnlyOverlay: View {
         // Translucent but no blur: a backdrop blur over live video costs the iPhone too much (see GlassCard).
         .background(.black.opacity(0.55), in: Capsule())
         .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
+    }
+}
+
+/// The camera's picture in the area: just its own size (fitted, in the middle), the rest of the area left empty — so a
+/// picture zoomed past the area shows only itself round it (`ZoomableView.overflows`) — and darkened while it stands
+/// still (`CameraStatusOverlay.frozenDim`), all of it.
+private struct PictureFrame: ViewModifier {
+    let aspect: CGFloat
+    let frozen: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .aspectRatio(aspect, contentMode: .fit)
+            .overlay {
+                Color.black.opacity(frozen ? CameraStatusOverlay.frozenDim : 0)
+                    .allowsHitTesting(false)
+                    .animation(.easeInOut(duration: 0.25), value: frozen)
+            }
+    }
+}
+
+/// The band under the clock and the battery over a zoomed picture: the system's thinnest material with a light veil,
+/// so the white status bar reads over a white wall. Of the materials tried against the variant picked in
+/// Design/shade-lab (blur, ×1.3 saturation, 28 % black) the closest; a heavier veil turned it grey (the owner,
+/// 2026-11-06), and the material without its tint layers came out darker still. Small enough that the blur over the
+/// live video costs little (the cards stay opaque, see `GlassCard`).
+private struct StatusBarFrost: View {
+    var body: some View {
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            .overlay(Color.black.opacity(0.1))
+            .environment(\.colorScheme, .dark)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }

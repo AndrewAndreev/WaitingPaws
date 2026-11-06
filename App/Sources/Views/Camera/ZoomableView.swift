@@ -178,12 +178,16 @@ final class ZoomState {
     /// Where the picture shows in an area of `size`: its zoomed frame cut to the area. The stream's state and the corner
     /// buttons sit in it, not in the black around a letterboxed picture.
     func visibleRect(in size: CGSize, aspect: CGFloat?) -> CGRect {
+        let visible = pictureFrame(in: size, aspect: aspect).intersection(CGRect(origin: .zero, size: size))
+        return visible.isNull ? CGRect(origin: .zero, size: size) : visible
+    }
+
+    /// The whole zoomed picture in an area of `size`, past its edges too (`ZoomableView.overflows`).
+    func pictureFrame(in size: CGSize, aspect: CGFloat?) -> CGRect {
         let picture = Self.fitted(aspect, in: size)
         let width = picture.width * scale, height = picture.height * scale
-        let frame = CGRect(x: (size.width - width) / 2 + offset.width, y: (size.height - height) / 2 + offset.height,
-                           width: width, height: height)
-        let visible = frame.intersection(CGRect(origin: .zero, size: size))
-        return visible.isNull ? CGRect(origin: .zero, size: size) : visible
+        return CGRect(x: (size.width - width) / 2 + offset.width, y: (size.height - height) / 2 + offset.height,
+                      width: width, height: height)
     }
 
     // MARK: Continuous gestures (relative to where they began)
@@ -305,6 +309,7 @@ struct ZoomableView<Content: View, Chrome: View>: View {
     private let contentZooms: Bool
     private let aspect: CGFloat?
     private let showsZoomPill: Bool
+    private let overflows: Bool
     private let content: Content
     private let chrome: Chrome
     @State private var own = ZoomState()
@@ -315,12 +320,18 @@ struct ZoomableView<Content: View, Chrome: View>: View {
     /// zoom itself — the Mac's web player: WebKit pushes the page of a WKWebView down when its scaled-up frame
     /// runs under the window's toolbar, so the picture there zooms in the web view's layer instead (`PlayerWebView`).
     /// `showsZoomPill`: off where the chrome has its own way back (the training's `ZoomFillButton`).
+    /// `overflows`: the zoomed picture is not cut at the area's edges: what of it lies past them shows round the area,
+    /// behind what is there (the iPhone's bar and card, the Mac's toolbar) instead of the black. The content must be
+    /// the picture alone, no black round it (sized to its aspect), and the caller draws the area under its neighbours
+    /// and cuts it where it must (the screen, the window's camera column). The zoom still frames the area: gestures,
+    /// panning and the chrome keep to it.
     init(zoom: ZoomState? = nil, contentZooms: Bool = false, aspect: CGFloat? = nil, showsZoomPill: Bool = true,
-         @ViewBuilder content: () -> Content, @ViewBuilder chrome: () -> Chrome) {
+         overflows: Bool = false, @ViewBuilder content: () -> Content, @ViewBuilder chrome: () -> Chrome) {
         external = zoom
         self.contentZooms = contentZooms
         self.aspect = aspect
         self.showsZoomPill = showsZoomPill
+        self.overflows = overflows
         self.content = content()
         self.chrome = chrome()
     }
@@ -376,7 +387,7 @@ struct ZoomableView<Content: View, Chrome: View>: View {
                 zoom.layout(viewport: key.size, aspect: key.aspect)
             }
         }
-        .clipped()
+        .modifier(ClipsUnless(overflows: overflows))
     }
 
     /// The pill's sign: on the iPhone the training's «Весь кадр» one (`CameraZoomButton`); the Mac's as its View menu's
@@ -391,8 +402,24 @@ struct ZoomableView<Content: View, Chrome: View>: View {
 }
 
 extension ZoomableView where Chrome == EmptyView {
-    init(zoom: ZoomState? = nil, contentZooms: Bool = false, aspect: CGFloat? = nil, @ViewBuilder content: () -> Content) {
-        self.init(zoom: zoom, contentZooms: contentZooms, aspect: aspect, content: content, chrome: { EmptyView() })
+    init(zoom: ZoomState? = nil, contentZooms: Bool = false, aspect: CGFloat? = nil, overflows: Bool = false,
+         @ViewBuilder content: () -> Content) {
+        self.init(zoom: zoom, contentZooms: contentZooms, aspect: aspect, overflows: overflows, content: content,
+                  chrome: { EmptyView() })
+    }
+}
+
+/// The area's own cut, unless the zoomed picture may run past it (`ZoomableView.overflows`; fixed for a view, so the
+/// branch never switches and the player is never recreated).
+private struct ClipsUnless: ViewModifier {
+    let overflows: Bool
+
+    func body(content: Content) -> some View {
+        if overflows {
+            content
+        } else {
+            content.clipped()
+        }
     }
 }
 

@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — затенение над приближенным кадром</title>
+<style>
+:root {
+  color-scheme: dark;
+  --pink: #FFB8CC; --blue: #8CBFFF; --orange: #FFB84D; --red: #FF6B6B; --green: #6EE7A0;
+  --t2: rgba(235,235,245,.62); --t3: rgba(235,235,245,.32);
+  --sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 var(--sf); background: #131315; color: #ececef; padding-bottom: 140px; }
+code { background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 5px; font-size: .9em; }
+header.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  padding: 10px 24px; background: rgba(19,19,21,.92); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); }
+header.top h1 { font-size: 16px; margin: 0; }
+.switches { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--t2); }
+.seg { display: inline-flex; background: #232326; border-radius: 9px; padding: 2px; gap: 2px; flex-wrap: wrap; }
+.seg button { all: unset; cursor: pointer; padding: 4px 9px; border-radius: 7px; font-size: 12.5px; color: var(--t2); white-space: nowrap; }
+.seg button.on { background: #3a3a3e; color: #fff; }
+main { padding: 0 24px; max-width: 1560px; }
+.intro { padding: 22px 0 4px; max-width: 1000px; color: #cfcfd4; }
+.intro h2 { font-size: 22px; margin: 0 0 8px; color: #fff; }
+.intro p { margin: 0 0 10px; }
+.now { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-start; margin: 10px 0 4px; }
+.now figure { margin: 0; max-width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.now img { display: block; max-width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,.08); }
+.now figcaption { font-size: 12.5px; color: var(--t2); }
+h2.sec { font-size: 22px; margin: 34px 0 4px; }
+.lead { margin: 0 0 14px; color: #cfcfd4; max-width: 1000px; }
+
+.grid { display: grid; gap: 16px; }
+.grid.mac { grid-template-columns: minmax(0, 1fr); }
+.grid.ios { grid-template-columns: repeat(auto-fill, minmax(min(470px, 100%), 1fr)); }
+.card { min-width: 0; background: rgba(255,255,255,.035); border: 1.5px solid rgba(255,255,255,.07); border-radius: 20px; padding: 14px 16px 16px;
+  display: flex; flex-direction: column; gap: 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+.card:hover { border-color: rgba(255,255,255,.2); }
+.card.sel { border-color: var(--green); background: rgba(110,231,160,.06); }
+.card.current { border-style: dashed; }
+.chead { display: flex; gap: 12px; align-items: flex-start; }
+.cmeta { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.cname { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cname b { font-size: 16px; }
+.cid { font: 800 12px/1 var(--rounded); background: #ececef; color: #111; padding: 4px 6px; border-radius: 6px; }
+.tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; color: #000; background: #c8c8cc; }
+.idea { font-size: 13.5px; color: #d0d0d6; line-height: 1.45; }
+.cost { font-size: 12px; color: var(--t2); }
+.pick { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); display: grid; place-items: center; }
+.card.sel .pick { border-color: var(--green); background: var(--green); }
+.card.sel .pick::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #000; }
+.scroll { overflow: hidden; }
+.fit { transform-origin: 0 0; }
+
+/* ───────── Mac mock: the top of the training window at 1 px = 1 pt ───────── */
+.mac-win { position: relative; width: 1000px; height: 250px; border-radius: 20px 20px 0 0; overflow: hidden; background: #000;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12); flex: none; }
+.mac-win .col { position: absolute; left: 0; top: 0; width: 940px; height: 250px; overflow: hidden; background: #000; }
+.mac-win .panel { position: absolute; left: 940px; top: 0; right: 0; bottom: 0; background: #1d1d1f; border-left: 1px solid rgba(255,255,255,.06); }
+.mac-win .panel i { position: absolute; left: 16px; top: 76px; width: 80px; height: 160px; border-radius: 18px; background: #252527; }
+.pic { position: absolute; inset: 0; background-repeat: no-repeat; }
+.mac-win .pic { background-size: var(--pw) var(--ph); background-position: var(--px) var(--py); }
+.mac-win .pic.cut { clip-path: inset(52px 0 0 0); }
+.lights { position: absolute; left: 19px; top: 19px; display: flex; gap: 9px; z-index: 5; }
+.lights i { width: 14px; height: 14px; border-radius: 50%; display: block; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.win-active .lights i:nth-child(1) { background: #ff5f57; } .win-active .lights i:nth-child(2) { background: #febc2e; } .win-active .lights i:nth-child(3) { background: #28c840; }
+.win-inactive .lights i { background: rgba(255,255,255,.22); }
+.mtitle { position: absolute; left: 108px; top: 9px; z-index: 5; display: flex; flex-direction: column; line-height: 1.15; white-space: nowrap; }
+.mtitle b { font: 700 13px/16px var(--sf); color: #fff; }
+.mtitle span { font: 400 11px/14px var(--sf); color: rgba(255,255,255,.62); }
+.win-inactive .mtitle b { color: rgba(255,255,255,.5); }
+.win-inactive .mtitle span { color: rgba(255,255,255,.35); }
+.glass { position: absolute; z-index: 5; height: 36px; border-radius: 18px; display: flex; align-items: center;
+  background: rgba(40,40,44,.38); backdrop-filter: blur(10px) saturate(1.6); -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  box-shadow: inset 0 0 0 .5px rgba(255,255,255,.28), inset 0 1px 0 rgba(255,255,255,.12), 0 2px 8px rgba(0,0,0,.18);
+  color: #fff; font: 500 13px/1 var(--sf); }
+.glass.segs { left: 752px; top: 8px; width: 118px; padding: 3px; gap: 2px; }
+.glass.segs span { flex: 1; height: 30px; border-radius: 15px; display: grid; place-items: center; color: rgba(255,255,255,.85); }
+/* The shown camera: a lighter glass, not the accent blue (the app's `CameraToolbarSwitcher`). */
+.glass.segs span.on { background: rgba(255,255,255,.2); color: #fff; }
+.win-inactive .glass.segs span.on { color: rgba(255,255,255,.6); }
+.win-inactive .glass.segs span { color: rgba(255,255,255,.45); }
+.glass.menu { left: 878px; top: 8px; width: 54px; justify-content: center; gap: 4px; }
+.glass svg { width: 17px; height: 17px; fill: #fff; }
+.glass .chev { width: 9px; height: 9px; fill: none; stroke: #fff; stroke-width: 2; opacity: .75; }
+.zpill { position: absolute; z-index: 5; left: 862px; top: 62px; height: 28px; padding: 0 11px; border-radius: 14px; display: flex; align-items: center; gap: 5px;
+  background: rgba(0,0,0,.55); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); color: #fff; font: 600 12px/1 var(--rounded); }
+.zpill svg { width: 11px; height: 11px; stroke: #fff; stroke-width: 1.8; fill: none; }
+.shade { position: absolute; z-index: 3; pointer-events: none; }
+
+/* ───────── iPhone mock: the top of a 6.9″ screen at 1 px = 1 pt ───────── */
+.phone { position: relative; width: 440px; height: 270px; border-radius: 54px 54px 0 0; overflow: hidden; background: #000; flex: none;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+.phone .pic { background-size: var(--pw) var(--ph); background-position: var(--px) var(--py); }
+.phone .pic.cut { clip-path: inset(62px 0 0 0); }
+.island { position: absolute; left: 157px; top: 11px; width: 126px; height: 37px; border-radius: 19px; background: #000; z-index: 6; }
+.sbar { position: absolute; left: 0; right: 0; top: 0; height: 62px; z-index: 5; color: #fff; }
+.sbar .clock { position: absolute; left: 62px; top: 20px; font: 600 17px/22px var(--sf); letter-spacing: -.2px; }
+.sbar .right { position: absolute; right: 38px; top: 23px; display: flex; gap: 7px; align-items: center; }
+.sbar svg { fill: #fff; display: block; }
+.tbar { position: absolute; left: 12px; right: 12px; top: 62px; height: 37px; z-index: 5; display: flex; gap: 8px; align-items: center; }
+.pill { height: 32px; padding: 0 12px; border-radius: 16px; background: #2e2e2e; display: inline-flex; align-items: center; gap: 6px;
+  font: 600 13px/1 var(--rounded); color: #fff; white-space: nowrap; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.pill.rec { color: var(--red); }
+.pill.rec i { width: 11px; height: 11px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 2px #2e2e2e, 0 0 0 3.5px rgba(255,107,107,.9); margin-right: 3px; }
+.circ { width: 37px; height: 37px; border-radius: 50%; background: #2e2e2e; display: grid; place-items: center; flex: none; }
+.circ svg { width: 17px; height: 17px; fill: none; stroke: #fff; stroke-width: 1.8; }
+.spacer { flex: 1; }
+
+.mocks { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+.mlabel { font-size: 11px; color: var(--t3); margin: 0 0 4px; }
+
+footer.pickbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+  padding: 12px 24px; background: rgba(19,19,21,.95); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.08); }
+#what { font-size: 13.5px; }
+#comment { flex: 1; min-width: 260px; background: #1f1f22; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; color: #fff; padding: 8px 10px; font: 13.5px var(--sf); }
+#save { all: unset; cursor: pointer; background: var(--green); color: #000; font-weight: 700; padding: 8px 16px; border-radius: 10px; font-size: 14px; }
+#saved { font-size: 13px; color: var(--green); }
+#saved.err { color: var(--red); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Затенение над приближенным кадром</h1>
+  <div class="switches">
+    <span class="switch">Кадр <span class="seg" id="bgSeg"></span></span>
+    <span class="switch">Приближение <span class="seg" id="zoomSeg"></span></span>
+    <span class="switch">Окно Mac <span class="seg" id="winSeg"></span></span>
+  </div>
+</header>
+<main>
+  <section class="intro">
+    <h2>Что затемнить, когда кадр заходит под заголовок и часы</h2>
+    <p>Приближенный кадр теперь заходит под панель окна на Mac и под часы на iPhone. Сейчас там затенение, которое не понравилось. Ниже варианты: по одному для Mac и для iPhone, их можно выбрать независимо. Макеты нарисованы в натуральную величину (1 px = 1 pt), фон — кадр вашей камеры (переключается сверху: светлая комната, ночь, демо-прихожая).</p>
+    <p>Кнопки окна на Mac в макете — приближение к системному стеклу macOS 26, в приложении они будут настоящими. Выбранный вариант я сделаю в приложении и покажу скриншоты.</p>
+    <div class="now">
+      <figure><img src="shots/now-mac.png" width="940" alt=""><figcaption>Mac сейчас: тёмное пятно за названием, гаснет вправо и вниз</figcaption></figure>
+      <figure><img src="shots/now-iphone.png" width="330" alt=""><figcaption>iPhone сейчас: градиент под часами</figcaption></figure>
+    </div>
+  </section>
+
+  <h2 class="sec">Mac — заголовок окна над кадром</h2>
+  <p class="lead">Кадр приближен и уходит под панель окна: слева светофор и название тренировки, справа кнопки камер. Выберите, как читать название.</p>
+  <div class="grid mac" id="macGrid"></div>
+
+  <h2 class="sec">iPhone — часы и батарея над кадром</h2>
+  <p class="lead">Кадр приближен и уходит под часы. Плашки верхней панели непрозрачные, им затенение не нужно — вопрос только про строку состояния.</p>
+  <div class="grid ios" id="iosGrid"></div>
+</main>
+
+<footer class="pickbar">
+  <span id="what"></span>
+  <input id="comment" placeholder="Комментарий (необязательно): что поправить в выбранном">
+  <button id="save">Сохранить выбор</button>
+  <span id="saved"></span>
+</footer>
+
+<script>
+const BGS = {
+  room:  { label: 'Ваша комната', src: 'shots/room.jpg', aspect: 1844 / 1046, filter: 'none' },
+  night: { label: 'Ночь (ИК)', src: 'shots/room.jpg', aspect: 1844 / 1046, filter: 'grayscale(1) brightness(.42) contrast(1.15)' },
+  demo:  { label: 'Демо-прихожая', src: 'shots/demo.jpg', aspect: 1920 / 1080, filter: 'none' },
+};
+const ZOOMS = { z15: { label: '1,5×', k: 1.5 }, z2: { label: '2×', k: 2 }, z3: { label: '3×', k: 3 } };
+const WINS = { active: { label: 'активно' }, inactive: { label: 'неактивно' } };
+const state = { bg: 'room', zoom: 'z2', win: 'active', mac: null, ios: null };
+
+// Where the window's title ends (108 pt + «Тренировка на понедельник» in 13 pt bold): the app's `titleEnd`.
+const TITLE_END = 293;
+
+/* Eased fade, like the app's `TitleShade.fade`. */
+function eased(from, to, dark, unit = '%') {
+  const stops = [`rgba(0,0,0,${dark}) 0`];
+  for (let i = 0; i <= 6; i++) {
+    const t = i / 6, e = 1 - t * t * (3 - 2 * t);
+    stops.push(`rgba(0,0,0,${(dark * e).toFixed(3)}) ${(from + (to - from) * t).toFixed(1)}${unit}`);
+  }
+  return stops.join(', ');
+}
+
+const MAC = [
+  { id: 'now', name: 'Сейчас: пятно за названием', tag: 'сейчас', current: true,
+    idea: 'Тёмное (72 %) за светофором и названием, плавно гаснет к кнопкам и на 28 pt вниз в кадр. Появляется, только когда кадр заходит под панель.',
+    shade: () => `<div class="shade" style="left:0;top:0;width:${TITLE_END + 152}px;height:80px;
+      background:linear-gradient(to right, ${eased(TITLE_END + 12, TITLE_END + 152, .72, 'px')});
+      -webkit-mask-image:linear-gradient(to bottom, ${eased(36, 80, 1, 'px')})"></div>` },
+  { id: 'M1', name: 'Полоса сверху во всю ширину',
+    idea: 'Ровный градиент по всей ширине камеры: тёмный у верхнего края, прозрачный чуть ниже панели. Как у видео в QuickTime и Фото. Кнопки камер тоже на притемнённом кадре.',
+    cost: 'Дёшево: один градиент.',
+    shade: () => `<div class="shade" style="left:0;top:0;right:0;height:78px;background:linear-gradient(to bottom, rgba(0,0,0,.62), rgba(0,0,0,.42) 45%, rgba(0,0,0,.12) 75%, transparent)"></div>` },
+  { id: 'M2', name: 'Матовая полоса (размытие), резкий край',
+    idea: 'Под всей панелью и чуть ниже кадр размыт и слегка притемнён, размытие ровное до самого низа полосы и обрывается резкой границей. Название читается на размытом фоне, но кадр под панелью виден только цветом.',
+    cost: 'Размытие поверх живого видео: на Mac терпимо, но это постоянная работа GPU.',
+    shade: (p) => frost(p, { height: 70, blur: 16, tint: .30, solid: 1 }) },
+  { id: 'M2b', name: 'Матовая полоса, внизу растворяется',
+    idea: 'Как M2, но размытие ровное только на верхние 80 % полосы (вся панель окна и чуть ниже), а последние 20 % плавно растворяются до полной прозрачности: резкой границы нет.',
+    cost: 'Как у M2: размытие поверх живого видео.',
+    shade: (p) => frost(p, { height: 70, blur: 16, tint: .30, solid: .8 }) },
+  { id: 'M3', name: 'Название в своей стеклянной плашке',
+    idea: 'Никакого затенения кадра. Название и подзаголовок лежат в такой же тёмной стеклянной плашке, как кнопки камер справа. Кадр открыт везде, кроме самой плашки.',
+    cost: 'Своя плашка вокруг системного заголовка — придётся рисовать заголовок самим, а системный скрывать.',
+    shade: () => `<div class="shade" style="left:${100}px;top:7px;width:${TITLE_END - 100 + 16}px;height:38px;border-radius:19px;
+      background:rgba(28,28,30,.55);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);
+      box-shadow:inset 0 0 0 .5px rgba(255,255,255,.22), 0 2px 8px rgba(0,0,0,.2)"></div>` },
+  { id: 'M4', name: 'Под названием чёрная панель, под кнопками кадр',
+    idea: 'Слева панель окна остаётся чёрной, как раньше: светофор и название на чёрном. Кадр заходит под панель только справа, под кнопки камер, переход длинный и мягкий. В самом кадре ниже панели ничего не притемнено.',
+    cost: 'Дёшево: один градиент, только внутри панели.',
+    shade: () => `<div class="shade" style="left:0;top:0;right:0;height:52px;background:linear-gradient(to right, #000 0, #000 ${TITLE_END + 40}px, rgba(0,0,0,.85) ${TITLE_END + 90}px, rgba(0,0,0,.4) ${TITLE_END + 170}px, transparent ${TITLE_END + 260}px)"></div>
+      <div class="shade" style="left:0;top:52px;width:${TITLE_END + 260}px;height:10px;background:linear-gradient(to right, rgba(0,0,0,.35), transparent);-webkit-mask-image:linear-gradient(to bottom,#000,transparent)"></div>` },
+  { id: 'M5', name: 'Без затенения, только тень у текста',
+    idea: 'Кадр под панелью как есть. Название и подзаголовок получают мягкую тёмную тень вокруг букв. Минимум вмешательства, но на белой стене текст всё равно «на кадре».',
+    cost: 'Тень у системного заголовка не задаётся — тоже свой заголовок.',
+    textShadow: true, shade: () => '' },
+  { id: 'M6', name: 'Не заходить под панель вовсе',
+    idea: 'Запасной вариант из вашего сообщения: панель окна всегда чёрная, приближенный кадр обрезается по ней, как было до правки. На Mac кадру больше некуда растягиваться (справа панель, снизу таймлайн).',
+    cost: 'Ничего не стоит: как в 1.7.',
+    cut: true, shade: () => '' },
+];
+
+const IOS = [
+  { id: 'now', name: 'Сейчас: градиент под часами', tag: 'сейчас', current: true,
+    idea: 'Тёмный градиент на высоту строки состояния: 70 % у края, 55 % посередине, прозрачный к верхней панели.',
+    shade: () => `<div class="shade" style="left:0;right:0;top:0;height:62px;background:linear-gradient(to bottom, rgba(0,0,0,.7), rgba(0,0,0,.55) 60%, transparent)"></div>` },
+  { id: 'I1', name: 'Без затенения',
+    idea: 'Кадр под часами как есть. Чисто, но на светлой стене часы и батарея почти не видны.',
+    cost: 'Ничего.', shade: () => '' },
+  { id: 'I2', name: 'Под часами чёрная полоса',
+    idea: 'Строка состояния остаётся чёрной, кадр начинается с верхней панели (мягкий переход 14 pt). Вбок, за панелью и за карточкой кадр заходит, как сейчас.',
+    cost: 'Дёшево.', shade: () => `<div class="shade" style="left:0;right:0;top:0;height:66px;background:linear-gradient(to bottom, #000 0, #000 48px, transparent 66px)"></div>` },
+  { id: 'I3', name: 'Матовая полоса под часами, резкий край',
+    idea: 'Под строкой состояния кадр размыт и притемнён ровно до низа полосы, граница резкая.',
+    cost: 'Размытие поверх живого видео на iPhone дорогое (поэтому карточки у нас непрозрачные).',
+    shade: (p) => frost(p, { height: 66, blur: 14, tint: .28, solid: 1 }) },
+  { id: 'I3b', name: 'Матовая полоса, внизу растворяется',
+    idea: 'Как I3, но размытие ровное только на верхние 80 % полосы, а последние 20 % плавно растворяются до полной прозрачности.',
+    cost: 'Как у I3: размытие поверх живого видео на iPhone дорогое.',
+    shade: (p) => frost(p, { height: 66, blur: 14, tint: .28, solid: .8 }) },
+  { id: 'I4', name: 'Длинный мягкий градиент',
+    idea: 'Слабее у часов, зато тянется ниже — до конца верхней панели: строка состояния и плашки на одной общей тени, без заметной границы.',
+    cost: 'Дёшево.', shade: () => `<div class="shade" style="left:0;right:0;top:0;height:128px;background:linear-gradient(to bottom, rgba(0,0,0,.6), rgba(0,0,0,.42) 40%, rgba(0,0,0,.16) 75%, transparent)"></div>` },
+];
+
+const ICON = {
+  video: '<svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h8A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 3 16.5zM17 10l4-2.5v9L17 14z"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3"/></svg>',
+  shrink: '<svg viewBox="0 0 12 12"><path d="M1 11l4-4M5 9.5V7H2.5M11 1L7 5M7 2.5V5h2.5"/></svg>',
+  doc: '<svg viewBox="0 0 20 20"><path d="M5 2.5h6.5L15.5 6.5v11h-10.5zM11.5 2.5v4h4M8 10h5M8 13h5"/></svg>',
+  dots: '<svg viewBox="0 0 20 20" style="fill:#fff;stroke:none"><circle cx="4.5" cy="10" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="15.5" cy="10" r="1.7"/></svg>',
+  signal: '<svg width="19" height="12" viewBox="0 0 19 12"><rect x="0" y="8" width="3.2" height="4" rx="1"/><rect x="5" y="5.5" width="3.2" height="6.5" rx="1"/><rect x="10" y="3" width="3.2" height="9" rx="1"/><rect x="15" y="0" width="3.2" height="12" rx="1"/></svg>',
+  wifi: '<svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 2.3c2.4 0 4.6.9 6.2 2.5l1.1-1.1C13.9 1.8 11.3.7 8.5.7S3.1 1.8 1.2 3.7l1.1 1.1C3.9 3.2 6.1 2.3 8.5 2.3zm0 3.3c1.5 0 2.9.6 4 1.6l1.1-1.1C12.2 4.8 10.4 4 8.5 4s-3.7.8-5.1 2.1l1.1 1.1c1.1-1 2.5-1.6 4-1.5zm0 3.2c.6 0 1.2.2 1.7.7L8.5 11.2 6.8 9.5c.5-.5 1.1-.7 1.7-.7z"/></svg>',
+  battery: '<svg width="28" height="13" viewBox="0 0 28 13"><rect x=".5" y=".5" width="24" height="12" rx="3.8" fill="none" stroke="#fff" stroke-opacity=".4"/><rect x="2" y="2" width="21" height="9" rx="2.5"/><path d="M26 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill-opacity=".45"/></svg>',
+};
+
+/* The picture as the app frames it: fitted into the area, zoomed round its middle, a little above the middle so it runs up. */
+function macPic(bg, k) {
+  const areaW = 940, areaTop = 52, areaH = 940 / bg.aspect; // the panel leaves the camera the picture's width
+  const pw = areaW * k, ph = pw / bg.aspect;
+  const px = (areaW - pw) / 2;
+  const py = areaTop + (areaH - ph) / 2 + ph * 0.12; // framed a little below the middle (the floor), as owners do
+  return { pw, ph, px, py: Math.min(py, areaTop - 4), src: bg.src, filter: bg.filter };
+}
+function iosPic(bg, k) {
+  const areaW = 416, areaTop = 116, areaH = 560;
+  const fitW = areaW, fitH = areaW / bg.aspect;
+  const pw = fitW * k * 1.9, ph = pw / bg.aspect; // the picture filling the area's height, then zoomed in
+  const px = 12 + (areaW - pw) / 2;
+  const py = areaTop + (areaH - ph) / 2 - ph * 0.04;
+  return { pw, ph, px, py, src: bg.src, filter: bg.filter };
+}
+/* The picture's layer; `pad`: drawn that much past the mock's top-left (a blurred copy reaching past the edges). */
+function picStyle(p, pad = 0) {
+  return `--pw:${p.pw}px;--ph:${p.ph}px;--px:${p.px + pad}px;--py:${p.py + pad}px;background-image:url(${p.src})`;
+}
+/* A frosted band: a blurred copy of the picture under a dark tint, cut by a mask. (The browser ignores a mask on a
+   backdrop-filter, so the first M2/I3 had a hard edge whatever the mask said.) `solid`: the share of the band that is
+   frosted all through; below it the frost fades out to nothing at the band's bottom. */
+function frost(p, { height, blur, tint, solid }) {
+  const pad = blur * 3;
+  const mask = solid >= 1 ? 'none' : `linear-gradient(to bottom, #000 ${Math.round(solid * 100)}%, transparent 100%)`;
+  const filter = `${p.filter === 'none' ? '' : p.filter} blur(${blur}px) saturate(1.3)`;
+  return `<div class="shade" style="left:0;top:0;right:0;height:${height}px;overflow:hidden;-webkit-mask-image:${mask};mask-image:${mask}">
+    <div class="pic" style="inset:-${pad}px;${picStyle(p, pad)};filter:${filter}"></div>
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,${tint})"></div>
+  </div>`;
+}
+
+function macMock(v) {
+  const bg = BGS[state.bg], k = ZOOMS[state.zoom].k, pic = macPic(bg, k);
+  const ts = v.textShadow ? 'text-shadow:0 0 2px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.8),0 1px 14px rgba(0,0,0,.7)' : '';
+  return `<div class="mac-win win-${state.win}">
+    <div class="col">
+      <div class="pic${v.cut ? ' cut' : ''}" style="${picStyle(pic)};filter:${pic.filter}"></div>
+      ${v.shade(pic)}
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="mtitle" style="${ts}"><b>Тренировка на понедельник</b><span>Таня/Андрей · с 10:17</span></div>
+      <div class="glass segs"><span class="on">C302</span><span>C200</span></div>
+      <div class="glass menu">${ICON.video}${ICON.chev}</div>
+      <div class="zpill">${ICON.shrink}${k.toFixed(1).replace('.', ',')}×</div>
+    </div>
+    <div class="panel"><i></i></div>
+  </div>`;
+}
+function iosMock(v) {
+  const bg = BGS[state.bg], k = ZOOMS[state.zoom].k, pic = iosPic(bg, k);
+  return `<div class="phone">
+    <div class="pic${v.cut ? ' cut' : ''}" style="${picStyle(pic)};filter:${pic.filter}"></div>
+    ${v.shade(pic)}
+    <div class="island"></div>
+    <div class="sbar"><span class="clock">9:41</span><span class="right">${ICON.signal}${ICON.wifi}${ICON.battery}</span></div>
+    <div class="tbar">
+      <span class="pill">${ICON.video.replace('<svg', '<svg style="width:16px;height:16px;fill:#fff"')} Прихожая <span class="dot"></span></span>
+      <span class="pill rec"><i></i>REC</span>
+      <span class="spacer"></span>
+      <span class="circ">${ICON.doc}</span><span class="circ">${ICON.dots}</span>
+    </div>
+  </div>`;
+}
+
+function card(v, kind) {
+  const sel = state[kind] === v.id;
+  return `<div class="card${v.current ? ' current' : ''}${sel ? ' sel' : ''}" data-kind="${kind}" data-id="${v.id}">
+    <div class="chead">
+      <div class="cmeta">
+        <div class="cname"><span class="cid">${v.current ? 'сейчас' : v.id}</span><b>${v.name}</b>${v.tag && !v.current ? `<span class="tag">${v.tag}</span>` : ''}</div>
+        <div class="idea">${v.idea}</div>
+        ${v.cost ? `<div class="cost">${v.cost}</div>` : ''}
+      </div>
+      <span class="pick"></span>
+    </div>
+    <div class="scroll"><div class="mocks fit" data-w="${kind === 'mac' ? 1000 : 440}">${kind === 'mac' ? macMock(v) : iosMock(v)}</div></div>
+  </div>`;
+}
+
+function render() {
+  document.getElementById('macGrid').innerHTML = MAC.map((v) => card(v, 'mac')).join('');
+  document.getElementById('iosGrid').innerHTML = IOS.map((v) => card(v, 'ios')).join('');
+  const name = (list, id) => { const v = list.find((x) => x.id === id); return v ? `<b>${v.current ? 'сейчас' : v.id}</b> · ${v.name}` : '—'; };
+  document.getElementById('what').innerHTML = `Mac: ${name(MAC, state.mac)} &nbsp;·&nbsp; iPhone: ${name(IOS, state.ios)}`;
+  fit();
+}
+/* A mock wider than its card is shown smaller (1 pt = 1 px only where it fits). */
+function fit() {
+  document.querySelectorAll('.fit').forEach((m) => {
+    const box = m.parentElement, w = Number(m.dataset.w), h = m.firstElementChild.offsetHeight;
+    const k = Math.min(1, box.clientWidth / w);
+    m.style.transform = k < 1 ? `scale(${k})` : '';
+    box.style.height = `${h * k}px`;
+  });
+}
+addEventListener('resize', fit);
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('.card'); if (!c) return;
+  const kind = c.dataset.kind;
+  state[kind] = state[kind] === c.dataset.id ? null : c.dataset.id;
+  render();
+});
+function segmented(id, options, key) {
+  const el = document.getElementById(id);
+  el.innerHTML = Object.entries(options).map(([k, o]) => `<button data-k="${k}" class="${state[key] === k ? 'on' : ''}">${o.label}</button>`).join('');
+  el.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    state[key] = b.dataset.k;
+    el.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    render();
+  };
+}
+segmented('bgSeg', BGS, 'bg');
+segmented('zoomSeg', ZOOMS, 'zoom');
+segmented('winSeg', WINS, 'win');
+render();
+
+const saved = document.getElementById('saved');
+document.getElementById('save').onclick = async () => {
+  saved.className = '';
+  const nameOf = (list, id) => list.find((x) => x.id === id)?.name ?? null;
+  const payload = { page: 'shade', mac: state.mac, macName: nameOf(MAC, state.mac), iphone: state.ios, iphoneName: nameOf(IOS, state.ios),
+    background: state.bg, zoom: state.zoom, comment: document.getElementById('comment').value.trim() };
+  try {
+    const r = await fetch('choice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!r.ok) throw new Error(r.status);
+    saved.textContent = 'Сохранено. Напишите мне «выбрал».';
+  } catch (e) { saved.className = 'err'; saved.textContent = 'Не сохранилось: ' + e.message; }
+};
+</script>
+</body>
+</html>
