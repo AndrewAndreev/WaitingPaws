@@ -56,7 +56,7 @@ if [[ $WHAT == all || $WHAT == ios ]]; then
   xcrun simctl status_bar $SIM override --time 9:41 --batteryState discharging --batteryLevel 100 \
     --wifiBars 3 --cellularMode active --cellularBars 4 --operatorName ""
   DATA=$(xcrun simctl get_app_container $SIM su.comrade.waitingpaws data)
-  mkdir -p $DATA/tmp && cp Tools/demo-camera.jpg $DATA/tmp/
+  mkdir -p $DATA/tmp && cp Tools/demo-camera.jpg Tools/demo-camera-kitchen.jpg $DATA/tmp/
 
   ios() { # ios <lang> <name> [args…]
     local lang=$1 name=$2; shift 2

@@ -60,6 +60,15 @@ enum DemoData {
         return NSImageOrUIImage(contentsOfFile: String(argument.dropFirst("--demo-camera=".count)))
     }()
 
+    /// The second demo camera's still («Кухня» in the camera list): `<name>-kitchen.<ext>` next to the
+    /// `--demo-camera` picture (Tools/demo-camera-kitchen.jpg), when it was copied along.
+    static let kitchenImage: NSImageOrUIImage? = {
+        guard let argument = CommandLine.arguments.first(where: { $0.hasPrefix("--demo-camera=") }) else { return nil }
+        let hall = URL(fileURLWithPath: String(argument.dropFirst("--demo-camera=".count)))
+        let kitchen = hall.deletingPathExtension().path + "-kitchen." + hall.pathExtension
+        return NSImageOrUIImage(contentsOfFile: kitchen)
+    }()
+
     /// `--demo-stopwatch <seconds>`: the iPhone card's stopwatch (a tap on the big number) started that long ago.
     static let stopwatchSeconds: TimeInterval? = {
         let arguments = CommandLine.arguments

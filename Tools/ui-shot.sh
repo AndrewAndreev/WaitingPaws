@@ -4,7 +4,7 @@
 #   DEMO_CAMERA=1 Tools/ui-shot.sh /tmp/console.png "Waiting Paws" --demo-plan
 # Launches this checkout's Debug build as a separate instance in the background (`open -n -g`, no focus
 # stealing) with --ui-preview (no go2rtc, no iPhone link, temp history). DEMO_CAMERA=1 adds a still
-# camera picture (Tools/demo-camera.jpg, copied into the app's sandbox). Every window of THAT process is
+# camera picture (Tools/demo-camera.jpg and its kitchen pair, copied into the app's sandbox). Every window of THAT process is
 # captured window-only (no other apps in the picture): the one whose title contains <title> → <out>.png,
 # the others (sheets, panels) → <out>-2.png, -3…; then the instance quits. App log: /tmp/wp-ui-shot.log.
 set -e
@@ -23,7 +23,7 @@ if [[ -n "$DEMO_CAMERA" ]]; then
   else
     PICTURE_DIR=/tmp/wp-ui-shot
   fi
-  mkdir -p $PICTURE_DIR && cp Tools/demo-camera.jpg $PICTURE_DIR/demo-camera.jpg
+  mkdir -p $PICTURE_DIR && cp Tools/demo-camera.jpg Tools/demo-camera-kitchen.jpg $PICTURE_DIR/
   EXTRA=(--demo-camera=$PICTURE_DIR/demo-camera.jpg)
 fi
 pkill -f "$BUNDLE/Contents/MacOS/WaitingPaws" 2>/dev/null && sleep 1 || true

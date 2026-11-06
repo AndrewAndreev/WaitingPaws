@@ -184,7 +184,7 @@ enum SetupDemo {
         ]
     }
 
-    /// Stills: the `--demo-camera` picture for the hall (and, mirrored, the kitchen preview), colour bars for
+    /// Stills: the `--demo-camera` picture for the hall (and its kitchen pair for the kitchen preview), colour bars for
     /// the RTSP stream, a preview on its way for the nursery, nothing (offline) for the balcony and the dacha.
     @MainActor
     static func still(for source: SetupStillSource) -> SetupStillStore.State {
@@ -207,9 +207,11 @@ enum SetupDemo {
     @MainActor
     static func still(for stream: String) -> SetupStillStore.State { still(for: .stream(stream)) }
 
-    /// The demo camera picture mirrored and closer: looks like another room.
+    /// The kitchen's own still (Tools/demo-camera-kitchen.jpg next to the hall picture). Without it, the hall
+    /// picture mirrored and closer, which looks like another room but shows the timestamp backwards.
     @MainActor
     private static let kitchenPreview: PlatformImage? = {
+        if let kitchen = DemoData.kitchenImage { return kitchen }
         guard let image = DemoData.cameraImage else { return nil }
         #if os(macOS)
         let size = NSSize(width: 960, height: 540)
