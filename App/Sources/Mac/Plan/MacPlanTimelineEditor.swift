@@ -4,20 +4,23 @@ import SwiftUI
 import WaitingPawsCore
 
 /// The plan on the «Пульт» timeline before the start (A6). Drawn like the live «план и факт» timeline:
-/// pink exits, blue breaks, a ruler with major grid lines, «Факт» and «Запись» lanes under the plan.
-/// Edited with the mouse: drag the right edge of an exit or a break (by the second, ⇧ — 5 s grid; everything after it moves,
+/// pink exits, blue breaks, a ruler with major grid lines; only the plan's lane — «Факт» and «Запись» start with the
+/// training. Edited with the mouse: the resize pointer and a grip on an edge say it can be dragged — the right edge of
+/// an exit or a break (by the second, ⇧ — 5 s grid; everything after it moves,
 /// a changed break becomes the exit's own break); zoom with a pinch, ⌥-scroll, ⌘−/⌘+ or «По ширине»;
-/// scroll sideways when zoomed in, or click/drag the overview strip.
+/// scroll sideways when zoomed in, or click/drag the overview strip. A block under the pointer lights its lines in the
+/// trainer's text on the panel (and its tip quotes them); a line under the pointer there lights its block.
 struct MacPlanTimelineEditor: View {
     @Binding var plan: TrainingPlan
     /// The plan as the trainer sent it («Как у тренера»), nil when unknown.
     var original: TrainingPlan?
+    /// What the pointer is over, here or in the trainer's text.
+    @Binding var pointer: MacPlanPointer?
 
-    @Environment(AppModel.self) private var model
-
-    init(plan: Binding<TrainingPlan>, original: TrainingPlan?) {
+    init(plan: Binding<TrainingPlan>, original: TrainingPlan?, pointer: Binding<MacPlanPointer?> = .constant(nil)) {
         _plan = plan
         self.original = original
+        _pointer = pointer
     }
 
     /// Right edge of one block: the exit at `index` or the break after it.
@@ -57,18 +60,16 @@ struct MacPlanTimelineEditor: View {
     private let inset: CGFloat = 12
     private let planTop: CGFloat = 30
     private let planHeight: CGFloat = 46
-    private let factHeight: CGFloat = 22
-    private let recordHeight: CGFloat = 14
-    private let laneGap: CGFloat = 10
     private let footerHeight: CGFloat = 24
     private static let zoomSteps: [CGFloat] = [1, 1.5, 2, 3, 4, 6, 8, 12]
     private static let snap: TimeInterval = 5
 
-    private var factTop: CGFloat { planTop + planHeight + laneGap }
-    private var recordTop: CGFloat { factTop + factHeight + laneGap }
+    /// Where the lanes end: before the start there is only the plan («Факт» and «Запись» begin with it, on the
+    /// session's timeline).
+    private var lanesBottom: CGFloat { planTop + planHeight }
 
     /// Room after the plan for the finish flag and its time.
-    private let trailingRoom: CGFloat = 72
+    private let trailingRoom: CGFloat = 100
 
     /// Seconds that fit the width at 100 %: the longer of the two plans.
     private var fitSpan: TimeInterval {
@@ -130,40 +131,23 @@ struct MacPlanTimelineEditor: View {
 
     private var header: some View {
         HStack(spacing: 12) {
+            // «План» alone: its length is the card's «≈ 25 мин» and the flag at the plan's end.
             Text("План").font(.headline)
-            Text("\(MacPlanFormat.exits(plan.exits.count)) · \(MacPlanFormat.approx(plan.estimatedDuration))")
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .fixedSize()
             if let original, differs(from: original) {
                 deviation(from: original)
             }
             Spacer(minLength: 12)
-            ViewThatFits(in: .horizontal) {
-                hint(String(localized: "Тяните край блока, чтобы изменить длительность (⇧ — по 5 с)"))
-                hint(String(localized: "Тяните край блока"))
-                Color.clear.frame(width: 0, height: 0)
-            }
-            Divider().frame(height: 16)
             zoomControls
         }
         .padding(.horizontal, 14)
         .frame(height: 38)
     }
 
-    private func hint(_ text: String) -> some View {
-        Label(text, systemImage: "arrow.left.and.right")
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .fixedSize()
-    }
-
-    /// «+0:30 к плану тренера» and «Как у тренера».
+    /// «+0:30» and «↶ Как у тренера» beside it, which says what it is counted from.
     private func deviation(from original: TrainingPlan) -> some View {
         let delta = plan.estimatedDuration - original.estimatedDuration
         return HStack(spacing: 8) {
-            Text(delta == 0 ? "изменён" : "\(MacPlanFormat.signed(delta)) к плану тренера")
+            Text(delta == 0 ? String(localized: "изменён") : MacPlanFormat.signed(delta))
                 .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(MacPalette.pink)
                 .padding(.horizontal, 8)
@@ -227,40 +211,12 @@ struct MacPlanTimelineEditor: View {
 
     // MARK: Footer
 
-    /// Zoomed in: the whole plan in miniature with the visible part framed (click or drag to scroll).
-    /// At 100 %: what the colours mean.
+    /// Zoomed in: the whole plan in miniature with the visible part framed (click or drag to scroll). At 100 %
+    /// nothing: the blocks say what they are.
     @ViewBuilder
     private var footer: some View {
         if zoom > 1.001, viewport > 0 {
             overview
-        } else {
-            HStack(spacing: 14) {
-                legend(MacPalette.pink.opacity(0.85), String(localized: "выход"))
-                legend(MacPalette.blue.opacity(0.35), String(localized: "перерыв"))
-                legend(MacPalette.blue.opacity(0.5), String(localized: "свой перерыв"), stroke: true)
-                if original != nil {
-                    HStack(spacing: 5) {
-                        Circle().fill(.white).frame(width: 5, height: 5)
-                        Text("изменено относительно тренера")
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .padding(.leading, inset)
-            .padding(.bottom, 4)
-        }
-    }
-
-    private func legend(_ color: Color, _ text: String, stroke: Bool = false) -> some View {
-        HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(color)
-                .strokeBorder(stroke ? MacPalette.blue.opacity(0.9) : .clear, lineWidth: 1)
-                .frame(width: 12, height: 8)
-            Text(text)
         }
     }
 
@@ -307,8 +263,6 @@ struct MacPlanTimelineEditor: View {
     private var laneTitles: some View {
         ZStack(alignment: .topLeading) {
             laneTitle(String(localized: "План"), top: planTop, height: planHeight)
-            laneTitle(String(localized: "Факт"), top: factTop, height: factHeight)
-            laneTitle(String(localized: "Запись"), top: recordTop, height: recordHeight)
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .padding(.leading, 14)
@@ -328,23 +282,13 @@ struct MacPlanTimelineEditor: View {
         let total = plan.estimatedDuration
         let active = drag?.edge ?? staged
         let full = contentWidth(width)
-        let record = model.settings.autoRecord
-        // Captions in the empty lanes stay at the visible left edge while scrolling.
-        let sticky = min(max(0, offset - inset), max(0, total * pps - 210))
         return ZStack(alignment: .topLeading) {
             ruler(pps: pps, total: total)
             ForEach(blocks) { block in
-                blockView(block, pps: pps, active: active == block.edge, hovered: hovered == block.edge)
+                blockView(block, pps: pps, active: active == block.edge,
+                          hovered: hovered == block.edge || isPointed(block))
                     .offset(x: inset + block.start * pps, y: planTop)
             }
-            emptyLane(text: String(localized: "появится после старта"), tint: .secondary, width: total * pps,
-                      height: factHeight, sticky: sticky)
-                .offset(x: inset, y: factTop)
-            emptyLane(text: record ? String(localized: "REC · начнётся со стартом")
-                                     : String(localized: "без записи — включите «Записывать видео»"),
-                      tint: record ? MacPalette.red : .secondary,
-                      width: total * pps, height: recordHeight, sticky: sticky, filled: record)
-                .offset(x: inset, y: recordTop)
             ForEach(blocks) { block in
                 handle(block, pps: pps, active: active == block.edge)
                     .offset(x: inset + block.end * pps - 7, y: planTop)
@@ -378,7 +322,7 @@ struct MacPlanTimelineEditor: View {
                     context.stroke(grid, with: .color(.white.opacity(0.05)), lineWidth: 1)
                     // «+12:40» as in the review table — a bare «17:00» would read as a clock time.
                     // The finish time wins where the two would overlap.
-                    if x < end - 46 || x > end + 64 {
+                    if x < end - 46 || x > end + 100 {
                         let text = t == 0 ? String(localized: "старт") : "+" + DurationText.clock(t)
                         context.draw(Text(text).font(.system(size: 10).monospacedDigit()).foregroundStyle(.secondary),
                                      at: CGPoint(x: x + 3, y: 7), anchor: .leading)
@@ -389,9 +333,9 @@ struct MacPlanTimelineEditor: View {
             // Finish: where the plan ends if nothing drifts.
             var flag = Path()
             flag.move(to: CGPoint(x: end, y: 2))
-            flag.addLine(to: CGPoint(x: end, y: recordTop + recordHeight))
+            flag.addLine(to: CGPoint(x: end, y: lanesBottom))
             context.stroke(flag, with: .color(MacPalette.green.opacity(0.9)), lineWidth: 1.5)
-            context.draw(Text("\(Image(systemName: "flag.checkered")) \(DurationText.clock(total))")
+            context.draw(Text("\(Image(systemName: "flag.checkered")) \(DurationText.short(total))")
                             .font(.system(size: 10, weight: .semibold).monospacedDigit())
                             .foregroundStyle(MacPalette.green),
                          at: CGPoint(x: end + 4, y: 8), anchor: .leading)
@@ -425,8 +369,16 @@ struct MacPlanTimelineEditor: View {
                 Circle().fill(.white).frame(width: 5, height: 5).padding(4)
             }
         }
+        .overlay {
+            // Its lines are under the pointer in the trainer's text.
+            if isPointed(block), !active { shape.strokeBorder(.white.opacity(0.6), lineWidth: 1) }
+        }
         .frame(width: width, height: planHeight)
-        .help(block.help)
+        .onHover { inside in
+            let target = block.pointer
+            if inside { pointer = target } else if pointer == target { pointer = nil }
+        }
+        .help(block.source.map { "\(block.help)\n\($0)" } ?? block.help)
         .contextMenu { blockMenu(block) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(block.help)
@@ -462,44 +414,40 @@ struct MacPlanTimelineEditor: View {
                     Image(systemName: "figure.stand").font(.system(size: 9, weight: .bold))
                 }
             }
-            if width >= 34 {
-                Text(DurationText.clock(block.duration)).font(.system(size: 10, weight: .medium).monospacedDigit())
+            // «2 мин 30 с» where it fits, else the number alone.
+            ViewThatFits(in: .horizontal) {
+                Text(MacPlanFormat.cell(block.duration)).font(.system(size: 10, weight: .medium).monospacedDigit())
+                    .fixedSize()
+                Color.clear.frame(width: 0, height: 0)
             }
         }
         .foregroundStyle(.black.opacity(0.75))
-        .fixedSize()
+        .frame(width: max(0, width - 6))
         .opacity(width >= 11 ? 1 : 0)
     }
 
+    /// «⏸ 2 мин»; a break of its own says whose it is, as the review's «Перерыв после» column and its header do:
+    /// «⏸ Свой перерыв: после 6-го — 5 мин», shorter where the block is narrower (GPT, round 8: «перерыв 5 мин» at an
+    /// exit didn't say whether it came before it or after).
+    /// «⏸ 5 мин» on a break of the exit's own (its blue and rim say whose); the common breaks, all alike, carry no
+    /// words — their length is in the header's menu and the pointer's tip.
+    @ViewBuilder
     private func pauseLabel(_ block: Block, width: CGFloat) -> some View {
-        HStack(spacing: 3) {
-            Image(systemName: "pause.fill").font(.system(size: 7))
-            Text(MacPlanFormat.cell(block.duration))
-            if block.own, width >= 96 { Text("· свой").fontWeight(.regular) }
+        if block.own {
+            pauseText(MacPlanFormat.cell(block.duration), own: true)
+                .frame(width: max(0, width - 10))
+                .opacity(width >= 48 ? 1 : 0)
         }
-        .font(.system(size: 10, weight: .semibold).monospacedDigit())
-        .foregroundStyle(block.own ? AnyShapeStyle(MacPalette.blue) : AnyShapeStyle(.secondary))
-        .fixedSize()
-        .opacity(width >= 48 ? 1 : 0)
     }
 
-    private func emptyLane(text: String, tint: Color, width: CGFloat, height: CGFloat, sticky: CGFloat,
-                           filled: Bool = false) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 3, style: .continuous)
-        return shape
-            .fill(tint.opacity(filled ? 0.12 : 0))
-            .overlay { shape.strokeBorder(tint.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [3, 3])) }
-            .overlay(alignment: .leading) {
-                Text(text)
-                    .font(.system(size: height < 20 ? 9 : 10, weight: .medium))
-                    .foregroundStyle(tint.opacity(0.85))
-                    .fixedSize()
-                    .padding(.leading, 8)
-                    .offset(x: sticky)
-            }
-            .frame(width: max(2, width), height: height)
-            .clipped()
-            .allowsHitTesting(false)
+    private func pauseText(_ text: String, own: Bool) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: "pause.fill").font(.system(size: 7))
+            Text(text)
+        }
+        .font(.system(size: 10, weight: .semibold).monospacedDigit())
+        .foregroundStyle(own ? AnyShapeStyle(MacPalette.blue) : AnyShapeStyle(.secondary))
+        .fixedSize()
     }
 
     /// 14 pt grab zone on the right edge: a white grip on hover, resize pointer, drag to change the duration.
@@ -550,7 +498,7 @@ struct MacPlanTimelineEditor: View {
         return ZStack(alignment: .topLeading) {
             Rectangle()
                 .fill(.white.opacity(0.85))
-                .frame(width: 1, height: recordTop + recordHeight + 4 - 24)
+                .frame(width: 1, height: lanesBottom + 4 - 24)
                 .offset(x: x - 0.5, y: 24)
             tooltip(block)
                 .frame(width: tipWidth)
@@ -565,7 +513,7 @@ struct MacPlanTimelineEditor: View {
             : String(localized: "Перерыв после \(block.number)")
         let reference = block.original ?? (drag?.edge == block.edge ? drag?.startValue : nil)
         let delta = reference.map { block.duration - $0 } ?? 0
-        let value = Text(DurationText.clock(block.duration)).fontWeight(.bold)
+        let value = Text(MacPlanFormat.cell(block.duration)).fontWeight(.bold)
         let change = Text(delta == 0 ? "" : " (\(MacPlanFormat.signed(delta)))").foregroundStyle(.black.opacity(0.55))
         let own = Text(block.edge.kind == .pause && block.own ? " · свой" : "").foregroundStyle(.black.opacity(0.55))
         return Text("\(name) · \(value)\(change)\(own)")
@@ -576,6 +524,13 @@ struct MacPlanTimelineEditor: View {
             .frame(height: 20)
             .background(.white, in: Capsule())
             .shadow(color: .black.opacity(0.35), radius: 4, y: 1)
+    }
+
+    /// The block's lines are under the pointer in the trainer's text (a common break: «Все перерывы…»).
+    private func isPointed(_ block: Block) -> Bool {
+        guard let pointer else { return false }
+        if pointer == block.pointer { return true }
+        return pointer == .commonBreak && block.edge.kind == .pause && !block.own
     }
 
     // MARK: Editing
@@ -694,8 +649,12 @@ struct MacPlanTimelineEditor: View {
         let number: Int
         let own: Bool
         let untilStanding: Bool
+        let exitID: UUID
+        /// The trainer's words it came from: the exit's line and those under it, its own break's, «Все перерывы…».
+        let source: String?
 
         var id: BlockEdge { edge }
+        var pointer: MacPlanPointer { edge.kind == .exit ? .exit(exitID) : .breakAfter(exitID) }
         var end: TimeInterval { start + duration }
         var changed: Bool { original.map { $0 != duration } ?? false }
 
@@ -720,17 +679,26 @@ struct MacPlanTimelineEditor: View {
     private var blocks: [Block] {
         var t: TimeInterval = 0
         var result: [Block] = []
+        let lines = MacSourceLine.lines(plan.rawText)
+        let link = MacPlanTextLink(plan: plan, lines: lines)
+        func words(_ pointer: MacPlanPointer) -> String? {
+            let ids = MacSourceLine.ids(of: pointer, in: lines, ordinals: link.ordinals)
+            let text = lines.filter { ids.contains($0.id) }.map { PlanParser.stripDecorations($0.text) }
+            return text.isEmpty ? nil : text.joined(separator: "\n")
+        }
         for (index, exit) in plan.exits.enumerated() {
             let source = original?.exits.firstIndex { $0.id == exit.id }
             result.append(Block(edge: BlockEdge(index: index, kind: .exit), start: t, duration: exit.duration,
                                 original: source.map { original!.exits[$0].duration }, number: exit.number,
-                                own: false, untilStanding: exit.endsWhenStanding))
+                                own: false, untilStanding: exit.endsWhenStanding, exitID: exit.id,
+                                source: words(.exit(exit.id))))
             t += exit.duration
             if index < plan.exits.count - 1 {
                 let pause = plan.breakAfter(exitAt: index)
                 result.append(Block(edge: BlockEdge(index: index, kind: .pause), start: t, duration: pause,
                                     original: source.map { original!.breakAfter(exitAt: $0) }, number: exit.number,
-                                    own: exit.breakAfter != nil, untilStanding: false))
+                                    own: exit.breakAfter != nil, untilStanding: false, exitID: exit.id,
+                                    source: words(.breakAfter(exit.id))))
                 t += pause
             }
         }

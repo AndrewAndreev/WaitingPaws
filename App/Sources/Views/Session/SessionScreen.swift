@@ -5,6 +5,8 @@ import WaitingPawsCore
 struct SessionScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
+    /// The system's text size, before the top bar caps its own at xxxLarge.
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     @State private var showPlanInput = false
     @State private var showHistory = false
@@ -25,10 +27,14 @@ struct SessionScreen: View {
     @State private var cameraOnly = false
     /// The trainer's text in a drawer over the training screen (the camera stays as it is).
     @State private var showTrainerText = false
-    /// The exit's details open above the card (`SessionHUD`).
-    @State private var showDetails = false
     /// «Остановить запись?»: a stop by mistake cut many recordings short.
     @State private var confirmStopRecording = false
+    /// Each camera's zoom: the owner frames the picture, it is remembered per camera (`AppSettings.cameraFraming`).
+    @State private var firstZoom = ZoomState(remembers: true)
+    @State private var secondZoom = ZoomState(remembers: true)
+    /// What each camera's player is doing: shown over the part of the picture on screen, unzoomed.
+    @State private var firstStatus = CameraStatus()
+    @State private var secondStatus = CameraStatus()
 
     var body: some View {
         @Bindable var model = model
@@ -46,9 +52,17 @@ struct SessionScreen: View {
             let edge: CGFloat = clipMode ? 0 : 12
             // Display Zoom on a small iPhone (320 pt), a phone on its side: the bar is under ~330 pt.
             let narrowBar = (wide ? min(420, geometry.size.width * 0.45) : geometry.size.width - 24) < 326
-            // A drawer is open (the trainer's text, the exit's details): one layer under it over the rest of the
-            // screen closes it on a tap and presses nothing. It dims the bar and the card, not the camera.
-            let veiled = (showTrainerText || showDetails) && model.session != nil && !clipMode
+            // The trainer's text is open: one layer under it over the rest of the screen closes it on a tap and presses
+            // nothing. It dims the bar and the card, not the camera.
+            let veiled = showTrainerText && model.session != nil && !clipMode
+            // Upright, the camera takes the whole area between the bar and the card: the picture fits in it (in the
+            // middle, nothing cropped) and the owner zooms it in to fill it (`ZoomableView`). The card is one height
+            // in every phase — at every text size (`SessionReadout`) — so the picture stays put through a whole
+            // training; only the trainer's text moves it: the area is then the picture's own height under the bar,
+            // above the drawer.
+            let pictureHeight = (geometry.size.width - 2 * edge) / cameraAspect
+            let fillsArea = !wide && !clipMode && !hasNoCamera
+            let underBar = fillsArea && showTrainerText
             layout {
                 if !wide {
                     topBar(narrow: narrowBar)
@@ -65,15 +79,23 @@ struct SessionScreen: View {
                             .overlay { if veiled { ModalVeil(onClose: closeDrawers).padding(.vertical, -5) } }
                     }
                 }
-                cameraArea
+                cameraArea(clipMode: clipMode)
                     .overlay(alignment: .top) {
                         if wide && clipMode { topBar(narrow: narrowBar).padding(12).transition(.opacity) }
                     }
                     .overlay(alignment: .bottom) { clipOverlay(clipMode) }
-                    .overlay(alignment: .bottomTrailing) { cameraCorner(clipMode) }
+                    // Otherwise on the picture itself (`cameraArea`).
+                    .overlay(alignment: .bottomTrailing) { if clipMode { cameraCorner(clipMode) } }
                     .padding(.horizontal, wide ? 0 : edge)
                     // Over the gaps to the bar and the card too: a tap there closes the drawer as well.
                     .overlay { if veiled { ModalVeil(dims: false, onClose: closeDrawers).padding(.vertical, wide ? 0 : -10) } }
+                    .frame(maxHeight: underBar ? pictureHeight : .infinity)
+                    // Upright, the card is laid out first and the camera takes what is left.
+                    .layoutPriority(fillsArea && !underBar ? -1 : 1)
+                if underBar {
+                    Spacer(minLength: 0)
+                        .overlay { if veiled { ModalVeil(dims: false, onClose: closeDrawers) } }
+                }
                 if !clipMode {
                     if wide {
                         VStack(spacing: 12) {
@@ -81,7 +103,10 @@ struct SessionScreen: View {
                                 .overlay { if veiled { ModalVeil(onClose: closeDrawers).padding(-6) } }
                             if model.performance.isRunning { performanceBar }
                             Spacer(minLength: 0)
-                            bottomContent(compact: false)
+                            // Offered the column's height first: the card fits it, scrolling its middle if it must
+                            // (`SessionReadout`); smaller numbers on a short screen (a small iPhone on its side).
+                            bottomContent(compact: geometry.size.height < 500)
+                                .layoutPriority(1)
                         }
                         .frame(width: min(420, geometry.size.width * 0.45))
                         .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -129,7 +154,6 @@ struct SessionScreen: View {
                 cameraOnly = false
             } else {
                 showTrainerText = false
-                showDetails = false
                 // Ended elsewhere (on the linked Mac, or the last break ran out): these would act on no training, and
                 // «Отменить без сохранения» would delete a recording started after it.
                 confirmFinish = false
@@ -175,14 +199,15 @@ struct SessionScreen: View {
             if CommandLine.arguments.contains("--demo-confirm-stop") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { confirmStopRecording = model.isRecordingNow }
             }
-            // `--demo-details`: the exit's details open above the card.
-            if CommandLine.arguments.contains("--demo-details") { showDetails = true }
             if CommandLine.arguments.contains("--demo-trainer-text") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { showTrainerText = true }
             }
             if CommandLine.arguments.contains("--demo-pan-tilt") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { model.panTilt.start() }
             }
+            #if os(iOS)
+            if DemoData.cameraImage != nil { applyDemoCamera() }
+            #endif
             #endif
         }
         .sheet(isPresented: $showPlanInput) {
@@ -286,13 +311,43 @@ struct SessionScreen: View {
         .onChange(of: model.isRecordingNow) { _, recording in if !recording { confirmStopRecording = false } }
     }
 
-    /// A tap on the layer under the trainer's text or the exit's details.
+    /// A tap on the layer under the trainer's text.
     private func closeDrawers() {
-        withAnimation(.smooth(duration: 0.3)) {
-            showTrainerText = false
-            showDetails = false
+        withAnimation(.smooth(duration: 0.3)) { showTrainerText = false }
+    }
+
+    #if DEBUG && os(iOS)
+    /// The demo picture plays (no player reports it). `--demo-stream=stalled|reconnecting|failed`: the shown camera's
+    /// frame stopped 12 s ago, `connecting`: no frame yet. `--demo-zoom=<scale>[@x,y]` (or `fill`): the shown camera
+    /// framed so — and remembered, as a pinch would leave it (relaunch without it to see it kept); `in`: as after a press
+    /// on «Приблизить». One argument each, as on the Mac.
+    private func applyDemoCamera() {
+        let argument = { (prefix: String) in
+            CommandLine.arguments.first(where: { $0.hasPrefix(prefix) }).map { String($0.dropFirst(prefix.count)) }
+        }
+        let second = model.isShowingSecondCamera
+        firstStatus.demo(.playing, age: nil)
+        secondStatus.demo(.playing, age: nil)
+        let status = second ? secondStatus : firstStatus
+        switch argument("--demo-stream=") {
+        case "stalled": status.demo(.stalled, age: 12)
+        case "reconnecting": status.demo(.connecting, age: 12)
+        case "failed": status.demo(.failed(String(localized: "нет ответа")), age: 12)
+        case "connecting": status.demo(.connecting, age: nil)
+        default: break
+        }
+        guard let raw = argument("--demo-zoom=") else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            let zoom = second ? secondZoom : firstZoom
+            // `in`: a press on «Приблизить».
+            if raw == "in" { return zoom.toggleZoomIn() }
+            let parts = raw.split(separator: "@")
+            let point = parts.count > 1 ? parts[1].split(separator: ",").compactMap { Double($0) } : []
+            let scale = parts.first == "fill" ? zoom.fillScale : CGFloat(Double(parts.first ?? "") ?? 2)
+            zoom.frame(scale: scale, x: point.count == 2 ? point[0] : 0.5, y: point.count == 2 ? point[1] : 0.5)
         }
     }
+    #endif
 
     /// The paste screen opens empty. DEBUG `--demo-parse` with `-demoPlanText <text>`: that text, already parsed
     /// (screenshots).
@@ -306,18 +361,46 @@ struct SessionScreen: View {
 
     // MARK: - Camera
 
+    /// The picture in the area it has: pinch, drag and double tap frame it, per camera (both cameras keep their own
+    /// framing, across launches). Over the part of it on screen, unzoomed: the stream's state, the turning frame and,
+    /// outside «Только камера», the corner buttons.
     @ViewBuilder
-    private var cameraArea: some View {
+    private func cameraArea(clipMode: Bool) -> some View {
         if hasNoCamera {
             // Not inside the zoom view: its content takes no touches, and «Подключить камеру…» needs them.
             NoCameraView(onConnect: { showCameraSetup = true })
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ZoomableView { camera }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black)
-                .overlay { if model.panTilt.isActive && model.canPanTilt { PanTiltFrame().transition(.opacity) } }
+            let second = model.isShowingSecondCamera
+            // In a training the way back to the whole picture is the corner's `CameraZoomButton`, not a pill at the top.
+            ZoomableView(zoom: second ? secondZoom : firstZoom, aspect: cameraAspect,
+                         showsZoomPill: !(model.session != nil && !clipMode)) {
+                camera
+            } chrome: {
+                if showsStreamStatus {
+                    // «Нет кадра 18 с» alone: REC in the bar says the recording goes on.
+                    CameraStatusOverlay(status: second ? secondStatus : firstStatus, showsRecording: false)
+                }
+                if model.panTilt.isActive && model.canPanTilt { PanTiltFrame().transition(.opacity) }
+                if !clipMode {
+                    cameraCorner(clipMode)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black)
+            .modifier(RememberedFraming(zoom: firstZoom, camera: model.activeStreamName, settings: model.settings))
+            .modifier(RememberedFraming(zoom: secondZoom, camera: model.activeSecondStreamName, settings: model.settings))
         }
+    }
+
+    /// The live player is on screen (not a placeholder): its state is worth showing.
+    private var showsStreamStatus: Bool {
+        #if DEBUG && os(iOS)
+        if DemoData.cameraImage != nil { return true }
+        #endif
+        if !model.isLinkedToMac, model.settings.connectionMode == .embedded, !model.embedded.status.isRunning { return false }
+        return model.activeServer != nil && !model.activeStreamName.isEmpty
     }
 
     @ViewBuilder
@@ -337,32 +420,47 @@ struct SessionScreen: View {
         }
     }
 
-    /// The picture's bottom-right corner: «повернуть камеру» and «на весь экран» — or, while turning, the pad. Above
-    /// the floating panel when the picture takes the screen.
-    @ViewBuilder
+    /// The picture's bottom-right corner: ✥ «Повернуть камеру» and ⤢ «Только камера» before a training (and after it),
+    /// 🔍 «Приблизить» ↔ «Весь кадр» during one — signs alone, their words for VoiceOver and the Large Content Viewer
+    /// (`CameraCornerButton`): words there lay over the dog — or, while turning, the pad. Above the floating panel when
+    /// the picture takes the screen. The buttons are 40 pt with 2 pt of touch round them (44 pt), 12 pt from the
+    /// picture's edges.
     private func cameraCorner(_ clipMode: Bool) -> some View {
+        cameraCornerButtons(clipMode)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+    }
+
+    @ViewBuilder
+    private func cameraCornerButtons(_ clipMode: Bool) -> some View {
         let turning = model.panTilt.isActive && model.canPanTilt
         let canExpand = !clipMode && model.session == nil && !hasNoCamera
+        // In a training: closer (the camera's remembered framing) or all of the picture — always there.
+        let framing = !clipMode && model.session != nil && !hasNoCamera
         Group {
             if turning {
                 PanTiltPad(diameter: 132)
                     .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottomTrailing)))
-            } else if model.canPanTilt || canExpand {
-                HStack(spacing: 8) {
+            } else if model.canPanTilt || canExpand || framing {
+                HStack(spacing: 4) {
                     if model.canPanTilt {
-                        CornerButton(systemImage: "arrow.up.and.down.and.arrow.left.and.right",
-                                     label: String(localized: "Повернуть камеру")) {
+                        CameraCornerButton(systemImage: "arrow.up.and.down.and.arrow.left.and.right",
+                                           title: String(localized: "Повернуть камеру"), showsTitle: false) {
                             withAnimation(.smooth(duration: 0.25)) { model.panTilt.start() }
                         }
                     }
                     if canExpand {
-                        CornerButton(systemImage: "arrow.up.left.and.arrow.down.right",
-                                     label: String(localized: "Только камера")) {
+                        CameraCornerButton(systemImage: "arrow.up.left.and.arrow.down.right",
+                                           title: String(localized: "Только камера"), showsTitle: false) {
                             cameraOnly = true
                         }
                     }
+                    if framing {
+                        CameraZoomButton(zoom: model.isShowingSecondCamera ? secondZoom : firstZoom, showsTitle: false)
+                    }
                 }
                 .transition(.opacity)
+                // The buttons' touch reaches 2 pt past what is drawn.
+                .padding(-2)
             }
         }
         .padding(12)
@@ -378,10 +476,10 @@ struct SessionScreen: View {
         // camera is the same picture mirrored.
         if let image = DemoData.cameraImage {
             ZStack {
-                Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+                demoPicture(image)
                     .opacity(model.isShowingSecondCamera ? 0 : 1)
                 if model.hasSecondCamera {
-                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+                    demoPicture(image)
                         .scaleEffect(x: -1, y: 1)
                         .opacity(model.isShowingSecondCamera ? 1 : 0)
                 }
@@ -392,6 +490,24 @@ struct SessionScreen: View {
         #else
         liveCamera
         #endif
+    }
+
+    #if DEBUG && os(iOS)
+    /// The demo still letterboxed in the area on black, as the live player shows it.
+    private func demoPicture(_ image: UIImage) -> some View {
+        Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    #endif
+
+    /// Width over height of the picture shown (16:9 until the stream says).
+    private var cameraAspect: CGFloat {
+        #if DEBUG && os(iOS)
+        if let image = DemoData.cameraImage, image.size.height > 0 { return image.size.width / image.size.height }
+        #endif
+        let size = model.isShowingSecondCamera ? model.secondVideoSize : model.videoSize
+        guard let size, size.width > 0, size.height > 0 else { return 16 / 9 }
+        return size.width / size.height
     }
 
     /// Started without a camera (and not watching a Mac's): the timer works, the camera can be added.
@@ -411,6 +527,7 @@ struct SessionScreen: View {
                                  mode: model.activePlayerMode,
                                  audioEnabled: model.settings.audioEnabled && !model.isShowingSecondCamera,
                                  reloadToken: reloadToken + model.activePlayerGeneration,
+                                 status: firstStatus,
                                  onVideoSize: { size in model.videoSize = size },
                                  onDelay: { model.performance.notePlayerDelay(buffer: $0, network: $1) })
                     .opacity(model.isShowingSecondCamera ? 0 : 1)
@@ -421,6 +538,7 @@ struct SessionScreen: View {
                                      mode: model.activePlayerMode,
                                      audioEnabled: model.settings.audioEnabled && model.isShowingSecondCamera,
                                      reloadToken: reloadToken + model.activeSecondPlayerGeneration,
+                                     status: secondStatus,
                                      onVideoSize: { size in model.secondVideoSize = size },
                                      onDelay: { _, _ in })
                         .opacity(model.isShowingSecondCamera ? 1 : 0)
@@ -436,9 +554,12 @@ struct SessionScreen: View {
 
     // MARK: - Top bar
 
-    /// What fits folds in turn: the cameras' names first, then «Mac» to its icon, then «REC» to the clock; on the
-    /// narrowest bars (Display Zoom) the trainer's text goes into •••. Never wider than the screen: a wider bar pushed
-    /// the whole screen, camera and card, past its right edge.
+    /// What fits folds in turn. One camera: its name first, then «Mac» to its icon, then «REC» to the clock. Two
+    /// cameras: «Mac» first, then the other camera's name to the switch sign, the shown one's to the camera sign, then
+    /// «REC». On the narrowest bars (Display Zoom) the trainer's text goes into •••. Never wider than the screen: a wider bar pushed
+    /// the whole screen, camera and card, past its right edge. As a system bar, its chips grow with the text up to
+    /// xxxLarge and no further; at the accessibility sizes a long press shows each one in the Large Content Viewer
+    /// (design council, round 9: in AX type «REC 1:29» was the screen's largest words and the camera lost its name).
     private func topBar(narrow: Bool) -> some View {
         HStack(spacing: 8) {
             if hasNoCamera {
@@ -447,33 +568,49 @@ struct SessionScreen: View {
                 }
                 .buttonStyle(PressableButtonStyle())
             } else {
+                // At the accessibility sizes the camera keeps its name ahead of «REC», which folds to its clock (Opus,
+                // round 9: the name went first and «REC 1:29» was left the bar's largest words).
+                let camerasFirst = typeSize.isAccessibilitySize
                 if model.hasSecondCamera {
-                    CameraSwitcher(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 },
+                    CameraSwitcher(statuses: (firstStatus, secondStatus),
+                                   onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 },
                                    onPickCamera: { showCameraPicker = true },
                                    onPickSecondCamera: { showSecondCameraPicker = true })
+                    .layoutPriority(camerasFirst ? 2 : 0.5)
                 } else {
+                    // The dot says whether the picture comes, as the other camera's does in the switcher and each
+                    // camera's in the picker (Fable, round 9).
                     CameraMenu(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 }, onPickCamera: { showCameraPicker = true },
-                               onPickSecondCamera: { showSecondCameraPicker = true })
+                               onPickSecondCamera: { showSecondCameraPicker = true },
+                               status: showsStreamStatus ? (model.isShowingSecondCamera ? secondStatus : firstStatus) : nil)
+                    .layoutPriority(camerasFirst ? 2 : -1)
                 }
-                RecordingPill(onStop: { confirmStopRecording = true })
-                    .disabled(model.isReconnecting)
-                    // Folds last: the cameras' names and «Mac» go first.
-                    .layoutPriority(1)
+                if showsRecordingPill {
+                    RecordingPill(onStop: { confirmStopRecording = true })
+                        .disabled(model.isReconnecting)
+                        // Folds last: the cameras' names and «Mac» go first.
+                        .layoutPriority(1)
+                        .transition(.opacity)
+                }
             }
             Spacer(minLength: 4)
             LinkPill(foldsToIcon: true)
+                .accessibilityShowsLargeContentViewer()
                 .layoutPriority(-0.5)
             let hasTrainerText = model.session.map { !$0.plan.rawText.isEmpty } ?? false
             if hasTrainerText, !narrow {
                 IconButton(systemImage: showTrainerText ? "doc.text.fill" : "doc.text",
                            tint: showTrainerText ? Theme.accent : .white) {
-                    withAnimation(.smooth(duration: 0.3)) { showDetails = false; showTrainerText.toggle() }
+                    withAnimation(.smooth(duration: 0.3)) { showTrainerText.toggle() }
                 }
                 .accessibilityLabel("Текст тренера")
+                .accessibilityShowsLargeContentViewer {
+                    Label("Текст тренера", systemImage: "doc.text")
+                }
             }
             if model.session != nil {
                 SessionMenu(onTrainerText: hasTrainerText && narrow ? {
-                                withAnimation(.smooth(duration: 0.3)) { showDetails = false; showTrainerText.toggle() }
+                                withAnimation(.smooth(duration: 0.3)) { showTrainerText.toggle() }
                             } : nil,
                             onEditPlan: {
                                 if let session = model.session, !session.isFinished { editingSessionPlan = session.plan }
@@ -483,10 +620,26 @@ struct SessionScreen: View {
                 .disabled(model.isReconnecting)
             } else {
                 IconButton(systemImage: "clock.arrow.circlepath", label: String(localized: "История")) { showHistory = true }
+                    .accessibilityShowsLargeContentViewer {
+                        Label("История", systemImage: "clock.arrow.circlepath")
+                    }
                 IconButton(systemImage: "gearshape", label: String(localized: "Настройки")) { showSettings = true }
+                    .accessibilityShowsLargeContentViewer {
+                        Label("Настройки", systemImage: "gearshape")
+                    }
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+
+    /// The bar's REC: while something is recorded (its clock, a press stops it); in a training also before that — the
+    /// way to start the recording later, the start having set it; and after a recording broke off. Before a training
+    /// the main screen has one way to record, the card's «Записать без тренировки» (or ⦿ in «Только камера»): an idle
+    /// «⦿ Запись» up here was a third recording control beside it.
+    private var showsRecordingPill: Bool {
+        if model.isRecordingNow || model.session != nil { return true }
+        return !model.isLinkedToMac && model.recorder.lastError != nil
     }
 
     /// Only rendered while the diagnostics overlay is on; it observes the sampler on its own.
@@ -509,7 +662,7 @@ struct SessionScreen: View {
     @ViewBuilder
     private func bottomContent(compact: Bool) -> some View {
         if let session = model.session {
-            SessionHUD(session: session, compact: compact, expanded: $showDetails, onFinish: { confirmFinish = true })
+            SessionHUD(session: session, compact: compact, onFinish: { confirmFinish = true })
                 // A Mac's training while its link is being restored: presses could not reach it.
                 .disabled(model.isReconnecting)
                 .frame(maxWidth: 560)
@@ -540,9 +693,10 @@ struct SessionScreen: View {
     }
 }
 
-/// Card shown before a session: paste the schedule, or record without one.
+/// Card shown before a session: paste the schedule, or record without one. Its one recording control is that second
+/// way: whether a training is recorded is set where it starts — «Записывать видео» over «Начать тренировку и запись» in
+/// the plan's review (and in Settings) — and the bar's REC shows only once something records.
 struct PlanEntryCard: View {
-    @Environment(AppModel.self) private var model
     /// A camera is there (own or the linked Mac's): video can be recorded.
     var canRecord = true
     var onPaste: () -> Void
@@ -550,24 +704,13 @@ struct PlanEntryCard: View {
     var onRecordOnly: () -> Void
 
     var body: some View {
-        @Bindable var settings = model.settings
         GlassCard(padding: 18) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Новая тренировка")
                     .font(Theme.display(22, weight: .bold))
-                Text("Вставьте расписание от тренера и проверьте выходы.")
-                    .font(.system(.subheadline, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                if canRecord {
-                    Toggle(isOn: $settings.autoRecord) {
-                        Label("Записывать видео", systemImage: "record.circle")
-                            .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    }
-                    .tint(Theme.accent)
-                }
                 BigButton(title: String(localized: "Вставить расписание"), systemImage: "doc.on.clipboard", action: onPaste)
                 if canRecord {
-                    BigButton(title: String(localized: "Только запись"), systemImage: "record.circle",
+                    BigButton(title: String(localized: "Записать без тренировки"), systemImage: "record.circle",
                               style: .secondary, height: 44, action: onRecordOnly)
                 }
             }
@@ -586,6 +729,10 @@ private struct CameraMenu: View {
     var onPickSecondCamera: () -> Void
     /// In the switcher: the selected segment's look instead of the pill.
     var segment: String? = nil
+    /// The segment as the camera sign alone (the bar has no room for the name).
+    var segmentIconOnly = false
+    /// The pill's player, for its dot; nil where no live picture is shown (a placeholder, the Mac's camera not shared).
+    var status: CameraStatus? = nil
 
     var body: some View {
         Menu {
@@ -637,94 +784,159 @@ private struct CameraMenu: View {
                 set: { model.settings.audioEnabled = $0 }))
         } label: {
             if let segment {
-                CameraSegmentLabel(title: segment, selected: true)
+                CameraSegmentLabel(title: segment, selected: true, iconOnly: segmentIconOnly)
+                    .accessibilityLabel(segment)
             } else {
                 // The whole name, or just the icon when the bar is busy (REC, «Mac»): «Xi…» says nothing.
                 ViewThatFits(in: .horizontal) {
-                    Pill(text: model.activeCameraName, systemImage: "video.fill")
-                    Image(systemName: "video.fill")
-                        .font(.system(.footnote, design: .rounded, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 34)
-                        .background(Theme.control, in: Capsule())
+                    chip(iconOnly: false)
+                    chip(iconOnly: true)
                 }
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(model.activeCameraName)
             }
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .accessibilityShowsLargeContentViewer {
+            Label(segment ?? model.activeCameraName, systemImage: "video.fill")
+        }
         .layoutPriority(segment == nil ? -1 : 0)
+    }
+
+    /// «▶︎ Прихожая ●», as `Pill`; the sign and the dot alone where the name doesn't fit.
+    private func chip(iconOnly: Bool) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "video.fill")
+            if !iconOnly {
+                Text(model.activeCameraName).lineLimit(1)
+            }
+            if let status { CameraLiveDot(status: status) }
+        }
+        .fixedSize()
+        .font(.system(.footnote, design: .rounded, weight: .semibold))
+        .foregroundStyle(.white)
+        .padding(.horizontal, iconOnly ? 11 : 12)
+        .padding(.vertical, 8)
+        .frame(minWidth: 36)
+        .background(Theme.control, in: Capsule())
     }
 }
 
-/// «Прихожая · Комната»: which camera is on screen. The other one keeps playing (the green dot) and a tap brings it;
-/// a tap on the one on screen opens its menu. The one on screen is recorded (and shown on a linked Mac too).
+/// The shown camera's state as the dot by its name: green while the picture comes, grey while connecting, orange while
+/// it stands still, red when the camera doesn't answer. Its own view: the menu around it isn't rebuilt when it changes.
+/// VoiceOver hears the state from the picture's own overlay (`CameraStatusOverlay`).
+private struct CameraLiveDot: View {
+    let status: CameraStatus
+
+    var body: some View {
+        let color: Color = switch status.phase {
+        case .playing: CameraSegmentLabel.liveGreen
+        case .connecting, .waitingForPicture: .white.opacity(0.35)
+        case .stalled: Theme.warning
+        case .failed: Theme.danger
+        }
+        Circle().fill(color)
+            .frame(width: 6, height: 6)
+            .animation(.easeOut(duration: 0.2), value: status.phase)
+            .accessibilityHidden(true)
+    }
+}
+
+/// «Прихожая · ● ▶︎»: which camera is on screen, by its name, and the other one by a small camera sign — its name read
+/// as a second button (design council, round 13), a «2» as a count (round 15); VoiceOver hears its name. The other one keeps playing (the green dot while its
+/// picture moves) and a tap brings it; a tap on the one on screen opens its menu. The one on screen is recorded (and
+/// shown on a linked Mac too).
 private struct CameraSwitcher: View {
     @Environment(AppModel.self) private var model
+    /// The two players' states: the other camera's dot.
+    var statuses: (CameraStatus, CameraStatus)
     var onReconnect: () -> Void
     var onPickCamera: () -> Void
     var onPickSecondCamera: () -> Void
 
     var body: some View {
         let names = CameraShortNames.make(model.activeCameraName, model.activeSecondCameraName)
-        let shown = model.isShowingSecondCamera
-        // What fits: both names; the shown one's name and the other's number; both numbers. The bar's width doesn't
-        // change by the second (REC keeps its width), so the choice holds.
+        // What fits: the shown one's name, else its camera sign; the other one's number with its dot. The bar's width
+        // doesn't change by the second (REC keeps its width), so the choice holds.
         ViewThatFits(in: .horizontal) {
-            row(names.0, names.1)
-            row(shown ? "1" : names.0, shown ? names.1 : "2")
-            row("1", "2")
+            row(names.0, names.1, shownAsSign: false)
+            row(names.0, names.1, shownAsSign: true)
         }
-        .layoutPriority(-1)
+        // Before the spacer (which would take the room) and «Mac»: which camera a tap brings is worth more than the
+        // word «Mac» by its icon.
+        .layoutPriority(0.5)
     }
 
-    private func row(_ first: String, _ second: String) -> some View {
+    /// The cameras keep their places; the one on screen is the lit segment.
+    private func row(_ first: String, _ second: String, shownAsSign: Bool) -> some View {
         HStack(spacing: 2) {
-            segment(second: false, title: first)
-            segment(second: true, title: second)
+            segment(second: false, title: first, sign: shownAsSign)
+            segment(second: true, title: second, sign: shownAsSign)
         }
         .padding(2)
         .background(Theme.control, in: Capsule())
     }
 
     @ViewBuilder
-    private func segment(second: Bool, title: String) -> some View {
+    private func segment(second: Bool, title: String, sign: Bool) -> some View {
         if model.isShowingSecondCamera == second {
             CameraMenu(onReconnect: onReconnect, onPickCamera: onPickCamera, onPickSecondCamera: onPickSecondCamera,
-                       segment: title)
+                       segment: title, segmentIconOnly: sign)
         } else {
+            let status = second ? statuses.1 : statuses.0
             Button {
                 withAnimation(.smooth(duration: 0.2)) { model.showCamera(second: second) }
             } label: {
-                CameraSegmentLabel(title: title, selected: false)
+                CameraSegmentLabel(title: title, selected: false, live: status.phase == .playing, signOnly: true)
             }
             .buttonStyle(.plain)
             // The Mac's link is being restored: the switch could not reach it, and the Mac would go on recording the
             // other camera.
             .disabled(model.isReconnecting)
             .accessibilityLabel(String(localized: "Показать камеру «\(title)»"))
+            .accessibilityShowsLargeContentViewer {
+                Label(title, systemImage: "arrow.triangle.2.circlepath.camera")
+            }
         }
     }
 }
 
 private struct CameraSegmentLabel: View {
+    /// The dot of a camera whose picture moves.
+    static let liveGreen = Color(red: 0.43, green: 0.91, blue: 0.63)
+
     let title: String
     let selected: Bool
+    /// Only the sign: the camera (the one on screen) or «switch camera» (the other one).
+    var iconOnly = false
+    /// The other camera's picture moves: switching to it is instant.
+    var live = true
+    /// The other camera as its dot and a small camera sign, without its name (VoiceOver has the name).
+    var signOnly = false
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             if selected {
                 Image(systemName: "video.fill").font(.system(size: 11, weight: .semibold))
+            } else if iconOnly {
+                Image(systemName: "arrow.triangle.2.circlepath.camera").font(.system(size: 13, weight: .semibold))
             } else {
-                // Still connected: switching back is instant.
-                Circle().fill(Color(red: 0.43, green: 0.91, blue: 0.63)).frame(width: 6, height: 6)
+                Circle().fill(live ? Self.liveGreen : .white.opacity(0.35))
+                    .frame(width: 6, height: 6)
             }
-            Text(title).lineLimit(1)
+            if signOnly {
+                Image(systemName: "video.fill").font(.system(size: 10, weight: .semibold))
+                    .accessibilityHidden(true)
+            } else if !iconOnly {
+                Text(title).lineLimit(1)
+            }
         }
         .fixedSize()
-        .font(.system(.subheadline, design: .rounded, weight: selected ? .semibold : .medium))
+        // The pills' size (REC, «Mac»): both names fit beside «REC 1:28» on the larger iPhones.
+        .font(.system(.footnote, design: .rounded, weight: selected ? .semibold : .medium))
         .foregroundStyle(selected ? .white : .white.opacity(0.6))
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 8)
         .frame(height: 30)
         .background(selected ? Color.white.opacity(0.16) : .clear, in: Capsule())
         .contentShape(Capsule())
@@ -758,6 +970,9 @@ private struct SessionMenu: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .accessibilityLabel("Тренировка")
+        .accessibilityShowsLargeContentViewer {
+            Label("Тренировка", systemImage: "ellipsis")
+        }
     }
 }
 
@@ -779,20 +994,31 @@ private struct RecordingPill: View {
                 }
             }
             .buttonStyle(PressableButtonStyle())
+            .accessibilityShowsLargeContentViewer {
+                largeContent(at: context.date)
+            }
         }
+    }
+
+    /// The Large Content Viewer's words: the whole of what the pill says, whatever it folded to.
+    private func largeContent(at date: Date) -> Label<Text, Image> {
+        if model.isRecordingNow {
+            return Label { Text(verbatim: "REC " + DurationText.clock(model.recordingDuration(at: date))) } icon: {
+                Image(systemName: "record.circle.fill")
+            }
+        } else if !model.isLinkedToMac, model.recorder.lastError != nil {
+            return Label("Запись не идёт", systemImage: "exclamationmark.triangle.fill")
+        }
+        return Label("Запись", systemImage: "record.circle")
     }
 
     @ViewBuilder
     private func label(at date: Date, short: Bool) -> some View {
         if model.isRecordingNow {
-            // Digits of one width and room for «REC 00:00»: the bar is not laid out anew every second.
-            let clock = DurationText.clock(model.recordingDuration(at: date))
-            let prefix = short ? "" : "REC "
-            ZStack {
-                Pill(text: prefix + (clock.count > 5 ? "0:00:00" : "00:00"), systemImage: "record.circle.fill").hidden()
-                Pill(text: prefix + clock, systemImage: "record.circle.fill", tint: Theme.danger)
-            }
-            .monospacedDigit()
+            // «● REC» without its clock: the card's number is the one time on the screen (design council, round 14).
+            // VoiceOver and the Large Content Viewer still say how long.
+            Pill(text: "REC", systemImage: "record.circle.fill", tint: Theme.danger, iconOnly: short)
+                .accessibilityLabel(Text(verbatim: "REC " + DurationText.clock(model.recordingDuration(at: date))))
         } else if !model.isLinkedToMac, model.recorder.lastError != nil {
             Pill(text: String(localized: "Запись не идёт"), systemImage: "exclamationmark.triangle.fill", tint: Theme.warning,
                  iconOnly: short)
@@ -868,25 +1094,7 @@ struct NoCameraView: View {
     }
 }
 
-/// A round button in a corner of the picture: dark and translucent so the picture shows round it.
-private struct CornerButton: View {
-    var systemImage: String
-    var label: String
-    var action: () -> Void
 
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 38, height: 38)
-                .background(.black.opacity(0.55), in: Circle())
-                .overlay(Circle().strokeBorder(.white.opacity(0.14), lineWidth: 1))
-        }
-        .buttonStyle(PressableButtonStyle())
-        .accessibilityLabel(label)
-    }
-}
 
 /// «Только камера»: nothing is recorded; record from here or bring the cards back. Same panel as the recording clock.
 struct CameraOnlyOverlay: View {

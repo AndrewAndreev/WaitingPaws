@@ -9,7 +9,7 @@ import SwiftUI
 ///   --history-select <n>             select the n-th row of the table (0 = the top one)
 ///   --history-scope trainings|clips  segmented control
 ///   --history-search <text>          search field
-///   --history-period threeMonths|all chart period
+///   --history-period fourWeeks|threeMonths|all  chart period (shown, not kept)
 ///   --history-prompt delete|delete-all  open that confirmation
 ///   --history-inspector-bottom       inspector scrolled to its end
 ///   --history-seek <seconds>         move the playhead of the selected video

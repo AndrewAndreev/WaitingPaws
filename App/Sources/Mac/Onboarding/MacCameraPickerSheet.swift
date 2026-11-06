@@ -47,7 +47,8 @@ struct MacCameraPickerSheet: View {
             footer
         }
         .frame(width: 680, height: onlyStreams ? 380 : 548)
-        .task(id: model.setupServerReady) { await reload() }
+        // Fresh stills on every opening, as the iPhone's (design council, round 14: no ↻).
+        .task(id: model.setupServerReady) { await reload(force: true) }
         .sheet(isPresented: $signingIn) {
             SetupXiaomiSignInSheet { account in
                 allAccounts = true
@@ -59,31 +60,13 @@ struct MacCameraPickerSheet: View {
 
     // MARK: Header
 
+    /// The title alone, as the iPhone's (design council, round 12: the pictures say which camera looks at the door);
+    /// the stills refresh by themselves on opening (round 14: no ↻).
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(onlyStreams ? "Выберите поток go2rtc" : target == .second ? "Выберите вторую камеру" : "Выберите камеру")
-                    .font(.title2.weight(.semibold))
-                Text(onlyStreams
-                     ? "RTSP, ONVIF и другие источники, которые уже есть в go2rtc."
-                     : target == .second
-                     ? "Например, в комнате, куда уходит собака. Переключатель выбирает, какую камеру смотреть и записывать."
-                     : "Нужна та, что смотрит на входную дверь. Видео идёт по локальной сети через go2rtc.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
+        HStack(alignment: .center) {
+            Text(onlyStreams ? "Потоки go2rtc" : target == .second ? "Вторая камера" : "Камера")
+                .font(.title2.weight(.semibold))
             Spacer(minLength: 16)
-            Button {
-                Task { await reload(force: true) }
-            } label: {
-                if catalog.refreshing || catalog.phase == .loading {
-                    ProgressView().controlSize(.small).frame(width: 16, height: 16)
-                } else {
-                    Label("Обновить", systemImage: "arrow.clockwise").labelStyle(.iconOnly)
-                }
-            }
-            .help("Обновить список камер")
-            .disabled(!model.setupServerReadyOrDemo || catalog.refreshing || catalog.phase == .loading)
         }
         .padding(.horizontal, 24)
         .padding(.top, 20)
@@ -112,17 +95,7 @@ struct MacCameraPickerSheet: View {
                 Button("Повторить") { Task { await reload() } }
             }
         case .ready:
-            if onlyStreams && catalog.otherStreams.isEmpty {
-                ContentUnavailableView {
-                    Label("В go2rtc нет потоков", systemImage: "video.slash")
-                } description: {
-                    Text("Добавьте источник по адресу: rtsp://, onvif:// или http://.")
-                } actions: {
-                    addStreamButton
-                }
-            } else {
-                grid
-            }
+            grid
         }
     }
 
@@ -138,7 +111,9 @@ struct MacCameraPickerSheet: View {
                         .disabled(!model.setupServerReadyOrDemo)
                 }
                 ForEach(visibleAccounts) { account in
-                    section(title: "Mi Home", detail: "ID \(account.id) · \(SetupText.regionTitle(account.region))",
+                    // The account's id and region only tell two accounts apart (Settings shows them).
+                    section(title: "Mi Home",
+                            detail: visibleAccounts.count > 1 ? "ID \(account.id) · \(SetupText.regionTitle(account.region))" : nil,
                             accessory: account.id == visibleAccounts.first?.id ? .signIn : nil) {
                         if let error = account.error {
                             Label("Камеры не загрузились: \(error)", systemImage: "exclamationmark.triangle.fill")
@@ -157,18 +132,15 @@ struct MacCameraPickerSheet: View {
                         }
                     }
                 }
-                section(title: visibleAccounts.isEmpty ? String(localized: "Потоки go2rtc") : String(localized: "Другие потоки go2rtc"),
-                        detail: nil, accessory: .addStream) {
-                    if catalog.otherStreams.isEmpty {
-                        Text("Здесь появятся RTSP, ONVIF и другие источники go2rtc.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
-                            ForEach(catalog.otherStreams) { stream in
-                                tile(.stream(stream))
-                            }
+                // The cameras added by address, and «Своя камера» as one more tile (design council, round 14: one
+                // sign, no row of words). The welcome window's «Выбрать поток go2rtc…» has the title say «Потоки
+                // go2rtc» already: no header there.
+                section(title: onlyStreams ? nil : String(localized: "Другие камеры"), detail: nil) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+                        ForEach(catalog.otherStreams) { stream in
+                            tile(.stream(stream))
                         }
+                        addStreamTile
                     }
                 }
             }
@@ -179,43 +151,60 @@ struct MacCameraPickerSheet: View {
         .scrollBounceBehavior(.basedOnSize)
     }
 
-    private enum SectionAccessory { case signIn, addStream }
+    private enum SectionAccessory { case signIn }
 
-    private func section<Content: View>(title: String, detail: String?, accessory: SectionAccessory? = nil,
+    private func section<Content: View>(title: String?, detail: String?, accessory: SectionAccessory? = nil,
                                         @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(title).font(.headline)
-                if let detail {
-                    Text(detail).font(.callout).foregroundStyle(.secondary)
-                }
-                Spacer()
-                switch accessory {
-                case .signIn:
-                    Button("Войти в другой аккаунт…", systemImage: "person.badge.key") { signingIn = true }
-                        .buttonStyle(.borderless)
-                        .help("Добавить камеры ещё одного аккаунта Xiaomi")
-                        .disabled(!model.setupServerReadyOrDemo)
-                case .addStream:
-                    addStreamButton.buttonStyle(.borderless)
-                case nil:
-                    EmptyView()
+            if let title {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(title).font(.headline)
+                    if let detail {
+                        Text(detail).font(.callout).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if accessory == .signIn {
+                        Button("Войти в другой аккаунт…", systemImage: "person.badge.key") { signingIn = true }
+                            .buttonStyle(.borderless)
+                            .help("Добавить камеры ещё одного аккаунта Xiaomi")
+                            .disabled(!model.setupServerReadyOrDemo)
+                    }
                 }
             }
             content()
         }
     }
 
-    private var addStreamButton: some View {
-        Button("Добавить поток…", systemImage: "plus") { addingStream = true }
-            .help("Добавить источник по адресу: rtsp://, onvif://, http://")
-            .disabled(!model.setupServerReadyOrDemo)
-            .popover(isPresented: $addingStream, arrowEdge: .bottom) {
-                SetupAddStreamForm(catalog: catalog) { stream in
-                    addingStream = false
-                    selection = SetupCameraCatalog.streamID(stream.name)
-                }
+    /// «Своя камера»: a tile like the cameras', the «+» where their picture is; the address in a popover over it.
+    private var addStreamTile: some View {
+        Button { addingStream = true } label: {
+            VStack(alignment: .leading, spacing: 9) {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(white: 0.24), Color(white: 0.12)], startPoint: .top,
+                                         endPoint: .bottom))
+                    .overlay {
+                        Image(systemName: "plus")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(.tint)
+                    }
+                    .frame(width: pickerTileWidth, height: pickerTileWidth * 9 / 16)
+                Text("Своя камера")
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 2)
             }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Добавить камеру по адресу: rtsp://, onvif://, http://")
+        .accessibilityLabel(String(localized: "Добавить свою камеру"))
+        .disabled(!model.setupServerReadyOrDemo)
+        .popover(isPresented: $addingStream, arrowEdge: .bottom) {
+            SetupAddStreamForm(catalog: catalog) { stream in
+                addingStream = false
+                selection = SetupCameraCatalog.streamID(stream.name)
+            }
+        }
     }
 
     private func tile(_ choice: SetupCameraCatalog.Choice) -> some View {
@@ -231,6 +220,15 @@ struct MacCameraPickerSheet: View {
 
     // MARK: Footer
 
+    /// The video server answers: nothing to say about it here.
+    private var serverIsFine: Bool {
+        switch SetupServerState.of(model, probe: catalog) {
+        case .running: return true
+        case .external(_, let version): return version != nil
+        default: return false
+        }
+    }
+
     private var footer: some View {
         HStack(spacing: 12) {
             if let error {
@@ -240,8 +238,9 @@ struct MacCameraPickerSheet: View {
                     .help(error)
             } else if choosing {
                 ProgressView().controlSize(.small)
-                Text("Добавляем камеру в go2rtc…").foregroundStyle(.secondary)
-            } else {
+                Text("Добавляем камеру…").foregroundStyle(.secondary)
+            } else if !serverIsFine {
+                // Only when the video server needs a hand («Запустить», «Попробовать снова»); its version is in Settings.
                 SetupServerStatusLabel(probe: catalog)
             }
             Spacer()
@@ -304,7 +303,10 @@ struct MacCameraPickerSheet: View {
     }
 }
 
-/// Home-style tile: still with a status chip, selection ring and check, name and one line of detail.
+/// Home-style tile: still (a spinner on it while the picture comes; the crossed-out camera, grey and dimmed, when none
+/// does — «Не в сети» for VoiceOver and in the tooltip), the selection ring, and the name.
+/// What a person does not pick by — the resolution, the Mi Home model and address, a stream's source — is in the
+/// tooltip.
 private struct SetupPickerTile: View {
     @Environment(AppModel.self) private var model
     let choice: SetupCameraCatalog.Choice
@@ -326,15 +328,10 @@ private struct SetupPickerTile: View {
             SetupStill(source: stillSource, width: pickerTileWidth, cornerRadius: 10,
                        symbol: isCamera ? "video.fill" : "antenna.radiowaves.left.and.right")
                 .saturation(still == .failed ? 0 : 1)
-                .overlay(alignment: .bottomLeading) { chip.padding(7) }
-                .overlay(alignment: .topTrailing) {
-                    if selected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 18))
-                            .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, .tint)
-                            .padding(6)
-                    }
+                // The ring is the one mark of the camera in use (design council, round 14: no ✓ beside it).
+                .overlay(alignment: .bottomLeading) {
+                    // A picture is its own «в сети», the crossed-out camera its «не в сети» (design council, round 13).
+                    if still == .loading || still == nil { spinner.padding(7) }
                 }
                 .overlay {
                     if selected {
@@ -343,27 +340,27 @@ private struct SetupPickerTile: View {
                             .padding(-4)
                     }
                 }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
-                Text(subtitle)
-                    .font(isCamera ? .system(size: 11) : .system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(isCamera ? .tail : .middle)
-                    .help(tooltip)
-            }
-            .padding(.horizontal, 2)
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 2)
         }
-        .opacity(still == .failed ? 0.75 : 1)
+        .opacity(still == .failed && !selected ? 0.6 : 1)
         .contentShape(Rectangle())
+        .help(tooltip)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(offlineText ?? "")
     }
 
     private var isCamera: Bool {
         if case .camera = choice { return true }
         return false
+    }
+
+    /// «Не в сети» (a stream: «Нет связи») when no picture comes: for VoiceOver and the tooltip, not on the tile.
+    private var offlineText: String? {
+        guard still == .failed else { return nil }
+        return isCamera ? String(localized: "Не в сети") : String(localized: "Нет связи")
     }
 
     private var title: String {
@@ -373,63 +370,23 @@ private struct SetupPickerTile: View {
         }
     }
 
-    /// "2304×1296 · Камера Xiaomi" (the raw model id only in the tooltip) or the stream's source.
-    private var subtitle: String {
+    /// "2304×1296 · Модель Mi Home: chuangmi.camera.069a01 · IP 192.168.1.34", or the stream's source.
+    private var tooltip: String {
+        var pixels: String?
+        if case .loaded(_, let size) = still { pixels = SetupText.pixels(size) }
+        let details: String
         switch choice {
         case .camera(let camera):
-            if case .loaded(_, let size) = still { return "\(SetupText.pixels(size)) · \(camera.kind)" }
-            return camera.kind
+            details = camera.technicalDetails.isEmpty ? camera.kind : camera.technicalDetails
         case .stream(let stream):
-            return stream.sources.first.map(SettingsText.redacted) ?? String(localized: "Источник не указан")
+            details = stream.sources.first.map(SettingsText.redacted) ?? String(localized: "Источник не указан")
         }
+        return [offlineText, pixels, details].compactMap { $0 }.joined(separator: " · ")
     }
 
-    private var tooltip: String {
-        switch choice {
-        case .camera(let camera): return camera.technicalDetails.isEmpty ? camera.kind : camera.technicalDetails
-        case .stream: return subtitle
-        }
-    }
-
-    @ViewBuilder
-    private var chip: some View {
-        switch choice {
-        case .camera:
-            chipBody {
-                switch still {
-                case .loaded:
-                    StatusDot(color: MacPalette.green, size: 6)
-                    Text("В сети")
-                case .failed:
-                    StatusDot(color: .white.opacity(0.5), size: 6)
-                    Text("Не в сети")
-                case .loading, nil:
-                    ProgressView().controlSize(.mini).tint(.white)
-                    Text("Подключение…")
-                }
-            }
-        case .stream(let stream):
-            let badge = SetupText.sourceBadge(stream.sources.first)
-            chipBody {
-                switch still {
-                case .loaded:
-                    StatusDot(color: MacPalette.green, size: 6)
-                    Text(badge ?? String(localized: "В сети"))
-                case .failed:
-                    StatusDot(color: .white.opacity(0.5), size: 6)
-                    Text(badge.map { String(localized: "\($0) · нет связи") } ?? String(localized: "Нет связи"))
-                case .loading, nil:
-                    ProgressView().controlSize(.mini).tint(.white)
-                    Text(badge ?? String(localized: "Подключение…"))
-                }
-            }
-        }
-    }
-
-    private func chipBody<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        HStack(spacing: 5) { content() }
-            .font(.system(size: 10.5, weight: .semibold))
-            .foregroundStyle(.white)
+    /// The picture is on its way.
+    private var spinner: some View {
+        ProgressView().controlSize(.mini).tint(.white)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .glassEffect(.regular.tint(.black.opacity(0.25)), in: Capsule())

@@ -102,8 +102,6 @@ struct MacCameraArea: View {
     private var noCamera: some View {
         ContentUnavailableView {
             Label("Без камеры", systemImage: "pawprint.fill")
-        } description: {
-            Text("Таймеры, расписание и лог работают. С камерой вы увидите собаку, пока вы за дверью, и сможете записывать видео.")
         } actions: {
             Button("Подключить камеру…") { openWindow(id: "welcome") }
                 .buttonStyle(.borderedProminent)

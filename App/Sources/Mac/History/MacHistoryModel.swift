@@ -63,17 +63,9 @@ struct MacHistoryRow: Identifiable {
 
     var trainers: String { record?.plan.trainers ?? "" }
 
-    // Sort keys (−1 puts recordings without a log after the trainings).
-    var startMinute: Int {
-        let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
-        return (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
-    }
+    // Sort keys of the table's columns (−1 puts recordings without a log after the trainings).
     var exitsDone: Int { record?.completedExits ?? -1 }
-    var falseStarts: Int { record?.falseStarts ?? -1 }
     var longest: Double { record?.longestStayBehindDoor ?? -1 }
-    var planned: Double { record?.longestPlannedExit ?? -1 }
-    var duration: Double { record?.duration ?? video?.duration ?? -1 }
-    var videoBytes: Int64 { video?.bytes ?? -1 }
 
     /// End of the training or of the recording (for "19:12–19:30").
     var endDate: Date? {
@@ -103,14 +95,6 @@ struct MacHistoryRow: Identifiable {
 // MARK: - Record numbers
 
 extension TrainingRecord {
-    /// Longest successful stay behind the door (false starts don't count).
-    var longestStayBehindDoor: TimeInterval {
-        results.filter { !$0.falseStart }.map(\.awayDuration).max() ?? 0
-    }
-
-    /// Longest exit in the trainer's plan.
-    var longestPlannedExit: TimeInterval { plan.exits.map(\.duration).max() ?? 0 }
-
     /// When the recording of this training began: its «Запись включена» event, else the start of the training.
     var recordingStartDate: Date {
         let starts = events.filter { $0.kind == .recordingStarted }
@@ -128,8 +112,8 @@ enum MacHistoryFormat {
         return (sameYear ? MacFormat.weekdayDay : weekdayDayYear).string(from: date).capitalizedFirst
     }
 
-    /// "2 окт."
-    static func dayMonth(_ date: Date) -> String { dayMonthShort.string(from: date) }
+    /// "2 окт." (the same as on iPhone).
+    static func dayMonth(_ date: Date) -> String { HistoryDate.dayMonth(date) }
 
     /// "Пятница, 2 октября, 18:36–19:02".
     static func longDay(_ row: MacHistoryRow) -> String {
@@ -160,7 +144,6 @@ enum MacHistoryFormat {
         value.formatted(.number.precision(.fractionLength(1)).locale(CoreLanguage.current.locale))
     }
 
-    private static let dayMonthShort = CoreLanguage.current.dateFormatter("dMMM")
     private static let weekdayDayYear = CoreLanguage.current.dateFormatter("EEdMMMyyyy")
 }
 
@@ -208,7 +191,8 @@ final class MacHistoryController {
     var selection: HistoryRoute?
     var sortOrder = [KeyPathComparator(\MacHistoryRow.date, order: .reverse)]
     var showsInspector = true
-    var period: MacHistoryPeriod = .fourWeeks
+    /// The chart's period picked last (kept, as on iPhone); nil until then, `period(for:)` picks as the iPhone does.
+    var period: MacHistoryPeriod? = HistoryPeriod.saved
     var pendingDelete: PendingDelete?
     var confirmDeleteAll = false
     /// Row whose log was just copied (the button shows «Скопировано» for a moment).
@@ -226,11 +210,26 @@ final class MacHistoryController {
     var demo: MacHistoryDemo?
     #endif
 
+    // MARK: Period
+
+    /// The period shown: the one picked, else the iPhone's choice (the whole history while it fits in four weeks).
+    func period(for records: [TrainingRecord]) -> MacHistoryPeriod {
+        period ?? .compact(for: records)
+    }
+
+    /// From the menu: shown and kept for the next time the window opens.
+    func pick(_ period: MacHistoryPeriod) {
+        self.period = period
+        HistoryPeriod.saved = period
+    }
+
     // MARK: Data
 
     func records(_ model: AppModel) -> [TrainingRecord] {
         #if DEBUG
-        if let demo { return demo.records }
+        // The samples get a few marks from behind the door (`HistoryDemoMarks`).
+        if let demo { return demo.records.map(HistoryDemoMarks.shown) }
+        if CommandLine.arguments.contains("--demo-history") { return model.history.map(HistoryDemoMarks.shown) }
         #endif
         return model.history
     }

@@ -2,27 +2,23 @@ import SwiftUI
 import WaitingPawsCore
 
 /// What the readout says about an exit besides its time: when to come back early, when not to come in, what to take
-/// on the way out and the notes. Outside it is about the current exit, in a break about the next one.
+/// on the way out and its note. Outside it is about the current exit, in a break about the next one.
 struct ExitBrief {
     let exit: PlannedExit
     /// Its conditions for coming back early («Встала и пошла — через 2:00»), «до вставания» among them.
     let entries: [EarlyEntry]
-    /// «Залаяла, завыла — не входить»: on exits with conditions and on long ones (a 5 s exit is over before).
+    /// «Залаяла, завыла — ждать тишины»: the trainer's rule for the whole training, on every exit.
     let doNotEnter: TrainingPlan.Rule?
-    /// The exit's note and what the trainer wrote about its conditions, for the folded «Заметки» line.
+    /// The exit's note and what the trainer wrote about its conditions.
     let notes: [String]
 
     init(plan: TrainingPlan, exit: PlannedExit) {
         self.exit = exit
         entries = plan.earlyEntries(of: exit)
-        doNotEnter = !entries.isEmpty || exit.duration >= TrainingPlan.CommonEntriesScope.longExit ? plan.doNotEnterRule : nil
+        // The trainer's rule holds for the whole training: every exit shows it (no hidden exceptions).
+        doNotEnter = plan.doNotEnterRule
         notes = [exit.noteText].compactMap { $0 }
             + entries.compactMap { entry in entry.detail.map { "\(entry.event): \($0)" } }
-    }
-
-    /// Nothing to show for this exit outside (or, in a break, for the way out).
-    func isEmpty(inBreak: Bool) -> Bool {
-        entries.isEmpty && notes.isEmpty && (inBreak ? exit.triggers.isEmpty : doNotEnter == nil)
     }
 
     /// The schedule has details for some exit: the readout keeps a row for them.
@@ -31,10 +27,188 @@ struct ExitBrief {
             !exit.triggers.isEmpty || exit.noteText != nil || !plan.earlyEntries(of: exit).isEmpty
         }
     }
+}
 
-    /// The conditions in one line: «встала и пошла → 2:00 · легла → 0:30».
-    var entriesSummary: String? {
-        entries.isEmpty ? nil : entries.map(\.summary).joined(separator: " · ")
+// MARK: - Conditions in one form
+
+/// An exit's conditions are written one way on every screen — the training card, the Mac, the plan: the trainer's
+/// event lower-cased and its time, «встала и пошла 0:30 · легла 0:20 · ⊖ тишина 0:30». No arrows, no «через».
+extension EarlyEntry {
+    /// «встала и пошла»: the trainer's words for what the dog does, lower-cased.
+    var conditionWords: String { event.prefix(1).lowercased() + event.dropFirst() }
+
+    /// «0:30»; «сразу» without a delay («ИЛИ до вставания» is «встала сразу»); the trainer's words for a time the
+    /// parser couldn't read («через пару минут»).
+    var conditionTime: String {
+        delay.flatMap { $0 > 0 ? DurationText.clock($0) : nil } ?? unreadDelay ?? String(localized: "сразу")
+    }
+
+    /// «встала и пошла 0:30».
+    var conditionText: String { "\(conditionWords) \(conditionTime)" }
+}
+
+extension TrainingPlan.Rule {
+    /// «тишина» and the quiet the trainer asked for, «0:30»; «ждать тишины» when the rule names no time. After the
+    /// red ⊖ (`ConditionsLine.ruleSymbol`).
+    var conditionWords: String {
+        quietTime == nil ? String(localized: "ждать тишины") : String(localized: "тишина")
+    }
+
+    var conditionTime: String? { quietTime.map(DurationText.clock) }
+
+    /// «тишина 0:30» (without the ⊖).
+    var conditionText: String { [conditionWords, conditionTime].compactMap { $0 }.joined(separator: " ") }
+}
+
+/// «встала и пошла 0:30 · легла 0:20 · ⊖ тишина 0:30»: an exit's conditions in their one form (`conditionText`), for
+/// reading only. The words quiet, the times brighter, «·» between two conditions on one line only (none ends a line),
+/// the trainer's rule after the red ⊖; it wraps by whole conditions. The colour of the words is the caller's
+/// (`foregroundStyle`); the times are white.
+struct ConditionsLine: View {
+    let entries: [EarlyEntry]
+    /// The trainer's rule against coming in (nil: none, or not shown here).
+    var rule: TrainingPlan.Rule? = nil
+    var size: CGFloat = 14
+    /// Between two conditions on one line.
+    var spacing: CGFloat = 5
+
+    /// The rule's sign, red: «no entry».
+    static let ruleSymbol = "minus.circle.fill"
+
+    var body: some View {
+        SeparatedFlowLayout(spacing: spacing, lineSpacing: 3) {
+            ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                if index > 0 { FlowDot() }
+                Self.item(words: entry.conditionWords, time: entry.conditionTime, size: size)
+            }
+            if let rule {
+                if !entries.isEmpty { FlowDot() }
+                Self.item(words: rule.conditionWords, time: rule.conditionTime, size: size, rule: true)
+            }
+        }
+        .font(.system(size: size, weight: .medium, design: .rounded))
+        .accessibilityElement(children: .combine)
+    }
+
+    /// One condition: «легла 0:20», «⊖ тишина 0:30».
+    static func item(words: String, time: String?, size: CGFloat, rule: Bool = false) -> some View {
+        HStack(spacing: 4) {
+            if rule {
+                Image(systemName: ruleSymbol)
+                    .font(.system(size: size * 0.9, weight: .semibold))
+                    .foregroundStyle(Theme.danger)
+            }
+            Text(verbatim: words)
+            if let time {
+                Text(verbatim: time)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white.opacity(0.92))
+                    .monospacedDigit()
+            }
+        }
+        .lineLimit(1)
+        .fixedSize()
+    }
+}
+
+// MARK: - Words that go with a number
+
+/// A word in the form its number asks for, for a number shown apart from it (a large «2» over «фальстарта»). With the
+/// number in the same line, `HistoryText.falseStarts` («2 фальстарта»).
+enum CountText {
+    /// «фальстарт», «фальстарта», «фальстартов» / "false start", "false starts".
+    static func falseStartWord(_ count: Int) -> String {
+        let text = pluralText(count, ru: ("фальстарт", "фальстарта", "фальстартов"), en: ("false start", "false starts"))
+        return String(text.drop(while: { $0 != " " }).dropFirst())
+    }
+}
+
+// MARK: - Lines of items with «·» between them
+
+/// Items in lines like words, a «·» (`FlowDot`) between two items on the same line only: a wrapped line never ends
+/// or starts with one, and an item is never split (design council, rounds 7–8: «легла → 0:20 ·» left hanging at the
+/// end of a line, «· ⊖ ждать тишины» opening the next). The dots are subviews marked `FlowDot`; one where the line
+/// breaks is laid out with no size (and clipped away).
+struct SeparatedFlowLayout: Layout {
+    var spacing: CGFloat = 4
+    var lineSpacing: CGFloat = 2
+
+    private struct Line {
+        var items: [(index: Int, size: CGSize)] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+
+        mutating func append(_ index: Int, _ size: CGSize, spacing: CGFloat) {
+            width += (items.isEmpty ? 0 : spacing) + size.width
+            height = max(height, size.height)
+            items.append((index, size))
+        }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let lines = arrange(subviews, width: proposal.width ?? .infinity).lines
+        let height = lines.map(\.height).reduce(0, +) + lineSpacing * CGFloat(max(0, lines.count - 1))
+        let width = lines.map(\.width).max() ?? 0
+        return CGSize(width: proposal.width.map { $0.isFinite ? $0 : width } ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let (lines, hidden) = arrange(subviews, width: bounds.width)
+        var y = bounds.minY
+        for line in lines {
+            var x = bounds.minX
+            for item in line.items {
+                subviews[item.index].place(at: CGPoint(x: x, y: y + (line.height - item.size.height) / 2),
+                                           proposal: ProposedViewSize(item.size))
+                x += item.size.width + spacing
+            }
+            y += line.height + lineSpacing
+        }
+        for index in hidden {
+            subviews[index].place(at: CGPoint(x: bounds.minX, y: bounds.minY), proposal: .zero)
+        }
+    }
+
+    private func arrange(_ subviews: Subviews, width: CGFloat) -> (lines: [Line], hidden: [Int]) {
+        var lines: [Line] = [Line()]
+        var hidden: [Int] = []
+        var dot: (index: Int, size: CGSize)?
+        for index in subviews.indices {
+            if subviews[index][FlowDotKey.self] {
+                if let dot { hidden.append(dot.index) }
+                dot = (index, subviews[index].sizeThatFits(.unspecified))
+                continue
+            }
+            let size = subviews[index].sizeThatFits(ProposedViewSize(width: width, height: nil))
+            let line = lines[lines.count - 1]
+            let dotWidth = dot.map { $0.size.width + spacing } ?? 0
+            if line.items.isEmpty || line.width + dotWidth + spacing + size.width > width + 0.5 {
+                if let dot { hidden.append(dot.index) }
+                if !line.items.isEmpty { lines.append(Line()) }
+            } else if let dot {
+                lines[lines.count - 1].append(dot.index, dot.size, spacing: spacing)
+            }
+            lines[lines.count - 1].append(index, size, spacing: spacing)
+            dot = nil
+        }
+        if let dot { hidden.append(dot.index) }
+        return (lines.filter { !$0.items.isEmpty }, hidden)
+    }
+}
+
+private struct FlowDotKey: LayoutValueKey {
+    static let defaultValue = false
+}
+
+/// The «·» between two items of a `SeparatedFlowLayout`, in the items' font and colour; gone where the line breaks.
+struct FlowDot: View {
+    var body: some View {
+        Text(verbatim: "·")
+            .fixedSize()
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            .clipped()
+            .accessibilityHidden(true)
+            .layoutValue(key: FlowDotKey.self, value: true)
     }
 }
 
@@ -61,287 +235,136 @@ extension EarlyEntry.Tone {
     var color: Color {
         switch self {
         case .yellow: return Theme.warning
-        case .green: return Color(red: 0.43, green: 0.91, blue: 0.63)
+        case .green: return Theme.go
         case .plain: return Theme.info
         }
     }
 }
 
-/// ⚡ 🏃 📝 of an exit, always there: with a count when the exit has them, dimmed when not.
-struct ExitMarks: View {
-    let triggers: Int
-    let entries: Int
-    let hasNote: Bool
-    var size: CGFloat = 12
-
-    init(plan: TrainingPlan, exit: PlannedExit, size: CGFloat = 12) {
-        triggers = exit.triggers.count
-        entries = plan.earlyEntries(of: exit).count
-        hasNote = exit.noteText != nil
-        self.size = size
-    }
-
-    var body: some View {
-        HStack(spacing: size * 0.5) {
-            mark("bolt.fill", count: triggers, tint: Theme.warning)
-            mark("figure.run", count: entries, tint: Theme.info)
-            Image(systemName: hasNote ? "text.bubble.fill" : "text.bubble")
-                .foregroundStyle(hasNote ? Color.white.opacity(0.85) : Color.white.opacity(0.25))
-        }
-        .font(.system(size: size, weight: .semibold, design: .rounded).monospacedDigit())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Триггеров: \(triggers), условий раннего входа: \(entries)"))
-    }
-
-    private func mark(_ symbol: String, count: Int, tint: Color) -> some View {
-        HStack(spacing: 1) {
-            Image(systemName: symbol)
-            if count > 0 { Text(verbatim: "\(count)") }
-        }
-        .foregroundStyle(count > 0 ? tint : Color.white.opacity(0.25))
-    }
-}
-
-/// «● Встала и пошла           через 2:00»: a condition for coming back early, readable at arm's length.
-struct EarlyEntryPlate: View {
-    let entry: EarlyEntry
-    /// Mac: the trainer's words under the event, one line (those on the right not again).
-    var showsDetail = false
-    var height: CGFloat = 44
-    var digits: CGFloat = 22
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Circle().fill(entry.tone.color).frame(width: 9, height: 9)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(entry.event)
-                    .font(.system(size: digits * 0.7, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                if showsDetail, let detail = entry.detailBesideTime {
-                    Text(detail)
-                        .font(.system(size: digits * 0.52))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            .minimumScaleFactor(0.8)
-            Spacer(minLength: 8)
-            if let delay = entry.delay, delay > 0 {
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("через")
-                        .font(.system(size: digits * 0.55, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
-                    Text(DurationText.clock(delay))
-                        .font(Theme.display(digits, weight: .bold))
-                        .monospacedDigit()
-                }
-            } else if let words = entry.unreadDelay {
-                // «через пару минут»: the trainer's words, not digits.
-                Text(words)
-                    .font(.system(size: digits * 0.6, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            } else {
-                Text("сразу").font(Theme.display(digits * 0.8, weight: .bold))
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(minHeight: height)
-        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// «⛔ Залаяла, завыла        ждать тишины»: the trainer's rule against coming in, red. The «no entry» sign and what
-/// to wait for: a flag with «не входить» read as a command for right now.
-struct DoNotEnterPlate: View {
-    let rule: TrainingPlan.Rule
-    var showsDetail = false
-    var height: CGFloat = 44
-    var digits: CGFloat = 22
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "minus.circle.fill")
-                .font(.system(size: digits * 0.68, weight: .semibold))
-                .foregroundStyle(Theme.danger)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(rule.title)
-                    .font(.system(size: digits * 0.7, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                if showsDetail, !rule.detail.isEmpty {
-                    Text(rule.detail)
-                        .font(.system(size: digits * 0.52))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-            }
-            .minimumScaleFactor(0.8)
-            Spacer(minLength: 8)
-            Text("ждать тишины")
-                .font(.system(size: digits * 0.68, weight: .bold, design: .rounded))
-                .foregroundStyle(Theme.danger)
-                .lineLimit(1)
-                .fixedSize()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, showsDetail ? 6 : 0)
-        .frame(minHeight: height)
-        .background(Theme.danger.opacity(0.13), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// «⚡ взять ключи, звякнуть ими»: what to take or do on the way out (no checkbox: nothing to tick off).
-struct TriggerRow: View {
-    let text: String
-    var size: CGFloat = 15
-
-    var body: some View {
-        Label {
-            Text(text).fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: "bolt.fill").foregroundStyle(Theme.warning)
-        }
-        .font(.system(size: size, weight: .medium, design: .rounded))
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// The exit's notes folded into one line; a tap shows them all and folds them back.
-struct FoldedNotes: View {
-    let notes: [String]
-    var size: CGFloat = 13
-    @State private var expanded = false
-
-    var body: some View {
-        Button {
-            withAnimation(.smooth(duration: 0.2)) { expanded.toggle() }
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: "text.bubble")
-                VStack(alignment: .leading, spacing: 4) {
-                    if expanded {
-                        ForEach(notes, id: \.self) { Text($0).fixedSize(horizontal: false, vertical: true) }
-                    } else {
-                        Text(notes.joined(separator: " · ")).lineLimit(1)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: size * 0.8, weight: .semibold))
-                    .rotationEffect(.degrees(expanded ? 180 : 0))
-            }
-            .font(.system(size: size, design: .rounded))
-            .foregroundStyle(.white.opacity(0.6))
-            .multilineTextAlignment(.leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(expanded ? String(localized: "Свернуть заметки") : String(localized: "Развернуть заметки"))
-    }
-}
-
-/// The trainer's text line by line: the lines of `exitNumber` (the exit and its conditions under it) marked pink and
-/// brought into view when it changes (not otherwise: the reader's own scrolling stays where it is), exits before it
-/// dimmed, the rule against coming in red. A plain stack: a lazy one measured the long lines only as they came into
-/// view, and the text jumped under the finger.
+/// The trainer's text line by line, marked as her whole text from the plan is (`TrainerPageLine`: the exits' numbers in
+/// the margin, what the plan read in each line in its colour, the sign of the rule to wait for quiet; design council,
+/// round 17: the drawer showed the bare words): the lines of `exitNumber` (the exit and its conditions under it) as one
+/// pink block — one instruction, one mark at its side, not a strip per line — brought into view when it changes (not
+/// otherwise: the reader's own scrolling stays where it is), exits before it dimmed. A plain stack: a lazy one measured
+/// the long lines only as they came into view, and the text jumped under the finger.
 struct TrainerTextView: View {
-    let text: String
+    let plan: TrainingPlan
+    /// The current exit (the next one in a break), by its number in `plan`.
     let exitNumber: Int?
-    var fontSize: CGFloat = 15
+
+    /// The lines in runs: the current exit's consecutive lines together, every other line alone.
+    private struct Run: Identifiable {
+        let lines: [PlanParser.SourceLine]
+        let current: Bool
+        var id: PlanParser.SourceLine.ID { lines[0].id }
+    }
 
     var body: some View {
-        let lines = PlanParser.sourceLines(text)
+        let source = TrainerSource(plan)
+        let current = exitNumber.flatMap { number in plan.exits.firstIndex { $0.number == number } }
+        let runs = runs(source, current: current)
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(lines) { line in
-                        row(line).id(line.id)
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(runs) { run in
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(run.lines) { row($0, source: source, current: current, inCurrent: run.current) }
+                        }
+                        .padding(.vertical, run.current ? 3 : 0)
+                        .background(alignment: .leading) {
+                            if run.current {
+                                ZStack(alignment: .leading) {
+                                    Theme.accent.opacity(0.13)
+                                    Theme.accent.frame(width: 3)
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            }
+                        }
+                        .id(run.id)
                     }
                 }
                 .padding(.vertical, 6)
             }
-            .onChange(of: exitNumber, initial: true) { _, number in
-                guard let first = lines.first(where: { $0.kind == .exit && $0.exitNumber == number }) else { return }
-                withAnimation(.smooth(duration: 0.3)) { proxy.scrollTo(first.id, anchor: UnitPoint(x: 0, y: 0.2)) }
+            .onChange(of: exitNumber, initial: true) { _, _ in
+                guard let run = runs.first(where: \.current) else { return }
+                withAnimation(.smooth(duration: 0.3)) { proxy.scrollTo(run.id, anchor: UnitPoint(x: 0, y: 0.2)) }
             }
         }
     }
 
+    private func runs(_ source: TrainerSource, current: Int?) -> [Run] {
+        let exit = current.map { plan.exits[$0] }
+        var runs: [Run] = []
+        for line in source.lines {
+            let isCurrent = exit.map { line.role != .blank && source.isLine(line, of: $0) } ?? false
+            if isCurrent, let last = runs.last, last.current {
+                runs[runs.count - 1] = Run(lines: last.lines + [line], current: true)
+            } else {
+                runs.append(Run(lines: [line], current: isCurrent))
+            }
+        }
+        return runs
+    }
+
     @ViewBuilder
-    private func row(_ line: PlanParser.SourceLine) -> some View {
-        let current = line.exitNumber != nil && line.exitNumber == exitNumber
-        let done = line.exitNumber.map { number in exitNumber.map { number < $0 } ?? false } ?? false
-        if line.kind == .blank {
-            Color.clear.frame(height: fontSize * 0.4)
+    private func row(_ line: PlanParser.SourceLine, source: TrainerSource, current: Int?, inCurrent: Bool) -> some View {
+        if line.role == .blank {
+            Color.clear.frame(height: 6)
         } else {
-            Text(line.text)
-                .font(.system(size: fontSize, weight: weight(line, current: current)))
-                .foregroundStyle(color(line, current: current, done: done))
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 3)
-                .padding(.horizontal, 10)
-                .background(alignment: .leading) {
-                    if current {
-                        ZStack(alignment: .leading) {
-                            Theme.accent.opacity(0.13)
-                            Theme.accent.frame(width: 3)
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    }
-                }
+            // The exits already done (before the current one) dimmed.
+            let done = current.map { current in
+                source.exit(of: line, in: plan).flatMap { exit in plan.exits.firstIndex { $0.id == exit.id } }.map { $0 < current } ?? false
+            } ?? false
+            // In the current block its pink bar says whose lines they are: no rule beside them.
+            TrainerPageLine(line: line, source: source, plan: plan, exitRule: !inCurrent)
+                .padding(.leading, 6)
+                .padding(.trailing, 10)
+                .opacity(done ? 0.4 : 1)
                 .textSelection(.enabled)
-        }
-    }
-
-    private func weight(_ line: PlanParser.SourceLine, current: Bool) -> Font.Weight {
-        switch line.kind {
-        case .header: return .bold
-        case .exit: return current ? .bold : .semibold
-        default: return .regular
-        }
-    }
-
-    private func color(_ line: PlanParser.SourceLine, current: Bool, done: Bool) -> Color {
-        if current { return .white }
-        if done { return .white.opacity(0.35) }
-        switch line.kind {
-        case .header, .exit: return .white.opacity(0.9)
-        case .earlyEntry, .breakTime: return .white.opacity(0.75)
-        case .doNotEnter: return Theme.danger.opacity(0.95)
-        case .falseStart: return Theme.warning.opacity(0.9)
-        case .note, .blank: return .white.opacity(0.6)
         }
     }
 }
 
-/// «⚡ куртка · ключи   🏃 встала → 2:00 · легла → 0:30   📝» under an exit in the plan: everything the exit has
-/// in words, with the empty categories as dimmed icons.
+/// «⚡ куртка · ключи   🏃 встала → 2:00 · легла → 0:30   💬 выйти и сразу вернуться» under an exit in the plan:
+/// only what the exit has, in words. An exit with nothing besides its time gives an empty line (`isEmpty`), which the
+/// iPhone plan leaves out and the Mac table leaves blank.
 struct ExitSummaryText: View {
     let plan: TrainingPlan
     let exit: PlannedExit
     var size: CGFloat = 13
 
+    /// No triggers, no conditions for coming back early, no note.
+    var isEmpty: Bool {
+        exit.triggers.isEmpty && exit.noteText == nil && plan.earlyEntries(of: exit).isEmpty
+    }
+
     var body: some View {
         let entries = plan.earlyEntries(of: exit)
-        let dim = Color.white.opacity(0.3)
-        var text = Text(Image(systemName: "bolt.fill")).foregroundColor(exit.triggers.isEmpty ? dim : Theme.warning)
-            + Text(verbatim: " ")
-            + Text(verbatim: exit.triggers.isEmpty ? "—" : exit.triggers.joined(separator: " · "))
-                .foregroundColor(exit.triggers.isEmpty ? dim : .white.opacity(0.85))
-            + Text(verbatim: "   ")
-            + Text(Image(systemName: "figure.run")).foregroundColor(entries.isEmpty ? dim : Theme.info)
-            + Text(verbatim: " ")
-            + Text(verbatim: entries.isEmpty ? "—" : entries.map(\.summary).joined(separator: " · "))
-                .foregroundColor(entries.isEmpty ? dim : .white.opacity(0.85))
-        if plan.usesCommonEarlyEntries(exit) {
-            text = text + Text(verbatim: " ") + Text("· общие").foregroundColor(dim)
+        let bright = Color.white.opacity(0.85)
+        let dim = Color.white.opacity(0.4)
+        // Joined by interpolation (`Text + Text` is deprecated) into keys the catalog has as untranslated: "%@ %@", "%@  %@".
+        func part(_ symbol: String, _ tint: Color, _ words: Text) -> Text {
+            Text("\(Text(Image(systemName: symbol)).foregroundStyle(tint)) \(words)")
         }
-        text = text + Text(verbatim: "   ")
-            + Text(Image(systemName: exit.noteText == nil ? "text.bubble" : "text.bubble.fill"))
-                .foregroundColor(exit.noteText == nil ? dim : .white.opacity(0.85))
+        var parts: [Text] = []
+        if !exit.triggers.isEmpty {
+            parts.append(part("bolt.fill", Theme.warning, Text(verbatim: exit.triggers.joined(separator: " · ")).foregroundStyle(bright)))
+        }
+        if !entries.isEmpty {
+            // In their one form (`EarlyEntry.conditionText`), as on the training card and the Mac. Each condition
+            // unbroken, the «·» after it kept with it: the row wraps between whole conditions.
+            let summaries = entries.map(\.conditionText)
+                .map { $0.replacingOccurrences(of: " ", with: "\u{00A0}") }
+            var words = Text(verbatim: summaries.joined(separator: "\u{00A0}· ")).foregroundStyle(bright)
+            if plan.usesCommonEarlyEntries(exit) {
+                words = Text("\(words) \(Text("· общие").foregroundStyle(dim))")
+            }
+            parts.append(part("figure.run", Theme.info, words))
+        }
+        if let note = exit.noteText {
+            parts.append(part("text.bubble", dim, Text(verbatim: note).foregroundStyle(.white.opacity(0.6))))
+        }
+        let text = parts.dropFirst().reduce(parts.first ?? Text(verbatim: "")) { Text("\($0)  \($1)") }
         return text
             .font(.system(size: size, design: .rounded))
             .lineLimit(2)

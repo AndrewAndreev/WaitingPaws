@@ -102,9 +102,22 @@ struct SettingsView: View {
                     Text("Звук только в плеере; видео всегда записывается со звуком камеры.")
                 }
 
-                Section("Тренировка") {
+                Section {
                     Toggle("Включать запись вместе с тренировкой", isOn: $settings.autoRecord)
                     Toggle("Сохранять видео в Фото", isOn: $settings.saveToPhotos)
+                    #if os(iOS)
+                    Toggle("Вибрация", isOn: $settings.haptics)
+                    TrainingAlertsToggle(isOn: $settings.notifications)
+                    #endif
+                } header: {
+                    Text("Тренировка")
+                } footer: {
+                    #if os(iOS)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Короткая вибрация, когда выходит время: план выхода, перерыв, отсчёт условия или тишина. Это сигнал таймера, а не разрешение входить.")
+                        Text("Когда приложение свёрнуто или экран заблокирован, о том же скажет уведомление — без звука, чтобы не услышала собака.")
+                    }
+                    #endif
                 }
 
                 #if os(iOS)

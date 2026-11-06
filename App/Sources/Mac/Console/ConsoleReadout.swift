@@ -2,47 +2,48 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Right panel during a session. Under the exit strip, what this exit (or break) is; then the timer — big tinted
-/// digits over a progress line, the focus of the window — and the same two buttons as on the iPhone, with their
-/// keys. Under them, outside: when to come back early, when not to come in and the exit's notes; in a break: what to
-/// take for the next exit. The rest of the panel is the trainer's text with that exit marked. The numbers of the whole
-/// training live in the timeline's header, «Завершить» in the toolbar.
+/// Right panel during a session, as little as reads at a glance. In the card: the exit strip (where in the plan, what
+/// comes next, a repeat's ↺), «Выход 3» or «Перерыв», the exit's conditions in one quiet line only to read (in a break
+/// the next exit's ⚡ trigger instead), the big number over a thin line — «+0:05» in orange past the plan. Under the
+/// card the two steps, then the trainer's text, open unless the owner folds it. The numbers of the whole training
+/// live in the timeline's header, «Завершить» in the toolbar.
 struct ConsoleReadout: View {
     @Environment(AppModel.self) private var model
     let session: TrainingSession
-    @State private var showTrainerText = false
+    /// The trainer's text under the buttons: the owner's own words, open unless folded (here and before the start).
+    @AppStorage(MacTrainerTextFold.key) private var trainerTextOpen = true
 
     var body: some View {
         let content = ReadoutContent(session: session)
+        let exit = Self.shownExit(session)
         VStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
                 ExitStrip(session: session, large: true)
-                about(content)
-                    .padding(.top, 14)
-                TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                    timer(content.timer(at: context.date))
+                header(content)
+                    .padding(.top, 12)
+                info(exit)
+                    .padding(.top, 4)
+                TimelineView(.periodic(from: .now, by: 0.25)) { context in
+                    // The iPhone's number: the plan's own count (nothing is marked from here); before the first exit
+                    // its time quiet; in the last break the break's time counting up, without a line.
+                    number(content.phoneStatus(at: context.date))
                 }
-                .padding(.top, 22)
+                .padding(.top, 10)
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .topLeading)
+            // Never squeezed by a short window: the trainer's text under it gives way instead.
+            .fixedSize(horizontal: false, vertical: true)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(.black.opacity(0.32))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.07)))
             }
             buttons(content)
-            if let brief = content.brief {
-                if content.isBreak {
-                    prepare(brief)
-                } else {
-                    conditions(brief)
-                }
-            }
             if session.plan.rawText.isEmpty {
                 Spacer(minLength: 0)
             } else {
-                trainerText(content)
+                trainerText(exit)
             }
         }
         .padding(16)
@@ -50,161 +51,126 @@ struct ConsoleReadout: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    /// «Выход 4 · попытка 2» with ⚡ 🏃 📝 of the exit, and its plan — or the next exit in a break.
-    private func about(_ content: ReadoutContent) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(content.title)
-                    .font(.system(size: 22, weight: .bold))
-                if let attempt = content.attempt {
-                    Text(attempt)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-                if let brief = content.brief {
-                    ExitMarks(plan: session.plan, exit: brief.exit, size: 13)
-                }
-            }
-            if let line = content.line {
-                Text(line).font(.system(size: 15, weight: .medium))
-            }
+    /// The exit the card is about: the one under way (or about to start), in a break the next one.
+    static func shownExit(_ session: TrainingSession) -> PlannedExit? {
+        switch session.phase {
+        case .ready, .leaving, .away:
+            return session.currentExit
+        case .breakTime(_, _, _, let next):
+            guard let next, session.plan.exits.indices.contains(next) else { return nil }
+            return session.plan.exits[next]
+        case .finished:
+            return nil
         }
-        .fixedSize(horizontal: false, vertical: true)
     }
 
-    // MARK: - The exit
-
-    /// Outside: «Ранний вход» — the conditions with the trainer's words under them, the rule against coming in, the
-    /// notes folded.
-    @ViewBuilder
-    private func conditions(_ brief: ExitBrief) -> some View {
-        if !brief.entries.isEmpty || brief.doNotEnter != nil || !brief.notes.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                if !brief.entries.isEmpty {
-                    sectionTitle(String(localized: "Ранний вход"), symbol: "figure.run")
-                    ForEach(brief.entries) { entry in
-                        EarlyEntryPlate(entry: entry, showsDetail: true, height: 46, digits: 20)
+    /// «Выход 3», «Перерыв»: where in the plan and a repeat are on the strip. Right after a «Фальстарт», for as long
+    /// as an undo still puts the owner back outside, «Отменить» beside it, a word without a sign (the ↺ is the chip's;
+    /// later the menu's «Отменить фальстарт»).
+    private func header(_ content: ReadoutContent) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            // «Перерыв» for the last break too, as on the iPhone: its buttons say it is the last.
+            Text(content.phoneTitle)
+                .font(.system(size: 22, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            if content.isBreak, let undo = model.falseStartUndo {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    if context.date.timeIntervalSince(undo.pressedAt) < AppModel.falseStartBackOutsideFor {
+                        Button { withAnimation(.smooth(duration: 0.25)) { model.undoFalseStart() } } label: {
+                            Text("Отменить")
+                        }
+                        .buttonStyle(ReadoutCapsuleStyle())
+                        .help(String(localized: "Отменить фальстарт выхода \(undo.exitNumber)"))
+                        .transition(.opacity)
                     }
                 }
-                if let rule = brief.doNotEnter {
-                    DoNotEnterPlate(rule: rule, showsDetail: true, height: 46, digits: 20)
-                }
-                if !brief.notes.isEmpty {
-                    FoldedNotes(notes: brief.notes, size: 12.5)
-                        .padding(.horizontal, 4)
-                        .padding(.top, 2)
-                        .id(brief.exit.id)
-                }
             }
         }
+        .frame(height: 28)
     }
 
-    /// In a break: what to take for the next exit, and its conditions in one line.
-    @ViewBuilder
-    private func prepare(_ brief: ExitBrief) -> some View {
-        if !brief.exit.triggers.isEmpty || brief.entriesSummary != nil {
-            VStack(alignment: .leading, spacing: 6) {
-                sectionTitle(String(localized: "Подготовить к выходу \(brief.exit.number)"), symbol: "bolt.fill")
-                ForEach(Array(brief.exit.triggers.enumerated()), id: \.offset) { _, trigger in
-                    TriggerRow(text: trigger, size: 14)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 36)
-                        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                if let summary = brief.entriesSummary {
-                    Label("На выходе: \(summary)", systemImage: "figure.run")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
-                }
+    /// The line about the exit (`InfoLine`), as tall as the plan's tallest such line: the card keeps one height from
+    /// phase to phase.
+    private func info(_ exit: PlannedExit?) -> some View {
+        let plan = session.plan
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(InfoLine.variants(of: plan).enumerated()), id: \.offset) { _, items in
+                InfoLine(items: items).hidden().accessibilityHidden(true)
             }
+            InfoLine(items: exit.map { InfoLine.items(plan: plan, exit: $0, outside: session.phase.isOutside) } ?? [])
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The trainer's text, always there: the exit of the moment marked and kept in view. When the panel is too short
-    /// for it (a small window), one row that opens it next to the panel; ↗ opens it larger in any case.
-    private func trainerText(_ content: ReadoutContent) -> some View {
-        ViewThatFits(in: .vertical) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    sectionTitle(String(localized: "Текст тренера"), symbol: "doc.text")
-                    Spacer(minLength: 0)
-                    trainerTextButton(content, label: Image(systemName: "arrow.up.left.and.arrow.down.right"))
-                        .help("Открыть текст тренера крупнее")
-                }
-                TrainerTextView(text: session.plan.rawText, exitNumber: content.textExitNumber, fontSize: 12.5)
-                    .frame(maxHeight: .infinity)
-                    .background {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(.black.opacity(0.22))
-                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.06)))
-                    }
-            }
-            .frame(idealHeight: 96, maxHeight: .infinity)
-            trainerTextButton(content, label: Label("Текст тренера", systemImage: "doc.text"))
-                .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Color.clear.frame(height: 0)
-        }
-        .frame(maxHeight: .infinity, alignment: .top)
-    }
-
-    private func trainerTextButton(_ content: ReadoutContent, label: some View) -> some View {
-        Button { showTrainerText = true } label: { label }
-            .buttonStyle(.borderless)
-            .popover(isPresented: $showTrainerText, arrowEdge: .leading) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Текст тренера").font(.headline).padding(.horizontal, 10)
-                    TrainerTextView(text: session.plan.rawText, exitNumber: content.textExitNumber, fontSize: 13.5)
-                }
-                .padding(.vertical, 12)
-                .frame(width: 460, height: 580)
-            }
-    }
-
-    private func sectionTitle(_ title: String, symbol: String) -> some View {
-        Label(title, systemImage: symbol)
-            .font(.system(size: 11, weight: .semibold))
-            .textCase(.uppercase)
-            .foregroundStyle(.secondary)
-            .padding(.leading, 4)
-            .padding(.top, 2)
-    }
-
-    /// Big digits in the phase's colour (neutral before the first exit), the caption and the progress line.
-    private func timer(_ timer: ReadoutContent.Timer) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(timer.text)
-                .font(MacPalette.digits(88, weight: .semibold))
-                .foregroundStyle(timer.progress == nil && !timer.overdue ? Color.primary : timer.tint)
+    /// The big number, white («+0:05» in orange past the plan), and the thin line in the phase's colour (full past it).
+    private func number(_ status: ReadoutContent.Status) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(status.value)
+                .font(status.isWords ? .system(size: 46, weight: .bold, design: .rounded)
+                                     : MacPalette.digits(88, weight: .semibold))
+                .foregroundStyle(status.valueTint != .white ? status.valueTint : Color.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .contentTransition(.numericText())
-                .padding(.vertical, -6)
-            ThinProgress(value: timer.progress ?? 0, tint: timer.tint, height: 6)
-            Text(timer.caption)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(timer.overdue ? timer.tint : .secondary)
+                .padding(.vertical, status.isWords ? 8 : -6)
+            // Its room kept where nothing is counted down, so the card keeps its height.
+            ThinProgress(value: status.progress ?? 0, tint: status.tint, height: 6)
+                .opacity(status.progress == nil ? 0 : 1)
+                .padding(.bottom, 2)
         }
+    }
+
+    /// «Текст тренера ⌃» over the trainer's text, the exit of the moment (its line and the lines under it) one marked
+    /// block kept in view, the exits done faded, each exit line with its number; the fold hides it.
+    private func trainerText(_ exit: PlannedExit?) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            MacTrainerTextFold(open: $trainerTextOpen)
+            if trainerTextOpen {
+                let plan = session.plan
+                let lines = MacSourceLine.lines(plan.rawText)
+                let link = MacPlanTextLink(plan: plan, lines: lines)
+                let current = exit.flatMap { link.ordinals[$0.id] }
+                let lit = current.map { MacSourceLine.ids(ofExits: [$0], in: lines) } ?? []
+                // Before the exit the card is about (in a break, the next one): done.
+                let shown = exit.flatMap { exit in plan.exits.firstIndex { $0.id == exit.id } }
+                    ?? (session.isFinished ? plan.exits.count : 0)
+                let doneOrdinals = Set(plan.exits.prefix(shown).compactMap { link.ordinals[$0.id] })
+                MacTrainerTextView(link: link, lit: lit,
+                                   dimmed: MacSourceLine.ids(ofExits: doneOrdinals, in: lines).subtracting(lit),
+                                   fontSize: 12.5, colorsOnlyLit: true, focus: lit.min())
+                    .frame(maxHeight: .infinity)
+                    .background(MacTrainerTextFold.box)
+                    .transition(.opacity)
+            }
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        #if DEBUG
+        .onAppear {
+            if CommandLine.arguments.contains("--demo-trainer-text") { trainerTextOpen = true }
+            // `--demo-plan-edit`: exit 3 changed to 1 мин 30 с during the training (struck through in the text).
+            if CommandLine.arguments.contains("--demo-plan-edit"), session.plan.exits.count > 2 {
+                var plan = session.plan
+                plan.exits[2].duration = 90
+                _ = session.updatePlan(plan, quiet: true)
+            }
+        }
+        #endif
     }
 
     // MARK: - Buttons
 
     /// The next step (Space) and the false start (⌫), as on the iPhone: blue toward a break, pink toward an exit.
-    /// Outside, «Фальстарт» runs out with the trainer's window («в первые 20 секунд…») and folds away; after the
-    /// schedule's last exit «Ещё выход» starts an extra one without a planned time.
+    /// Before the first exit «Вышли» alone. Outside, «Фальстарт» runs out with the trainer's window («в первые 20
+    /// секунд…»), its line shrinking, and folds away; in the last break «Завершить» leads and «Ещё выход» after it
+    /// starts an extra exit without a planned time.
     private func buttons(_ content: ReadoutContent) -> some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
             let falseStartLeft = content.falseStartLeft(at: context.date)
-            let showsFalseStart = content.showsFalseStart(at: context.date)
+            let beforeFirst: Bool = if case .ready = session.phase { true } else { false }
+            let showsFalseStart = content.showsFalseStart(at: context.date) && !beforeFirst
             HStack(spacing: 10) {
-                if content.canStartOpenExit {
-                    StepButton(title: String(localized: "Ещё выход"), icon: .outside, key: "",
-                               fill: .white.opacity(0.08), foreground: .primary) {
-                        session.startOpenExit()
-                    }
-                }
                 if let step = content.step {
                     StepButton(title: step.title, icon: step.icon, key: String(localized: "Пробел"),
                                fill: step.tint, foreground: .black) {
@@ -215,15 +181,25 @@ struct ConsoleReadout: View {
                         }
                     }
                 }
-                if showsFalseStart {
-                    StepButton(title: String(localized: "Фальстарт"), icon: .symbol("arrow.uturn.backward"), key: "⌫",
-                               fill: .white.opacity(0.08), foreground: MacPalette.red) {
-                        session.resetExit()
+                if content.canStartOpenExit {
+                    StepButton(title: String(localized: "Ещё выход"), icon: .outside, key: nil,
+                               fill: .white.opacity(0.08), foreground: .primary) {
+                        session.startOpenExit()
                     }
+                }
+                if showsFalseStart {
+                    // Orange, like a false start in the log and the history; what a click does is in the pointer's tip.
+                    StepButton(title: String(localized: "Фальстарт"), icon: .symbol("arrow.uturn.backward"), key: "⌫",
+                               fill: .white.opacity(0.08), foreground: MacPalette.orange,
+                               hint: content.falseStartHint) {
+                        model.falseStart()
+                    }
+                    .accessibilityLabel(content.falseStartAccessibilityLabel)
+                    .accessibilityHint(content.falseStartHint ?? "")
                     .overlay(alignment: .bottom) {
                         if let falseStartLeft, let window = session.plan.falseStartWindow {
                             Capsule()
-                                .fill(MacPalette.red.opacity(0.7))
+                                .fill(MacPalette.orange.opacity(0.7))
                                 .frame(height: 3)
                                 .scaleEffect(x: max(0, falseStartLeft / window), anchor: .leading)
                                 .padding(.horizontal, 14)
@@ -239,50 +215,148 @@ struct ConsoleReadout: View {
     }
 }
 
-/// A training step: a 42 pt rounded button, the title centred, its key at the trailing edge while it fits.
+/// One quiet line about the exit, only to read — nothing on it is pressed; the iPhone card's line in its one form
+/// (`ConditionsLine`). Outside: its conditions and the rule against coming in, «встала и пошла 0:30 · легла 0:20 ·
+/// ⊖ тишина 0:30»; before it (a break, before the first exit) what to take, «⚡ взять ключи». The exit's note after
+/// them. It breaks between whole items, a «·» only between two conditions on one line.
+private struct InfoLine: View {
+    enum Item: Hashable {
+        case condition(words: String, time: String)
+        case rule(words: String, time: String?)
+        case trigger(String)
+        case note(String)
+
+        var isCondition: Bool {
+            switch self {
+            case .condition, .rule: return true
+            default: return false
+            }
+        }
+    }
+
+    let items: [Item]
+    private static let size: CGFloat = 14
+
+    var body: some View {
+        SeparatedFlowLayout(spacing: 5, lineSpacing: 4) {
+            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                if index > 0 {
+                    if item.isCondition && items[index - 1].isCondition { FlowDot() } else { Color.clear.frame(width: 6, height: 1) }
+                }
+                view(item)
+            }
+        }
+        .font(.system(size: Self.size, weight: .medium, design: .rounded))
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func view(_ item: Item) -> some View {
+        switch item {
+        case .condition(let words, let time):
+            ConditionsLine.item(words: words, time: time, size: Self.size)
+        case .rule(let words, let time):
+            ConditionsLine.item(words: words, time: time, size: Self.size, rule: true)
+        case .trigger(let text):
+            Label {
+                Text(verbatim: text).fontWeight(.semibold).fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "bolt.fill").foregroundStyle(Theme.warning)
+            }
+            .foregroundStyle(.primary)
+        case .note(let text):
+            Label {
+                Text(verbatim: text).fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "text.bubble")
+            }
+        }
+    }
+
+    /// Outside the exit: its conditions and the rule; before it: its triggers. Its note in both.
+    static func items(plan: TrainingPlan, exit: PlannedExit, outside: Bool) -> [Item] {
+        var items: [Item]
+        if outside {
+            items = plan.earlyEntries(of: exit).map { .condition(words: $0.conditionWords, time: $0.conditionTime) }
+            if let rule = plan.doNotEnterRule { items.append(.rule(words: rule.conditionWords, time: rule.conditionTime)) }
+        } else {
+            items = exit.triggers.map { .trigger($0) }
+        }
+        if let note = exit.noteText { items.append(.note(note)) }
+        return items
+    }
+
+    /// Every line the plan can show, each once: the place is as tall as the tallest.
+    static func variants(of plan: TrainingPlan) -> [[Item]] {
+        var seen = Set<[Item]>()
+        var lines: [[Item]] = []
+        for exit in plan.exits {
+            for outside in [true, false] {
+                let items = items(plan: plan, exit: exit, outside: outside)
+                if !items.isEmpty, seen.insert(items).inserted { lines.append(items) }
+            }
+        }
+        return lines
+    }
+}
+
+/// «Текст тренера ⌃» over the trainer's text on the panel, before the start and during the training: a quiet
+/// header that folds it; the owner's choice is kept.
+struct MacTrainerTextFold: View {
+    static let key = "mac.trainerTextOpen"
+    @Binding var open: Bool
+
+    /// The text's box under the header.
+    static var box: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(.black.opacity(0.22))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.06)))
+    }
+
+    var body: some View {
+        Button {
+            withAnimation(.smooth(duration: 0.25)) { open.toggle() }
+        } label: {
+            HStack(spacing: 6) {
+                Label("Текст тренера", systemImage: "doc.text")
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .rotationEffect(.degrees(open ? 180 : 0))
+                Spacer(minLength: 0)
+            }
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
+            .frame(height: 24)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A training step: a 42 pt rounded button, the title centred; its key (Space, ⌫) in the pointer's tip.
 private struct StepButton: View {
     let title: String
     let icon: StepIcon.Kind
-    let key: String
+    let key: String?
     let fill: Color
     let foreground: Color
+    /// What a click does, after the title in the pointer's tip.
+    var hint: String? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            ViewThatFits(in: .horizontal) {
-                label
-                    .padding(.horizontal, 56)
-                    .frame(maxWidth: .infinity)
-                    .overlay(alignment: .trailing) { keyCap }
-                label.frame(maxWidth: .infinity)
+            HStack(spacing: 7) {
+                StepIcon(kind: icon, size: 15)
+                Text(title).lineLimit(1)
             }
+            .fixedSize()
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(StepButtonStyle(fill: fill, foreground: foreground))
-        .help(key.isEmpty ? title : "\(title) · \(key)")
-    }
-
-    private var label: some View {
-        HStack(spacing: 7) {
-            StepIcon(kind: icon, size: 15)
-            Text(title).lineLimit(1)
-        }
-        .fixedSize()
-    }
-
-    @ViewBuilder
-    private var keyCap: some View {
-        if !key.isEmpty { keyCapText }
-    }
-
-    private var keyCapText: some View {
-        Text(key)
-            .font(.system(size: 10.5, weight: .semibold))
-            .padding(.horizontal, 6)
-            .frame(minWidth: 20, minHeight: 18)
-            .background(foreground.opacity(0.12), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-            .opacity(0.8)
-            .padding(.trailing, 10)
+        .help([key.map { "\(title) · \($0)" } ?? title, hint].compactMap { $0 }.joined(separator: " — "))
     }
 }
 
@@ -298,6 +372,21 @@ private struct StepButtonStyle: ButtonStyle {
             .background(fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .opacity(configuration.isPressed ? 0.8 : 1)
             .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+/// «↶ Отменить» beside «Перерыв»: a small grey capsule, white words, no colour of its own.
+private struct ReadoutCapsuleStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(Color.primary.opacity(0.9))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(.white.opacity(configuration.isPressed ? 0.18 : 0.1), in: Capsule())
+            .contentShape(Capsule())
     }
 }
 
@@ -385,10 +474,7 @@ struct ClipRecordingHUD: View {
                 Image(systemName: "eye")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Только камера").font(.system(size: 13, weight: .semibold))
-                    Text("Без записи и тренировки").font(.system(size: 11)).foregroundStyle(.secondary)
-                }
+                Text("Только камера").font(.system(size: 13, weight: .semibold))
             }
             Button { model.startRecording() } label: {
                 ShortcutLabel(title: String(localized: "Запись"), symbol: "record.circle", key: "⌘R")
@@ -418,10 +504,7 @@ struct ClipRecordingHUD: View {
                         .font(MacPalette.digits(34, weight: .medium))
                         .contentTransition(.numericText())
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Запись без тренировки").font(.system(size: 13, weight: .semibold))
-                    Text("Видео появится в истории").font(.system(size: 11)).foregroundStyle(.secondary)
-                }
+                Text("Запись без тренировки").font(.system(size: 13, weight: .semibold))
                 Button { ui.confirmStopRecording = true } label: {
                     ShortcutLabel(title: String(localized: "Остановить"), symbol: "stop.fill", key: "⌘R", prominent: true)
                 }

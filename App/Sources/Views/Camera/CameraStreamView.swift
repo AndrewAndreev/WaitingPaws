@@ -15,6 +15,51 @@ enum PlayerPhase: Equatable {
     case failed(String)
 }
 
+/// What the player is doing, and how old the picture on screen is: what the overlay over the picture says. Fed by
+/// the page's "state …" messages; the caller may hold one to show it elsewhere (the iPhone shows it over the part of
+/// the picture on screen, not zoomed with it).
+@Observable
+final class CameraStatus {
+    private(set) var phase: PlayerPhase = .connecting
+    /// When the picture on screen last moved, while it doesn't: the last frame stays on screen (through a reconnect
+    /// too, see `keepFrame` in the page). Nil while it plays and before the first frame.
+    private(set) var frozenSince: Date?
+    /// A frame has been shown since the page loaded.
+    private(set) var hasPicture = false
+
+    init() {}
+
+    func update(_ next: PlayerPhase) {
+        switch next {
+        case .playing:
+            hasPicture = true
+            frozenSince = nil
+        case .stalled:
+            // The page says so after 2 s without movement.
+            if hasPicture, frozenSince == nil { frozenSince = Date().addingTimeInterval(-2) }
+        default:
+            if hasPicture, frozenSince == nil { frozenSince = Date() }
+        }
+        phase = next
+    }
+
+    /// A new page: nothing on screen yet.
+    func restart() {
+        phase = .connecting
+        frozenSince = nil
+        hasPicture = false
+    }
+
+    #if DEBUG
+    /// `--demo-stream=…` over the demo picture (UI checks): its frame `age` seconds old.
+    func demo(_ phase: PlayerPhase, age: TimeInterval?) {
+        self.phase = phase
+        hasPicture = age != nil
+        frozenSince = age.map { Date().addingTimeInterval(-$0) }
+    }
+    #endif
+}
+
 /// Full-bleed live view of a go2rtc stream, with what is going on over it while there is no picture yet (or it
 /// froze) instead of a black screen.
 struct CameraStreamView: View {
@@ -26,16 +71,18 @@ struct CameraStreamView: View {
     var reloadToken: Int = 0
     /// Off where the caller shows its own status (the Mac settings card).
     var showsStatus: Bool = true
+    /// The caller's: it shows the state itself (`CameraStatusOverlay`), this view doesn't.
+    var status: CameraStatus? = nil
     var onVideoSize: ((CGSize) -> Void)? = nil
     var onDelay: ((Double, Double?) -> Void)? = nil
 
-    @State private var phase: PlayerPhase = .connecting
+    @State private var own = CameraStatus()
     /// Set inside `ZoomableView(contentZooms: true)`: the player zooms the picture itself (the Mac's `PlayerWebView`).
     @Environment(ZoomState.self) private var zoom: ZoomState?
 
     init(server: Go2RTCServer, stream: String, mode: PlayerMode, audioEnabled: Bool, fill: Bool = false,
-         reloadToken: Int = 0, showsStatus: Bool = true, onVideoSize: ((CGSize) -> Void)? = nil,
-         onDelay: ((Double, Double?) -> Void)? = nil) {
+         reloadToken: Int = 0, showsStatus: Bool = true, status: CameraStatus? = nil,
+         onVideoSize: ((CGSize) -> Void)? = nil, onDelay: ((Double, Double?) -> Void)? = nil) {
         self.server = server
         self.stream = stream
         self.mode = mode
@@ -43,62 +90,155 @@ struct CameraStreamView: View {
         self.fill = fill
         self.reloadToken = reloadToken
         self.showsStatus = showsStatus
+        self.status = status
         self.onVideoSize = onVideoSize
         self.onDelay = onDelay
     }
 
     var body: some View {
+        let status = self.status ?? own
         CameraWebView(server: server, stream: stream, mode: mode, audioEnabled: audioEnabled, fill: fill,
                       reloadToken: reloadToken, onVideoSize: onVideoSize, onDelay: onDelay,
-                      onPhase: { phase = $0 }, zoomScale: zoom?.scale ?? 1, zoomOffset: zoom?.offset ?? .zero)
+                      onPhase: { status.update($0) }, zoomScale: zoom?.scale ?? 1, zoomOffset: zoom?.offset ?? .zero)
             .overlay {
-                if showsStatus { CameraStatusOverlay(phase: phase) }
+                if showsStatus && self.status == nil { CameraStatusOverlay(status: own) }
             }
-            .onChange(of: "\(server.baseURL)|\(stream)|\(mode.rawValue)|\(reloadToken)") { phase = .connecting }
+            .onAppear { status.restart() }
+            // A new page starts black: no last frame to keep.
+            .onChange(of: "\(server.baseURL)|\(stream)|\(mode.rawValue)|\(reloadToken)") { status.restart() }
     }
 }
 
-/// Spinner and a line of text while the camera connects, a pill over a frozen picture, the reason when go2rtc
-/// cannot reach the camera.
+/// Spinner and a line of text while the camera connects; over a picture that stopped, how long ago it did (the frame
+/// itself stays, dimmed); the reason when go2rtc cannot reach the camera. Nothing while the picture moves.
 struct CameraStatusOverlay: View {
-    let phase: PlayerPhase
+    let status: CameraStatus
+    /// Under «Нет кадра 18 с», what the recording does (off: the screen's REC says it already — the iPhone).
+    var showsRecording = true
+    /// Absent where the overlay stands outside the app's windows (previews): no recording line then.
+    @Environment(AppModel.self) private var model: AppModel?
     /// Still connecting after 10 s.
     @State private var slow = false
+    /// While the picture stands still and this device records: whether video still reaches the recording (its file
+    /// grew in the last few seconds); nil until that is known.
+    @State private var recordingWrites: Bool?
+    /// How much a frame that stopped is darkened under «Нет кадра 12 с».
+    static let frozenDim = 0.38
 
     var body: some View {
+        let phase = status.phase
         Group {
-            switch phase {
-            case .playing:
+            if phase == .playing {
                 EmptyView()
-            case .stalled:
-                Label {
-                    Text("Нет новых кадров — ждём камеру")
-                } icon: {
-                    ProgressView().controlSize(.small).tint(.white)
+            } else if let since = status.frozenSince {
+                FrozenPicturePill(since: since, detail: frozenDetail(phase), recording: showsRecording ? recordingLine : nil)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    // The last frame a little darker: it reads as old, not as a calm dog, and the dog stays clear on it.
+                    .background(Color.black.opacity(Self.frozenDim))
+                    .transition(.opacity)
+            } else {
+                switch phase {
+                case .playing, .stalled:
+                    EmptyView()
+                case .connecting, .waitingForPicture:
+                    message(title: phase == .connecting ? String(localized: "Подключаемся к камере…")
+                                                        : String(localized: "Камера на связи, ждём первый кадр…"),
+                            detail: slow ? String(localized: "Дольше обычного: камера может быть не в сети или занята другим приложением.") : nil,
+                            icon: nil)
+                case .failed(let reason):
+                    message(title: String(localized: "Камера не отвечает"),
+                            detail: String(localized: "\(reason). Пробуем снова…"),
+                            icon: "video.slash")
                 }
-                .font(.system(.footnote, design: .rounded, weight: .medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.black.opacity(0.6), in: Capsule())
-            case .connecting, .waitingForPicture:
-                message(title: phase == .connecting ? String(localized: "Подключаемся к камере…")
-                                                    : String(localized: "Камера на связи, ждём первый кадр…"),
-                        detail: slow ? String(localized: "Дольше обычного: камера может быть не в сети или занята другим приложением.") : nil,
-                        icon: nil)
-            case .failed(let reason):
-                message(title: String(localized: "Камера не отвечает"),
-                        detail: String(localized: "\(reason). Пробуем снова…"),
-                        icon: "video.slash")
             }
         }
         .foregroundStyle(.white)
         .allowsHitTesting(false)
         .animation(.easeInOut(duration: 0.25), value: phase)
+        .animation(.easeInOut(duration: 0.25), value: status.frozenSince == nil)
         .task(id: phase) {
             slow = false
             guard phase == .connecting else { return }
             try? await Task.sleep(for: .seconds(10))
             if !Task.isCancelled { slow = true }
+        }
+        .task(id: status.frozenSince) { await watchRecording() }
+    }
+
+    // MARK: Recording
+
+    /// What a recording does while the picture here stands still (GPT, round 8: «Нет кадра 18 с» under a red REC left
+    /// open whether the video is still being saved). Only what is known: the recording of this device still gets
+    /// video (the picture is stuck on the way to the screen, not at the camera), or it waits for the camera (nothing
+    /// came for a while, or the camera's stream broke off: it goes on in a new part once the camera is back); a linked
+    /// Mac only says that it records. Nothing without a recording.
+    private enum RecordingNow {
+        case writing, waiting, onHost(String)
+    }
+
+    private var recordingNow: RecordingNow? {
+        guard let model, model.isRecordingNow else { return nil }
+        #if DEBUG
+        // `--demo-recording`: nothing is written; `--demo-rec=waiting|host` for the other lines (writing by default).
+        if AppModel.demoRecordingSince != nil {
+            let demo = CommandLine.arguments.first { $0.hasPrefix("--demo-rec=") }.map { String($0.dropFirst("--demo-rec=".count)) }
+            switch demo ?? "" {
+            case "waiting": return .waiting
+            case "host": return .onHost(model.linkedHostKind)
+            default: return .writing
+            }
+        }
+        #endif
+        if model.isLinkedToMac { return .onHost(model.linkedHostKind) }
+        if model.recordingResuming { return .waiting }
+        return recordingWrites.map { $0 ? .writing : .waiting }
+    }
+
+    private var recordingLine: FrozenPicturePill.RecordingLine? {
+        switch recordingNow {
+        case nil: return nil
+        case .writing: return .init(text: String(localized: "Видео записывается"), isOn: true)
+        case .waiting: return .init(text: String(localized: "Запись ждёт камеру"), isOn: false)
+        case .onHost(let host): return .init(text: String(localized: "\(host) продолжает запись"), isOn: true)
+        }
+    }
+
+    /// While the picture stands still: every second, whether the recording's file grew (a new part counts from its
+    /// first bytes). Video comes in fragments a few seconds apart, so «waiting» only after 6 s without any.
+    private func watchRecording() async {
+        recordingWrites = nil
+        guard status.frozenSince != nil, let model else { return }
+        let window: TimeInterval = 6
+        var recorder = ObjectIdentifier(model.recorder)
+        var bytes = model.recorder.bytesWritten
+        var grewAt: Date?
+        let began = Date()
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            let current = model.recorder
+            let now = current.bytesWritten
+            let same = ObjectIdentifier(current) == recorder
+            if now > (same ? bytes : 0) { grewAt = Date() }
+            recorder = ObjectIdentifier(current)
+            bytes = now
+            if let grewAt, Date().timeIntervalSince(grewAt) < window {
+                recordingWrites = true
+            } else if Date().timeIntervalSince(began) >= window {
+                recordingWrites = false
+            }
+        }
+    }
+
+    /// Why the frame stands still, when the player knows more than that.
+    private func frozenDetail(_ phase: PlayerPhase) -> String? {
+        switch phase {
+        case .connecting, .waitingForPicture: return String(localized: "Подключаемся снова…")
+        case .failed(let reason):
+            // A line of its own: «Нет ответа. Пробуем снова…».
+            return String(localized: "\(reason.prefix(1).uppercased() + reason.dropFirst()). Пробуем снова…")
+        case .playing, .stalled: return nil
         }
     }
 
@@ -123,6 +263,68 @@ struct CameraStatusOverlay: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.35))
         .transition(.opacity)
+    }
+}
+
+/// «Нет кадра 12 с», «Нет кадра 1 мин» over the last frame: a calm dog and a stopped stream look the same, the age
+/// tells them apart — said in words, not as a clock that could pass for a countdown (design council, round 6).
+private struct FrozenPicturePill: View {
+    /// «● Видео записывается» / «○ Запись ждёт камеру» under the age: the red dot of REC while video goes into the
+    /// recording, an empty ring while it waits.
+    struct RecordingLine: Equatable {
+        var text: String
+        var isOn: Bool
+    }
+
+    let since: Date
+    var detail: String?
+    var recording: RecordingLine?
+
+    /// «18 с» for the first minute, then whole minutes: «1 мин», «1 ч 5 мин».
+    static func age(_ seconds: TimeInterval) -> String {
+        let whole = max(0, seconds.rounded(.down))
+        return DurationText.short(whole < 60 ? whole : (whole / 60).rounded(.down) * 60)
+    }
+
+    private var isOneLine: Bool { detail == nil && recording == nil }
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small).tint(.white)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Нет кадра \(Self.age(context.date.timeIntervalSince(since)))")
+                        .font(.system(.footnote, design: .rounded, weight: .semibold))
+                        .monospacedDigit()
+                    if let detail {
+                        Text(detail)
+                            .font(.system(.caption, design: .rounded))
+                            .opacity(0.7)
+                    }
+                    if let recording {
+                        HStack(spacing: 4) {
+                            Image(systemName: recording.isOn ? "circle.fill" : "circle")
+                                .font(.system(size: 7, weight: .bold))
+                                .foregroundStyle(recording.isOn ? Theme.danger : .white.opacity(0.7))
+                            Text(recording.text)
+                                .font(.system(.caption, design: .rounded, weight: .medium))
+                                .opacity(recording.isOn ? 0.9 : 0.7)
+                        }
+                        .transition(.opacity)
+                    }
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            }
+            .padding(.leading, 12)
+            .padding(.trailing, 14)
+            .padding(.vertical, isOneLine ? 8 : 7)
+            .background(.black.opacity(0.62), in: RoundedRectangle(cornerRadius: isOneLine ? 17 : 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: isOneLine ? 17 : 14, style: .continuous)
+                .strokeBorder(.white.opacity(0.12), lineWidth: 1))
+            .animation(.easeInOut(duration: 0.25), value: recording)
+            .accessibilityElement(children: .combine)
+        }
     }
 }
 
@@ -179,9 +381,13 @@ struct CameraWebView {
         // A box of one size at the page's top-left, whatever the window does: `PlayerWebView` fits and zooms it.
         let fit = "contain"
         let box = "position: absolute; left: 0; top: 0; width: \(Int(PlayerWebView.pictureBox))px; height: \(Int(PlayerWebView.pictureBox))px;"
+        let ambient = false
         #else
         let fit = fill ? "cover" : "contain"
-        let box = "display: block; width: 100%; height: 100%;"
+        let box = "display: block; position: relative; width: 100%; height: 100%;"
+        // The whole frame letterboxed on black: no blurred copy of it in the margins any more (`#ambient` off — design
+        // council, round 14: decoration with nothing to tell).
+        let ambient = false
         #endif
         return """
         <!doctype html>
@@ -190,7 +396,19 @@ struct CameraWebView {
         <style>
           html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
           video-rtc { \(box) }
-          video-rtc video { width: 100%; height: 100%; object-fit: \(fit); background: #000; }
+          video-rtc video { width: 100%; height: 100%; object-fit: \(fit); background: \(ambient ? "transparent" : "#000"); }
+          #still { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: \(fit); pointer-events: none; }
+          /* The page in a few pixels (`FrameGlow`): the frame where the video shows it, its edges mirrored into the
+             margins round it, darkened and fading into black over each margin, drawn in the canvas. Stretched over the
+             page under the video: the stretch itself is the blur (no CSS filter to redraw with every video frame); the
+             mask only softens the page's own edges, which are not the screen's (no box round the picture). Fades in
+             after the first frame. */
+          #ambient { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none;
+            opacity: 0; transition: opacity 0.8s;
+            -webkit-mask-image: linear-gradient(to right, transparent, #000 \(Int(FrameGlow.sideFade * 100))%, #000 \(100 - Int(FrameGlow.sideFade * 100))%, transparent),
+              linear-gradient(to bottom, transparent, #000 \(Int(FrameGlow.endFade * 100))%, #000 \(100 - Int(FrameGlow.endFade * 100))%, transparent);
+            -webkit-mask-composite: source-in; mask-composite: intersect; }
+          #ambient.on { opacity: 1; }
         </style>
         </head><body>
         <script type="module">
@@ -203,6 +421,23 @@ struct CameraWebView {
           // The phase for the app's overlay (`PlayerPhase`): connecting → waiting → playing ⇄ stalled, or error.
           let phase = '';
           const setPhase = (next) => { if (next !== phase) { phase = next; report('state ' + next); } };
+          // A reconnect starts a new stream, and a new stream starts black: the last frame stays over it as a still until
+          // the video plays again, so the app can say how old it is («Нет кадра 12 с») over the picture itself.
+          let played = false;
+          const keepFrame = (video) => {
+            if (!video.videoWidth || document.getElementById('still')) return;
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              canvas.getContext('2d').drawImage(video, 0, 0);
+              const still = document.createElement('img');
+              still.id = 'still';
+              still.src = canvas.toDataURL('image/jpeg', 0.85);
+              video.parentElement.appendChild(still);
+            } catch (e) { report('still ' + e); }
+          };
+          const dropFrame = () => { const still = document.getElementById('still'); if (still) still.remove(); };
           // How far behind live the MSE player plays (seconds): starts at \(Self.jitterBuffer), grows at once to cover a gap in
           // the data (a camera on weak Wi-Fi, lost packets resent) up to 3.5, and every 10 s eases towards the longest gap
           // of the last 30 s + 0.4. Behind a door the gaps stay around 0.8 s: the cushion then settles near 1.2 s, where
@@ -272,6 +507,8 @@ struct CameraWebView {
               let first = true;
               this.video.addEventListener('playing', () => {
                 if (first) { first = false; report('playing ' + this.video.videoWidth + 'x' + this.video.videoHeight); }
+                played = true;
+                dropFrame();
                 setPhase('playing');
               });
               // A stall is the picture not moving while it should (WebKit does not report 'waiting' for live MSE).
@@ -310,7 +547,11 @@ struct CameraWebView {
             }
             onwebrtc() { report('mode webrtc'); return super.onwebrtc(); }
             // A (re)connection; and go2rtc's {"type":"error"} when it cannot get the camera (video-rtc.js retries).
-            onconnect() { setPhase('connecting'); return super.onconnect(); }
+            onconnect() {
+              if (played) keepFrame(this.video);
+              setPhase('connecting');
+              return super.onconnect();
+            }
             onopen() {
               const modes = super.onopen();
               this.onmessage['status'] = msg => { if (msg.type === 'error') setPhase('error ' + msg.value); };
@@ -426,6 +667,71 @@ struct CameraWebView {
           player.background = true;
           player.src = \(socket);
           document.body.appendChild(player);
+          // The margins round the letterboxed frame (iPhone): every 2 s while the picture plays, a blurred, darkened copy
+          // of the frame under the video (`#ambient`, laid out as `FrameGlow`). A few draws into a canvas of some
+          // 10 × 20 pixels; nothing while the page is hidden or the picture stands still.
+          if (\(ambient ? "true" : "false")) {
+            const ambient = document.createElement('canvas');
+            ambient.id = 'ambient';
+            document.body.insertBefore(ambient, player);
+            const context = ambient.getContext('2d');
+            setInterval(() => {
+              const video = player.video;
+              if (document.hidden || phase !== 'playing' || !video || !video.videoWidth || video.paused) return;
+              const page = { w: window.innerWidth, h: window.innerHeight };
+              if (!page.w || !page.h) return;
+              const k = \(FrameGlow.short) / Math.min(page.w, page.h);
+              const w = Math.max(1, Math.round(page.w * k)), h = Math.max(1, Math.round(page.h * k));
+              if (ambient.width !== w) ambient.width = w;
+              if (ambient.height !== h) ambient.height = h;
+              const vw = video.videoWidth, vh = video.videoHeight;
+              // The picture where the video shows it (object-fit: contain).
+              const fit = Math.min(w / vw, h / vh), pw = vw * fit, ph = vh * fit, px = (w - pw) / 2, py = (h - ph) / 2;
+              // The margins grow with the room round the picture (the main screen's most): lighter there.
+              const room = Math.max(py / ph, px / pw);
+              const dim = \(FrameGlow.dimMost) - (\(FrameGlow.dimMost) - \(FrameGlow.dimLeast)) * Math.min(1, Math.max(0, (room - 0.5) / 0.4));
+              // A band of the frame by each edge, mirrored outwards: the margin by an edge takes that edge's colours.
+              const band = (margin, length) => Math.min(\(FrameGlow.band), margin / length);
+              try {
+                context.imageSmoothingQuality = 'high';
+                context.globalCompositeOperation = 'source-over';
+                context.clearRect(0, 0, w, h);
+                context.drawImage(video, px, py, pw, ph);
+                if (py > 0.5) {
+                  const f = band(py, ph);
+                  context.save(); context.translate(0, py); context.scale(1, -1);
+                  context.drawImage(video, 0, 0, vw, vh * f, px, 0, pw, py);
+                  context.restore();
+                  context.save(); context.translate(0, h); context.scale(1, -1);
+                  context.drawImage(video, 0, vh * (1 - f), vw, vh * f, px, 0, pw, py);
+                  context.restore();
+                }
+                if (px > 0.5) {
+                  const f = band(px, pw);
+                  context.save(); context.translate(px, 0); context.scale(-1, 1);
+                  context.drawImage(video, 0, 0, vw * f, vh, 0, py, px, ph);
+                  context.restore();
+                  context.save(); context.translate(w, 0); context.scale(-1, 1);
+                  context.drawImage(video, vw * (1 - f), 0, vw * f, vh, 0, py, px, ph);
+                  context.restore();
+                }
+                context.fillStyle = 'rgba(0, 0, 0, ' + dim + ')';
+                context.fillRect(0, 0, w, h);
+                // Into black at the page's edges, over the outer part of each margin.
+                const fade = (x0, y0, x1, y1) => {
+                  const gradient = context.createLinearGradient(x0, y0, x1, y1);
+                  gradient.addColorStop(0, 'rgba(0, 0, 0, \(FrameGlow.edgeBlack))');
+                  gradient.addColorStop(Math.min(0.5, 0.5 / Math.max(1, Math.hypot(x1 - x0, y1 - y0))), 'rgba(0, 0, 0, \(FrameGlow.edgeBlack))');
+                  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                  context.fillStyle = gradient;
+                  context.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0) || w, Math.abs(y1 - y0) || h);
+                };
+                if (py > 0.5) { fade(0, 0, 0, py * \(FrameGlow.fade)); fade(0, h, 0, h - py * \(FrameGlow.fade)); }
+                if (px > 0.5) { fade(0, 0, px * \(FrameGlow.fade), 0); fade(w, 0, w - px * \(FrameGlow.fade), 0); }
+                ambient.classList.add('on');
+              } catch (e) {}
+            }, 2000);
+          }
         </script>
         </body></html>
         """
@@ -700,6 +1006,124 @@ extension CameraWebView: NSViewRepresentable {
         load(into: webView, coordinator: context.coordinator)
         webView.fill = fill
         webView.zoom(scale: zoomScale, offset: zoomOffset, animated: context.transaction.animation != nil)
+    }
+}
+#endif
+
+/// The margins round a letterboxed frame on the iPhone (design council, round 6): not a flat glow but the frame itself,
+/// blurred and darkened, as Apple TV's artwork dissolves into its background. The page in a few pixels (`short` along
+/// its shorter side, ~40 pt each once stretched over it: that is the blur): the frame where the video shows it, a band
+/// of it by each edge mirrored outwards into the margin (the wall above the picture, the floor under it), darkened by
+/// `dim`, then into black over the outer `fade` of each margin. Lighter where the margins are wide against the
+/// picture (the main screen's, where the picture is smallest), darker where they are narrow (a training's, over the
+/// card). Drawn by the player page every 2 s (`CameraWebView`, `#ambient`) and, for the demo still, by `render`.
+enum FrameGlow {
+    /// Pixels along the page's shorter side.
+    static let short = 10
+    /// The darkening: `dimMost` while the margins are at most half the picture's height (or width), `dimLeast` from
+    /// 0.9 of it on.
+    static let dimMost = 0.78
+    static let dimLeast = 0.66
+    /// At most this much of the frame is mirrored into a margin (stretched when the margin is wider).
+    static let band = 0.45
+    /// The outer part of a margin that fades into black, and how black its edge gets (its outer half pixel all of it).
+    static let fade = 0.8
+    static let edgeBlack = 1.0
+    /// The page's own edges, softened (its sides by `sideFade` of its width, its top and bottom by `endFade` of its
+    /// height): the page is inset from the screen's edges, and the glow must not end in a straight line.
+    static let sideFade = 0.08
+    static let endFade = 0.05
+
+    #if DEBUG && os(iOS)
+    /// The canvas the page draws for `image` in an area of `page` points (`#ambient`), for the demo still.
+    static func render(_ image: UIImage, page: CGSize) -> UIImage? {
+        guard page.width > 0, page.height > 0, let cgImage = image.cgImage, cgImage.width > 0, cgImage.height > 0 else { return nil }
+        let k = CGFloat(short) / min(page.width, page.height)
+        let w = max(1, (page.width * k).rounded()), h = max(1, (page.height * k).rounded())
+        let vw = CGFloat(cgImage.width), vh = CGFloat(cgImage.height)
+        let fit = min(w / vw, h / vh)
+        let pw = vw * fit, ph = vh * fit, px = (w - pw) / 2, py = (h - ph) / 2
+        let room = max(py / ph, px / pw)
+        let dim = dimMost - (dimMost - dimLeast) * min(1, max(0, (room - 0.5) / 0.4))
+        func crop(_ rect: CGRect) -> UIImage? { cgImage.cropping(to: rect.integral).map { UIImage(cgImage: $0) } }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: w, height: h), format: format).image { context in
+            let cg = context.cgContext
+            cg.interpolationQuality = .high
+            image.draw(in: CGRect(x: px, y: py, width: pw, height: ph))
+            // Mirrored about an axis: the edge's own row (or column) next to the picture.
+            func mirrored(_ source: CGRect, into rect: CGRect, axisX: CGFloat? = nil, axisY: CGFloat? = nil) {
+                guard let band = crop(source) else { return }
+                cg.saveGState()
+                if let axisY { cg.translateBy(x: 0, y: axisY); cg.scaleBy(x: 1, y: -1) }
+                if let axisX { cg.translateBy(x: axisX, y: 0); cg.scaleBy(x: -1, y: 1) }
+                band.draw(in: rect)
+                cg.restoreGState()
+            }
+            if py > 0.5 {
+                let f = min(band, py / ph)
+                mirrored(CGRect(x: 0, y: 0, width: vw, height: vh * f), into: CGRect(x: px, y: 0, width: pw, height: py), axisY: py)
+                mirrored(CGRect(x: 0, y: vh * (1 - f), width: vw, height: vh * f), into: CGRect(x: px, y: 0, width: pw, height: py), axisY: h)
+            }
+            if px > 0.5 {
+                let f = min(band, px / pw)
+                mirrored(CGRect(x: 0, y: 0, width: vw * f, height: vh), into: CGRect(x: 0, y: py, width: px, height: ph), axisX: px)
+                mirrored(CGRect(x: vw * (1 - f), y: 0, width: vw * f, height: vh), into: CGRect(x: 0, y: py, width: px, height: ph), axisX: w)
+            }
+            UIColor.black.withAlphaComponent(dim).setFill()
+            context.fill(CGRect(x: 0, y: 0, width: w, height: h), blendMode: .normal)
+            let edge = UIColor.black.withAlphaComponent(edgeBlack).cgColor
+            func fadeOut(from start: CGPoint, to end: CGPoint) {
+                let length = max(1, hypot(end.x - start.x, end.y - start.y))
+                let colors = [edge, edge, UIColor.black.withAlphaComponent(0).cgColor] as CFArray
+                guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors,
+                                                locations: [0, min(0.5, 0.5 / length), 1]) else { return }
+                cg.saveGState()
+                cg.clip(to: CGRect(x: min(start.x, end.x), y: min(start.y, end.y),
+                                   width: start.x == end.x ? w : abs(end.x - start.x), height: start.y == end.y ? h : abs(end.y - start.y)))
+                cg.drawLinearGradient(gradient, start: start, end: end, options: [])
+                cg.restoreGState()
+            }
+            if py > 0.5 {
+                fadeOut(from: CGPoint(x: 0, y: 0), to: CGPoint(x: 0, y: py * fade))
+                fadeOut(from: CGPoint(x: 0, y: h), to: CGPoint(x: 0, y: h - py * fade))
+            }
+            if px > 0.5 {
+                fadeOut(from: CGPoint(x: 0, y: 0), to: CGPoint(x: px * fade, y: 0))
+                fadeOut(from: CGPoint(x: w, y: 0), to: CGPoint(x: w - px * fade, y: 0))
+            }
+        }
+    }
+    #endif
+}
+
+#if DEBUG && os(iOS)
+/// A still picture's margins as the live player draws them (`FrameGlow`), filling the area it is put behind: for the
+/// demo camera (`--demo-camera`), whose still is not played by the page.
+struct FrameGlowView: View {
+    let image: UIImage
+
+    var body: some View {
+        GeometryReader { geometry in
+            if let glow = FrameGlow.render(image, page: geometry.size) {
+                Image(uiImage: glow)
+                    .resizable()
+                    .interpolation(.medium)
+                    // The page's `#ambient` mask.
+                    .mask {
+                        LinearGradient(stops: Self.edges(FrameGlow.sideFade), startPoint: .leading, endPoint: .trailing)
+                            .mask(LinearGradient(stops: Self.edges(FrameGlow.endFade), startPoint: .top, endPoint: .bottom))
+                    }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private static func edges(_ fade: Double) -> [Gradient.Stop] {
+        [.init(color: .clear, location: 0), .init(color: .black, location: fade),
+         .init(color: .black, location: 1 - fade), .init(color: .clear, location: 1)]
     }
 }
 #endif

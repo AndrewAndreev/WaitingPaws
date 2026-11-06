@@ -109,6 +109,9 @@ struct DurationButton: View {
     var width: CGFloat? = nil
     /// What zero is called («сразу» for a condition's delay); nil: «0 с».
     var zeroTitle: String? = nil
+    /// The value's colour when set (the colour the trainer's words give such a time: an exit's pink, a break's or a
+    /// condition's blue); nil: the text's own.
+    var tint: Color? = nil
 
     @State private var editing = false
 
@@ -118,7 +121,7 @@ struct DurationButton: View {
                 .font(font.monospacedDigit())
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-                .foregroundStyle(value == nil ? .secondary : .primary)
+                .foregroundStyle(value == nil ? AnyShapeStyle(.secondary) : tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.primary))
                 .frame(width: width)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
@@ -154,9 +157,10 @@ struct DurationButton: View {
 extension DurationButton {
     /// For values without a default.
     init(value: Binding<TimeInterval>, title: String, presets: [TimeInterval], secondsStep: Int = 1,
-         font: Font = .system(.body, design: .rounded), width: CGFloat? = nil, zeroTitle: String? = nil) {
+         font: Font = .system(.body, design: .rounded), width: CGFloat? = nil, zeroTitle: String? = nil, tint: Color? = nil) {
         self.init(value: Binding<TimeInterval?>(get: { value.wrappedValue }, set: { value.wrappedValue = $0 ?? 0 }),
-                  title: title, presets: presets, secondsStep: secondsStep, font: font, width: width, zeroTitle: zeroTitle)
+                  title: title, presets: presets, secondsStep: secondsStep, font: font, width: width, zeroTitle: zeroTitle,
+                  tint: tint)
     }
 }
 

@@ -6,6 +6,8 @@ enum Theme {
     static let danger = Color(red: 1.00, green: 0.42, blue: 0.42)
     static let warning = Color(red: 1.00, green: 0.72, blue: 0.30)
     static let info = Color(red: 0.55, green: 0.75, blue: 1.00)
+    /// «Можно входить», and the trainer's 🟢.
+    static let go = Color(red: 0.43, green: 0.91, blue: 0.63)
     /// Card background.
     static let panel = Color(white: 0.10)
     /// Every secondary control (pills, icon buttons, secondary buttons) shares this fill.

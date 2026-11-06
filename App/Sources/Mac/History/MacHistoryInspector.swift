@@ -2,11 +2,21 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Get Info–style inspector of the selected row: video with the exit strip, totals, the per-exit log, the file.
+/// Get Info–style inspector of the selected row: the video (or one line why there is none) with the exit strip, the
+/// title with when, how long and who, the per-exit log, the file.
 struct MacHistoryInspector: View {
     @Environment(AppModel.self) private var model
     @Environment(MacHistoryController.self) private var controller
     let row: MacHistoryRow
+
+    /// «Пт, 2 окт. · 18:36–19:04 · 28 мин».
+    private var when: String {
+        var parts = [MacHistoryFormat.day(row.date), row.timeRange]
+        if let record = row.record {
+            parts.append(DurationText.short(max(60, (record.duration / 60).rounded() * 60)))
+        }
+        return parts.joined(separator: " · ")
+    }
 
     private var preparing: Bool {
         row.video.map { model.finalizingFileNames.contains($0.fileName) } ?? false
@@ -18,11 +28,20 @@ struct MacHistoryInspector: View {
                 VStack(alignment: .leading, spacing: 10) {
                     preview
                     if let record = row.record { strip(record) }
+                    // Two lines, as the iPhone's: «Тренировка на пятницу · Таня/Андрей» / «Пт, 2 окт. · 18:36–19:04 ·
+                    // 28 мин» — the trainers and the length are what the table leaves out.
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(row.title)
-                            .font(.system(size: 15, weight: .semibold))
-                            .textSelection(.enabled)
-                        Text(MacHistoryFormat.longDay(row))
+                        HStack(alignment: .firstTextBaseline, spacing: 0) {
+                            Text(verbatim: row.title)
+                                .font(.system(size: 15, weight: .semibold))
+                                .layoutPriority(1)
+                            if !row.trainers.isEmpty {
+                                Text(verbatim: " · \(row.trainers)").foregroundStyle(.secondary)
+                            }
+                        }
+                        .lineLimit(1)
+                        .textSelection(.enabled)
+                        Text(verbatim: when)
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
@@ -31,14 +50,13 @@ struct MacHistoryInspector: View {
                 .padding(14)
 
                 if let record = row.record {
-                    InspectorSection(String(localized: "Итоги")) { totals(record) }
                     InspectorSection(String(localized: "Лог")) { log(record) }
                 }
-                InspectorSection(String(localized: "Видео")) { videoInfo }
+                if row.video != nil {
+                    InspectorSection(String(localized: "Видео")) { videoInfo }
+                }
 
-                Divider()
-                deleteButton
-                    .padding(14)
+                // Deleting is the toolbar's 🗑, the row's menu and ⌫: one place, not a button here too.
             }
         }
         #if DEBUG
@@ -84,24 +102,8 @@ struct MacHistoryInspector: View {
             .aspectRatio(16 / 9, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.separator, lineWidth: 0.5))
-        } else {
-            HStack(spacing: 12) {
-                Image(systemName: "video.slash")
-                    .font(.system(size: 20, weight: .light))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Видео нет")
-                    Text(row.record?.recordingFileName == nil ? "Запись не включали" : "Файл видео удалён")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.quaternary.opacity(0.6)))
         }
+        // Without a video, nothing in its place: the row's missing thumbnail says it.
     }
 
     private func strip(_ record: TrainingRecord) -> some View {
@@ -114,30 +116,13 @@ struct MacHistoryInspector: View {
 
     // MARK: Sections
 
-    private func totals(_ record: TrainingRecord) -> some View {
-        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 5) {
-            if !record.plan.trainers.isEmpty { info(String(localized: "Тренеры"), record.plan.trainers) }
-            info(String(localized: "Выходы"), String(localized: "\(record.completedExits) из \(record.plan.exits.count) по плану"))
-            GridRow {
-                label(String(localized: "Фальстарты"))
-                Text(record.falseStarts == 0 ? "нет" : "\(record.falseStarts)")
-                    .foregroundStyle(record.falseStarts == 0 ? AnyShapeStyle(.primary) : AnyShapeStyle(MacHistoryInk.orange))
-            }
-            GridRow {
-                label(String(localized: "Дольше всего"))
-                Text("\(Text(DurationText.clock(record.longestStayBehindDoor)).fontWeight(.semibold))  \(Text("план \(DurationText.clock(record.longestPlannedExit))").foregroundStyle(.secondary))")
-                    .monospacedDigit()
-            }
-            info(String(localized: "Длительность"), DurationText.clock(record.duration))
-        }
-    }
-
     private func log(_ record: TrainingRecord) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             MacHistoryExitLog(record: record, base: record.recordingStartDate,
                               player: row.video != nil && controller.player.url == row.video?.url ? controller.player : nil)
 
-            let notes = record.events.filter { $0.kind == .note && !($0.detail ?? "").isEmpty }
+            // The owner's marks from behind the door stand under their exits' rows; these are the free notes.
+            let notes = record.events.filter { $0.kind == .note && $0.observed != true && !($0.detail ?? "").isEmpty }
             if !notes.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(notes) { note in
@@ -149,34 +134,8 @@ struct MacHistoryInspector: View {
                 }
                 .padding(.top, 10)
             }
-
-            // The shortcut hint goes first when the inspector is too narrow for it.
-            ViewThatFits(in: .horizontal) {
-                logButtons(record, showsShortcut: true)
-                logButtons(record, showsShortcut: false)
-            }
-            .padding(.top, 12)
+            // Sending is the toolbar's ⬆︎ (and the row's menu); ⇧⌘C copies: no button of its own here.
         }
-    }
-
-    private func logButtons(_ record: TrainingRecord, showsShortcut: Bool) -> some View {
-        HStack(spacing: 8) {
-            Button { controller.copyLog(of: row) } label: {
-                if controller.copiedLog == row.id {
-                    Label("Скопировано", systemImage: "checkmark")
-                } else {
-                    ShortcutLabel(title: String(localized: "Скопировать"), symbol: "doc.on.doc", key: showsShortcut ? "⇧⌘C" : nil)
-                }
-            }
-            .help("Скопировать лог для тренера (⇧⌘C)")
-            if let text = row.logText {
-                ShareLink(item: text, subject: Text(record.plan.title), preview: SharePreview(record.plan.title)) {
-                    Label("Отправить…", systemImage: "square.and.arrow.up")
-                }
-                .help("Отправить лог тренеру")
-            }
-        }
-        .fixedSize()
     }
 
     @ViewBuilder
@@ -193,6 +152,9 @@ struct MacHistoryInspector: View {
                 }
                 info(String(localized: "Длина"), video.duration.map(DurationText.clock) ?? "—")
                 info(String(localized: "Размер"), MacHistoryFormat.bytes(video.bytes))
+                if let record = row.record {
+                    recordingRow(RecordingReport(record: record, model: model, hasVideo: true))
+                }
             }
             HStack(spacing: 8) {
                 Button("В Finder", systemImage: "folder") { controller.revealInFinder(row, model: model) }
@@ -206,13 +168,30 @@ struct MacHistoryInspector: View {
             }
             .padding(.top, 10)
             videoStatus(video)
-        } else {
-            Text("От этой тренировки остался только лог.")
-                .foregroundStyle(.secondary)
-            if row.record != nil {
-                Button("Показать лог в Finder", systemImage: "folder") { controller.revealInFinder(row, model: model) }
-                    .padding(.top, 8)
+        }
+    }
+
+    /// «Запись: шла всю тренировку», or how much of the training this video holds: «прерывалась в 18:44 на 2:10 ·
+    /// в этом видео — выходы 5–7», with the way to the part before the break (a recording of its own).
+    @ViewBuilder
+    private func recordingRow(_ report: RecordingReport) -> some View {
+        GridRow(alignment: .firstTextBaseline) {
+            label(String(localized: "Запись"))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(report.text)
+                if let detail = report.detail {
+                    Text(detail).foregroundStyle(.secondary)
+                }
+                ForEach(report.earlierParts) { part in
+                    Button(part.title) {
+                        controller.selection = .clip(part.clip.id)
+                        controller.scrollRequest += 1
+                    }
+                    .buttonStyle(.link)
+                }
             }
+            .monospacedDigit()
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -231,27 +210,6 @@ struct MacHistoryInspector: View {
         } else if status.saved {
             Label("Сохранено в Фото", systemImage: "checkmark.circle.fill")
                 .font(.callout).foregroundStyle(MacHistoryInk.green).padding(.top, 8)
-        }
-    }
-
-    @ViewBuilder
-    private var deleteButton: some View {
-        switch row.kind {
-        case .training:
-            if row.video != nil {
-                Menu {
-                    Button("Удалить тренировку и видео…", role: .destructive) { controller.confirmDelete(row, onlyLog: false) }
-                    Button("Удалить только лог, видео оставить…") { controller.confirmDelete(row, onlyLog: true) }
-                } label: {
-                    Label("Удалить…", systemImage: "trash")
-                }
-                .menuStyle(.button)
-                .fixedSize()
-            } else {
-                Button("Удалить тренировку…", systemImage: "trash", role: .destructive) { controller.confirmDelete(row) }
-            }
-        case .clip:
-            Button("Удалить запись…", systemImage: "trash", role: .destructive) { controller.confirmDelete(row) }
         }
     }
 
@@ -325,7 +283,8 @@ private struct InspectorSection<Content: View>: View {
     }
 }
 
-/// Planned vs actual, one row per attempt; with a video a click jumps to that exit.
+/// Planned vs actual, one row per attempt, with what the owner marked from behind the door under it («легла 0:12 ·
+/// замолчала 0:41»); with a video a click jumps to that exit.
 struct MacHistoryExitLog: View {
     let record: TrainingRecord
     /// Clock time of the start of the video.
@@ -335,23 +294,25 @@ struct MacHistoryExitLog: View {
     @State private var hovered: UUID?
 
     private enum Width {
-        static let number: CGFloat = 26
+        static let number: CGFloat = 34
         static let planned: CGFloat = 40
         static let actual: CGFloat = 42
-        static let status: CGFloat = 16
-        static let rest: CGFloat = 50
-        static let restPlan: CGFloat = 40
+        /// «Перерыв» (after the exit), one line.
+        static let rest: CGFloat = 56
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
+            // The break after the exit, as the log says it («перерыв после 2:02»; GPT, round 10: «Перерыв» alone left
+            // open which side of the exit it was on), the header wrapped over its column like a spreadsheet's.
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text("№").frame(width: Width.number, alignment: .leading)
                 Text("План").frame(width: Width.planned, alignment: .trailing)
                 Text("Факт").frame(width: Width.actual, alignment: .trailing)
-                Color.clear.frame(width: Width.status, height: 1)
-                Text("Перерыв").frame(width: Width.rest, alignment: .trailing)
-                Text("план").frame(width: Width.restPlan, alignment: .trailing)
+                Text("Перерыв")
+                    .lineLimit(1)
+                    .fixedSize()
+                    .frame(width: Width.rest, alignment: .trailing)
             }
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
@@ -370,34 +331,16 @@ struct MacHistoryExitLog: View {
         let rest = isLast ? nil : result.actualBreak
         let restOff = rest.map { abs($0 - result.plannedBreak) > 15 } ?? false
         let canJump = player != nil
-        return HStack(spacing: 8) {
-            Text(result.attempt > 1 ? "\(result.number)·\(result.attempt)" : "\(result.number)")
-                .foregroundStyle(.secondary)
-                .frame(width: Width.number, alignment: .leading)
-            Text(DurationText.clock(result.plannedDuration) + (result.untilStanding ? "*" : ""))
-                .foregroundStyle(.secondary)
-                .frame(width: Width.planned, alignment: .trailing)
-            Text(result.leftAt == nil ? "—" : DurationText.clock(result.awayDuration))
-                .fontWeight(.semibold)
-                .foregroundStyle(result.falseStart ? AnyShapeStyle(MacHistoryInk.orange) : AnyShapeStyle(.primary))
-                .frame(width: Width.actual, alignment: .trailing)
-            Image(systemName: result.falseStart ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, result.falseStart ? MacPalette.orange : MacHistoryInk.green)
-                .imageScale(.small)
-                .frame(width: Width.status)
-            Text(rest.map(DurationText.clock) ?? "—")
-                .foregroundStyle(restOff ? AnyShapeStyle(MacHistoryInk.orange) : rest == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
-                .frame(width: Width.rest, alignment: .trailing)
-            Text(rest == nil ? "" : DurationText.clock(result.plannedBreak))
-                .foregroundStyle(.tertiary)
-                .frame(width: Width.restPlan, alignment: .trailing)
-            Spacer(minLength: 0)
-            if canJump {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 8))
+        let marks = SessionLogFormatter.observations(of: result, in: record)
+        return VStack(alignment: .leading, spacing: 1) {
+            columns(result, rest: rest, restOff: restOff, canJump: canJump)
+            if !marks.isEmpty {
+                // Under the plan and fact, past the number column: the why behind an early return.
+                Text(verbatim: marks.map(HistoryText.unbroken).joined(separator: " · "))
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .opacity(hovered == result.id ? 1 : 0)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, Width.number + 8)
             }
         }
         .padding(.horizontal, 4)
@@ -412,14 +355,50 @@ struct MacHistoryExitLog: View {
             guard let player else { return }
             player.seek(to: result.startedAt.timeIntervalSince(base))
         }
-        .help(help(for: result, canJump: canJump))
+        .help(help(for: result, marks: marks, canJump: canJump))
     }
 
-    private func help(for result: ExitResult, canJump: Bool) -> String {
+    private func columns(_ result: ExitResult, rest: TimeInterval?, restOff: Bool, canJump: Bool) -> some View {
+        HStack(spacing: 8) {
+            // As the iPhone's log: the interrupted attempt «7 ↶» in orange with its orange time, the repeat a plain «7».
+            Group {
+                if result.falseStart {
+                    Text(verbatim: "\(result.number) ↶").foregroundStyle(MacHistoryInk.orange)
+                } else {
+                    Text(verbatim: "\(result.number)").foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: Width.number, alignment: .leading)
+            Text(DurationText.clock(result.plannedDuration) + (result.untilStanding ? "*" : ""))
+                .foregroundStyle(.secondary)
+                .frame(width: Width.planned, alignment: .trailing)
+            Text(result.leftAt == nil ? "—" : DurationText.clock(result.awayDuration))
+                .fontWeight(.semibold)
+                .foregroundStyle(result.falseStart ? AnyShapeStyle(MacHistoryInk.orange) : AnyShapeStyle(.primary))
+                .frame(width: Width.actual, alignment: .trailing)
+            // The break as it was; orange where it was off its plan (the plan in the pointer's tip).
+            Text(rest.map(DurationText.clock) ?? "—")
+                .foregroundStyle(restOff ? AnyShapeStyle(MacHistoryInk.orange) : rest == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+                .frame(width: Width.rest, alignment: .trailing)
+            Spacer(minLength: 0)
+            if canJump {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 8))
+                    .foregroundStyle(.secondary)
+                    .opacity(hovered == result.id ? 1 : 0)
+            }
+        }
+    }
+
+    private func isLastResult(_ result: ExitResult) -> Bool { record.results.last?.id == result.id }
+
+    private func help(for result: ExitResult, marks: [String], canJump: Bool) -> String {
         var parts = [result.attempt > 1
             ? String(localized: "Выход \(result.number), попытка \(result.attempt)")
             : String(localized: "Выход \(result.number)")]
         parts.append(SessionLogFormatter.outcome(of: result))
+        if !isLastResult(result) { parts.append(String(localized: "перерыв \(DurationText.short(result.plannedBreak))")) }
+        parts += marks
         if result.untilStanding { parts.append(String(localized: "* план: или до вставания")) }
         let text = parts.joined(separator: ", ")
         return canJump ? String(localized: "\(text). Нажмите, чтобы перейти к этому выходу в видео.") : text

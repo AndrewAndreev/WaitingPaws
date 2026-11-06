@@ -60,6 +60,13 @@ enum DemoData {
         return NSImageOrUIImage(contentsOfFile: String(argument.dropFirst("--demo-camera=".count)))
     }()
 
+    /// `--demo-stopwatch <seconds>`: the iPhone card's stopwatch (a tap on the big number) started that long ago.
+    static let stopwatchSeconds: TimeInterval? = {
+        let arguments = CommandLine.arguments
+        guard let index = arguments.firstIndex(of: "--demo-stopwatch"), index + 1 < arguments.count else { return nil }
+        return TimeInterval(arguments[index + 1])
+    }()
+
     private final class Clock {
         var now: Date
         init(_ now: Date) { self.now = now }
@@ -86,6 +93,11 @@ enum DemoData {
         ru.replacingOccurrences(of: "Таня", with: "Anna").replacingOccurrences(of: "Андрей", with: "Mark")
     }
 
+    /// The trainer's own break after one exit: 5 minutes after exit 6 on 2 Oct («перерыв после 5:02 (план 5 мин)»).
+    private static func ownBreak(_ start: String, _ index: Int) -> TimeInterval? {
+        start == "2026-10-02 18:36" && index == 5 ? 300 : nil
+    }
+
     /// Eleven finished trainings over four weeks, newest first; time behind the door grows from 0:05 to 2:30.
     static func history() -> [TrainingRecord] {
         let formatter = DateFormatter()
@@ -99,7 +111,10 @@ enum DemoData {
             let english = CoreLanguage.current == .en
             let plan = TrainingPlan(title: english ? "\(weekdaysEN[weekday]) training" : "Тренировка \(weekdays[weekday])",
                                     trainers: english ? trainersEN(trainers) : trainers, date: date,
-                                    exits: exits.enumerated().map { PlannedExit(number: $0.offset + 1, duration: $0.element) })
+                                    exits: exits.enumerated().map {
+                                        PlannedExit(number: $0.offset + 1, duration: $0.element,
+                                                    breakAfter: ownBreak(start, $0.offset))
+                                    })
             let clock = Clock(date)
             let session = TrainingSession(plan: plan, clock: { clock.now })
             for (index, planned) in exits.enumerated() {
@@ -110,7 +125,7 @@ enum DemoData {
                 }
                 session.markBehindDoor()
                 clock.now += planned + 1 + jitter / 2; session.endExit()
-                clock.now += index == exits.count - 1 ? 30 : 120 + jitter
+                clock.now += index == exits.count - 1 ? 30 : (ownBreak(start, index) ?? 120) + jitter
             }
             session.finish()
             return session.makeRecord(recordingFileName: nil)

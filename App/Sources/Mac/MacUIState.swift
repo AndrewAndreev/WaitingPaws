@@ -21,11 +21,14 @@ final class MacUIState {
     var confirmStopRecording = false
     /// A copy of the running session's schedule open for edits («Изменить расписание…»).
     var editingSessionPlan: TrainingPlan?
-    /// «Только камера»: before a training, the picture on the whole window without recording (someone else records,
-    /// or the dog is just being watched). A training brings the panels back.
+    /// «Только камера» (the panel's «Без тренировки ▾», ⇧⌘F): before a training, the picture on the whole window
+    /// without recording (someone else records, or the dog is just being watched). A training brings the panels back.
     var cameraOnly = false
     /// Zoom of the camera picture in the training window (gestures and the View menu).
     let cameraZoom = ZoomState()
+    /// Before the start: what the pointer is over, a block on the plan's timeline or a line of the trainer's text on
+    /// the panel; the other one lights.
+    var planPointer: MacPlanPointer?
     /// Bumped when the trainer's window for «Фальстарт» outside closes (`watchFalseStartWindow`): nothing observable
     /// changes at that moment, and the menu item has to grey out.
     private var falseStartWindowsClosed = 0
@@ -109,8 +112,8 @@ final class MacUIState {
     /// ⌫: false start — outside while the trainer's window lasts, or in a break when the dog went to the door before
     /// «Вышли».
     func falseStart(_ model: AppModel) {
-        guard canFalseStart(model), let session = model.session else { return }
-        session.resetExit()
+        guard canFalseStart(model), model.session != nil else { return }
+        model.falseStart()
     }
 
     /// «Фальстарт» counts now, as the readout shows its button (`ReadoutContent.showsFalseStart`).
@@ -206,10 +209,17 @@ struct MacCommands: Commands {
                 .disabled(model.session == nil)
             Button("Фальстарт (⌫)") { ui.falseStart(model) }
                 .disabled(!ui.canFalseStart(model))
+            // The panel's capsule beside «Осталось», all through the break a false start led to.
+            Button("Отменить фальстарт") { withAnimation(.smooth(duration: 0.25)) { model.undoFalseStart() } }
+                .disabled(model.falseStartUndo == nil)
             Divider()
-            Button(model.isRecordingNow ? "Остановить запись…" : "Начать запись") { ui.toggleRecording(model) }
-                .keyboardShortcut("r", modifiers: .command)
-                .disabled(!model.isRecordingNow && !model.settings.isConfigured)
+            // Before a training ⌘R is the panel's «Без тренировки ▾ → Записать видео»; in one it records the training.
+            Button(model.isRecordingNow ? String(localized: "Остановить запись…")
+                   : model.session == nil ? String(localized: "Записать без тренировки") : String(localized: "Начать запись")) {
+                ui.toggleRecording(model)
+            }
+            .keyboardShortcut("r", modifiers: .command)
+            .disabled(!model.isRecordingNow && !model.settings.isConfigured)
             Button("Изменить расписание…") { ui.editSessionPlan(model) }
                 .keyboardShortcut("e", modifiers: .command)
                 .disabled(model.session == nil)

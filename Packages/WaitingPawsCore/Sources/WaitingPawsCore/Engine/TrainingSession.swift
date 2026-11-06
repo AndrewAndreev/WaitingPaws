@@ -139,6 +139,23 @@ public final class TrainingSession {
         show(predictions, on: snapshot)
     }
 
+    /// What the owner saw from behind the door («легла», «залаяла», «замолчала»), kept in the log on the current exit's
+    /// line. Only on the owner and only outside (a mirror's marks stay on its own screen).
+    public func observe(_ text: String, at time: Date? = nil) {
+        guard commandHandler == nil, case .away(let index, _, _) = phase, plan.exits.indices.contains(index) else { return }
+        let event = SessionEvent(time: moment(time), kind: .note, exitNumber: plan.exits[index].number, attempt: attempt,
+                                 detail: text, observed: true)
+        let at = events.lastIndex { $0.time <= event.time }.map { $0 + 1 } ?? 0
+        events.insert(event, at: at)
+    }
+
+    /// «Отменить» right after a press on this device: the session goes back to `snapshot`, taken just before it.
+    /// Only on the owner (a mirror gets its owner's state anyway).
+    public func revert(to snapshot: Snapshot) {
+        guard commandHandler == nil, isSameSession(as: snapshot) else { return }
+        apply(snapshot)
+    }
+
     // MARK: - Presses on a mirror
 
     /// On a mirror: sends the press to the owner and shows it here at once. False on the owner (apply it here).
