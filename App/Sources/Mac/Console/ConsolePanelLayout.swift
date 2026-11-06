@@ -21,6 +21,18 @@ enum ConsolePanelLayout {
     /// The panel's edge (`TrainingPanelEdge`).
     static let edgeWidth: CGFloat = 6
 
+    /// The panel folding away and coming back (the header's shadows follow its edge: `HeaderShadowSweep`).
+    static let foldDuration = 0.35 * slowMotion
+    static var foldAnimation: Animation { .smooth(duration: foldDuration) }
+    /// `--demo-slow=<factor>`: the panel's fold that many times slower (recording the header's shadows on video).
+    static let slowMotion: Double = {
+        #if DEBUG
+        if let raw = CommandLine.arguments.first(where: { $0.hasPrefix("--demo-slow=") })?.dropFirst(12),
+           let factor = Double(raw), factor > 0 { return factor }
+        #endif
+        return 1
+    }()
+
     static func widthRange(window: CGFloat) -> ClosedRange<CGFloat> {
         guard window > 0 else { return minWidth...maxWidth }
         return minWidth...max(minWidth, min(maxWidth, window - minCameraWidth))
@@ -35,32 +47,57 @@ enum ConsolePanelLayout {
         return window - edgeWidth - cameraHeight * aspect
     }
 
-    /// The toolbar's own room around an item (macOS 26: 8 pt before it, 10 pt after), and the gap kept on each side
-    /// of the panel's edge.
-    static let itemSpacing: CGFloat = 18
+    /// The gap kept on each side of the panel's edge: the camera's island ends this much before it, the panel's groups
+    /// start no closer after it.
     static let edgeInset: CGFloat = 8
+    /// Until the toolbar is read: its room between the camera's island's item and the panel's first group, and around
+    /// the panel's groups (the spacers between them and the margin after the last).
+    static let defaultItemGap: CGFloat = 8
+    static func defaultButtonsGaps(groups: Int) -> CGFloat { 9.5 + CGFloat(groups - 1) * 17 }
+    /// Without the panel the island keeps this much more from the panel's groups, as far as they are from each other.
+    static let clipModePad: CGFloat = 8
 
-    /// Width of the spacer item that puts the camera's group right before the panel's edge (`edge` in window
-    /// coordinates). `buttonsWidth` is how much of the toolbar the panel's buttons take from the window's edge: the
-    /// toolbar places them from there, so they stay put when the spacer changes, and their width doesn't change with
-    /// the window's — a resize moves the spacer in the same layout pass as the panel, without waiting for the toolbar
-    /// to be read again. (The spacer's own frame is no anchor: SwiftUI lays a wider spacer out centred in its old item
-    /// before the toolbar resizes the item.)
-    static func spacerWidth(buttonsWidth: CGFloat?, edge: CGFloat?, window: CGFloat) -> CGFloat {
-        guard let buttonsWidth = plausible(buttonsWidth, window: window), let edge else { return 1 }
-        return max(1, window - buttonsWidth - itemSpacing - (edge - edgeInset))
+    /// The clear room after the camera's island, in its own toolbar item, that puts the island right before the panel's
+    /// edge (`edge` in window coordinates). Not a spacer item of its own: AppKit keeps a toolbar item at least 36 pt
+    /// wide, and the island then stopped short of the edge or, wider than the room the panel's groups left, ran over it.
+    /// `buttonsWidth` is how much of the toolbar the panel's groups take from the window's edge (their widths are known,
+    /// `PanelButtons`, and the toolbar's gaps are read once): the toolbar places items from there, so a resize or a word
+    /// dropped moves the island in the same layout pass as the panel, without waiting for the toolbar to be read again.
+    /// `itemGap`: the toolbar's room between the island's item and the first group's (read from the toolbar).
+    static func islandPad(buttonsWidth: CGFloat, itemGap: CGFloat, edge: CGFloat?, window: CGFloat) -> CGFloat {
+        guard let edge, window > 0 else { return clipModePad }
+        return max(0, window - buttonsWidth - itemGap - (edge - edgeInset))
     }
 
-    /// The first layout passes report items at the window's left: not yet where they will be.
-    static func plausible(_ buttonsWidth: CGFloat?, window: CGFloat) -> CGFloat? {
-        guard let buttonsWidth, window > 0, buttonsWidth > 0, buttonsWidth < window / 2 else { return nil }
-        return buttonsWidth
-    }
-
-    /// Whether the panel's buttons fit over the panel. `buttonsWidth`: from their left end to the window's edge.
+    /// Whether the panel's groups fit over the panel. `buttonsWidth`: from their left end to the window's edge.
     static func fits(buttonsWidth: CGFloat, edge: CGFloat, window: CGFloat) -> Bool {
         window - buttonsWidth >= edge + edgeInset
     }
+
+    /// How many of the panel's words drop (`PanelButtons.words`, in order) for the groups to fit over the panel: the
+    /// fewest. A word comes back only with 2 pt to spare, so a width right at the limit doesn't flip back and forth.
+    static func foldLevel(current: Int, buttons: PanelButtons, gaps: CGFloat, edge: CGFloat, window: CGFloat) -> Int {
+        let last = buttons.words.count
+        return (0...last).first { level in
+            let slack: CGFloat = level < current ? 2 : 0
+            return fits(buttonsWidth: buttons.width(level: level) + gaps + slack, edge: edge, window: window)
+        } ?? last
+    }
+}
+
+/// Where the toolbar's items are, read from AppKit (`ToolbarNeighboursProbe`). Window coordinates.
+struct ToolbarPlaces: Equatable {
+    /// From the panel's first group to the window's edge.
+    var buttonsWidth: CGFloat
+    /// Of that, what isn't the groups themselves: the spacers between them and the margin after the last.
+    var buttonsGaps: CGFloat
+    /// Where the camera's island ends.
+    var groupMaxX: CGFloat
+    /// The toolbar's room between the island's item (its clear room after the island included) and the panel's first
+    /// group.
+    var itemGap: CGFloat?
+    /// The panel's groups, left to right.
+    var groups: [ClosedRange<CGFloat>]
 }
 
 /// The panel's left edge: a line with a few points to grab. Drag to resize; past the narrowest width the panel
@@ -105,18 +142,19 @@ struct TrainingPanelEdge: View {
     }
 }
 
-/// Lives in the toolbar's spacer item and reads from AppKit where the toolbar items around it are: how much of the
-/// toolbar the panel's buttons (the items after the spacer) take from the window's edge, and where the camera's group
-/// (the items before it) ends. SwiftUI reports a toolbar item's place only when its size changes, and the first of the
-/// panel's buttons moves without resizing when those after it change (titles dropped, «Завершить» appears): its
-/// reported place went stale and the camera's group ran over the panel's edge. Read after every update of the item, as
-/// the toolbar settles, and whenever AppKit lays the toolbar out again by itself (the window back from the Dock).
-/// In full screen the toolbar moves into a window of its own (`NSToolbarFullScreenWindow`, without a `toolbar`): the
-/// window the toolbar belongs to is found among the app's windows and places are compared on the screen.
+/// Lives under the camera's island and reads from AppKit where the toolbar items around it are: how much of the toolbar
+/// the panel's groups (the items after the island's) take from the window's edge and how much of that is the toolbar's
+/// own gaps, where the island ends and the toolbar's room between its item and the groups. SwiftUI reports a toolbar
+/// item's place only when its size changes, and the first of the panel's groups moves without resizing when those after
+/// it change (words dropped, «Завершить» appears): its reported place went stale and the camera's group ran over the
+/// panel's edge. Read after every update of the item, as the toolbar settles, and whenever AppKit lays the toolbar out
+/// again by itself (the window back from the Dock). In full screen the toolbar moves into a window of its own
+/// (`NSToolbarFullScreenWindow`, without a `toolbar`): the window the toolbar belongs to is found among the app's
+/// windows and places are compared on the screen.
 struct ToolbarNeighboursProbe: NSViewRepresentable {
     /// Anything whose change may move the items (the probe re-reads on every update).
     var token: Int
-    var onRead: (_ buttonsWidth: CGFloat, _ groupMaxX: CGFloat?) -> Void
+    var onRead: (ToolbarPlaces) -> Void
 
     func makeNSView(context: Context) -> ProbeView { ProbeView() }
 
@@ -126,7 +164,7 @@ struct ToolbarNeighboursProbe: NSViewRepresentable {
     }
 
     final class ProbeView: NSView {
-        var onRead: ((CGFloat, CGFloat?) -> Void)?
+        var onRead: ((ToolbarPlaces) -> Void)?
         private var windowObservers: [NSObjectProtocol] = []
         /// The toolbar's item views (`NSToolbarItemViewer`s), watched for moves.
         private var watched: [(view: Weak, observer: NSObjectProtocol)] = []
@@ -219,9 +257,40 @@ struct ToolbarNeighboursProbe: NSViewRepresentable {
             func frames(_ slice: ArraySlice<NSToolbarItem>) -> [CGRect] {
                 slice.compactMap { $0.view }.filter { $0.window === host }.map { host.convertToScreen($0.convert($0.bounds, to: nil)) }
             }
-            guard let buttonsMinX = frames(items[(index + 1)...]).map(\.minX).min() else { return }
+            // A crowded toolbar moves items into its overflow menu (in no window): nothing to measure the gaps by.
+            guard items[(index + 1)...].allSatisfy({ $0.view == nil || $0.view?.window === host }) else { return }
+            let buttons = frames(items[(index + 1)...])
             let frame = owner.window.frame
-            onRead?(frame.maxX - buttonsMinX, frames(items[..<index]).map(\.maxX).max().map { $0 - frame.minX })
+            // The first layout passes report items at the window's left: not yet where they will be.
+            guard let buttonsMinX = buttons.map(\.minX).min(), frame.maxX - buttonsMinX < frame.width * 0.75 else { return }
+            // The island's item: the island, then its clear room. Its own view lags a resize (SwiftUI lays a wider
+            // item out centred in its old place), its viewer has the toolbar's width: as far in from the viewer's edge
+            // as the first group's view is from its viewer's.
+            let island = host.convertToScreen(convert(bounds, to: nil))
+            let itemEnd: CGFloat? = {
+                guard let viewer = items[index].view?.superview, let first = items[(index + 1)...].first(where: { $0.view != nil }),
+                      let firstView = first.view, let firstViewer = firstView.superview, viewer.window === host else { return nil }
+                let end = host.convertToScreen(viewer.convert(viewer.bounds, to: nil)).maxX
+                return end - (firstViewer.bounds.width - firstView.frame.maxX)
+            }()
+            let buttonsWidth = frame.maxX - buttonsMinX
+            #if DEBUG
+            if CommandLine.arguments.contains("--demo-toolbar-log") {
+                let views = items.map { item -> String in
+                    guard let view = item.view else { return "·\(item.itemIdentifier.rawValue.suffix(12))" }
+                    let viewer = view.superview
+                    return String(format: "[%.1f+%.1f in %.1f+%.1f]", view.frame.minX, view.frame.width,
+                                  viewer?.frame.minX ?? -1, viewer?.frame.width ?? -1)
+                }
+                print("[toolbar] items: \(views.joined(separator: " "))")
+            }
+            #endif
+            onRead?(ToolbarPlaces(
+                buttonsWidth: buttonsWidth,
+                buttonsGaps: buttonsWidth - buttons.map(\.width).reduce(0, +),
+                groupMaxX: island.maxX - frame.minX,
+                itemGap: itemEnd.map { buttonsMinX - $0 },
+                groups: buttons.map { ($0.minX - frame.minX)...($0.maxX - frame.minX) }))
         }
     }
 }

@@ -19,21 +19,22 @@ struct MacConsoleView: View {
     @State private var draggedPanelWidth: Double?
     /// Height of the camera's row, what the picture's width follows from.
     @State private var cameraHeight: CGFloat = 0
-    /// The panel's left edge in the window, the window's width and how much of the toolbar the panel's buttons take
-    /// from the window's edge: the camera's group in the toolbar stays on the camera's side of the panel's edge.
-    /// The edge is kept while the panel is folded away (whatever reads it checks `clipMode`): the window closed and
-    /// opened again from the Dock keeps this state, and the panel, back at the same place, reports no edge again.
+    /// The panel's left edge in the window and the window's width: the camera's island in the toolbar stays on the
+    /// camera's side of the panel's edge, the panel's groups over the panel. The edge is kept while the panel is folded
+    /// away (whatever reads it checks `clipMode`): the window closed and opened again from the Dock keeps this state,
+    /// and the panel, back at the same place, reports no edge again.
     @State private var panelEdge: CGFloat?
     @State private var windowWidth: CGFloat = 0
-    @State private var buttonsWidth: CGFloat?
-    /// Where the camera's group ends in the toolbar (DEBUG checks it against the panel's edge).
-    @State private var cameraGroupMaxX: CGFloat?
-    /// Bumped when the first of the panel's buttons changes its size: the probe reads the toolbar again.
+    /// Where the toolbar's items are (read from AppKit): the toolbar's own gaps, and the camera's island for DEBUG.
+    @State private var places: ToolbarPlaces?
+    /// Bumped when the panel's groups change: the probe reads the toolbar again.
     @State private var toolbarToken = 0
-    /// The panel's buttons in the toolbar show icons only (with titles they didn't fit over the panel); their width with
-    /// titles is kept for each set of buttons, to know when they fit again.
-    @State private var compactToolbar = false
-    @State private var titledWidths: [String: CGFloat] = [:]
+    /// How many of the panel's words are dropped (`PanelButtons.words`, in order) to fit over the panel.
+    @State private var foldLevel = 0
+    /// The session's capsule's toolbar item and the window's buttons beside it; the camera's island's left end and width.
+    @State private var lights: WindowLights?
+    @State private var islandMinX: CGFloat?
+    @State private var islandWidth: CGFloat = 0
 
     /// Recording without a training, or «Только камера» before one: nothing to read or plan, the picture takes the
     /// whole window and a panel floats over it (the clock, or the way to record or back).
@@ -70,7 +71,7 @@ struct MacConsoleView: View {
                     HStack(spacing: 0) {
                         TrainingPanelEdge(width: Binding(get: { Double(width) }, set: { draggedPanelWidth = $0 }),
                                           range: range, canFold: model.session == nil && model.settings.isConfigured) {
-                            withAnimation(.smooth(duration: 0.35)) { ui.cameraOnly = true }
+                            withAnimation(ConsolePanelLayout.foldAnimation) { ui.cameraOnly = true }
                         }
                         rightPanel
                             .frame(width: width)
@@ -90,27 +91,29 @@ struct MacConsoleView: View {
                     .transition(.move(edge: .bottom))
             }
         }
-        .animation(.smooth(duration: 0.35), value: clipMode)
+        .animation(ConsolePanelLayout.foldAnimation, value: clipMode)
         .animation(.smooth(duration: 0.35), value: model.session == nil && model.pendingPlan == nil)
         .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).width }) { windowWidth = $0 }
-        .onChange(of: [panelEdge ?? -1, buttonsWidth ?? -1, windowWidth, clipMode ? 1 : 0]) { updateToolbarFit() }
+        .onChange(of: [panelEdge ?? -1, windowWidth, clipMode ? 1 : 0, places?.buttonsGaps ?? -1]) { updateToolbarFit() }
         #if DEBUG
-        .task(id: [panelEdge ?? -1, cameraGroupMaxX ?? -1, clipMode ? 1 : 0]) { await checkCameraGroup() }
-        .onChange(of: [panelEdge ?? -1, windowWidth, buttonsWidth ?? -1, cameraGroupMaxX ?? -1], initial: true) {
-            ConsoleToolbarAudit.latest = .init(edge: panelEdge, windowWidth: windowWidth, buttonsWidth: buttonsWidth,
-                                               groupMaxX: cameraGroupMaxX)
+        .task(id: [panelEdge ?? -1, places?.groupMaxX ?? -1, clipMode ? 1 : 0, windowWidth]) { await checkCameraGroup() }
+        .onChange(of: [panelEdge ?? -1, windowWidth, places?.buttonsWidth ?? -1, places?.groupMaxX ?? -1], initial: true) {
+            ConsoleToolbarAudit.latest = .init(edge: panelEdge, windowWidth: windowWidth, buttonsWidth: places?.buttonsWidth,
+                                               groupMaxX: places?.groupMaxX)
         }
         #endif
-        .onChange(of: toolbarSignature) {
-            // REC came or went: the probe reads the toolbar again.
+        .onChange(of: panelButtons) {
+            // REC, a linked iPhone, the training came or went: the probe reads the toolbar again.
             toolbarToken += 1
             updateToolbarFit()
         }
         .background(Color.black)
+        // For the Window menu, Mission Control and VoiceOver; on screen the session's capsule says it.
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
         .toolbar { toolbar }
-        // No bar of its own: the picture and the panel run up under the toolbar, and the camera's group stays on the
+        .toolbar(removing: .title)
+        // No bar of its own: the picture and the panel run up under the toolbar, and the camera's island stays on the
         // camera's side of the seam between them (see `ConsolePanelLayout`). Hidden, not automatic: automatic is a
         // solid bar (a hard scroll-edge pocket) until the player's web view is laid out again — folding the panel, or
         // the window back from the Dock.
@@ -164,6 +167,7 @@ struct MacConsoleView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { model.panTilt.start() }
             }
             if CommandLine.arguments.contains("--demo-panel-sweep") { Task { await sweepPanel() } }
+            if CommandLine.arguments.contains("--demo-fold-cycle") { Task { await foldCycle() } }
             if CommandLine.arguments.contains("--demo-window-cycle") { ConsoleToolbarAudit.startOnce() }
             // `--demo-window-size <width>x<height>`: the window at that size (the panel in a tall or short window).
             let args = CommandLine.arguments
@@ -331,40 +335,113 @@ struct MacConsoleView: View {
         return ui.cameraOnly ? String(localized: "только камера") : String(localized: "новая тренировка")
     }
 
-    // MARK: - Toolbar
+    // MARK: - Header
 
-    /// The panel's buttons keep their titles while they fit over the panel (see `ConsolePanelLayout`).
+    /// Who the window is about, in the session's capsule.
+    private var identity: SessionIdentity {
+        if let session = model.session {
+            var title = session.plan.title
+            #if DEBUG
+            // `--demo-title=<text>`: a training's long title (the capsule short of room).
+            if let raw = CommandLine.arguments.first(where: { $0.hasPrefix("--demo-title=") })?.dropFirst(13) { title = String(raw) }
+            #endif
+            return SessionIdentity(avatar: .training, title: title, subtitle: subtitle)
+        }
+        if let plan = model.pendingPlan {
+            let notStarted = String(localized: "не начата")
+            return SessionIdentity(avatar: .plan, title: plan.title,
+                                   subtitle: plan.trainers.isEmpty ? notStarted : "\(plan.trainers) · \(notStarted)")
+        }
+        let camera = model.shownCameraShortName
+        if model.isRecordingClip {
+            return SessionIdentity(avatar: .recording, title: camera, subtitle: String(localized: "запись"),
+                                   recordingSince: model.recordingStartedAt ?? .now)
+        }
+        let online = model.cameraOnScreenIsOnline
+        var line = online ? String(localized: "на связи") : String(localized: "не на связи")
+        if online, let quality = model.shownXiaomiQuality, quality != .auto { line += " · \(quality.title)" }
+        return SessionIdentity(avatar: .camera(online: online), title: camera, subtitle: line)
+    }
+
+    /// What the panel's groups hold.
+    private var panelButtons: PanelButtons {
+        let devices = model.syncHost.connectedDevices
+        return PanelButtons(recording: model.isRecordingNow, session: model.session != nil,
+                            devices: devices.isEmpty ? nil : devices.map(\.name).joined(separator: ", "))
+    }
+
+    private var groupCount: Int { panelButtons.devices == nil ? 2 : 3 }
+
+    /// How much of the toolbar the panel's groups take from the window's edge at `level`.
+    private func buttonsWidth(level: Int) -> CGFloat {
+        panelButtons.width(level: level)
+            + (places?.buttonsGaps ?? ConsolePanelLayout.defaultButtonsGaps(groups: groupCount))
+    }
+
+    /// The panel's groups keep their words while they fit over the panel (see `ConsolePanelLayout`); without the panel
+    /// all of them.
     private func updateToolbarFit() {
-        guard !clipMode, let edge = panelEdge, let width = ConsolePanelLayout.plausible(buttonsWidth, window: windowWidth) else {
-            // No panel: the whole toolbar is theirs.
-            compactToolbar = false
+        guard !clipMode, let edge = panelEdge, windowWidth > 0 else {
+            foldLevel = 0
             return
         }
-        let key = toolbarSignature
-        if !compactToolbar {
-            titledWidths[key] = width
-            if !ConsolePanelLayout.fits(buttonsWidth: width, edge: edge, window: windowWidth) { compactToolbar = true }
-        } else if let titled = titledWidths[key] {
-            // A couple of points to spare, so a width right at the limit doesn't flip back and forth.
-            if ConsolePanelLayout.fits(buttonsWidth: titled + 2, edge: edge, window: windowWidth) { compactToolbar = false }
+        let level = ConsolePanelLayout.foldLevel(
+            current: min(foldLevel, panelButtons.words.count), buttons: panelButtons,
+            gaps: places?.buttonsGaps ?? ConsolePanelLayout.defaultButtonsGaps(groups: groupCount),
+            edge: edge, window: windowWidth)
+        if level != foldLevel { foldLevel = level }
+    }
+
+    /// How wide the session's capsule may get: up to the camera's island, the toolbar's own gap (8 pt) and a little
+    /// more between them. Until the toolbar is read, where its item usually is: a capsule laid out too wide at first
+    /// crowds the toolbar, and AppKit pushes the island over the panel's edge.
+    private var capsuleRoom: CGFloat {
+        let itemMinX = lights?.itemMinX ?? 96
+        let island: CGFloat = if !clipMode, let edge = panelEdge {
+            edge - ConsolePanelLayout.edgeInset - islandWidth
         } else {
-            // Buttons not seen with titles yet: show them, and they are measured.
-            compactToolbar = false
+            islandMinX ?? windowWidth - buttonsWidth(level: 0) - ConsolePanelLayout.defaultItemGap
+                - ConsolePanelLayout.clipModePad - islandWidth
         }
+        return island - 18 - itemMinX
+    }
+
+    /// The panel's group number `index` floats over the camera without the panel; its shadow comes and goes as the
+    /// panel's edge passes under it.
+    private func sweep(_ index: Int) -> Animation {
+        let groups = places?.groups ?? []
+        guard let edge = panelEdge, groups.indices.contains(index) else { return .easeInOut(duration: 0.2) }
+        let group = groups[index]
+        return HeaderShadowSweep.animation(groupMidX: (group.lowerBound + group.upperBound) / 2, edge: edge,
+                                           window: windowWidth, floating: clipMode)
     }
 
     #if DEBUG
-    /// Logs the camera's group running over the panel's edge once the toolbar has settled (a layout pass or two
+    /// Logs the camera's island running over the panel's edge once the toolbar has settled (a layout pass or two
     /// may still show the old places), and after `--demo-panel-sweep` steps where it ended up.
     private func checkCameraGroup() async {
         try? await Task.sleep(for: .milliseconds(400))
-        guard !Task.isCancelled, !clipMode, let edge = panelEdge, let groupMaxX = cameraGroupMaxX, groupMaxX > 0
+        guard !Task.isCancelled, !clipMode, let edge = panelEdge, let groupMaxX = places?.groupMaxX, groupMaxX > 0
         else { return }
         let gap = edge - groupMaxX
         let sweep = CommandLine.arguments.contains("--demo-panel-sweep")
-        if gap < 1 || sweep {
-            print("[toolbar] camera group ends \(Int(gap)) pt before the panel's edge (panel \(Int(windowWidth - edge)) pt"
-                  + "\(compactToolbar ? ", icons only" : ""))\(gap < 1 ? " — RUNS OVER THE EDGE" : "")")
+        if gap < 1 || sweep || CommandLine.arguments.contains("--demo-toolbar-log") {
+            let modelWidth = panelButtons.width(level: foldLevel)
+            print("[toolbar] camera group ends \(Int(gap)) pt before the panel's edge (panel \(Int(windowWidth - edge)) pt, "
+                  + "\(foldLevel) words dropped; groups \(Int(modelWidth)) pt + gaps \(places.map { String(format: "%.1f", $0.buttonsGaps) } ?? "?"), "
+                  + "item gap \(places?.itemGap.map { String(format: "%.1f", $0) } ?? "?"))\(gap < 1 ? " — RUNS OVER THE EDGE" : "")")
+        }
+    }
+
+    /// `--demo-fold-cycle`: the panel folded away and back, twice (the header's shadows on video, with `--demo-slow`).
+    private func foldCycle() async {
+        let fold = Int(900 * ConsolePanelLayout.slowMotion) + 600
+        try? await Task.sleep(for: .seconds(3))
+        for _ in 0..<2 {
+            ui.cameraOnly = true
+            try? await Task.sleep(for: .milliseconds(fold))
+            ui.cameraOnly = false
+            try? await Task.sleep(for: .milliseconds(fold))
         }
     }
 
@@ -375,209 +452,71 @@ struct MacConsoleView: View {
             draggedPanelWidth = width
             try? await Task.sleep(for: .milliseconds(900))
         }
+        let fold = Int(900 * ConsolePanelLayout.slowMotion) + 400
         ui.cameraOnly = true
-        try? await Task.sleep(for: .milliseconds(900))
+        try? await Task.sleep(for: .milliseconds(fold))
         ui.cameraOnly = false
-        try? await Task.sleep(for: .milliseconds(900))
+        try? await Task.sleep(for: .milliseconds(fold))
         print("[toolbar] sweep done")
     }
     #endif
 
-    /// What changes the width of the panel's buttons.
-    private var toolbarSignature: String {
-        [model.isRecordingNow ? "rec" : "", model.session != nil ? "session" : "",
-         model.syncHost.connectedDevices.map(\.name).joined(separator: ",")].joined(separator: "|")
-    }
-
-    /// Icon and title on every item while they fit (a bare icon in a row of similar capsules says too little), groups
-    /// apart: camera · recording and sound · the linked iPhone · history and finishing.
+    /// The session's capsule at the window's buttons; the camera's island right before the panel's edge; the panel's
+    /// groups over the panel at the window's edge: recording and sound · the linked iPhone · history and finishing.
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        ToolbarItemGroup {
-            if model.hasSecondCamera { CameraToolbarSwitcher() }
-            CameraToolbarMenu(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 })
-            if model.canPanTilt { PanTiltToolbarToggle() }
+        ToolbarItem(placement: .navigation) {
+            SessionCapsule(identity: identity, lights: lights, room: capsuleRoom) { read in
+                if read != lights { lights = read }
+            }
         }
-        // As wide as the room the panel's buttons leave over the panel: the camera's group lands right before the
-        // panel's edge, and follows it when the panel is resized. Without the panel, the usual gap.
-        if clipMode {
+        .sharedBackgroundVisibility(.hidden)
+        ToolbarSpacer(.flexible)
+        ToolbarItem {
+            // The island, then a clear room as wide as the panel's groups leave over the panel: the island lands right
+            // before the panel's edge and follows it when the panel is resized. Without the panel, the usual gap.
+            HStack(spacing: 0) {
+                CameraIsland(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 })
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { islandWidth = $0 }
+                    .background {
+                        ToolbarNeighboursProbe(token: toolbarToken) { read in
+                            var read = read
+                            // Without the panel the room after the island is fixed: the gap read is the toolbar's alone.
+                            if clipMode, let gap = places?.itemGap { read.itemGap = gap }
+                            // Only real moves: an update with the same places must not start another round.
+                            if read != places { places = read }
+                        }
+                    }
+                    .background(WindowLightsProbe { read in
+                        if abs((islandMinX ?? -100) - read.itemMinX) > 0.5 { islandMinX = read.itemMinX }
+                    })
+                Color.clear
+                    .frame(width: clipMode ? ConsolePanelLayout.clipModePad : ConsolePanelLayout.islandPad(
+                        buttonsWidth: buttonsWidth(level: foldLevel),
+                        itemGap: places?.itemGap ?? ConsolePanelLayout.defaultItemGap,
+                        edge: panelEdge, window: windowWidth), height: 1)
+                    .accessibilityHidden(true)
+            }
+        }
+        .sharedBackgroundVisibility(.hidden)
+        let folded = clipMode ? [] : panelButtons.folded(foldLevel)
+        let floating: Double = clipMode ? 1 : 0
+        ToolbarItem {
+            RecordSoundGroup(folded: folded, floating: floating, sweep: sweep(0))
+        }
+        .sharedBackgroundVisibility(.hidden)
+        if panelButtons.devices != nil {
             ToolbarSpacer(.fixed)
-        } else {
             ToolbarItem {
-                ToolbarNeighboursProbe(token: toolbarToken) { width, groupMaxX in
-                    // Only real moves: an update with the same places must not start another round.
-                    if abs((buttonsWidth ?? -100) - width) > 0.5 { buttonsWidth = width }
-                    if let groupMaxX, abs((cameraGroupMaxX ?? -100) - groupMaxX) > 0.5 { cameraGroupMaxX = groupMaxX }
-                }
-                .frame(width: ConsolePanelLayout.spacerWidth(buttonsWidth: buttonsWidth, edge: panelEdge,
-                                                              window: windowWidth), height: 1)
-                .accessibilityHidden(true)
+                LinkedDeviceGroup(folded: folded, floating: floating, sweep: sweep(1))
             }
             .sharedBackgroundVisibility(.hidden)
         }
-        ToolbarItemGroup {
-            // The first of the panel's buttons: «REC 9:59» → «REC 10:00» moves where they begin. Only while something
-            // records, or in a training (to record it later): before one, the panel's «Записать без тренировки» is
-            // the one way to record, as on the iPhone.
-            if model.isRecordingNow || model.session != nil {
-                RecordingToolbarButton(compact: compactToolbar)
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { _ in toolbarToken += 1 }
-            }
-            Toggle(isOn: Binding(get: { model.settings.audioEnabled }, set: { model.settings.audioEnabled = $0 })) {
-                Label("Звук", systemImage: model.settings.audioEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                    .padding(.horizontal, ToolbarLook.padding)
-                    .labelStyle(ToolbarFitLabelStyle(compact: compactToolbar))
-            }
-            .help(model.settings.audioEnabled ? "Выключить звук камеры в приложении (запись всегда со звуком)"
-                                              : "Включить звук камеры в приложении (запись всегда со звуком)")
-        }
-        if let first = model.syncHost.connectedDevices.first {
-            let devices = model.syncHost.connectedDevices
-            ToolbarSpacer(.fixed)
-            ToolbarItem {
-                Label(devices.map(\.name).joined(separator: ", "), systemImage: first.symbolName)
-                    .foregroundStyle(MacPalette.blue)
-                    .padding(.horizontal, ToolbarLook.padding + 6)
-                    .labelStyle(ToolbarFitLabelStyle(compact: compactToolbar))
-                    .help(devices.count == 1
-                          ? String(localized: "\(first.modelTitle) «\(first.name)» видит камеру и ведёт эту тренировку")
-                          : String(localized: "Камеру видят и ведут тренировку: \(devices.map(\.name).joined(separator: ", "))"))
-            }
-        }
         ToolbarSpacer(.fixed)
-        ToolbarItemGroup {
-            Button { openWindow(id: "history") } label: {
-                Label("История", systemImage: "clock.arrow.circlepath")
-                    .labelStyle(ToolbarFitLabelStyle(compact: compactToolbar))
-                    .padding(.horizontal, ToolbarLook.padding)
-            }
-            .help("История тренировок · ⌘Y")
-            if model.session != nil {
-                Button { ui.confirmFinish = true } label: {
-                    // One short word, so the panel's buttons keep their words over the panel (a recording stops with
-                    // the training: the confirmation says so).
-                    Label(String(localized: "Завершить"), systemImage: "flag.checkered")
-                        .labelStyle(ToolbarFitLabelStyle(compact: compactToolbar))
-                        .padding(.horizontal, ToolbarLook.padding)
-                }
-                .help("Завершить тренировку · ⌘.")
-            }
+        ToolbarItem {
+            HistoryFinishGroup(folded: folded, floating: floating, sweep: sweep(groupCount - 1))
         }
-    }
-}
-
-/// Toolbar items breathe a little more than the system default.
-private enum ToolbarLook {
-    static let padding: CGFloat = 4
-}
-
-/// Camera name with status; choose camera, quality, reconnect.
-private struct CameraToolbarMenu: View {
-    @Environment(AppModel.self) private var model
-    @Environment(MacUIState.self) private var ui
-    var onReconnect: () -> Void
-
-    var body: some View {
-        Menu {
-            Button("Выбрать камеру…", systemImage: "video.badge.plus") { ui.showCameraPicker = true }
-            Button(model.hasSecondCamera ? "Другая вторая камера…" : "Вторая камера…", systemImage: "rectangle.on.rectangle") {
-                ui.showSecondCameraPicker = true
-            }
-            if model.hasSecondCamera {
-                Button("Убрать вторую камеру", systemImage: "rectangle.badge.minus") { model.removeSecondCamera() }
-            }
-            Button(model.settings.xiaomiAccountID.isEmpty ? "Войти в Xiaomi…" : "Войти в другой аккаунт Xiaomi…",
-                   systemImage: "person.crop.circle.badge.plus") { ui.showXiaomiSignIn = true }
-            Divider()
-            Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
-            // The quality of the camera on screen, the one recorded.
-            if let quality = shownQuality {
-                let second = model.isShowingSecondCamera
-                Divider()
-                Picker("Качество", selection: Binding(
-                    get: { quality },
-                    set: { newValue in
-                        Task { await model.setXiaomiQuality(newValue, second: second) }
-                    })) {
-                    ForEach(AppModel.XiaomiQuality.allCases) {
-                        Text(model.qualityTitle($0, source: second ? model.secondXiaomiSource : nil)).tag($0)
-                    }
-                }
-                Text("Записи — в этом же качестве")
-                if let size = second ? model.secondVideoSize : model.videoSize {
-                    Text("Сейчас \(Int(size.width))×\(Int(size.height))")
-                }
-            }
-            if model.cameraModes.hasOptions {
-                Divider()
-                CameraModeMenuItems()
-            }
-        } label: {
-            // A toolbar menu keeps only one title from its label (no extra views, tight icon spacing),
-            // so the status icon, name and quality are one Text.
-            Text("\(Image(systemName: cameraOnline ? "video.fill" : "video.slash"))\u{2002}\(title)")
-                .padding(.horizontal, ToolbarLook.padding)
-        }
-        .help(cameraOnline ? "Камера, качество и режим съёмки" : "Камера не на связи — выбрать или переподключить")
-    }
-
-    /// «Прихожая · HD»; a long Mi Home name is cut in the middle by the toolbar. With a second camera the switcher
-    /// names them, and the menu shows the quality of the one on screen.
-    private var title: String {
-        if model.hasSecondCamera {
-            return shownQuality?.title ?? ""
-        }
-        let name = model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера") : model.settings.cameraDisplayName
-        guard let quality = model.xiaomiQuality else { return name }
-        return "\(name) · \(quality.title)"
-    }
-
-    private var cameraOnline: Bool {
-        #if DEBUG
-        // `--demo-camera`: the still picture is the camera, and it is on screen (go2rtc never runs in these copies).
-        if DemoData.cameraImage != nil { return true }
-        #endif
-        return model.settings.connectionMode == .external || model.embedded.status.isRunning
-    }
-
-    /// The camera on screen's quality; nil when it is not a Mi Home camera.
-    private var shownQuality: AppModel.XiaomiQuality? {
-        model.isShowingSecondCamera ? model.secondXiaomiQuality : model.xiaomiQuality
-    }
-}
-
-/// «Прихожая · Комната» (⌘1 / ⌘2): which camera is on screen, and recorded. Both keep playing.
-private struct CameraToolbarSwitcher: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        let names = CameraShortNames.make(
-            model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера 1") : model.settings.cameraDisplayName,
-            model.activeSecondCameraName)
-        Picker("Камера", selection: Binding(get: { model.isShowingSecondCamera },
-                                            set: { model.showCamera(second: $0) })) {
-            Text(names.0).tag(false)
-            Text(names.1).tag(true)
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .help("Какую камеру показывать · ⌘1 / ⌘2. Записывается та, что на экране")
-    }
-}
-
-/// «Повернуть»: the turning mode — the pad over the picture and the arrow keys (Esc or «Готово» to end it).
-private struct PanTiltToolbarToggle: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        Toggle(isOn: Binding(get: { model.panTilt.isActive },
-                             set: { on in withAnimation(.smooth(duration: 0.25)) { on ? model.panTilt.start() : model.panTilt.stop() } })) {
-            Label("Повернуть", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
-                .padding(.horizontal, ToolbarLook.padding)
-                .labelStyle(.titleAndIcon)
-        }
-        .help(model.panTilt.isActive ? "Закончить поворот камеры · Esc"
-                                     : "Повернуть камеру: стрелки на картинке или на клавиатуре")
+        .sharedBackgroundVisibility(.hidden)
     }
 }
 
@@ -589,37 +528,6 @@ extension PanTiltDirection {
         case .upArrow: self = .up
         case .downArrow: self = .down
         default: return nil
-        }
-    }
-}
-
-/// REC with the running time, or in a training not recorded «Запись» to start it (⌘R).
-private struct RecordingToolbarButton: View {
-    @Environment(AppModel.self) private var model
-    @Environment(MacUIState.self) private var ui
-    var compact = false
-
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            Button { ui.toggleRecording(model) } label: {
-                if model.isRecordingNow {
-                    // «● REC» alone, as on the iPhone: the time recorded is in the tip and for VoiceOver.
-                    HStack(spacing: 5) {
-                        Circle().fill(MacPalette.red).frame(width: 7, height: 7)
-                        Text(verbatim: "REC").font(.system(size: 10, weight: .bold)).foregroundStyle(MacPalette.red)
-                    }
-                    .padding(.horizontal, ToolbarLook.padding + 4)
-                    .accessibilityValue(DurationText.clock(model.recordingDuration(at: context.date)))
-                } else {
-                    Label("Запись", systemImage: "record.circle")
-                        .padding(.horizontal, ToolbarLook.padding)
-                        .labelStyle(ToolbarFitLabelStyle(compact: compact))
-                }
-            }
-            .help(model.isRecordingNow
-                  ? "REC \(DurationText.clock(model.recordingDuration(at: context.date))) — \(String(localized: "Остановить запись · ⌘R"))"
-                  : String(localized: "Записать видео · ⌘R"))
-            .disabled(!model.isRecordingNow && !model.settings.isConfigured)
         }
     }
 }
@@ -696,7 +604,9 @@ enum ConsoleToolbarAudit {
             guard let view = item.view, let host = view.window else { return nil }
             return host.convertToScreen(view.convert(view.bounds, to: nil)).offsetBy(dx: -window.frame.minX, dy: 0)
         }
-        let groupMaxX = items[..<index].compactMap(frame).map(\.maxX).max()
+        let groupMaxX = probeView(in: window).flatMap { view in
+            view.window.map { $0.convertToScreen(view.convert(view.bounds, to: nil)).maxX - window.frame.minX }
+        }
         let buttonsMinX = items[(index + 1)...].compactMap(frame).map(\.minX).min()
         let hosts = Set(items.compactMap { $0.view?.window.map { "\(type(of: $0))" } }).sorted()
         func number(_ value: CGFloat?) -> String { value.map { String(Int($0.rounded())) } ?? "nil" }
@@ -710,10 +620,15 @@ enum ConsoleToolbarAudit {
     }
 
     private static func probeIndex(in window: NSWindow) -> Int? {
-        func hasProbe(_ view: NSView) -> Bool {
-            view is ToolbarNeighboursProbe.ProbeView || view.subviews.contains(where: hasProbe)
-        }
-        return window.toolbar?.items.firstIndex { item in item.view.map(hasProbe) ?? false }
+        window.toolbar?.items.firstIndex { item in item.view.flatMap(findProbe) != nil }
+    }
+
+    private static func probeView(in window: NSWindow) -> NSView? {
+        window.toolbar?.items.lazy.compactMap { $0.view.flatMap(findProbe) }.first
+    }
+
+    private static func findProbe(_ view: NSView) -> NSView? {
+        view is ToolbarNeighboursProbe.ProbeView ? view : view.subviews.lazy.compactMap(findProbe).first
     }
 }
 #endif

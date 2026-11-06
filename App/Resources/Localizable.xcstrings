@@ -402,9 +402,6 @@
     "%@ %@" : {
       "shouldTranslate" : false
     },
-    "%@ %@" : {
-      "shouldTranslate" : false
-    },
     "%@ %@ назад, входите" : {
       "localizations" : {
         "en" : {
@@ -2453,6 +2450,22 @@
         }
       }
     },
+    "включено" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "включено"
+          }
+        }
+      }
+    },
     "Включить в настройках iOS" : {
       "localizations" : {
         "en" : {
@@ -3185,6 +3198,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выйти…"
+          }
+        }
+      }
+    },
+    "выключено" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "off"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "выключено"
           }
         }
       }
@@ -4993,6 +5022,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Записывать видео"
+          }
+        }
+      }
+    },
+    "запись" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recording"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "запись"
           }
         }
       }
@@ -7173,6 +7218,22 @@
         }
       }
     },
+    "на связи" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "online"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "на связи"
+          }
+        }
+      }
+    },
     "На экране и в записи." : {
       "localizations" : {
         "en" : {
@@ -7457,6 +7518,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "не запущен"
+          }
+        }
+      }
+    },
+    "не на связи" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "offline"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не на связи"
+          }
+        }
+      }
+    },
+    "не начата" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not started"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не начата"
           }
         }
       }
