@@ -1,0 +1,15 @@
+{
+ "title": "Консилиум Waiting Paws",
+ "page_title": "Waiting Paws: main → сейчас",
+ "goal": "FILL: the criterion in one line (criterion.md has it in full)",
+ "lead": null,
+ "delegates": [["claude-opus-5.5.md", "Claude Opus 5.5"], ["claude-fable-5.1.md", "Claude Fable 5.1"], ["gpt-6-astra.md", "GPT 6 Astra"]],
+ "cases": ["План", "«За дверью»", "Перерыв", "Взгляд мимоходом", "Итог и лог", "История", "Камера и главный экран"],
+ "first_round": 1,
+ "base": {"ref": "main", "label": "main", "note": "FILL: short sha, date"},
+ "now_note": "рабочая копия, не закоммичено",
+ "code_paths": ["App", "Packages", "Tools"],
+ "scores_title": "Council review",
+ "archive": null,
+ "captions": {}
+}
