@@ -92,7 +92,9 @@ Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает ката�
 * `docs/screenshots/app-store/<en|ru>/` — скриншоты для App Store (iPhone 6.9″ 1320×2868, Mac 2880×1800),
   `docs/screenshots/showcase/` — картинки с рамками устройств и подписями. Пересъёмка: `Tools/screenshots/make.sh`
   (отдельный симулятор «WP Screens», фоновые копии Mac-приложения с `--retina`, только DEBUG-демо-данные;
-  `make.sh compose` пересобирает картинки из уже снятых кадров).
+  `make.sh compose` пересобирает картинки из уже снятых кадров). Фон — палитры в `compose.swift` (`WP_BG=<имя>`,
+  по умолчанию светло-серый `paper`); варианты рядом — `Design/showcase-lab`. `WP_DD`, `WP_SIM` и `WP_RAW` уводят
+  сборку, симулятор и кадры в свои папки, чтобы не мешать другим сессиям.
 
 ### Версии и выпуски
 

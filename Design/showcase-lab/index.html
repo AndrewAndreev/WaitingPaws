@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — фон для showcase</title>
+<style>
+:root {
+  color-scheme: dark;
+  --green: #6EE7A0; --t2: rgba(235,235,245,.62);
+  --sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 var(--sf); background: #2a2a2d; color: #ececef; padding-bottom: 120px; }
+code { background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 5px; font-size: .9em; }
+header.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  padding: 10px 24px; background: rgba(32,32,35,.92); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); }
+header.top h1 { font-size: 16px; margin: 0; }
+.switches { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--t2); }
+.seg { display: inline-flex; background: #1c1c1f; border-radius: 9px; padding: 2px; gap: 2px; }
+.seg button { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 7px; font-size: 12.5px; color: var(--t2); white-space: nowrap; }
+.seg button.on { background: #48484d; color: #fff; }
+main { padding: 0 24px; max-width: 1800px; margin: 0 auto; }
+.intro { padding: 20px 0 6px; max-width: 1000px; color: #d4d4d8; }
+.intro h2 { font-size: 22px; margin: 0 0 8px; color: #fff; }
+.intro p { margin: 0 0 8px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 760px), 1fr)); gap: 18px; margin-top: 14px; }
+.card { background: rgba(255,255,255,.04); border: 2px solid rgba(255,255,255,.07); border-radius: 20px; padding: 14px 16px 16px;
+  display: flex; flex-direction: column; gap: 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+.card:hover { border-color: rgba(255,255,255,.22); }
+.card.sel { border-color: var(--green); background: rgba(110,231,160,.07); }
+.chead { display: flex; gap: 12px; align-items: center; }
+.cid { font: 800 13px/1 var(--rounded); background: #ececef; color: #111; padding: 5px 7px; border-radius: 7px; flex: none; }
+.cname { font-size: 17px; font-weight: 700; }
+.tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: #c8c8cc; color: #000; }
+.sw { display: flex; gap: 4px; margin-left: auto; }
+.sw i { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,.18); }
+.pick { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); display: grid; place-items: center; }
+.card.sel .pick { border-color: var(--green); background: var(--green); }
+.card.sel .pick::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #000; }
+.idea { font-size: 13.5px; color: #d0d0d6; line-height: 1.45; margin-top: -4px; }
+.shots { display: flex; flex-direction: column; gap: 10px; }
+.shots img { display: block; width: 100%; height: auto; border-radius: 10px; }
+.shots .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+body.view-iphone .only-mac, body.view-mac .only-iphone { display: none; }
+body.view-iphone .shots .row, body.view-mac .shots .row { grid-template-columns: 1fr; }
+body.view-store .shots .main { display: none; }
+body:not(.view-store) .shots .store { display: none; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; gap: 14px; align-items: center; justify-content: center;
+  padding: 12px 24px; background: rgba(32,32,35,.95); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.08); font-size: 14px; }
+.bar button { all: unset; cursor: pointer; background: var(--green); color: #000; font-weight: 700; padding: 8px 16px; border-radius: 10px; }
+.bar button[disabled] { opacity: .35; cursor: default; }
+.bar .saved { color: var(--green); }
+dialog { background: #1c1c1f; color: #eee; border: 1px solid rgba(255,255,255,.15); border-radius: 14px; padding: 0; max-width: 96vw; }
+dialog img { display: block; max-width: 94vw; max-height: 90vh; }
+</style>
+</head>
+<body class="view-both">
+<header class="top">
+  <h1>Фон showcase-картинок</h1>
+  <div class="switches">
+    <span class="switch">Язык <span class="seg" data-key="lang"><button data-v="en" class="on">EN</button><button data-v="ru">RU</button></span></span>
+    <span class="switch">Показать <span class="seg" data-key="view">
+      <button data-v="both" class="on">iPhone + Mac</button><button data-v="iphone">iPhone</button><button data-v="mac">Mac</button>
+      <button data-v="store">App Store · Mac</button></span></span>
+  </div>
+</header>
+<main>
+  <section class="intro">
+    <h2>Кадры 1.7.15, восемь фонов</h2>
+    <p>Экраны сняты со сборки 1.7.15 (<code>Tools/screenshots/make.sh</code>). Раскладка и подписи те же, меняется только фон и
+      цвет заголовка под него. Тот же фон идёт и на Mac-скриншоты для App Store (вкладка «App Store · Mac»).</p>
+    <p><b>Выбран C · Светло-серый</b> (6 ноября 2026) — теперь он фон по умолчанию в <code>compose.swift</code>.</p>
+    <p>Нажмите на карточку, чтобы выбрать, и «Сохранить выбор». Двойной клик по картинке — во весь экран.</p>
+  </section>
+  <div class="grid" id="grid"></div>
+</main>
+<div class="bar"><span id="status">Ничего не выбрано</span><button id="save" disabled>Сохранить выбор</button></div>
+<dialog id="zoom"><img alt=""></dialog>
+<script>
+const PALETTES = [
+  { key: 'night', id: 'A', name: 'Ночь', tag: 'было', sw: ['#1E141C', '#0B0B0C', '#FFE6EE'],
+    idea: 'Как было: сливовый → чёрный с розовым свечением. Для сравнения.' },
+  { key: 'black', id: 'B', name: 'Чёрный', sw: ['#000000', '#8A7F86', '#F5F5F7'],
+    idea: 'Чистый чёрный, как на презентациях Apple: без цветового оттенка, лёгкий тёплый свет за устройствами, белый и серый текст.' },
+  { key: 'paper', id: 'C', name: 'Светло-серый', tag: 'выбран', sw: ['#FBFBFD', '#E8E8ED', '#1D1D1F'],
+    idea: 'Серый фон apple.com. Тёмные экраны и рамки на светлом читаются сильнее всего.' },
+  { key: 'blush', id: 'D', name: 'Пудра', sw: ['#FFF5F8', '#FFDCE7', '#2A1620'],
+    idea: 'Светлый розовый из акцента приложения, сливовый текст. Мягко и узнаваемо.' },
+  { key: 'sand', id: 'E', name: 'Песок', sw: ['#F8F2EA', '#E9DAC6', '#33251B'],
+    idea: 'Тёплый бежевый, коричневый текст — уютно, «домашне», без розового.' },
+  { key: 'sage', id: 'F', name: 'Шалфей', sw: ['#EEF5F0', '#CFE2D6', '#15362B'],
+    idea: 'Приглушённый зелёный — дополнительный к розовым кнопкам, они на нём ярче.' },
+  { key: 'midnight', id: 'G', name: 'Ночное небо', sw: ['#1F2A52', '#0A0E1F', '#FFB8CC'],
+    idea: 'Тёмно-синий из палитры иконки «небо», розовый текст. Тёмный, но не чёрный.' },
+  { key: 'rose', id: 'H', name: 'Роза', sw: ['#FFD3DF', '#EE8DAB', '#2A0F1A'],
+    idea: 'Насыщенный розовый акцент на весь фон, тёмно-сливовый текст. Самый яркий.' },
+];
+const state = { lang: 'en', view: 'both', sel: null };
+const grid = document.getElementById('grid');
+
+function render() {
+  const v = Date.now() % 100000;
+  grid.innerHTML = PALETTES.map(p => `
+    <article class="card${state.sel === p.key ? ' sel' : ''}" data-key="${p.key}">
+      <div class="chead">
+        <span class="cid">${p.id}</span><span class="cname">${p.name}</span>${p.tag ? `<span class="tag">${p.tag}</span>` : ''}
+        <span class="sw">${p.sw.map(c => `<i style="background:${c}" title="${c}"></i>`).join('')}</span>
+        <span class="pick"></span>
+      </div>
+      <div class="idea">${p.idea}</div>
+      <div class="shots">
+        <div class="row main">
+          <img class="only-iphone" loading="lazy" src="shots/${p.key}-iphone-${state.lang}.jpg?${v}" alt="">
+          <img class="only-mac" loading="lazy" src="shots/${p.key}-mac-${state.lang}.jpg?${v}" alt="">
+        </div>
+        <div class="row store">
+          <img loading="lazy" src="shots/${p.key}-store-session-${state.lang}.jpg?${v}" alt="">
+          <img loading="lazy" src="shots/${p.key}-store-review-${state.lang}.jpg?${v}" alt="">
+        </div>
+      </div>
+    </article>`).join('');
+}
+
+document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  state[seg.dataset.key] = b.dataset.v;
+  document.body.className = 'view-' + state.view;
+  if (seg.dataset.key === 'lang') render();
+}));
+grid.addEventListener('click', e => {
+  const card = e.target.closest('.card'); if (!card) return;
+  state.sel = card.dataset.key;
+  grid.querySelectorAll('.card').forEach(c => c.classList.toggle('sel', c === card));
+  const p = PALETTES.find(x => x.key === state.sel);
+  document.getElementById('status').textContent = `Выбран ${p.id} · ${p.name}`;
+  document.getElementById('save').disabled = false;
+});
+grid.addEventListener('dblclick', e => {
+  if (e.target.tagName !== 'IMG') return;
+  const d = document.getElementById('zoom');
+  d.querySelector('img').src = e.target.src;
+  d.showModal();
+});
+document.getElementById('zoom').addEventListener('click', e => e.currentTarget.close());
+document.getElementById('save').addEventListener('click', async () => {
+  const p = PALETTES.find(x => x.key === state.sel);
+  const res = await fetch('/choice', { method: 'POST', body: JSON.stringify({ palette: p.key, id: p.id, name: p.name }) });
+  document.getElementById('status').innerHTML = res.ok ? `<span class="saved">Сохранено: ${p.id} · ${p.name}</span>` : 'Не удалось сохранить';
+});
+fetch('choice.json').then(r => r.ok ? r.json() : null).then(c => {
+  if (c && c.palette) { state.sel = c.palette; document.getElementById('status').textContent = `Сохранённый выбор: ${c.id} · ${c.name}`; }
+  render();
+}).catch(render);
+</script>
+</body>
+</html>

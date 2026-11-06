@@ -4,6 +4,10 @@
 #   Tools/screenshots/make.sh            build, shoot both platforms, compose
 #   Tools/screenshots/make.sh ios|mac    one platform only (then compose)
 #   Tools/screenshots/make.sh compose    only recompose the raw shots already in /tmp/wp-shots/raw
+#   Tools/screenshots/make.sh showcase <dir>   only the showcase pictures, as PNG into <dir> (Design/showcase-lab)
+#
+# WP_BG=<palette> picks the background (compose.swift); without it the chosen default. WP_DD (derived data), WP_SIM
+# (simulator name) and WP_RAW (raw shots) keep a run apart from other sessions that use the default ones.
 #
 # Uses DEBUG launch arguments only (demo schedule, history, cameras, a still camera picture): nothing real is read
 # or written. iPhone shots come from a separate simulator ("WP Screens", iPhone 17 Pro Max, clean 9:41 status bar);
@@ -12,13 +16,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 ROOT=$PWD
-DD=/tmp/wp-dd-S
-RAW=/tmp/wp-shots/raw
+DD=${WP_DD:-/tmp/wp-dd-S}
+RAW=${WP_RAW:-/tmp/wp-shots/raw}
+SIM_NAME=${WP_SIM:-WP Screens}
 OUT=$ROOT/docs/screenshots
 WHAT=${1:-all}
 mkdir -p $RAW
 
-if [[ $WHAT != compose ]]; then
+if [[ $WHAT != compose && $WHAT != showcase ]]; then
   # The Mac welcome shot shows the version: the latest release's (its tag, Tools/release.sh) instead of "dev".
   VERSION=()
   if TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null); then
@@ -40,10 +45,10 @@ SESSION_EN=$'🐶 Monday training - Anna/Mark - 05.10.2026\n➡️ All breaks 2 
 SESSION_RU=$'🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 15 секунд\n2 выход - 30 секунд\n3 выход - 1 минута + куртка\n🟡 Если встала и пошла - входим через 30 секунд\n🟢 Если легла - входим через 20 секунд\n4 выход - 45 секунд + взять ключи\n5 выход - 2 минуты ИЛИ до вставания'
 
 if [[ $WHAT == all || $WHAT == ios ]]; then
-  SIM=$(xcrun simctl list devices | awk -F'[()]' '/WP Screens/ {print $2; exit}')
+  SIM=$(xcrun simctl list devices | awk -F'[()]' -v name="    $SIM_NAME " 'index($0, name) == 1 {print $2; exit}')
   if [[ -z $SIM ]]; then
     RUNTIME=$(xcrun simctl list runtimes | awk '/iOS 26/ {print $NF}' | tail -1)
-    SIM=$(xcrun simctl create "WP Screens" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max $RUNTIME)
+    SIM=$(xcrun simctl create "$SIM_NAME" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max $RUNTIME)
   fi
   xcrun simctl boot $SIM 2>/dev/null || true
   xcrun simctl bootstatus $SIM -b >/dev/null
@@ -117,8 +122,31 @@ fi
 # MARK: Compose
 
 swiftc -O Tools/screenshots/compose.swift -o /tmp/wp-compose
+
+# The README pictures: <dir>/iphone-<lang>.png and mac-<lang>.png.
+showcase() {
+  local dir=$1
+  mkdir -p $dir
+  /tmp/wp-compose showcase-ios $dir/iphone-en.png "Separation training, one tap per step" \
+    "Your trainer’s schedule, exit and break timers, a live camera while you’re outside, and a log for the trainer." \
+    $RAW/ios-en-02-plan.png $RAW/ios-en-01-outside.png $RAW/ios-en-04-log.png
+  /tmp/wp-compose showcase-ios $dir/iphone-ru.png "Тренировка выходов — шаг за шагом" \
+    "Расписание тренера, таймеры выходов и перерывов, камера, пока вы за дверью, и лог для тренера." \
+    $RAW/ios-ru-02-plan.png $RAW/ios-ru-01-outside.png $RAW/ios-ru-04-log.png
+  /tmp/wp-compose showcase-mac $dir/mac-en.png "Mac and iPhone together" \
+    $'The Mac keeps the camera, the timeline and the recording.\nThe iPhone in your hand drives the same training from behind the door.' \
+    $RAW/mac-en-m01-session.png $RAW/ios-en-01-outside.png
+  /tmp/wp-compose showcase-mac $dir/mac-ru.png "Mac и iPhone вместе" \
+    "На Mac — камера, таймлайн и запись. iPhone в руке ведёт ту же тренировку из-за двери." \
+    $RAW/mac-ru-m01-session.png $RAW/ios-ru-01-outside.png
+}
+if [[ $WHAT == showcase ]]; then
+  showcase ${2:?usage: make.sh showcase <dir>}
+  exit
+fi
+
 jpeg() { magick "$1" -alpha off -quality 92 -sampling-factor 4:4:4 "${1%.png}.jpg" && rm "$1"; }
-rm -rf $OUT && mkdir -p $OUT/showcase
+rm -rf $OUT && mkdir -p $OUT
 for lang in en ru; do
   mkdir -p $OUT/app-store/$lang/iphone-6.9 $OUT/app-store/$lang/mac
   for name in 01-outside 02-plan 03-break 04-log 05-history 06-home 07-record 08-cameras; do
@@ -129,17 +157,6 @@ for lang in en ru; do
     /tmp/wp-compose mac-store $OUT/app-store/$lang/mac/${pair%%:*}.png $RAW/mac-$lang-${pair##*:}.png
   done
 done
-/tmp/wp-compose showcase-ios $OUT/showcase/iphone-en.png "Separation training, one tap per step" \
-  "Your trainer’s schedule, exit and break timers, a live camera while you’re outside, and a log for the trainer." \
-  $RAW/ios-en-02-plan.png $RAW/ios-en-01-outside.png $RAW/ios-en-04-log.png
-/tmp/wp-compose showcase-ios $OUT/showcase/iphone-ru.png "Тренировка выходов — шаг за шагом" \
-  "Расписание тренера, таймеры выходов и перерывов, камера, пока вы за дверью, и лог для тренера." \
-  $RAW/ios-ru-02-plan.png $RAW/ios-ru-01-outside.png $RAW/ios-ru-04-log.png
-/tmp/wp-compose showcase-mac $OUT/showcase/mac-en.png "Mac and iPhone together" \
-  "The Mac keeps the camera, the timeline and the recording. The iPhone in your hand drives the same training from behind the door." \
-  $RAW/mac-en-m01-session.png $RAW/ios-en-01-outside.png
-/tmp/wp-compose showcase-mac $OUT/showcase/mac-ru.png "Mac и iPhone вместе" \
-  "На Mac — камера, таймлайн и запись. iPhone в руке ведёт ту же тренировку из-за двери." \
-  $RAW/mac-ru-m01-session.png $RAW/ios-ru-01-outside.png
+showcase $OUT/showcase
 for file in $OUT/**/*.png; do jpeg $file; done
 echo "Wrote $(find $OUT -name '*.jpg' | wc -l | tr -d ' ') images to docs/screenshots"
