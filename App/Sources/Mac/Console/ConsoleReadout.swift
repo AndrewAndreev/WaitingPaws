@@ -490,10 +490,21 @@ struct ClipRecordingHUD: View {
         .padding(.leading, 20)
         .padding(.trailing, 12)
         .padding(.vertical, 12)
-        .glassEffect(.regular, in: .capsule)
+        .modifier(HUDGlass())
         .environment(\.colorScheme, .dark)
         .help("Перетащите панель в любой угол")
     }
+
+    /// Dark glass over any picture. Untinted, Liquid Glass turns light over a bright one (a white wall, now that a
+    /// zoomed picture fills the window down to the panel): the words went black and the buttons pink, the panel
+    /// read as blown out (the owner, 2026-11-06). The owner picked clear glass, the picture's colours showing
+    /// through, at twice the darkening of a 45 % tint so the words read well: 80 % darkens the picture under it by
+    /// about a quarter.
+    static let glass = Glass.clear.tint(.black.opacity(0.8))
+    /// An inactive window drops the clear glass's tint and frosts it light: over a white wall the panel all but
+    /// vanished, while «Только камера» is often watched from another app. A shade over the glass (under the words)
+    /// stands in for the tint there; one under it barely showed through the frost.
+    static let inactiveShade = 0.6
 
     private var recordingPanel: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -515,13 +526,24 @@ struct ClipRecordingHUD: View {
             .padding(.leading, 22)
             .padding(.trailing, 12)
             .padding(.vertical, 12)
-            .glassEffect(.regular, in: .capsule)
+            .modifier(HUDGlass())
             .environment(\.colorScheme, .dark)
             .help("Перетащите панель в любой угол")
         }
     }
 
     private func distance(_ a: CGPoint, _ b: CGPoint) -> CGFloat { hypot(a.x - b.x, a.y - b.y) }
+}
+
+/// The floating panels' glass: `ClipRecordingHUD.glass`, shaded while the window is inactive.
+private struct HUDGlass: ViewModifier {
+    @Environment(\.appearsActive) private var appearsActive
+
+    func body(content: Content) -> some View {
+        content
+            .background(Capsule().fill(.black.opacity(appearsActive ? 0 : ClipRecordingHUD.inactiveShade)))
+            .glassEffect(ClipRecordingHUD.glass, in: .capsule)
+    }
 }
 
 /// A red dot that breathes while recording.
