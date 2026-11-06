@@ -565,6 +565,23 @@ struct CameraWebView {
             onopen() {
               const modes = super.onopen();
               this.onmessage['status'] = msg => { if (msg.type === 'error') setPhase('error ' + msg.value); };
+              // Upstream answers an error of the first mode by asking for MJPEG on the same socket and never tries
+              // again. A camera that does not answer the first try (it still holds the session of an app just quit:
+              // "read udp … i/o timeout") then left the player on MJPEG for good, and the built-in go2rtc cannot make
+              // JPEG out of H.265 ("codecs not matched … => video:JPEG"): «Камера не отвечает» until a relaunch.
+              // MJPEG only where the stream is there and MSE cannot play it; otherwise a new connection, as upstream
+              // does for a broken MSE stream (`onclose` reconnects within RECONNECT_TIMEOUT).
+              if (this.onmessage['mjpeg'] && modes.length) {
+                this.onmessage['mjpeg'] = msg => {
+                  if (msg.type !== 'error' || msg.value.indexOf(modes[0]) !== 0) return;
+                  if (msg.value.includes('codecs not matched')) {
+                    this.onmjpeg();
+                  } else {
+                    report('reconnect after: ' + msg.value);
+                    if (this.ws) this.ws.close();
+                  }
+                };
+              }
               return modes;
             }
 
