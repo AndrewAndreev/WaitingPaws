@@ -1,5 +1,7 @@
 #if os(iOS)
 import ActivityKit
+import AudioToolbox
+import CoreHaptics
 import Foundation
 import UIKit
 import WaitingPawsCore
@@ -49,6 +51,8 @@ final class TrainingGlance {
     private var pendingUpdate: Task<Void, Never>?
     /// The timers' notifications while the app is not in front.
     private let alerts = TrainingAlerts()
+    /// The break's end, strong enough to be noticed with the phone out of the hand.
+    private let breakOverBuzz = StrongBuzz()
     private var observers: [NSObjectProtocol] = []
 
     nonisolated init() {}
@@ -178,11 +182,9 @@ final class TrainingGlance {
             // The exit's plan time is reached: the system's "warning", two taps.
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
         case .breakOver:
-            // The break's plan is over: three soft knocks.
-            let generator = UIImpactFeedbackGenerator(style: .soft)
-            for knock in 0..<3 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.16 * Double(knock)) { generator.impactOccurred(intensity: 1) }
-            }
+            // The break's plan is over: time to go out again, and the phone is often on the table or the sofa. Three
+            // soft knocks went unnoticed out of the hand (the owner, 2026-11-06): three long buzzes at full strength.
+            breakOverBuzz.play()
         default:
             return
         }
@@ -516,6 +518,70 @@ private extension TrainingActivityAttributes.Readout {
         // The frozen number of a ticking readout changes every second and isn't shown.
         if endsAt != nil || countsUpFrom != nil, !isWords { a.value = ""; b.value = "" }
         return a == b
+    }
+}
+/// A vibration felt with the phone on the table or the sofa, not only in the hand: three long buzzes at full strength,
+/// each opened by a sharp knock (Core Haptics, ~1.7 s in all). The impact generator's soft knocks it replaces are only
+/// felt in the hand. Where Core Haptics can't play (no Taptic Engine, the engine failed), the system's own vibration,
+/// twice. Like every haptic, only while the app is in front: out of it the notification vibrates (`TrainingAlerts`).
+@MainActor
+final class StrongBuzz {
+    private var engine: CHHapticEngine?
+    static let buzzes = 3
+    static let length: TimeInterval = 0.45
+    static let pause: TimeInterval = 0.2
+
+    nonisolated init() {}
+
+    func play() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return Self.systemVibration(times: 2) }
+        do {
+            let engine = try self.engine ?? makeEngine()
+            self.engine = engine
+            // Stopped by the system meanwhile (the app was in the background, an interruption): started again.
+            try engine.start()
+            try engine.makePlayer(with: Self.pattern()).start(atTime: CHHapticTimeImmediate)
+        } catch {
+            print("[glance] haptics failed (\(error.localizedDescription)): the system vibration instead")
+            engine = nil
+            Self.systemVibration(times: 2)
+        }
+    }
+
+    private func makeEngine() throws -> CHHapticEngine {
+        let engine = try CHHapticEngine()
+        // No sound of its own, and no part in the player's audio session.
+        engine.playsHapticsOnly = true
+        // Idle between breaks: the hardware may sleep; `start()` before each pattern wakes it.
+        engine.isAutoShutdownEnabled = true
+        // After a reset the next `play` starts it again.
+        engine.resetHandler = {}
+        return engine
+    }
+
+    private static func pattern() throws -> CHHapticPattern {
+        var events: [CHHapticEvent] = []
+        for index in 0..<buzzes {
+            let start = Double(index) * (length + pause)
+            events.append(CHHapticEvent(eventType: .hapticTransient, parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.8),
+            ], relativeTime: start))
+            // Low sharpness: the deep buzz that carries through a table top.
+            events.append(CHHapticEvent(eventType: .hapticContinuous, parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.35),
+            ], relativeTime: start, duration: length))
+        }
+        return try CHHapticPattern(events: events, parameters: [])
+    }
+
+    /// The system's vibration (~0.4 s), `times` in a row.
+    private static func systemVibration(times: Int) {
+        guard times > 0 else { return }
+        AudioServicesPlaySystemSoundWithCompletion(kSystemSoundID_Vibrate) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { systemVibration(times: times - 1) }
+        }
     }
 }
 #endif
