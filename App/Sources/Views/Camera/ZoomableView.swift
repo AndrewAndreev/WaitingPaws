@@ -25,8 +25,9 @@ final class ZoomState {
     /// Width over height of the picture when it is letterboxed in the area (the iPhone: the area runs from the top bar
     /// to the card, the picture fits in it); nil: the content fills the area itself (the Mac's player).
     private(set) var aspect: CGFloat?
-    /// The iPhone: the last framing zoomed in, and whether it is on. A double tap on the whole picture goes back to
-    /// it; it is saved per camera when a gesture ends, and a new size of the area shows it anew.
+    /// The iPhone: the last framing zoomed in, and whether it is on. «Приблизить» on the whole picture goes back to
+    /// it (a double tap only takes its scale); it is saved per camera when a gesture ends, and a new size of the area
+    /// shows it anew.
     private(set) var memory = Memory()
     /// Keeps `memory` (the iPhone); the Mac's double click zooms in where it is.
     let remembers: Bool
@@ -80,14 +81,16 @@ final class ZoomState {
         commit()
     }
 
-    /// Double tap / double click: back to the whole picture; from it, to the framing left last (the iPhone) or in at
-    /// that point — as far as fills the area when the picture is letterboxed in it.
+    /// Double tap / double click: back to the whole picture; from it, in round the tapped point, which stays under the
+    /// finger where the picture's edges allow — as close as the framing left last (the iPhone), else as far as fills
+    /// the area when the picture is letterboxed in it. The iPhone's double tap used to bring back the framing left last
+    /// wherever it landed; the owner wants it where they tap (2026-11-06).
     func toggle(at anchor: CGPoint) {
         if isZoomed {
             scale = 1
             offset = .zero
         } else if remembers, let framing = memory.framing, scale(for: framing) > 1.01 {
-            show(framing)
+            zoom(to: scale(for: framing), anchor: anchor)
         } else if aspect != nil {
             let fill = fillScale
             zoom(to: fill < 1.4 ? 2 : min(fill, Self.smartScale), anchor: anchor)
@@ -98,11 +101,12 @@ final class ZoomState {
     }
 
     /// «Приблизить» ↔ «Весь кадр» (`CameraZoomButton`), there whatever the area's shape: back to the whole picture; from
-    /// it, to the framing left last — the same one a double tap brings back — where this area shows it closer; else as
-    /// far as fills a letterboxed area, and where the picture fills it already or nearly (a tall card, the accessibility
-    /// text sizes) twice as close — round the middle of the framing left last (where the owner looked), or a little
-    /// below the picture's middle where that framing kept its whole height: the camera looks down at the door, the dog
-    /// is on the floor (design council, round 10: the button was gone where the picture filled the area).
+    /// it, to the framing left last (a double tap zooms as close, but round the tapped point) where this area shows it
+    /// closer; else as far as fills a letterboxed area, and where the picture fills it already or nearly (a tall card,
+    /// the accessibility text sizes) twice as close — round the middle of the framing left last (where the owner
+    /// looked), or a little below the picture's middle where that framing kept its whole height: the camera looks down
+    /// at the door, the dog is on the floor (design council, round 10: the button was gone where the picture filled the
+    /// area).
     func toggleZoomIn() {
         if isZoomed {
             scale = 1
@@ -534,7 +538,7 @@ struct CameraZoomButton: View {
 }
 
 #if os(iOS)
-/// Pinch around the fingers, drag when zoomed, double tap to the remembered framing (or in there) / back to 1×.
+/// Pinch around the fingers, drag when zoomed, double tap in round the tapped point / back to 1×.
 private struct ZoomInput: View {
     let zoom: ZoomState
 
