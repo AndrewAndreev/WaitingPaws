@@ -4,10 +4,10 @@ import SwiftUI
 /// Width of the «Пульт» panel on the right (the new training / the session readout) and the toolbar above it.
 ///
 /// The panel is resized by its edge and folds away into «Только камера» when dragged past its narrowest. The toolbar
-/// follows it: the panel's buttons (recording, sound, history…) sit over the panel at the window's edge, the camera's
-/// group always on the camera's side of the panel's edge. The toolbar places items from the window's edge, so a
-/// spacer item between the two groups as wide as the gap they leave decides where the camera's group lands; when the
-/// panel's buttons don't fit over it with their titles, they drop the titles.
+/// follows it: the panel's groups (recording, sound, history…) sit over the panel at the window's edge, the camera's
+/// island always on the camera's side of the panel's edge. The toolbar places items from the window's edge, so a clear
+/// room after the island, as wide as the gap the groups leave, decides where the island lands; when the groups don't
+/// fit over the panel with their words, the words drop one at a time.
 enum ConsolePanelLayout {
     /// Enough for the timer, the two step buttons and «Начать тренировку и запись ⌘↩».
     static let minWidth: CGFloat = 340
@@ -291,19 +291,6 @@ struct ToolbarNeighboursProbe: NSViewRepresentable {
                 groupMaxX: island.maxX - frame.minX,
                 itemGap: itemEnd.map { buttonsMinX - $0 },
                 groups: buttons.map { ($0.minX - frame.minX)...($0.maxX - frame.minX) }))
-        }
-    }
-}
-
-/// Title and icon, or the icon alone when the toolbar over the panel is short of room.
-struct ToolbarFitLabelStyle: LabelStyle {
-    var compact: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        if compact {
-            configuration.icon
-        } else {
-            Label(configuration).labelStyle(.titleAndIcon)
         }
     }
 }

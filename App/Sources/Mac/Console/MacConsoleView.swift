@@ -169,6 +169,17 @@ struct MacConsoleView: View {
             if CommandLine.arguments.contains("--demo-panel-sweep") { Task { await sweepPanel() } }
             if CommandLine.arguments.contains("--demo-fold-cycle") { Task { await foldCycle() } }
             if CommandLine.arguments.contains("--demo-window-cycle") { ConsoleToolbarAudit.startOnce() }
+            // `--demo-full-screen=<seconds>`: the window in full screen for that long (the header's checks there).
+            if let raw = CommandLine.arguments.first(where: { $0.hasPrefix("--demo-full-screen=") })?.dropFirst(19),
+               let seconds = Double(raw) {
+                Task {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    let window = NSApp.windows.first { $0.isVisible && $0.toolbar != nil }
+                    window?.toggleFullScreen(nil)
+                    try? await Task.sleep(for: .seconds(seconds))
+                    window?.toggleFullScreen(nil)
+                }
+            }
             // `--demo-window-size <width>x<height>`: the window at that size (the panel in a tall or short window).
             let args = CommandLine.arguments
             if let i = args.firstIndex(of: "--demo-window-size"), i + 1 < args.count {
