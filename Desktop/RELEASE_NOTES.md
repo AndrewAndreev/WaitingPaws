@@ -1,6 +1,14 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.7.14**
+**New in 1.7.15**
+
+* The same version as iPhone and Mac 1.7.15, built from the same code. The Windows app itself has not changed since
+  1.6.12. 1.7.15 fixes «Подключаемся к камере…» staying over a camera picture that plays (on the Mac, after the
+  training window was closed and opened again from the Dock). In the Mac's schedule check the trainer's text slides
+  away and back, the buttons over it light up under the pointer and when pressed, and «Готово» is back beside
+  «Начать тренировку»: it keeps the schedule without starting the training.
+
+**In 1.7.14**
 
 * The same version as iPhone and Mac 1.7.14, built from the same code. The Windows app itself has not changed since
   1.6.12: 1.7 redesigned the iPhone and Mac screens, and 1.7.14 brings them a zoomed camera picture that fills the
