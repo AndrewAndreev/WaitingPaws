@@ -28,7 +28,7 @@ struct LiveSessionModel {
     var overdue: Bool { (remaining ?? 0) < 0 }
     var progress: Double { session.progress(at: now) ?? 0 }
 
-    /// Past the plan — an exit or a break — the iPhone's yellow (`Theme.overtime`), never the false start's orange.
+    /// Past the plan — an exit or a break — the iPhone's `Theme.overtime` (the false start's orange, as before 1.7).
     var tint: Color {
         if overdue { return Theme.overtime }
         if isBreak { return MacPalette.blue }

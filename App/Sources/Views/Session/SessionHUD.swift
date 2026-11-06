@@ -95,9 +95,9 @@ extension ModalVeil where S == Rectangle {
 }
 
 extension Theme {
-    /// Past the plan («+0:22», an exit or a break longer than planned): yellow, apart from the false start's orange
-    /// (`Theme.warning`, «Фальстарт», the repeated exit's rim) — the two can be on one card at once.
-    static let overtime = Color(red: 1.00, green: 0.87, blue: 0.27)
+    /// Past the plan («+0:22», an exit or a break longer than planned): the orange it was before 1.7, the false start's
+    /// (`Theme.warning`). The bright yellow of 1.7 was too loud on the timeline and the card (the owner, 2026-11-06).
+    static let overtime = warning
 }
 
 /// What the training readout says, for the iPhone card and the Mac panel alike: the phase, the big number and what it
@@ -133,7 +133,7 @@ struct ReadoutContent {
         let text: String
         let caption: String
         let overdue: Bool
-        /// Pink outside, blue in a break; past the plan yellow, both.
+        /// Pink outside, blue in a break; past the plan orange (`Theme.overtime`), both.
         let tint: Color
         let progress: Double?
     }
@@ -440,7 +440,7 @@ extension ReadoutContent {
     }
 
     /// The colour of `phoneStatus` where it stands alone, small (the trainer's text): the phase's — pink outside, blue
-    /// in a break, yellow past the plan — and grey before the first exit.
+    /// in a break, orange past the plan — and grey before the first exit.
     static func phaseColor(_ status: Status) -> Color {
         switch status.kind {
         case .ready: return .white.opacity(0.4)
@@ -699,7 +699,7 @@ private struct LineLabelStyle: LabelStyle {
     }
 }
 
-/// The big number alone — the time left; past the plan the time over it, «+0:05» in yellow — and a thin line of
+/// The big number alone — the time left; past the plan the time over it, «+0:05» in orange — and a thin line of
 /// progress under it, pink in an exit, blue in a break. No words round it: the strip's lit chip says the plan, the
 /// title what is counted. On its right, while it runs, the owner's stopwatch: «⏱ 0:12», small and grey.
 private struct BigNumber: View {

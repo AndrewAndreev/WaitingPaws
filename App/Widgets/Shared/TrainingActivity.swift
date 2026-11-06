@@ -19,7 +19,7 @@ struct TrainingActivityAttributes: ActivityAttributes {
         /// The big number now.
         var status: Readout
         /// What `status` turns into when its countdown runs out (`status.endsAt`) and the app can't say so itself
-        /// (suspended): the exit's «0:00» becomes a yellow «+0:01…». The extension draws it from that moment on by
+        /// (suspended): the exit's «0:00» becomes an orange «+0:01…». The extension draws it from that moment on by
         /// itself (`AtEnd`), not only once iOS marks the activity stale.
         var then: Readout?
         /// Before an exit (a break, or the first exit not started), what to take for it by the trainer's text: «взять
@@ -72,16 +72,16 @@ struct TrainingActivityAttributes: ActivityAttributes {
     /// (an exit), ⏸ (a break: the app's sign of it in the plan), the flag (the training is over — never the check,
     /// which could pass for «come in»), the crossed-out Wi-Fi (the Mac whose training this is can't be reached). It
     /// names the phase and stays across zero (design council, round 13: a door in place of ⏸ once the break ran over
-    /// made the sign mean an action); past the plan says the yellow and the «+».
+    /// made the sign mean an action); past the plan says the orange and the «+».
     enum Glyph: String, Codable, Hashable {
         case outside, rest, done, noLink
     }
 
-    /// The phase colours of the app (`Theme`): pink outside, blue in a break, yellow past the plan (`Theme.overtime`,
-    /// one yellow everywhere — not the false start's orange); orange for what holds the card back (no link to the Mac,
-    /// `Theme.warning`).
+    /// The phase colours of the app (`Theme`): pink outside, blue in a break, `overtime` past the plan (`Theme.overtime`,
+    /// the false start's orange since 1.7's yellow was dropped); orange for what holds the card back (no link to the
+    /// Mac, `Theme.warning`).
     enum Tone: String, Codable, Hashable {
-        case pink, blue, yellow, orange
+        case pink, blue, overtime, orange
     }
 
     /// «🕓 с Mac в 19:04»: what the iPhone knew of a Mac's training was last heard then (the app is about to be

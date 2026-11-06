@@ -16,7 +16,7 @@ import WaitingPawsCore
 /// When a countdown runs out while the app is suspended, nothing can update the Live Activity (a local notification
 /// doesn't wake the app, and iOS draws `then` only once it marks the activity stale, minutes after `staleDate`); so
 /// the extension draws both states and switches to `then` at the moment by itself (the exit's «0:00» turns into a
-/// yellow «+0:01…»; its `AtEnd`, round 8). The notification arrives on time and says what ran out.
+/// orange «+0:01…»; its `AtEnd`, round 8). The notification arrives on time and says what ran out.
 ///
 /// Round 12 (the owner's criteria): a glance, not a remote — the phase, the number, the step; the trainer's conditions
 /// are only read in the app, so nothing here counts them down or waits for the quiet.
@@ -404,7 +404,7 @@ final class TrainingGlance {
         }
     }
 
-    /// The number alone, in the phase colour where it isn't the plain countdown: past the plan «+0:17», yellow — no
+    /// The number alone, in the phase colour where it isn't the plain countdown: past the plan «+0:17», orange — no
     /// words over it, no «до 20:44», no «план 1 мин» (design council, round 12). The last break, with no exit ahead to
     /// count down to, counts its own time up, white, without a line (round 15, as the app's card).
     private func readout(_ status: ReadoutContent.Status, session: TrainingSession, now: Date) -> Attributes.Readout {
@@ -437,7 +437,7 @@ final class TrainingGlance {
     private static func tone(_ status: ReadoutContent.Status) -> Attributes.Tone {
         switch status.kind {
         case .breakTime: return .blue
-        case .overdue, .breakOver: return .yellow
+        case .overdue, .breakOver: return .overtime
         default: return .pink
         }
     }

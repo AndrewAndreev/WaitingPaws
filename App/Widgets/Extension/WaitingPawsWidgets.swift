@@ -253,13 +253,13 @@ private struct CornerNote: View {
 }
 
 /// `content` drawn for the readout until its countdown runs out, and for `then` from that moment on: the exit's «0:00»
-/// becomes a yellow «+0:01…» — on time, with the app suspended. Nothing can redraw a Live Activity then (a local
+/// becomes an orange «+0:01…» — on time, with the app suspended. Nothing can redraw a Live Activity then (a local
 /// notification doesn't wake the app), and iOS draws `then` only once it marks the activity stale, in practice minutes
 /// after `staleDate`; until then the countdown sat at 0:00 (design council, round 7). So both are drawn, one over the
 /// other, each under a mask that the system itself moves on with the clock: a progress line over the quarter second at
 /// the end (`ProgressView(timerInterval:)`), empty before it and full after, or the other way round, stretched over the
 /// view. Its track is faint but not clear (some 25 %), so each mask is laid on four times: the track's alpha to the
-/// fourth leaves no trace (cubed, a hidden yellow «+0:53» still showed a level or two over the dark card). (A text of
+/// fourth leaves no trace (cubed, a hidden orange «+0:53» still showed a level or two over the dark card). (A text of
 /// a format of its own, `DiscreteFormatStyle`, would switch by itself too, but a Live Activity with one is drawn only
 /// as a placeholder.)
 private struct AtEnd<Content: View>: View {
@@ -370,7 +370,7 @@ private struct OpenPill: View {
     }
 }
 
-/// The big number: counting down to `endsAt`, up from `countsUpFrom` («+0:05» past the plan, yellow), or the words
+/// The big number: counting down to `endsAt`, up from `countsUpFrom` («+0:05» past the plan, orange), or the words
 /// («Нет связи с Mac»).
 private struct BigValue: View {
     let readout: TrainingActivityAttributes.Readout
@@ -506,7 +506,7 @@ extension TrainingActivityAttributes.Tone {
         case .pink: return Color(red: 1.00, green: 0.72, blue: 0.80)
         case .blue: return Color(red: 0.55, green: 0.75, blue: 1.00)
         // The app's `Theme.overtime` (`SessionHUD.swift`): past the plan.
-        case .yellow: return Color(red: 1.00, green: 0.87, blue: 0.27)
+        case .overtime: return Color(red: 1.00, green: 0.72, blue: 0.30)
         // The app's `Theme.warning`: the false start's orange, here the lost link and the trigger's ⚡.
         case .orange: return Color(red: 1.00, green: 0.72, blue: 0.30)
         }
