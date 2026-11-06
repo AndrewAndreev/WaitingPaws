@@ -162,7 +162,7 @@ struct MacHistoryInspector: View {
                 Button("В Фото", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
                     .disabled(preparing || model.photosStatus(for: video.fileName).saved)
                     .help("Сохранить видео в Фото")
-                ShareLink(item: video.url) { Image(systemName: "square.and.arrow.up") }
+                MacShareButton(.file(video.url)) { Image(systemName: "square.and.arrow.up") }
                     .disabled(preparing)
                     .help("Отправить видео…")
             }

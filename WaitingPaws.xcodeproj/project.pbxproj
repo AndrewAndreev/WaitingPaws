@@ -145,6 +145,7 @@
 		ADB42AECC2E9F6D642EFED1C /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6B39818DB94C898964AF2 /* MacRootView.swift */; };
 		AE7119296703BF1EB2556ADB /* MacHistoryThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EDD0FE37A4518887FC57D0 /* MacHistoryThumbnail.swift */; };
 		B166198A847F3E9D6C687367 /* LinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E82FB404801D9CB6095FA0E /* LinkViews.swift */; };
+		B19A3D434CB11C172C521185 /* MacShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A10316003D7B9694E2D64 /* MacShare.swift */; };
 		B4375582930106AE2E15D9C5 /* MacSettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F500699389109EAB319D6074 /* MacSettingsPanes.swift */; };
 		B5667475471B3E49CD11609A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF078E66FEB0548DFDA1B148 /* HistoryView.swift */; };
 		B8AF3D7E6F3119FB13242691 /* CameraModesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A9E12D5DF46378F7F1F746E /* CameraModesModel.swift */; };
@@ -166,6 +167,7 @@
 		CB9F39E531F2E976136C552F /* CameraStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B514B872913BC77102D71 /* CameraStreamView.swift */; };
 		CC14EEED21DA943AAB34993E /* TrainingAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6473E973E22D1D8DB9B42C96 /* TrainingAlerts.swift */; };
 		CD446916425199904EA7EED1 /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
+		CEFD2B021B7A8CBD372D7088 /* MacShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A10316003D7B9694E2D64 /* MacShare.swift */; };
 		D0F0581E479A071794513BA0 /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
 		D2C6638D3CFDD5DD0A793BE3 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		D44E1C57BE0D09AEAB895A98 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
@@ -230,6 +232,7 @@
 		100B514B872913BC77102D71 /* CameraStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraStreamView.swift; sourceTree = "<group>"; };
 		10E8CD97BB4254A1CFFB61D3 /* WaitingPaws-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "WaitingPaws-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		1A6A10316003D7B9694E2D64 /* MacShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacShare.swift; sourceTree = "<group>"; };
 		1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddedGo2RTC.swift; sourceTree = "<group>"; };
 		211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingFinalizer.swift; sourceTree = "<group>"; };
 		249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimizedPanel.swift; sourceTree = "<group>"; };
@@ -542,6 +545,7 @@
 			isa = PBXGroup;
 			children = (
 				67C46490ED793F437A72C93B /* LiveSessionModel.swift */,
+				1A6A10316003D7B9694E2D64 /* MacShare.swift */,
 				2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */,
 			);
 			path = Shared;
@@ -886,6 +890,7 @@
 				ADB42AECC2E9F6D642EFED1C /* MacRootView.swift in Sources */,
 				D4C2D61C102957390A2E8914 /* MacSettingsPanes.swift in Sources */,
 				FC811389A6642F8613388903 /* MacSettingsView.swift in Sources */,
+				B19A3D434CB11C172C521185 /* MacShare.swift in Sources */,
 				8BCB2874058D432CE589F09F /* MacSummarySheet.swift in Sources */,
 				73B7BE5633DB1673E5C5D813 /* MacUI.swift in Sources */,
 				E4695D474DCA5428DA771A67 /* MacUIState.swift in Sources */,
@@ -986,6 +991,7 @@
 				38C28DF7359EA3529CF915AA /* MacRootView.swift in Sources */,
 				B4375582930106AE2E15D9C5 /* MacSettingsPanes.swift in Sources */,
 				7467AB7B4B5BE90B6E4EAEAC /* MacSettingsView.swift in Sources */,
+				CEFD2B021B7A8CBD372D7088 /* MacShare.swift in Sources */,
 				2C447B33CA2D830A66F6AD60 /* MacSummarySheet.swift in Sources */,
 				961F827DD79C9AB71FFE54D4 /* MacUI.swift in Sources */,
 				0F7486DEFC2CA4BFD0376160 /* MacUIState.swift in Sources */,

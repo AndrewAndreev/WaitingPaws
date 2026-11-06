@@ -201,6 +201,8 @@ final class MacHistoryController {
     var scrollRequest = 0
 
     let player = MacHistoryPlayer()
+    /// The share picker of a row's context menu, shown over the table where the menu was.
+    @ObservationIgnored let shareAnchor = MacShareAnchor()
     private(set) var videos: [String: MacHistoryVideo] = [:]
     /// Videos already checked by `AppModel.finalizeRecording` in this window (each file once).
     @ObservationIgnored var finalizedURLs: Set<URL> = []
