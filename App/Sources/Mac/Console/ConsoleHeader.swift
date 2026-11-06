@@ -248,9 +248,13 @@ struct SessionCapsule: View {
             .frame(width: geometry.lead + Self.avatar + 8 + geometry.text + 14 + geometry.well)
             .modifier(HeaderGlass(floating: 1))
         }
-        .background(WindowLightsProbe(onRead: onLights))
+        // Clicks go through to the title bar under it, as on a window's title: it drags the window. A toolbar item
+        // takes no double click of the title bar: the probe does what the user set for one. The full title, when it
+        // is cut, is the probe's tooltip (AppKit's, under the pointer whatever takes the clicks).
+        .allowsHitTesting(false)
+        .background(WindowLightsProbe(onRead: onLights, actsAsTitle: true,
+                                      toolTip: geometry.oneLine || geometry.cut ? "\(identity.title) — \(subtitleText(at: .now))" : nil))
         .environment(\.colorScheme, .dark)
-        .help(Text(verbatim: geometry.oneLine || geometry.cut ? "\(identity.title) — \(subtitleText(at: .now))" : ""))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: identity.title))
         .accessibilityValue(Text(verbatim: subtitleText(at: .now)))
@@ -350,21 +354,52 @@ private struct SessionAvatar: View {
 /// buttons count only when they are in the item's window, visible, on the item's line.
 struct WindowLightsProbe: NSViewRepresentable {
     var onRead: (WindowLights) -> Void
+    /// A double click on it does what one on the window's title bar does (System Settings → Desktop & Dock).
+    var actsAsTitle = false
+    var toolTip: String?
 
     func makeNSView(context: Context) -> ProbeView { ProbeView() }
 
     func updateNSView(_ view: ProbeView, context: Context) {
         view.onRead = onRead
+        view.actsAsTitle = actsAsTitle
+        if view.toolTip != toolTip { view.toolTip = toolTip }
         view.scheduleReads()
     }
 
     final class ProbeView: NSView {
         var onRead: ((WindowLights) -> Void)?
+        var actsAsTitle = false {
+            didSet { if actsAsTitle != oldValue { watchDoubleClicks() } }
+        }
         private var observers: [NSObjectProtocol] = []
+        private var clicks: Any?
         private var last: WindowLights?
         private var round = 0
 
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        /// The title bar's double click, on the capsule: the window zooms (fills the screen), goes to the Dock, or
+        /// nothing — as the user set. Not in full screen, where the title bar does nothing either.
+        private func watchDoubleClicks() {
+            if let clicks { NSEvent.removeMonitor(clicks) }
+            clicks = nil
+            guard actsAsTitle else { return }
+            clicks = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+                guard event.clickCount == 2, let self, let window = self.window, event.window === window,
+                      self.bounds.contains(self.convert(event.locationInWindow, from: nil)) else { return event }
+                let owner = NSApp.windows.first { $0.toolbar != nil && $0.frame.contains(window.frame.origin) } ?? window
+                guard !owner.styleMask.contains(.fullScreen) else { return event }
+                let defaults = UserDefaults.standard
+                switch defaults.string(forKey: "AppleActionOnDoubleClick") {
+                case "Minimize": owner.performMiniaturize(nil)
+                case "None": break
+                case .none where defaults.bool(forKey: "AppleMiniaturizeOnDoubleClick"): owner.performMiniaturize(nil)
+                default: owner.performZoom(nil)
+                }
+                return nil
+            }
+        }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
@@ -390,7 +425,10 @@ struct WindowLightsProbe: NSViewRepresentable {
             scheduleReads()
         }
 
-        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+        deinit {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            if let clicks { NSEvent.removeMonitor(clicks) }
+        }
 
         func scheduleReads() {
             round += 1

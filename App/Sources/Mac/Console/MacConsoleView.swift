@@ -35,6 +35,9 @@ struct MacConsoleView: View {
     @State private var lights: WindowLights?
     @State private var islandMinX: CGFloat?
     @State private var islandWidth: CGFloat = 0
+    /// The island's way to its new place when the panel folds away or comes back: the toolbar moves it at once, the
+    /// island slides there with the panel's edge (`slideIsland`).
+    @State private var islandSlide: CGFloat = 0
 
     /// Recording without a training, or «Только камера» before one: nothing to read or plan, the picture takes the
     /// whole window and a panel floats over it (the clock, or the way to record or back).
@@ -76,7 +79,8 @@ struct MacConsoleView: View {
                         rightPanel
                             .frame(width: width)
                     }
-                    .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).minX }) { panelEdge = $0 }
+                    // Not while it slides away: the place it leaves for is off the window.
+                    .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).minX }) { if !self.clipMode { panelEdge = $0 } }
                     .transition(.move(edge: .trailing))
                 }
             }
@@ -95,6 +99,7 @@ struct MacConsoleView: View {
         .animation(.smooth(duration: 0.35), value: model.session == nil && model.pendingPlan == nil)
         .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).width }) { windowWidth = $0 }
         .onChange(of: [panelEdge ?? -1, windowWidth, clipMode ? 1 : 0, places?.buttonsGaps ?? -1]) { updateToolbarFit() }
+        .onChange(of: clipMode) { _, folded in slideIsland(folded: folded) }
         #if DEBUG
         .task(id: [panelEdge ?? -1, places?.groupMaxX ?? -1, clipMode ? 1 : 0, windowWidth]) { await checkCameraGroup() }
         .onChange(of: [panelEdge ?? -1, windowWidth, places?.buttonsWidth ?? -1, places?.groupMaxX ?? -1], initial: true) {
@@ -417,6 +422,24 @@ struct MacConsoleView: View {
         return island - 18 - itemMinX
     }
 
+    /// The panel folded away or came back: the toolbar has moved the camera's island at once (next to the panel's
+    /// groups, or back before the panel's edge); it slides from its old place to the new one along the panel's own
+    /// curve, staying just before the edge sweeping by, over the picture all the way.
+    private func slideIsland(folded: Bool) {
+        guard windowWidth > 0 else { return }
+        // Where the panel's edge is or will be (coming back, the panel isn't laid out yet).
+        let edge = windowWidth - ConsolePanelLayout.edgeWidth - panelWidth(in: ConsolePanelLayout.widthRange(window: windowWidth))
+        let atEdge = edge - ConsolePanelLayout.edgeInset
+        let byGroups = windowWidth - buttonsWidth(level: 0) - (places?.itemGap ?? ConsolePanelLayout.defaultItemGap)
+            - ConsolePanelLayout.clipModePad
+        var still = Transaction()
+        still.disablesAnimations = true
+        withTransaction(still) { islandSlide = folded ? atEdge - byGroups : byGroups - atEdge }
+        DispatchQueue.main.async {
+            withAnimation(ConsolePanelLayout.foldAnimation) { islandSlide = 0 }
+        }
+    }
+
     /// The panel's group number `index` floats over the camera without the panel; its shadow comes and goes as the
     /// panel's edge passes under it.
     private func sweep(_ index: Int) -> Animation {
@@ -489,6 +512,7 @@ struct MacConsoleView: View {
             HStack(spacing: 0) {
                 CameraIsland(onReconnect: { model.videoSize = nil; model.secondVideoSize = nil; reloadToken += 1 })
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { islandWidth = $0 }
+                    .offset(x: islandSlide)
                     .background {
                         ToolbarNeighboursProbe(token: toolbarToken) { read in
                             var read = read
