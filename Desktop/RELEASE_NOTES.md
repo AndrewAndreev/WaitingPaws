@@ -1,6 +1,13 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.6.12**
+**New in 1.7.14**
+
+* The same version as iPhone and Mac 1.7.14, built from the same code. The Windows app itself has not changed since
+  1.6.12: 1.7 redesigned the iPhone and Mac screens, and 1.7.14 brings them a zoomed camera picture that fills the
+  space behind the panels, the orange of a running-over exit or break back in place of 1.7's yellow, a stronger
+  vibration when the break ends and a double tap that zooms in where you tap.
+
+**In 1.6.12**
 
 * «45 секунд + куртка + ключ ИЛИ до вставания» is read right: «ключ» is a trigger and «до вставания» the exit's
   condition, «встала → сразу». It used to become one trigger, «ключ ИЛИ до вставания». Plans saved with it come back
