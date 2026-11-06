@@ -84,3 +84,6 @@ jobs:
             Desktop/dist/*-Setup.exe
             Desktop/dist/*-win-x64.zip
           if-no-files-found: error
+          # 241 MB per run: with the default 90 days, 16 runs filled the private repo's Actions storage and the
+          # upload failed. A week is enough to try a build; releases keep their own files.
+          retention-days: 7
