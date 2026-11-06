@@ -5,11 +5,11 @@ import WaitingPawsCore
 /// The plan to check, the sheet over the «Пульт» right after a paste: the trainer's text on the left as she wrote it,
 /// the plan made of it on the right — the training's name as the title (edited in place), the trainers, date and
 /// common break without labels, the parsed exits as an editable table, the selected exit's triggers, conditions and
-/// note under it, «Начать тренировку» in the bottom bar; ✕ (Esc) keeps the plan on the «Пульт» without starting. The
-/// two sides are linked both ways: every exit line carries its row's number, a selected row lights its lines, a line
-/// under the pointer lights its row's number (a click selects the row), a chip or cell under the pointer lights its
-/// line. A value the owner changed is white in the table while the text keeps the trainer's words. The text folds
-/// away with the sidebar button. During a training the same sheet edits the running schedule («Сохранить»): the
+/// note under it, «Готово» and «Начать тренировку» in the bottom bar; «Готово» (Esc) and ✕ keep the plan on the «Пульт»
+/// without starting. The two sides are linked both ways: every exit line carries its row's number, a selected row
+/// lights its lines, a line under the pointer lights its row's number (a click selects the row), a chip or cell under
+/// the pointer lights its line. A value the owner changed is white in the table while the text keeps the trainer's
+/// words. The text folds away with the sidebar button. During a training the same sheet edits the running schedule («Сохранить»): the
 /// exits already done and the current one keep their place (`fixedExits`).
 struct MacPlanReviewSheet: View {
     @Binding var plan: TrainingPlan
@@ -26,6 +26,22 @@ struct MacPlanReviewSheet: View {
     @AppStorage("mac.reviewShowsSource") private var showsSource = true
     /// What the pointer is over, on either side.
     @State private var pointer: MacPlanPointer?
+    /// The trainer's text's width, dragged by its edge within `sourceWidths` (less where the table would get narrower
+    /// than `tableMinWidth`).
+    @State private var sourceWidth: CGFloat = 420
+    /// The width of the text and the table together.
+    @State private var panesWidth: CGFloat = 0
+    /// The text has been folded away in this sheet: it stays as wide as with the text.
+    @State private var keepsWideWidth = false
+    static let sourceWidths: ClosedRange<CGFloat> = 340...620
+    static let tableMinWidth: CGFloat = 690
+
+    /// How wide the text may be now: the table keeps its least width.
+    private var sourceRange: ClosedRange<CGFloat> {
+        let lower = Self.sourceWidths.lowerBound
+        guard panesWidth > 0 else { return Self.sourceWidths }
+        return lower...max(lower, min(Self.sourceWidths.upperBound, panesWidth - 1 - Self.tableMinWidth))
+    }
 
     init(plan: Binding<TrainingPlan>, fixedExits: Int? = nil, onStart: @escaping () -> Void, onDone: @escaping () -> Void) {
         _plan = plan
@@ -40,24 +56,35 @@ struct MacPlanReviewSheet: View {
         let lines = MacSourceLine.lines(plan.rawText)
         let link = MacPlanTextLink(plan: plan, lines: lines)
         let source = showsSource && link.hasText
+        // The sheet keeps its width once the text has been beside the table (a sheet takes its least width, and AppKit
+        // resizes it at once: it narrowed in a jump while the text slid out). Folded away, the text leaves its room to
+        // the table.
+        let wide = source || keepsWideWidth
         VStack(spacing: 0) {
             header(hasText: link.hasText)
             Divider()
-            if source {
-                HSplitView {
+            // Not an `HSplitView`: AppKit's split took the text away and back at once (and made the table anew). Here
+            // the text slides out to the left as the table takes its room, and back in, with the sidebar button.
+            HStack(spacing: 0) {
+                if source {
+                    let range = sourceRange
                     PlanSourcePane(link: link, plan: plan, selection: $selection, pointer: $pointer)
-                        .frame(minWidth: 340, idealWidth: 420, maxWidth: 620)
-                    PlanTablePane(plan: $plan, selection: $selection, pointer: $pointer, link: link,
-                                  fixedCount: fixedExits ?? 0)
-                        .frame(minWidth: 690, maxWidth: .infinity)
+                        .frame(width: min(range.upperBound, max(range.lowerBound, sourceWidth)))
+                        .transition(.move(edge: .leading))
+                    PaneDivider(width: $sourceWidth, range: range)
+                        .transition(.move(edge: .leading))
+                        // Over the table's edge: the drag area runs a few points into it.
+                        .zIndex(1)
                 }
-            } else {
                 PlanTablePane(plan: $plan, selection: $selection, pointer: $pointer, link: link,
                               fixedCount: fixedExits ?? 0)
+                    .frame(minWidth: Self.tableMinWidth, maxWidth: .infinity)
             }
+            .clipped()
+            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { panesWidth = $0 }
             bottomBar
         }
-        .frame(minWidth: source ? 1180 : 860, idealWidth: source ? 1220 : 900, maxWidth: 1600,
+        .frame(minWidth: wide ? 1180 : 860, idealWidth: wide ? 1220 : 900, maxWidth: 1600,
                minHeight: 700, maxHeight: 1100)
         #if DEBUG
         .onAppear {
@@ -76,6 +103,19 @@ struct MacPlanReviewSheet: View {
                 plan.exits[5].duration = 150
                 plan.exits[1].triggers = []
             }
+            // `--demo-review-fold`: the trainer's text folds away 3 s after the sheet opens and comes back 3 s later
+            // (frames of the slide; the setting ends as it was). The window comes to the front without taking the
+            // keyboard: a window under others gets no frames, and a copy launched in the background froze the slide
+            // half-way in the captures.
+            if args.contains("--demo-review-fold") {
+                Task { @MainActor in
+                    NSApp.windows.filter(\.isVisible).forEach { $0.orderFrontRegardless() }
+                    for _ in 0..<2 {
+                        try? await Task.sleep(for: .seconds(3))
+                        toggleSource()
+                    }
+                }
+            }
         }
         #endif
     }
@@ -87,15 +127,12 @@ struct MacPlanReviewSheet: View {
     private func header(hasText: Bool) -> some View {
         HStack(alignment: .center, spacing: 12) {
             if hasText {
-                Button {
-                    withAnimation(.snappy) { showsSource.toggle() }
-                } label: {
+                Button(action: toggleSource) {
                     Image(systemName: "sidebar.leading")
                         .font(.system(size: 14))
-                        .frame(width: 24, height: 22)
+                        .frame(width: 28, height: 24)
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(showsSource ? .primary : .secondary)
+                .buttonStyle(MacIconButtonStyle(isOn: showsSource))
                 .help(showsSource ? "Скрыть текст тренера" : "Показать текст тренера")
             }
             if !plan.isValid {
@@ -112,15 +149,21 @@ struct MacPlanReviewSheet: View {
                 Button(action: onDone) {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .semibold))
-                        .frame(width: 22, height: 22)
+                        .frame(width: 26, height: 26)
                 }
-                .buttonStyle(.borderless)
-                .keyboardShortcut(.cancelAction)
+                .buttonStyle(MacIconButtonStyle(isOn: true, circle: true))
+                // Esc is «Готово»'s, in the bottom bar.
                 .help("Закрыть")
             }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
+    }
+
+    /// The trainer's text away to the left or back, as the «Пульт» panel folds.
+    private func toggleSource() {
+        if showsSource { keepsWideWidth = true }
+        withAnimation(.smooth(duration: 0.35)) { showsSource.toggle() }
     }
 
     // MARK: Bottom bar
@@ -142,6 +185,11 @@ struct MacPlanReviewSheet: View {
                     Toggle("Записывать видео", isOn: $settings.autoRecord)
                         .toggleStyle(.checkbox)
                         .help("Включить запись с камеры вместе с тренировкой")
+                    // Back from before 1.7 (the owners of earlier versions reach for it): the same as ✕, said in words.
+                    Button("Готово", action: onDone)
+                        .keyboardShortcut(.cancelAction)
+                        .controlSize(.large)
+                        .help("Оставить расписание на пульте и поправить его на таймлайне · Esc")
                 }
                 Button(action: onStart) {
                     ShortcutLabel(title: isRunning ? String(localized: "Сохранить") : String(localized: "Начать тренировку"),
@@ -160,6 +208,32 @@ struct MacPlanReviewSheet: View {
 }
 
 // MARK: - Source
+
+/// The edge between the trainer's text and the table: the system's thin line, dragged within `range` as the split
+/// view's divider was, with the resize pointer over a few points either side of it.
+private struct PaneDivider: View {
+    @Binding var width: CGFloat
+    let range: ClosedRange<CGFloat>
+    /// The width when the drag began.
+    @State private var start: CGFloat?
+
+    var body: some View {
+        Divider()
+            .overlay {
+                Color.clear
+                    .frame(width: 9)
+                    .contentShape(Rectangle())
+                    .pointerStyle(.columnResize)
+                    .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                        .onChanged { drag in
+                            let from = start ?? min(range.upperBound, max(range.lowerBound, width))
+                            start = from
+                            width = min(range.upperBound, max(range.lowerBound, from + drag.translation.width))
+                        }
+                        .onEnded { _ in start = nil })
+            }
+    }
+}
 
 /// The trainer's text beside the table (`MacTrainerTextView`): the selected rows' lines lit, a line under the pointer
 /// lighting its row's number, a click on an exit's line (or a line under it) selecting its row.

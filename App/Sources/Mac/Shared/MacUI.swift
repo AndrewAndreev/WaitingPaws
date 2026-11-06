@@ -169,6 +169,41 @@ struct HUDButtonStyle: ButtonStyle {
     }
 }
 
+/// An icon in a sheet's header (the plan's sidebar button, ✕): a quiet plate comes up under the pointer and deepens
+/// while the button is held, the icon pressed in a little — a borderless button on macOS 26 shows neither. `isOn`: the
+/// icon in full colour (a toggle that is on), otherwise secondary until the pointer is over it.
+struct MacIconButtonStyle: ButtonStyle {
+    var isOn = false
+    var circle = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        Icon(configuration: configuration, isOn: isOn, circle: circle)
+    }
+
+    private struct Icon: View {
+        let configuration: Configuration
+        let isOn: Bool
+        let circle: Bool
+        @Environment(\.isEnabled) private var isEnabled
+        @State private var hovered = false
+
+        var body: some View {
+            let pressed = configuration.isPressed
+            let lit = hovered && isEnabled
+            let shape = circle ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            configuration.label
+                .foregroundStyle(isOn || lit ? .primary : .secondary)
+                .background(shape.fill(Color.primary.opacity(pressed ? 0.17 : lit ? 0.08 : 0)))
+                .contentShape(shape)
+                .scaleEffect(pressed ? 0.9 : 1)
+                .opacity(isEnabled ? 1 : 0.4)
+                .onHover { hovered = $0 }
+                .animation(.easeOut(duration: 0.12), value: lit)
+                .animation(.easeOut(duration: pressed ? 0.06 : 0.18), value: pressed)
+        }
+    }
+}
+
 extension String {
     /// "воскресенье, 4 октября" → "Воскресенье, 4 октября".
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }

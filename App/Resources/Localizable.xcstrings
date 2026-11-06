@@ -8357,6 +8357,22 @@
         }
       }
     },
+    "Оставить расписание на пульте и поправить его на таймлайне · Esc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep the schedule in the main window and adjust it on the timeline · Esc"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить расписание на пульте и поправить его на таймлайне · Esc"
+          }
+        }
+      }
+    },
     "осталось" : {
       "localizations" : {
         "en" : {
