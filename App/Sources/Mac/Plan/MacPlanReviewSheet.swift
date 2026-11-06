@@ -2,12 +2,15 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// «Расписание разобрано» (B1 «Текст ↔ таблица») — the sheet over the «Пульт» right after a paste:
-/// the trainer's text on the left as a read-only source view (recognised lines marked in the gutter),
-/// the parsed exits as an editable table on the right, the summary and the start in the bottom bar.
-/// Selecting a row highlights its lines in the text; clicking an exit line selects its row.
-/// During a training the same sheet edits the running schedule («Сохранить»): the exits already done and the
-/// current one keep their place (`fixedExits`).
+/// The plan to check, the sheet over the «Пульт» right after a paste: the trainer's text on the left as she wrote it,
+/// the plan made of it on the right — the training's name as the title (edited in place), the trainers, date and
+/// common break without labels, the parsed exits as an editable table, the selected exit's triggers, conditions and
+/// note under it, «Начать тренировку» in the bottom bar; ✕ (Esc) keeps the plan on the «Пульт» without starting. The
+/// two sides are linked both ways: every exit line carries its row's number, a selected row lights its lines, a line
+/// under the pointer lights its row's number (a click selects the row), a chip or cell under the pointer lights its
+/// line. A value the owner changed is white in the table while the text keeps the trainer's words. The text folds
+/// away with the sidebar button. During a training the same sheet edits the running schedule («Сохранить»): the
+/// exits already done and the current one keep their place (`fixedExits`).
 struct MacPlanReviewSheet: View {
     @Binding var plan: TrainingPlan
     /// «Начать тренировку ⌘↩» (during a training: «Сохранить ⌘↩»).
@@ -19,6 +22,10 @@ struct MacPlanReviewSheet: View {
 
     @Environment(AppModel.self) private var model
     @State private var selection: Set<PlannedExit.ID> = []
+    /// The trainer's text beside the table: open unless the owner folded it away.
+    @AppStorage("mac.reviewShowsSource") private var showsSource = true
+    /// What the pointer is over, on either side.
+    @State private var pointer: MacPlanPointer?
 
     init(plan: Binding<TrainingPlan>, fixedExits: Int? = nil, onStart: @escaping () -> Void, onDone: @escaping () -> Void) {
         _plan = plan
@@ -29,36 +36,45 @@ struct MacPlanReviewSheet: View {
 
     private var isRunning: Bool { fixedExits != nil }
 
-    private var lines: [MacPlanTextLine] { MacPlanTextLine.classify(plan.rawText) }
-
     var body: some View {
-        let lines = lines
-        let lineOfExit = MacPlanLineMap.lines(for: plan, textLines: lines)
+        let lines = MacSourceLine.lines(plan.rawText)
+        let link = MacPlanTextLink(plan: plan, lines: lines)
+        let source = showsSource && link.hasText
         VStack(spacing: 0) {
-            header(lines)
+            header(hasText: link.hasText)
             Divider()
-            if lines.contains(where: { $0.kind != .blank }) {
+            if source {
                 HSplitView {
-                    PlanSourcePane(lines: lines, plan: plan, lineOfExit: lineOfExit, selection: $selection)
-                        .frame(minWidth: 360, idealWidth: 410, maxWidth: 620)
-                    PlanTablePane(plan: $plan, selection: $selection, lines: lines, lineOfExit: lineOfExit,
+                    PlanSourcePane(link: link, plan: plan, selection: $selection, pointer: $pointer)
+                        .frame(minWidth: 340, idealWidth: 420, maxWidth: 620)
+                    PlanTablePane(plan: $plan, selection: $selection, pointer: $pointer, link: link,
                                   fixedCount: fixedExits ?? 0)
                         .frame(minWidth: 690, maxWidth: .infinity)
                 }
             } else {
-                PlanTablePane(plan: $plan, selection: $selection, lines: lines, lineOfExit: lineOfExit,
+                PlanTablePane(plan: $plan, selection: $selection, pointer: $pointer, link: link,
                               fixedCount: fixedExits ?? 0)
             }
             bottomBar
         }
-        .frame(minWidth: 1100, maxWidth: 1600, minHeight: 700, maxHeight: 1100)
+        .frame(minWidth: source ? 1180 : 860, idealWidth: source ? 1220 : 900, maxWidth: 1600,
+               minHeight: 700, maxHeight: 1100)
         #if DEBUG
         .onAppear {
-            // `--demo-review-select N`: the row of exit N selected (screenshots of the text ↔ table link).
             let args = CommandLine.arguments
-            if let i = args.firstIndex(of: "--demo-review-select"), i + 1 < args.count, let n = Int(args[i + 1]),
-               let exit = plan.exits.first(where: { $0.number == n }) {
-                selection = [exit.id]
+            func exit(after flag: String) -> PlannedExit? {
+                guard let i = args.firstIndex(of: flag), i + 1 < args.count, let n = Int(args[i + 1]) else { return nil }
+                return plan.exits.first { $0.number == n }
+            }
+            // `--demo-review-select N`: the row of exit N selected (screenshots of the text ↔ table link).
+            if let exit = exit(after: "--demo-review-select") { selection = [exit.id] }
+            // `--demo-pointer N`: the pointer over exit N (its line lit and its row's number filled).
+            if let exit = exit(after: "--demo-pointer") { pointer = .exit(exit.id) }
+            // `--demo-review-edit`: exit 6 changed to 2 мин 30 с and exit 2 without its «куртка» (the trainer's words
+            // struck through, the owner's value white).
+            if args.contains("--demo-review-edit"), plan.exits.count > 5 {
+                plan.exits[5].duration = 150
+                plan.exits[1].triggers = []
             }
         }
         #endif
@@ -66,41 +82,45 @@ struct MacPlanReviewSheet: View {
 
     // MARK: Header
 
-    private func header(_ lines: [MacPlanTextLine]) -> some View {
+    /// The sidebar button that folds the trainer's text, the training's name (the title of the sheet and its field at
+    /// once) and, before the start, ✕ to close.
+    private func header(hasText: Bool) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: isRunning ? "pencil.circle.fill" : plan.isValid ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .font(.system(size: 24))
-                .foregroundStyle(isRunning ? MacPalette.blue : plan.isValid ? MacPalette.green : MacPalette.orange)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(isRunning ? "Расписание тренировки" : plan.isValid ? "Расписание разобрано" : "В расписании нет выходов")
-                    .font(.title3.weight(.semibold))
-                Text(isRunning
-                     ? String(localized: "Тренировка идёт: изменения применятся сразу, и к идущему перерыву тоже. Прошедшие выходы и текущий нельзя удалить или переставить.")
-                     : summary(lines))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+            if hasText {
+                Button {
+                    withAnimation(.snappy) { showsSource.toggle() }
+                } label: {
+                    Image(systemName: "sidebar.leading")
+                        .font(.system(size: 14))
+                        .frame(width: 24, height: 22)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(showsSource ? .primary : .secondary)
+                .help(showsSource ? "Скрыть текст тренера" : "Показать текст тренера")
             }
-            Spacer(minLength: 0)
+            if !plan.isValid {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(MacPalette.orange)
+                    .help("В расписании нет выходов")
+            }
+            TextField("Название", text: $plan.title, prompt: Text("Тренировка"))
+                .textFieldStyle(.plain)
+                .font(.title3.weight(.semibold))
+                .labelsHidden()
+            if !isRunning {
+                Button(action: onDone) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.borderless)
+                .keyboardShortcut(.cancelAction)
+                .help("Закрыть")
+            }
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 14)
-    }
-
-    /// «9 выходов, 2 перерыва, правило фальстарта и 3 заметки. Проверьте…».
-    private func summary(_ lines: [MacPlanTextLine]) -> String {
-        guard !plan.rawText.isEmpty else {
-            return String(localized: "\(MacPlanFormat.exits(plan.exits.count)). Проверьте длительности и перерывы перед стартом.")
-        }
-        var parts = [MacPlanFormat.exits(lines.filter(\.isExit).count)]
-        let breaks = lines.filter(\.isBreak).count
-        if breaks > 0 { parts.append(MacPlanFormat.breaks(breaks)) }
-        if lines.contains(where: { $0.kind == .rule }) { parts.append(String(localized: "правило фальстарта")) }
-        let notes = lines.filter { $0.kind == .note }.count
-        if notes > 0 { parts.append(MacPlanFormat.notes(notes)) }
-        // «a, b и c» / "a, b, and c".
-        let list = parts.formatted(.list(type: .and).locale(CoreLanguage.current.locale))
-        return String(localized: "\(list.capitalizedFirst). Проверьте и поправьте, если что-то прочитано не так.")
+        .padding(.vertical, 12)
     }
 
     // MARK: Bottom bar
@@ -110,20 +130,7 @@ struct MacPlanReviewSheet: View {
         return VStack(spacing: 0) {
             Divider()
             HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 6) {
-                        Text("\(MacPlanFormat.exits(plan.exits.count)) · \(MacPlanFormat.approx(plan.estimatedDuration))")
-                            .fontWeight(.semibold)
-                        if plan.isValid {
-                            Text("за дверью \(DurationText.short(MacPlanFormat.exitsTotal(plan))), перерывы \(DurationText.short(MacPlanFormat.breaksTotal(plan)))")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .monospacedDigit()
-                    .fixedSize()
-                    MacPlanMiniBar(plan: plan, height: 5)
-                        .frame(width: 300)
-                }
+                // The numbers are the rows' and the card's «≈ 25 мин» on the panel.
                 Spacer(minLength: 12)
                 if isRunning {
                     Button("Отменить", action: onDone)
@@ -131,22 +138,17 @@ struct MacPlanReviewSheet: View {
                         .controlSize(.large)
                         .help("Закрыть без изменений · Esc")
                 } else {
+                    // Whether the training is recorded is this box's; the button only starts it, as on the iPhone.
                     Toggle("Записывать видео", isOn: $settings.autoRecord)
                         .toggleStyle(.checkbox)
                         .help("Включить запись с камеры вместе с тренировкой")
-                    Button("Готово", action: onDone)
-                        .keyboardShortcut(.cancelAction)
-                        .controlSize(.large)
-                        .help("Оставить расписание на пульте и поправить его на таймлайне · Esc")
                 }
                 Button(action: onStart) {
-                    ShortcutLabel(title: isRunning ? String(localized: "Сохранить") : model.startTitle,
+                    ShortcutLabel(title: isRunning ? String(localized: "Сохранить") : String(localized: "Начать тренировку"),
                                   symbol: isRunning ? "checkmark" : "play.fill", key: "⌘↩", prominent: true)
-                        .padding(.horizontal, 2)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(MacPalette.pinkDeep)
-                .controlSize(.large)
+                // Pink in any window, the sheet's screenshots included.
+                .buttonStyle(MacStartButtonStyle())
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(!plan.isValid)
             }
@@ -159,180 +161,29 @@ struct MacPlanReviewSheet: View {
 
 // MARK: - Source
 
-/// The pasted text as a read-only source view: line numbers, a coloured bar for every recognised line
-/// (like Xcode's change bars), notes dimmed, a legend at the bottom.
+/// The trainer's text beside the table (`MacTrainerTextView`): the selected rows' lines lit, a line under the pointer
+/// lighting its row's number, a click on an exit's line (or a line under it) selecting its row.
 private struct PlanSourcePane: View {
-    let lines: [MacPlanTextLine]
+    let link: MacPlanTextLink
     let plan: TrainingPlan
-    let lineOfExit: [UUID: Int]
     @Binding var selection: Set<PlannedExit.ID>
-    @Environment(\.colorScheme) private var scheme
-
-    /// Lines of the selected exits and their own breaks.
-    private var linked: Set<Int> {
-        let exitLines = Set(selection.compactMap { lineOfExit[$0] })
-        var result = exitLines
-        for line in lines {
-            switch line.kind {
-            case .ownBreak(let after) where exitLines.contains(after): result.insert(line.id)
-            case .condition(let after?) where exitLines.contains(after): result.insert(line.id)
-            default: break
-            }
-        }
-        return result
-    }
+    @Binding var pointer: MacPlanPointer?
 
     var body: some View {
-        let linked = linked
-        VStack(spacing: 0) {
-            jumpBar
-            Divider()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(lines) { row($0, linked: linked.contains($0.id)).id($0.id) }
-                    }
-                    .padding(.vertical, 10)
-                }
-                .onChange(of: linked.min()) { _, line in
-                    guard let line else { return }
-                    withAnimation(.snappy) { proxy.scrollTo(line, anchor: .center) }
-                }
-            }
+        let lit = MacSourceLine.ids(ofExits: Set(selection.compactMap { link.ordinals[$0] }), in: link.lines)
+        MacTrainerTextView(link: link, lit: lit,
+                           pointed: MacSourceLine.ids(of: pointer, in: link.lines, ordinals: link.ordinals),
+                           focus: lit.min(),
+                           onHover: { line in pointer = line?.pointer(exitID: link.exitIDs) },
+                           onTap: select)
             .background(Color(nsColor: .textBackgroundColor))
-            Divider()
-            legend
-        }
     }
 
-    private var jumpBar: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "doc.plaintext").foregroundStyle(.secondary)
-            Text("Текст тренера")
-            Spacer(minLength: 8)
-            Text("разобран автоматически").foregroundStyle(.tertiary).layoutPriority(-1)
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(MacPalette.green)
-        }
-        .font(.system(size: 12))
-        .lineLimit(1)
-        .padding(.horizontal, 12)
-        .frame(height: 30)
-    }
-
-    private func row(_ line: MacPlanTextLine, linked: Bool) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            Text("\(line.id)")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(linked ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
-                .frame(width: 30, alignment: .trailing)
-                .padding(.top, 1)
-            RoundedRectangle(cornerRadius: 1.5)
-                .fill(line.isRecognised ? line.tint(scheme) : .clear)
-                .frame(width: 3)
-                .padding(.horizontal, 9)
-            Text(line.attributed(scheme: scheme))
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if case .condition(let after) = line.kind {
-                conditionTag(after)
-            }
-        }
-        .padding(.vertical, 2.5)
-        .padding(.trailing, 14)
-        .frame(minHeight: 19)
-        .background(linked ? Color.accentColor.opacity(0.18) : .clear)
-        .contentShape(Rectangle())
-        .onTapGesture { select(line) }
-        .help(help(line))
-    }
-
-    /// «→ выход 6» after a condition under an exit, «общее» after one for the whole training.
-    private func conditionTag(_ afterLine: Int?) -> some View {
-        let number = afterLine.flatMap { after in
-            lines.first { $0.id == after }.flatMap { line -> Int? in
-                if case .exit(let number, _) = line.kind { return number }
-                return nil
-            }
-        }
-        return Text(number.map { String(localized: "→ выход \($0)") } ?? String(localized: "общее"))
-            .font(.system(size: 10.5, weight: .semibold))
-            .foregroundStyle(number == nil ? MacPalette.orange : MacPalette.blue)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background((number == nil ? MacPalette.orange : MacPalette.blue).opacity(0.14), in: Capsule())
-            .fixedSize()
-            .padding(.leading, 6)
-            .padding(.top, 1)
-    }
-
-    /// Click an exit line (or its break, or a condition under it) → select that exit in the table.
-    private func select(_ line: MacPlanTextLine) {
-        let exitLine: Int
-        switch line.kind {
-        case .exit: exitLine = line.id
-        case .ownBreak(let after): exitLine = after
-        case .condition(let after?): exitLine = after
-        default: return
-        }
-        if let id = lineOfExit.first(where: { $0.value == exitLine })?.key, plan.exits.contains(where: { $0.id == id }) {
-            selection = [id]
-        }
-    }
-
-    private func help(_ line: MacPlanTextLine) -> String {
-        switch line.kind {
-        case .header: String(localized: "Заголовок: название, тренеры и дата")
-        case .exit(let number, _): String(localized: "Выход \(number) — щёлкните, чтобы выбрать его в таблице")
-        case .ownBreak: String(localized: "Свой перерыв после выхода выше")
-        case .defaultBreak: String(localized: "Перерыв между выходами")
-        case .rule: String(localized: "Правило фальстарта")
-        case .condition(let after): after == nil
-            ? String(localized: "Условие раннего входа для всей тренировки")
-            : String(localized: "Условие раннего входа выхода выше")
-        case .doNotEnter: String(localized: "Когда не входить")
-        case .note: String(localized: "Заметка тренера")
-        case .blank: ""
-        }
-    }
-
-    private var legend: some View {
-        let exits = lines.filter(\.isExit).count
-        let breaks = lines.filter(\.isBreak).count
-        let notes = lines.filter { $0.kind == .note }.count
-        return HStack(spacing: 14) {
-            legendItem(MacPlanTint.exit(scheme), MacPlanFormat.exits(exits))
-            if breaks > 0 {
-                legendItem(MacPlanTint.pause(scheme), MacPlanFormat.breaks(breaks))
-            }
-            if lines.contains(where: { if case .condition = $0.kind { return true }; return false }) {
-                legendItem(MacPalette.blue, String(localized: "ранний вход"))
-            }
-            if lines.contains(where: { $0.kind == .rule }) {
-                legendItem(MacPlanTint.rule(scheme), String(localized: "фальстарт"))
-            }
-            if notes > 0 {
-                legendItem(.secondary.opacity(0.6), MacPlanFormat.notes(notes), hollow: true)
-            }
-            Spacer(minLength: 0)
-            Text(pluralText(lines.count, ru: ("строка", "строки", "строк"), en: ("line", "lines"))).foregroundStyle(.tertiary)
-        }
-        .font(.system(size: 11))
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
-        .padding(.horizontal, 12)
-        .frame(height: 26)
-    }
-
-    private func legendItem(_ color: Color, _ text: String, hollow: Bool = false) -> some View {
-        HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 1.5)
-                .fill(hollow ? .clear : color)
-                .strokeBorder(hollow ? color : .clear, lineWidth: 1)
-                .frame(width: 3, height: 11)
-            Text(text)
-        }
-        .fixedSize()
+    /// A click on an exit's line, or a line under it: that exit's row.
+    private func select(_ line: MacSourceLine) {
+        guard let ordinal = line.ordinal, let id = link.exitIDs[ordinal], plan.exits.contains(where: { $0.id == id })
+        else { return }
+        selection = [id]
     }
 }
 
@@ -341,98 +192,117 @@ private struct PlanSourcePane: View {
 private struct PlanTablePane: View {
     @Binding var plan: TrainingPlan
     @Binding var selection: Set<PlannedExit.ID>
-    let lines: [MacPlanTextLine]
-    let lineOfExit: [UUID: Int]
+    @Binding var pointer: MacPlanPointer?
+    let link: MacPlanTextLink
     /// During a training: the first exits (done or running) stay where they are.
     var fixedCount = 0
 
     @Environment(\.colorScheme) private var scheme
     @FocusState private var tableFocused: Bool
     @State private var customDefaultBreak = false
+    /// The own breaks «Сделать все по 2 мин» took away, for «Вернуть».
+    @State private var takenBreaks: [UUID: TimeInterval] = [:]
 
     private static let dragPrefix = "waitingpaws.exit:"
 
-    private var ownBreaks: [PlannedExit] {
-        plan.exits.dropLast().filter { $0.breakAfter != nil }
-    }
+    private var ownBreaks: [PlannedExit] { plan.ownBreakExits }
 
     private var selectedIndices: [Int] {
         plan.exits.indices.filter { selection.contains(plan.exits[$0].id) }
     }
 
+    /// The pointer over `target` here, or off it.
+    private func point(_ target: MacPlanPointer, _ inside: Bool) {
+        if inside { pointer = target } else if pointer == target { pointer = nil }
+    }
+
+    /// The exit's row is what the pointer is over, here or in the text.
+    private func pointsAt(_ exit: PlannedExit) -> Bool {
+        pointer == .exit(exit.id) || pointer == .breakAfter(exit.id)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             planForm
-            if !plan.notes.isEmpty || !plan.commonEarlyEntries.isEmpty {
+            if !plan.commonEarlyEntries.isEmpty {
                 Divider()
-                rulesBar
+                commonEntriesBar
             }
             Divider()
             table
             Divider()
             tableFooter
-            Divider()
             if selection.count == 1, let id = selection.first, plan.exits.contains(where: { $0.id == id }) {
+                Divider()
                 MacExitInspector(plan: $plan, exitID: id)
-            } else if let rule = ruleLine {
-                ruleView(rule)
-            } else {
-                Text("Выберите выход: внизу появятся его триггеры, условия раннего входа и заметка.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
             }
         }
     }
 
     // MARK: Header fields
 
-    /// Mac form layout: right-aligned labels, two columns.
+    /// One row without labels — the field's prompt, the calendar and ⏸ say what each is: the trainers, the date, the
+    /// common break, then the trainer's rules for the whole training as chips. The own breaks are blue in the table.
     private var planForm: some View {
-        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 9) {
-            GridRow {
-                Text("Название:").gridColumnAlignment(.trailing)
-                TextField("Название", text: $plan.title, prompt: Text("Тренировка")).labelsHidden()
-                Text("Дата:").gridColumnAlignment(.trailing)
-                DatePicker("Дата", selection: Binding(get: { plan.date ?? Date() }, set: { plan.date = $0 }),
-                           displayedComponents: .date)
-                    .labelsHidden()
-                    .datePickerStyle(.stepperField)
-                    .fixedSize()
-            }
-            GridRow {
-                Text("Тренеры:")
-                TextField("Тренеры", text: $plan.trainers, prompt: Text("Кто тренирует")).labelsHidden()
-                Text("Перерыв:")
-                HStack(spacing: 8) {
-                    defaultBreakMenu
-                    Button("Сделать везде \(DurationText.short(plan.defaultBreak))") {
-                        withAnimation(.snappy) {
-                            for index in plan.exits.indices { plan.exits[index].breakAfter = nil }
-                        }
+        HStack(spacing: 10) {
+            TextField("Тренеры", text: $plan.trainers, prompt: Text("Тренеры"))
+                .labelsHidden()
+                .frame(maxWidth: 260)
+            PlanDateField(date: $plan.date)
+            defaultBreakMenu
+                .overlay {
+                    if pointer == .commonBreak {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(MacPlanTint.pause(scheme).opacity(0.8), lineWidth: 1.5)
+                            .allowsHitTesting(false)
                     }
-                    .disabled(ownBreaks.isEmpty)
-                    .fixedSize()
-                    .help(resetBreaksHelp)
                 }
+                .onHover { point(.commonBreak, $0) }
+            ForEach(ruleChips, id: \.title) { chip in
+                let lit = chip.pointer.map { $0 == pointer } ?? false
+                Label(chip.title, systemImage: chip.symbol)
+                    .font(.system(size: 12))
+                    .foregroundStyle(chip.tint)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(chip.tint.opacity(lit ? 0.3 : 0.12), in: Capsule())
+                    .help(chip.help)
+                    .fixedSize()
+                    .onHover { inside in if let target = chip.pointer { point(target, inside) } }
             }
+            Spacer(minLength: 0)
         }
+        .lineLimit(1)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
 
-    /// «Убрать свои перерывы: после 3-го — 5 мин, …».
-    private var resetBreaksHelp: String {
-        guard !ownBreaks.isEmpty else { return String(localized: "У всех выходов общий перерыв") }
-        let list = ownBreaks
-            .map { String(localized: "после \($0.number)-го — \(DurationText.short($0.breakAfter ?? 0))") }
-            .joined(separator: ", ")
-        return String(localized: "Убрать свои перерывы: \(list)")
+    /// «после 3-го — 5 мин, после 5-го — 1 мин».
+    private func breaksList(_ breaks: [(number: Int, value: TimeInterval)]) -> String {
+        breaks.map { String(localized: "после \($0.number)-го — \(DurationText.short($0.value))") }.joined(separator: ", ")
     }
 
-    /// Break between exits: presets, the current value if it is not one of them, «Другой…».
+    /// «Свой перерыв: после 6-го — 5 мин».
+    private var ownBreaksTitle: String {
+        let list = breaksList(ownBreaks.map { ($0.number, $0.breakAfter ?? 0) })
+        return ownBreaks.count == 1 ? String(localized: "Свой перерыв: \(list)") : String(localized: "Свои перерывы: \(list)")
+    }
+
+    /// The own breaks «Сделать все по …» took away that are still common now.
+    private var restorableBreaks: [(number: Int, value: TimeInterval)] {
+        plan.exits.compactMap { exit in
+            guard exit.breakAfter == nil, let value = takenBreaks[exit.id], value != plan.defaultBreak else { return nil }
+            return (exit.number, value)
+        }
+    }
+
+    private func restoreBreaks() {
+        plan.restoreOwnBreaks(takenBreaks)
+        takenBreaks = [:]
+    }
+
+    /// Break between exits: presets, the current value if it is not one of them, «Другой…», and under the own breaks
+    /// it would take away, «Сделать все по 2 мин».
     private var defaultBreakMenu: some View {
         Menu {
             let presets = MacPlanFormat.breakPresets
@@ -442,8 +312,23 @@ private struct PlanTablePane: View {
             }
             Divider()
             Button("Другой…") { customDefaultBreak = true }
+            if !ownBreaks.isEmpty {
+                Divider()
+                Section(ownBreaksTitle) {
+                    Button("Сделать все по \(DurationText.short(plan.defaultBreak))") {
+                        withAnimation(.snappy) { takenBreaks = plan.makeBreaksCommon() }
+                    }
+                }
+            } else if !restorableBreaks.isEmpty {
+                Divider()
+                Button("Вернуть: \(breaksList(restorableBreaks))") {
+                    withAnimation(.snappy) { restoreBreaks() }
+                }
+            }
         } label: {
-            Text(DurationText.short(plan.defaultBreak)).monospacedDigit()
+            Label { Text(verbatim: DurationText.short(plan.defaultBreak)).monospacedDigit() } icon: {
+                Image(systemName: "pause.fill")
+            }
         }
         .fixedSize()
         .help("Перерыв между выходами — у всех, кроме выходов со своим перерывом")
@@ -456,10 +341,7 @@ private struct PlanTablePane: View {
 
     /// A new common break; own breaks that now equal it become common again (as `PlanParser` reads them).
     private func setDefaultBreak(_ value: TimeInterval) {
-        plan.defaultBreak = value
-        for index in plan.exits.indices where plan.exits[index].breakAfter == value {
-            plan.exits[index].breakAfter = nil
-        }
+        plan.setDefaultBreak(value)
     }
 
     // MARK: Table
@@ -474,43 +356,45 @@ private struct PlanTablePane: View {
 
     private var table: some View {
         Table(of: PlannedExit.self, selection: $selection) {
+            // The exit's badge, as at its line in the trainer's text (a plain number: added here, not in the text).
             TableColumn("№") { exit in
                 HStack(spacing: 3) {
                     if isFixed(exit.id) {
                         Image(systemName: "lock.fill").font(.system(size: 8)).foregroundStyle(.tertiary)
                     }
-                    Text("\(exit.number)")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                    if link.ordinals[exit.id] != nil {
+                        MacExitBadge(number: exit.number, filled: pointsAt(exit) || selection.contains(exit.id))
+                    } else {
+                        Text("\(exit.number)")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
+                .contentShape(Rectangle())
+                .onHover { point(.exit(exit.id), $0) }
                 .help(isFixed(exit.id) ? String(localized: "Выход уже прошёл или идёт сейчас: его можно поправить, но не удалить и не переставить") : "")
             }
-            .width(fixedCount > 0 ? 36 : 24)
-            TableColumn("Начало") { exit in
-                Text("+" + DurationText.clock(start(of: exit)))
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
-            }
-            .width(52)
+            .width(fixedCount > 0 ? 42 : 30)
             TableColumn("За дверью") { exit in
-                ExitDurationCell(exit: binding(exit))
+                ExitDurationCell(exit: binding(exit), trainerValue: link.trainerDuration(of: exit)) { point(.exit(exit.id), $0) }
             }
-            .width(min: 70, ideal: 78)
+            .width(min: 70, ideal: 90, max: 130)
             TableColumn("Перерыв после") { exit in
                 BreakAfterCell(exit: binding(exit), defaultBreak: plan.defaultBreak,
-                               isLast: exit.id == plan.exits.last?.id)
+                               isLast: exit.id == plan.exits.last?.id,
+                               trainerValue: link.trainerBreak(after: exit)) { point(.breakAfter(exit.id), $0) }
             }
-            .width(min: 104, ideal: 112)
-            TableColumn("Триггеры · ранний вход · заметка") { exit in
+            .width(min: 104, ideal: 130, max: 170)
+            // ⚡ 🏃 💬 in the cells say which is which.
+            TableColumn("Условия") { exit in
                 ExitSummaryText(plan: plan, exit: exit, size: 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onHover { point(.exit(exit.id), $0) }
                     .help(summaryHelp(exit))
             }
-            .width(min: 150, ideal: 244)
-            TableColumn("Строка") { exit in
-                lineCell(exit)
-            }
-            .width(48)
+            .width(min: 150, ideal: 300)
         } rows: {
             ForEach(plan.exits) { exit in
                 TableRow(exit)
@@ -521,7 +405,9 @@ private struct PlanTablePane: View {
                         .compactMap { UUID(uuidString: String($0.dropFirst(Self.dragPrefix.count))) }, to: index)
             }
         }
-        .tableStyle(.inset(alternatesRowBackgrounds: true))
+        // No stripes: AppKit draws them on below the last exit too, as empty rows that read as data still loading.
+        // The table ends at its last exit.
+        .tableStyle(.inset(alternatesRowBackgrounds: false))
         .focused($tableFocused)
         .onAppear { tableFocused = true }
         .onDeleteCommand(perform: deleteSelected)
@@ -535,27 +421,6 @@ private struct PlanTablePane: View {
                 Button("Добавить выход") { add(after: []) }
             }
         }
-    }
-
-    @ViewBuilder
-    private func lineCell(_ exit: PlannedExit) -> some View {
-        if let line = lineOfExit[exit.id] {
-            Text("\(line)")
-                .monospacedDigit()
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .help("Строка \(line) в тексте тренера")
-        } else {
-            Text("вручную")
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .help("Выхода нет в тексте тренера — добавлен здесь")
-        }
-    }
-
-    private func start(of exit: PlannedExit) -> TimeInterval {
-        guard let index = plan.exits.firstIndex(where: { $0.id == exit.id }) else { return 0 }
-        return MacPlanFormat.start(of: index, in: plan)
     }
 
     // Classic +/− bar under a table (System Settings, Finder).
@@ -576,30 +441,13 @@ private struct PlanTablePane: View {
             footerButton("arrow.down", String(localized: "Ниже · ⌥⌘↓")) { shiftSelection(by: 1) }
                 .keyboardShortcut(.downArrow, modifiers: [.command, .option])
                 .disabled(selectedIndices.last.map { $0 == plan.exits.count - 1 } ?? true)
-            Spacer(minLength: 8)
-            ViewThatFits(in: .horizontal) {
-                footerHints(drag: String(localized: "Перетащите строку, чтобы изменить порядок"))
-                footerHints(drag: String(localized: "Строки можно перетаскивать"))
-                footerHints(drag: nil)
-            }
+            Spacer(minLength: 0)
         }
         .buttonStyle(.borderless)
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
         .padding(.horizontal, 8)
         .frame(height: 30)
-    }
-
-    private func footerHints(drag: String?) -> some View {
-        HStack(spacing: 0) {
-            if let drag {
-                Text(drag).foregroundStyle(.tertiary).padding(.trailing, 10)
-            }
-            HStack(spacing: 3) { KeyCap("⌘D"); Text("дублировать") }
-            HStack(spacing: 3) { KeyCap("⌫"); Text("удалить") }.padding(.leading, 8)
-        }
-        .lineLimit(1)
-        .fixedSize()
     }
 
     private func footerButton(_ symbol: String, _ help: String, action: @escaping () -> Void) -> some View {
@@ -610,59 +458,47 @@ private struct PlanTablePane: View {
         .accessibilityLabel(help)
     }
 
-    /// The whole training's points by kind, and the common conditions with the exits they go to.
-    private var rulesBar: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if !plan.commonEarlyEntries.isEmpty {
-                HStack(spacing: 10) {
-                    Image(systemName: "figure.run").foregroundStyle(MacPalette.orange)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Условия раннего входа — для всей тренировки").fontWeight(.semibold)
-                        Text(plan.commonEarlyEntries.map(\.summary).joined(separator: " · "))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    Picker("К каким выходам", selection: Binding(
-                        get: { plan.commonEntriesScope.map { $0 == .all ? 0 : 1 } ?? 2 },
-                        set: { choice in
-                            withAnimation(.snappy) {
-                                if choice == 0 { plan.applyCommonEarlyEntries(to: .all) }
-                                if choice == 1 { plan.applyCommonEarlyEntries(to: .long) }
-                            }
-                        })) {
-                        Text("Ко всем").tag(0)
-                        Text("К длинным ≥ 1 мин").tag(1)
-                        Text("Выбрать").tag(2)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    .help("«Выбрать»: отметьте «Общие условия» у нужных выходов внизу")
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(MacPalette.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            }
-            if !plan.notes.isEmpty {
-                HStack(spacing: 6) {
-                    Text("Правила тренировки:").foregroundStyle(.secondary)
-                    ForEach(ruleChips, id: \.title) { chip in
-                        Label(chip.title, systemImage: chip.symbol)
-                            .foregroundStyle(chip.tint)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(chip.tint.opacity(0.12), in: Capsule())
-                            .help(chip.help)
-                    }
-                    Spacer(minLength: 0)
-                }
+    /// The common conditions the trainer wrote for the whole training, in the card's words («встала и пошла 1:00 ·
+    /// легла 0:20»), and the exits they go to.
+    private var commonEntriesBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "figure.run").foregroundStyle(MacPalette.orange)
+            Text(verbatim: plan.commonEarlyEntries.map(Self.words).joined(separator: " · "))
                 .lineLimit(1)
+            Spacer(minLength: 8)
+            Picker("К каким выходам", selection: Binding(
+                get: { plan.commonEntriesScope.map { $0 == .all ? 0 : 1 } ?? 2 },
+                set: { choice in
+                    withAnimation(.snappy) {
+                        if choice == 0 { plan.applyCommonEarlyEntries(to: .all) }
+                        if choice == 1 { plan.applyCommonEarlyEntries(to: .long) }
+                    }
+                })) {
+                Text("Ко всем").tag(0)
+                Text("К длинным ≥ 1 мин").tag(1)
+                Text("Выбрать").tag(2)
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help("«Выбрать»: отметьте «Общие условия» у нужных выходов внизу")
         }
         .font(.system(size: 12))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(MacPalette.orange.opacity(pointer == .commonConditions ? 0.24 : 0.12),
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .onHover { point(.commonConditions, $0) }
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
+    }
+
+    /// «встала и пошла 1:00», «легла сразу»: the trainer's words and the time, without an arrow.
+    static func words(_ entry: EarlyEntry) -> String {
+        let name = entry.event.prefix(1).lowercased() + entry.event.dropFirst()
+        let time = entry.delay.flatMap { $0 > 0 ? DurationText.clock($0) : nil } ?? entry.unreadDelay
+            ?? String(localized: "сразу")
+        return "\(name) \(time)"
     }
 
     private struct RuleChip {
@@ -670,26 +506,24 @@ private struct PlanTablePane: View {
         let symbol: String
         let tint: Color
         let help: String
+        var pointer: MacPlanPointer? = nil
     }
 
-    /// «⛔ ждать тишины» (the trainer's 🚩), «🔖 фальстарт», «➡️ ещё 5»: the trainer's notes for the whole training.
+    /// «⊖ Ждать тишины 30 с» (the trainer's 🚩, what it asks) and «🔖 фальстарт»: the trainer's rules for the whole
+    /// training. Its other notes («Все перерывы 2 минуты», «В перерывах сидите за столом») are in «Текст тренера», the
+    /// break in «⏸ 2 мин»: no chip that only counts them.
     private var ruleChips: [RuleChip] {
-        var chips: [RuleChip] = []
-        var others: [String] = []
-        for note in plan.notes {
+        plan.notes.compactMap { note in
             if PlanParser.isDoNotEnterRule(note) {
-                chips.append(RuleChip(title: String(localized: "ждать тишины"), symbol: "minus.circle.fill", tint: MacPalette.red, help: note))
-            } else if PlanParser.isFalseStartRule(note.lowercased()) {
-                chips.append(RuleChip(title: String(localized: "фальстарт"), symbol: "bookmark.fill", tint: MacPlanTint.rule(scheme), help: note))
-            } else {
-                others.append(note)
+                return RuleChip(title: MacPlanFormat.quietRuleTitle(plan), symbol: "minus.circle.fill",
+                                tint: MacPalette.red, help: PlanParser.stripDecorations(note), pointer: .quietRule)
             }
+            if PlanParser.isFalseStartRule(note.lowercased()) {
+                return RuleChip(title: String(localized: "фальстарт"), symbol: "bookmark.fill", tint: MacPlanTint.rule(scheme),
+                                help: note)
+            }
+            return nil
         }
-        if !others.isEmpty {
-            chips.append(RuleChip(title: MacPlanFormat.notes(others.count), symbol: "arrow.right.circle", tint: .secondary,
-                                  help: others.joined(separator: "\n")))
-        }
-        return chips
     }
 
     /// The summary in full, for the tooltip.
@@ -700,33 +534,6 @@ private struct PlanTablePane: View {
         if !entries.isEmpty { parts.append("🏃 " + entries.map(\.summary).joined(separator: " · ")) }
         if let note = exit.noteText { parts.append("📝 " + note) }
         return parts.isEmpty ? String(localized: "Выберите строку, чтобы добавить триггеры, условия и заметку") : parts.joined(separator: "\n")
-    }
-
-    // MARK: Rule
-
-    private var ruleLine: MacPlanTextLine? { lines.first { $0.kind == .rule } }
-
-    private func ruleView(_ line: MacPlanTextLine) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "bookmark.fill")
-                .foregroundStyle(MacPlanTint.rule(scheme))
-                .frame(width: 16)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text("Правило фальстарта").fontWeight(.semibold)
-                    Text("строка \(line.id)").foregroundStyle(.tertiary).font(.system(size: 11))
-                }
-                Text(MacPlanFormat.ruleBody(MacPlanTextLine.stripDecorations(line.text)))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(4)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .font(.system(size: 12))
-        .padding(.horizontal, 16)
-        .padding(.vertical, 11)
-        .background(MacPlanTint.rule(scheme).opacity(0.07))
     }
 
     // MARK: Editing
@@ -753,6 +560,8 @@ private struct PlanTablePane: View {
         let copies = plan.exits.filter { ids.contains($0.id) }.map { source -> PlannedExit in
             var copy = source
             copy.id = UUID()
+            // The owner's, not the trainer's: no line of the text.
+            copy.sourceIndex = nil
             return copy
         }
         withAnimation(.snappy) {
@@ -802,19 +611,56 @@ private struct PlanTablePane: View {
 
 // MARK: - Cells
 
+/// The schedule's date as the iPhone and the history write it — «Вс, 4 окт.», the year only when it is not this one —
+/// not «04.10.2026»; a click opens the calendar.
+private struct PlanDateField: View {
+    @Binding var date: Date?
+    @State private var picking = false
+
+    var body: some View {
+        Button { picking = true } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "calendar").foregroundStyle(.secondary)
+                Text(verbatim: HistoryDate.day(date ?? Date()))
+                    .monospacedDigit()
+            }
+        }
+        .fixedSize()
+        .popover(isPresented: $picking, arrowEdge: .bottom) {
+            // A day picked is the answer: the calendar closes (the arrows between months keep it open).
+            DatePicker("Дата", selection: Binding(get: { date ?? Date() }, set: { date = $0; picking = false }),
+                       displayedComponents: .date)
+                .labelsHidden()
+                .datePickerStyle(.graphical)
+                .padding(12)
+        }
+    }
+}
+
 /// Time behind the door: pink value; click → minutes and seconds or a preset.
 private struct ExitDurationCell: View {
     @Binding var exit: PlannedExit
+    /// The trainer's time, when the exit came from her text: a value changed from it is white, not pink.
+    var trainerValue: TimeInterval?
+    var onPoint: (Bool) -> Void = { _ in }
     @State private var editing = false
     @State private var hovering = false
     @Environment(\.colorScheme) private var scheme
+
+    private var edited: Bool { trainerValue.map { $0 != exit.duration } ?? false }
+
+    private var help: String {
+        let value = String(localized: "Выход \(exit.number) · \(exit.durationDescription)")
+        guard edited, let trainerValue else { return value }
+        return String(localized: "\(value) · у тренера \(DurationText.short(trainerValue))")
+    }
 
     var body: some View {
         Button { editing = true } label: {
             HStack(spacing: 3) {
                 Text(MacPlanFormat.cell(exit.duration))
                     .fontWeight(.semibold)
-                    .foregroundStyle(MacPlanTint.exit(scheme))
+                    .foregroundStyle(edited ? Color.primary : MacPlanTint.exit(scheme))
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(.secondary)
@@ -825,7 +671,10 @@ private struct ExitDurationCell: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .onHover {
+            hovering = $0
+            onPoint($0)
+        }
         #if DEBUG
         // `--demo-duration-popover N`: the editor of exit N open (screenshots).
         .task {
@@ -836,7 +685,7 @@ private struct ExitDurationCell: View {
             editing = true
         }
         #endif
-        .help("Выход \(exit.number): \(exit.durationDescription) — изменить")
+        .help(help)
         .popover(isPresented: $editing, arrowEdge: .bottom) {
             MacDurationEditor(value: Binding(get: { exit.duration }, set: { exit.duration = max(0, $0 ?? exit.duration) }),
                               title: String(localized: "Выход \(exit.number) — за дверью"), presets: MacPlanFormat.exitPresets,
@@ -845,18 +694,33 @@ private struct ExitDurationCell: View {
     }
 }
 
-/// Break after an exit: dimmed «2 мин» follows the plan, a blue «5 мин · свой» is the exit's own break.
+/// Break after an exit: a quiet «—» follows the common break (a click sets one of its own), a blue «5 мин ⌄» is the
+/// exit's own break; nothing after the last exit.
 private struct BreakAfterCell: View {
     @Binding var exit: PlannedExit
     let defaultBreak: TimeInterval
     let isLast: Bool
+    /// The trainer's break after this exit (her common one when she gave it none of its own).
+    var trainerValue: TimeInterval?
+    var onPoint: (Bool) -> Void = { _ in }
     @State private var custom = false
     @Environment(\.colorScheme) private var scheme
 
+    private var value: TimeInterval { exit.breakAfter ?? defaultBreak }
+    private var edited: Bool { trainerValue.map { $0 != value } ?? false }
+
+    private var help: String {
+        let base = exit.breakAfter == nil
+            ? String(localized: "Перерыв после выхода \(exit.number) — как у всех. Выберите, чтобы задать свой")
+            : String(localized: "Свой перерыв после выхода \(exit.number)")
+        guard edited, let trainerValue else { return base }
+        return String(localized: "\(base) · у тренера \(DurationText.short(trainerValue))")
+    }
+
     var body: some View {
         if isLast {
-            Text("конец").foregroundStyle(.tertiary)
-                .help("После последнего выхода тренировка заканчивается")
+            // After the last exit the training ends: nothing to set.
+            Color.clear.frame(width: 1, height: 1)
         } else {
             Menu {
                 Toggle("Как у всех — \(DurationText.short(defaultBreak))", isOn: Binding(
@@ -870,21 +734,22 @@ private struct BreakAfterCell: View {
                 Button("Другой…") { custom = true }
             } label: {
                 if let own = exit.breakAfter {
-                    Text("\(MacPlanFormat.cell(own)) · свой")
+                    // Blue says it is the exit's own; white, that the owner set it, not the trainer.
+                    Text(verbatim: MacPlanFormat.cell(own))
                         .fontWeight(.semibold)
-                        .foregroundStyle(MacPlanTint.pause(scheme))
+                        .foregroundStyle(edited ? Color.primary : MacPlanTint.pause(scheme))
                 } else {
-                    Text(MacPlanFormat.cell(defaultBreak)).foregroundStyle(.secondary)
+                    // The common break is the header's «⏸ 2 мин»: here only a quiet dash to click.
+                    Text(verbatim: "—").foregroundStyle(.tertiary)
                 }
             }
             .menuStyle(.button)
             .buttonStyle(.borderless)
-            .menuIndicator(.visible)
+            .menuIndicator(exit.breakAfter == nil ? .hidden : .visible)
             .monospacedDigit()
             .fixedSize()
-            .help(exit.breakAfter == nil
-                  ? "Перерыв после выхода \(exit.number) — как у всех. Выберите, чтобы задать свой"
-                  : "Свой перерыв после выхода \(exit.number)")
+            .help(help)
+            .onHover(perform: onPoint)
             .popover(isPresented: $custom, arrowEdge: .bottom) {
                 MacDurationEditor(value: Binding(get: { exit.breakAfter },
                                                  set: { exit.breakAfter = $0 == defaultBreak ? nil : $0 }),

@@ -60,7 +60,10 @@ final class AppSettings {
         static let lanPassword = "go2rtc.lanPassword"
         static let withoutCamera = "withoutCamera"
         static let qualityResolutions = "qualityResolutions"
+        static let cameraFraming = "cameraFraming"
         static let deviceName = "sync.deviceName"
+        static let haptics = "haptics"
+        static let notifications = "notifications"
     }
 
     var connectionMode: ConnectionMode { didSet { Self.defaults.set(connectionMode.rawValue, forKey: Key.connectionMode) } }
@@ -87,6 +90,12 @@ final class AppSettings {
     var shareWithIPhone: Bool { didSet { Self.defaults.set(shareWithIPhone, forKey: Key.shareWithIPhone) } }
     /// This device's name for the linked ones; empty = the system's (`SyncIdentity.systemName`).
     var deviceName: String { didSet { Self.defaults.set(deviceName, forKey: Key.deviceName) } }
+    /// iPhone: a short vibration when a training's timer runs out — the exit's plan, the break, a condition's countdown,
+    /// the quiet (`TrainingGlance`).
+    var haptics: Bool { didSet { Self.defaults.set(haptics, forKey: Key.haptics) } }
+    /// iPhone: the same moments as notifications while the app is not in front (`TrainingAlerts`); they vibrate with
+    /// `haptics`, and make no sound.
+    var notifications: Bool { didSet { Self.defaults.set(notifications, forKey: Key.notifications) } }
     /// The user chose «Продолжить без камеры»: timer, schedule and log only, the camera can be added later.
     var withoutCamera: Bool { didSet { Self.defaults.set(withoutCamera, forKey: Key.withoutCamera) } }
     /// What each quality level of a Mi Home camera really sent ("848x480"), by the camera's `did` and `subtype`:
@@ -94,6 +103,9 @@ final class AppSettings {
     var qualityResolutions: [String: [String: String]] {
         didSet { Self.defaults.set(qualityResolutions, forKey: Key.qualityResolutions) }
     }
+    /// iPhone: how the owner framed each camera's picture (zoom, the point in the middle, zoomed in or not), by stream
+    /// name — `ZoomState.Memory.saved`.
+    var cameraFraming: [String: [Double]] { didSet { Self.defaults.set(cameraFraming, forKey: Key.cameraFraming) } }
 
     /// Password of the embedded go2rtc for LAN clients (linked iPhones); generated once.
     /// Kept in the app's own (sandboxed) defaults, not the keychain: it only guards the video on the home
@@ -135,8 +147,11 @@ final class AppSettings {
         #endif
         shareWithIPhone = d.object(forKey: Key.shareWithIPhone) as? Bool ?? true
         deviceName = d.string(forKey: Key.deviceName) ?? ""
+        haptics = d.object(forKey: Key.haptics) as? Bool ?? true
+        notifications = d.object(forKey: Key.notifications) as? Bool ?? true
         withoutCamera = d.bool(forKey: Key.withoutCamera)
         qualityResolutions = d.dictionary(forKey: Key.qualityResolutions) as? [String: [String: String]] ?? [:]
+        cameraFraming = d.dictionary(forKey: Key.cameraFraming) as? [String: [Double]] ?? [:]
     }
 
     /// What the other devices see this one as when linking.

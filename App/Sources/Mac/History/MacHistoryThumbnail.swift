@@ -3,8 +3,8 @@ import AppKit
 import AVFoundation
 import SwiftUI
 
-/// Small 16:9 still at the start of a table row (Finder-style): a frame of the video, or a quiet tile when the
-/// row has none (the paw for a training kept only as a log), so the column stays aligned.
+/// Small 16:9 still at the start of a table row (Finder-style): a frame of the video. A training without a video
+/// gets no tile, only its room, so the column stays aligned and a tile always means a video.
 struct MacHistoryThumbnail: View {
     let video: MacHistoryVideo?
     /// The file is being remuxed right now: its frame is made once that is done.
@@ -22,15 +22,25 @@ struct MacHistoryThumbnail: View {
     private var selected: Bool { prominence == .increased }
 
     var body: some View {
+        if video == nil && !isClip {
+            Color.clear
+                .frame(width: Self.size.width, height: Self.size.height)
+                .accessibilityHidden(true)
+        } else {
+            tile
+        }
+    }
+
+    private var tile: some View {
         let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
-        ZStack {
+        return ZStack {
             shape.fill(selected ? AnyShapeStyle(.white.opacity(0.16)) : AnyShapeStyle(.quaternary.opacity(0.75)))
             content
         }
         .frame(width: Self.size.width, height: Self.size.height)
         .clipShape(shape)
         .overlay(shape.strokeBorder(selected ? Color.white.opacity(0.3) : Color.primary.opacity(0.13), lineWidth: 0.5))
-        .help(isClip ? "Запись без тренировки" : video == nil ? "Тренировка без видео" : "Тренировка")
+        .help(isClip ? "Запись без тренировки" : "Тренировка")
         .accessibilityHidden(true)
         .task(id: preparing ? nil : key) {
             guard !preparing, let video, let key, MacHistoryThumbnails.shared.cached(video) == nil else { return }
@@ -52,17 +62,15 @@ struct MacHistoryThumbnail: View {
             } else if loaded?.key == key || MacHistoryThumbnails.shared.hasFailed(video) {
                 glyph("film")
             }
-        } else if isClip {
-            glyph("film")
         } else {
-            glyph("pawprint.fill", accent: true)
+            glyph("film")
         }
     }
 
-    private func glyph(_ name: String, accent: Bool = false) -> some View {
+    private func glyph(_ name: String) -> some View {
         Image(systemName: name)
             .font(.system(size: 11))
-            .foregroundStyle(accent && !selected ? AnyShapeStyle(MacPalette.accent.opacity(0.85)) : AnyShapeStyle(.secondary))
+            .foregroundStyle(.secondary)
     }
 }
 

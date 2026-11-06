@@ -20,6 +20,40 @@ final class TrainingSessionTests: XCTestCase {
 
     private func advance(_ seconds: TimeInterval) { now = now.addingTimeInterval(seconds) }
 
+    func testObservationsGoOnTheirExitsLine() {
+        let session = makeSession()
+        session.markBehindDoor()
+        advance(4)
+        session.endExit()
+        session.markBehindDoor()
+        advance(12)
+        session.observe("легла")
+        advance(20)
+        session.endExit()
+        session.finish()
+        let record = session.makeRecord(recordingFileName: nil)
+        // A moment from behind the door, «на»: «легла 0:12» read as «lay down for 12 s».
+        XCTAssertEqual(SessionLogFormatter.observations(of: record.results[1], in: record), ["легла на 0:12"])
+        XCTAssertTrue(SessionLogFormatter.observations(of: record.results[0], in: record).isEmpty)
+        let text = SessionLogFormatter.text(for: record)
+        XCTAssertTrue(text.contains("✅ · легла на 0:12"), text)
+        // Not repeated among the free notes at the end.
+        XCTAssertEqual(text.components(separatedBy: "легла").count, 2, text)
+    }
+
+    func testRevertTakesAFalseStartBack() {
+        let session = makeSession()
+        session.markBehindDoor()
+        advance(3)
+        let before = session.snapshot
+        session.resetExit()
+        XCTAssertEqual(session.falseStartsCount, 1)
+        session.revert(to: before)
+        XCTAssertEqual(session.falseStartsCount, 0)
+        XCTAssertEqual(session.phase, before.phase)
+        XCTAssertEqual(session.events, before.events)
+    }
+
     func testHappyPath() {
         let session = makeSession()
         XCTAssertEqual(session.phase, .ready(exitIndex: 0))
@@ -75,6 +109,40 @@ final class TrainingSessionTests: XCTestCase {
         XCTAssertEqual(session.events.last?.kind, .sessionFinished)
     }
 
+    /// «перерыв после 2:02»: the break after the exit, with its plan when it was off by more than 15 s, or when it was
+    /// the exit's own (the trainer's «Перерыв 5 минут» after one exit) — then even when it was kept.
+    func testBreakAfterTextNamesTheExitsOwnBreak() {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        func result(_ number: Int, plannedBreak: TimeInterval, actualBreak: TimeInterval?) -> ExitResult {
+            ExitResult(number: number, attempt: 1, plannedDuration: 60, untilStanding: false, startedAt: start,
+                       leftAt: start, endedAt: start.addingTimeInterval(60), falseStart: false,
+                       plannedBreak: plannedBreak, actualBreak: actualBreak)
+        }
+        let plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 60), PlannedExit(number: 2, duration: 60, breakAfter: 300),
+                                        PlannedExit(number: 3, duration: 60)])
+        let common = result(1, plannedBreak: 120, actualBreak: 122)
+        let own = result(2, plannedBreak: 300, actualBreak: 302)
+        let short = result(1, plannedBreak: 120, actualBreak: 60)
+        let record = TrainingRecord(plan: plan, startedAt: start, finishedAt: start.addingTimeInterval(900), events: [],
+                                    results: [common, own, short])
+
+        XCTAssertEqual(SessionLogFormatter.breakText(for: common, in: record), "перерыв после 2:02")
+        XCTAssertEqual(SessionLogFormatter.breakText(for: own, in: record), "перерыв после 5:02 (план 5 мин)")
+        XCTAssertEqual(SessionLogFormatter.breakText(for: short, in: record), "перерыв после 1:00 (план 2 мин)")
+        // Without the record the exit's own break can't be told from the common one: the plan only when off.
+        XCTAssertEqual(SessionLogFormatter.breakText(for: own), "перерыв после 5:02")
+        XCTAssertEqual(SessionLogFormatter.breakText(for: short), "перерыв после 1:00 (план 2 мин)")
+        XCTAssertNil(SessionLogFormatter.breakText(for: result(3, plannedBreak: 120, actualBreak: nil), in: record))
+
+        let lines = SessionLogFormatter.text(for: record).components(separatedBy: "\n").filter { $0.contains(" выход — ") }
+        XCTAssertEqual(lines, [
+            "1 выход — 1 мин: за дверью 1:00 ✅ · перерыв после 2:02",
+            "2 выход — 1 мин: за дверью 1:00 ✅ · перерыв после 5:02 (план 5 мин)",
+            // The break after the last exit only ends the session.
+            "1 выход — 1 мин: за дверью 1:00 ✅",
+        ])
+    }
+
     func testEarlyBreakEnd() {
         let session = makeSession()
         session.markBehindDoor(); advance(5); session.endExit()
@@ -109,8 +177,9 @@ final class TrainingSessionTests: XCTestCase {
         let lines = SessionLogFormatter.text(for: session.makeRecord(recordingFileName: nil))
             .components(separatedBy: "\n").filter { $0.contains(" выход — ") }
         XCTAssertEqual(lines, [
-            "1 выход — 5 с: за дверью 0:05 ✅ · перерыв 1:40 (план 2 мин)",
-            "2 выход — 30 с или до вставания: фальстарт до двери ❌ · перерыв 5:00",
+            "1 выход — 5 с: за дверью 0:05 ✅ · перерыв после 1:40 (план 2 мин)",
+            // Exit 2's own break (5 min, not the common 2): its plan beside it even when it was kept.
+            "2 выход — 30 с или до вставания: фальстарт до двери ❌ · перерыв после 5:00 (план 5 мин)",
             "2 выход — 30 с или до вставания, попытка 2: за дверью 0:30 ✅",
         ])
     }
@@ -443,8 +512,8 @@ final class TrainingSessionTests: XCTestCase {
         let lines = SessionLogFormatter.text(for: session.makeRecord(recordingFileName: nil))
             .components(separatedBy: "\n").filter { $0.contains(" выход — ") }
         XCTAssertEqual(lines, [
-            "1 выход — 5 с: фальстарт, за дверью 0:02 ❌ · перерыв 1:00 (план 2 мин)",
-            "1 выход — 5 с, попытка 2: за дверью 0:05 ✅ · перерыв 2:00",
+            "1 выход — 5 с: фальстарт, за дверью 0:02 ❌ · перерыв после 1:00 (план 2 мин)",
+            "1 выход — 5 с, попытка 2: за дверью 0:05 ✅ · перерыв после 2:00",
             "2 выход — 30 с или до вставания: за дверью 0:30 ✅",
         ])
     }

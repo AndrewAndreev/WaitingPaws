@@ -83,8 +83,8 @@ final class EnglishTests: XCTestCase {
         let text = SessionLogFormatter.text(for: session.makeRecord(recordingFileName: nil))
         let lines = text.components(separatedBy: "\n").filter { $0.hasPrefix("Exit ") }
         XCTAssertEqual(lines, [
-            "Exit 1 — 5 s: false start, outside 0:02 ❌ · break 1:00 (plan 2 min)",
-            "Exit 1 — 5 s, attempt 2: outside 0:05 ✅ · break 2:00",
+            "Exit 1 — 5 s: false start, outside 0:02 ❌ · break after: 1:00 (plan 2 min)",
+            "Exit 1 — 5 s, attempt 2: outside 0:05 ✅ · break after: 2:00",
             "Exit 2 — 30 s or until the dog stands: outside 0:30 ✅",
         ])
         XCTAssertTrue(text.contains("exits 2 of 2 · false starts 1"))

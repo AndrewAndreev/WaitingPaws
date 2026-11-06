@@ -1,94 +1,65 @@
 #if os(macOS)
 import AppKit
-import Charts
 import SwiftUI
 import WaitingPawsCore
 
-/// After the last exit: the numbers, plan vs actual per exit, the trainer log, the video file.
+/// After the last exit: the numbers, plan and fact of each exit as the trainer's log (the text itself goes out with
+/// «Скопировать» and «Отправить тренеру…», the main button), the video file. No chart of the same numbers, no
+/// sentence about them: the table says it.
 struct MacSummarySheet: View {
     @Environment(AppModel.self) private var model
-    let record: TrainingRecord
-    var onHistory: () -> Void
+    private let record: TrainingRecord
     var onClose: () -> Void
-    @State private var copied = false
+
+    init(record: TrainingRecord, onClose: @escaping () -> Void) {
+        // DEBUG `--demo-marks`: a demo session's record with a few marks from behind the door.
+        self.record = HistoryDemoMarks.shown(record)
+        self.onClose = onClose
+    }
 
     var body: some View {
         let log = SessionLogFormatter.text(for: record)
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(MacPalette.green)
                 VStack(alignment: .leading, spacing: 2) {
+                    // Two lines, as on the iPhone: what happened and when (the schedule's name is in the history).
                     Text("Тренировка завершена").font(.title3.weight(.semibold))
-                    Text("\(record.plan.title) · \(MacFormat.time.string(from: record.startedAt))–\(MacFormat.time.string(from: record.finishedAt)) (\(DurationText.short(max(60, (record.duration / 60).rounded() * 60))))")
+                    // As on the iPhone and in the history: «Ср, 4 нояб. · 22:22–22:37 · 15 мин».
+                    Text(verbatim: "\(HistoryDate.day(record.startedAt)) · \(HistoryDate.time(record.startedAt))–\(HistoryDate.time(record.finishedAt)) · \(DurationText.short(max(60, (record.duration / 60).rounded() * 60)))")
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
             }
 
+            // The iPhone's order: exits, the longest one, false starts — only when there were any. The words under the
+            // numbers agree with them: «из 1 выхода», «1 фальстарт», «2 фальстарта».
             HStack(spacing: 0) {
-                stat(String(localized: "\(record.completedExits) из \(record.plan.exits.count)"), String(localized: "выходов"))
-                Divider().frame(height: 34)
-                stat("\(record.falseStarts)", String(localized: "фальстартов"), tint: record.falseStarts > 0 ? MacPalette.orange : nil)
-                Divider().frame(height: 34)
-                stat(DurationText.clock(longest), String(localized: "дольше всего за дверью"))
+                stat(String(localized: "\(record.completedExits) из \(record.plan.exits.count)"),
+                     HistoryText.word(pluralText(record.plan.exits.count, ru: ("выхода", "выходов", "выходов"),
+                                                 en: ("exit", "exits"))))
+                if let longest = record.longestResult, longest.awayDuration > 0 {
+                    Divider().frame(height: 34)
+                    stat(DurationText.clock(longest.awayDuration), String(localized: "дольше всего"))
+                }
+                if record.falseStarts > 0 {
+                    Divider().frame(height: 34)
+                    stat("\(record.falseStarts)", HistoryText.word(HistoryText.falseStarts(record.falseStarts)),
+                         tint: MacPalette.orange)
+                }
             }
             .padding(.vertical, 10)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
+            // The table is the log; it goes out with «Отправить тренеру…» (its sheet copies it too, as does ⇧⌘C).
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("План и факт").font(.headline)
-                    Spacer()
-                    legend(MacPalette.pink.opacity(0.35), String(localized: "план"))
-                    legend(MacPalette.pink, String(localized: "за дверью"))
-                    legend(MacPalette.orange, String(localized: "фальстарт"))
+                // A long training scrolls inside its box instead of growing the sheet past the screen.
+                if record.results.count > Self.rowsShown {
+                    ScrollView { logTable }
+                        .frame(height: CGFloat(Self.rowsShown) * 22 + 26)
+                } else {
+                    logTable
                 }
-                Chart {
-                    ForEach(record.plan.exits) { exit in
-                        BarMark(x: .value("Выход", "\(exit.number)"), y: .value("План", exit.duration / 60), width: .ratio(0.7))
-                            .foregroundStyle(MacPalette.pink.opacity(0.28))
-                    }
-                    ForEach(record.results) { result in
-                        BarMark(x: .value("Выход", "\(result.number)"), y: .value("Факт", result.awayDuration / 60),
-                                width: .ratio(result.falseStart ? 0.22 : 0.4))
-                            .foregroundStyle(result.falseStart ? MacPalette.orange : MacPalette.pink)
-                            .position(by: .value("Попытка", result.falseStart ? "a" : "b"))
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks { value in
-                        AxisGridLine()
-                        AxisValueLabel {
-                            if let minutes = value.as(Double.self) { Text(DurationText.clock(minutes * 60)) }
-                        }
-                    }
-                }
-                .frame(height: 130)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Лог для тренера").font(.headline)
-                    Spacer()
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(log, forType: .string)
-                        copied = true
-                    } label: { Label(copied ? "Скопировано" : "Скопировать", systemImage: copied ? "checkmark" : "doc.on.doc") }
-                        .controlSize(.small)
-                        .keyboardShortcut("c", modifiers: [.command, .shift])
-                }
-                ScrollView {
-                    Text(log)
-                        .font(.system(size: 11, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                }
-                .frame(height: 118)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.separator))
+                notes
             }
 
             if let url = model.store.recordingURL(for: record) {
@@ -106,22 +77,124 @@ struct MacSummarySheet: View {
 
             Divider()
 
+            // What to do next is to send the log to the trainer: that is the main button (Return); closing is Esc. The
+            // history is in the toolbar.
             HStack {
-                ShareLink(item: log) { Label("Отправить лог…", systemImage: "square.and.arrow.up") }
-                Button("История", action: onHistory)
                 Spacer()
                 Button("Готово", action: onClose)
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(MacPalette.pinkDeep)
+                    .keyboardShortcut(.cancelAction)
+                // ShareLink on the Mac ignores `.borderedProminent`: the prominent look is its own label.
+                ShareLink(item: log, preview: SharePreview(record.plan.displayTitle)) {
+                    Label("Отправить тренеру…", systemImage: "square.and.arrow.up")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .frame(height: 30)
+                        .background(MacPalette.pinkDeep, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.defaultAction)
+                .help("Отправить лог тренеру · ↩")
             }
         }
         .padding(20)
         .frame(width: 600)
+        .background {
+            // ⇧⌘C copies the log, without a button of its own.
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(log, forType: .string)
+            } label: { EmptyView() }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
     }
 
-    private var longest: TimeInterval {
-        record.results.filter { !$0.falseStart }.map(\.awayDuration).max() ?? 0
+    // MARK: Log
+
+    /// Rows of the log table before it scrolls in a box of its own (a long training would grow the sheet past a
+    /// laptop's screen).
+    private static let rowsShown = 12
+
+    /// What goes to the trainer, as the iPhone's finish card shows it: plan and fact of each attempt in columns, a
+    /// repeat named as one, a false start in orange; and while anything was marked, what the owner marked from behind
+    /// the door and when («легла 0:12 · замолчала 0:41»), the why behind an early return.
+    private var logTable: some View {
+        let marks = record.results.map { SessionLogFormatter.observations(of: $0, in: record) }
+        let hasMarks = marks.contains { !$0.isEmpty }
+        return Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 5) {
+            GridRow {
+                Text("Выход")
+                Text("План").gridColumnAlignment(.trailing)
+                Text("Факт").gridColumnAlignment(.trailing)
+                if hasMarks { Text("Отмечено") }
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            Divider().gridCellUnsizedAxes(.horizontal)
+            ForEach(Array(record.results.enumerated()), id: \.element.id) { index, result in
+                GridRow(alignment: .firstTextBaseline) {
+                    // Without marks the numbers go to the trailing edge, as on the iPhone.
+                    exitName(result)
+                        .frame(maxWidth: hasMarks ? nil : .infinity, alignment: .leading)
+                    Text(result.isOpen ? "—" : DurationText.clock(result.plannedDuration))
+                        .foregroundStyle(.secondary)
+                    Text(result.leftAt == nil ? "—" : DurationText.clock(result.awayDuration))
+                        .fontWeight(.semibold)
+                        .foregroundStyle(result.falseStart ? MacHistoryInk.orange : Color.primary)
+                    if hasMarks {
+                        Text(verbatim: marks[index].map(HistoryText.unbroken).joined(separator: " · "))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .monospacedDigit()
+                .help(help(for: result))
+            }
+        }
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// "план 2:00 или до вставания, за дверью 2:02": what the columns leave out.
+    private func help(for result: ExitResult) -> String {
+        var plan = result.isOpen ? PlannedExit.openText : DurationText.clock(result.plannedDuration)
+        if result.untilStanding { plan += " " + PlannedExit.untilStandingText }
+        return "\(String(localized: "план \(plan)")), \(SessionLogFormatter.outcome(of: result))"
+    }
+
+    /// "Выход 7 · попытка 2 фальстарт".
+    private func exitName(_ result: ExitResult) -> some View {
+        HStack(spacing: 4) {
+            Text("Выход \(result.number)")
+            if result.attempt > 1 {
+                Text("· попытка \(result.attempt)").foregroundStyle(MacHistoryInk.orange)
+            }
+            if result.falseStart {
+                Text("фальстарт").foregroundStyle(MacHistoryInk.orange)
+            }
+        }
+        .lineLimit(1)
+    }
+
+    /// The owner's free notes (not the marks, which stand in their exits' rows), as the log ends with them.
+    @ViewBuilder
+    private var notes: some View {
+        let notes = record.events.filter { $0.kind == .note && $0.observed != true && !($0.detail ?? "").isEmpty }
+        if !notes.isEmpty {
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(notes) { note in
+                    let time = MacFormat.time.string(from: note.time)
+                    let when = note.exitNumber.map { String(localized: "\(time), выход \($0)") } ?? time
+                    Text("\(Text(when).foregroundStyle(.secondary))  \(note.detail ?? "")")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, 4)
+        }
     }
 
     private func fileInfo(_ url: URL) -> String {
@@ -140,16 +213,9 @@ struct MacSummarySheet: View {
         }
         .frame(maxWidth: .infinity)
     }
-
-    private func legend(_ color: Color, _ text: String) -> some View {
-        HStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 10, height: 10)
-            Text(text).font(.caption).foregroundStyle(.secondary)
-        }
-    }
 }
 
-/// After «Только запись»: where the file is.
+/// After «Записать без тренировки»: where the file is.
 struct MacClipSavedSheet: View {
     let clip: RecordingClip
     var onHistory: () -> Void

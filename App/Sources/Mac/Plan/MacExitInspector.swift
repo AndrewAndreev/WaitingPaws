@@ -2,8 +2,10 @@
 import SwiftUI
 import WaitingPawsCore
 
-/// Under the exits' table: the selected exit's triggers, conditions for coming back early and note, side by side.
-/// Changing one of the training's common conditions gives the exit its own copy (the other exits keep theirs).
+/// Under the exits' table: the selected exit's triggers, conditions for coming back early and note, side by side, the
+/// values in the colours of the trainer's words beside them (a trigger amber, a condition's time blue). No words about
+/// the fields: her text shows what each is. Changing one of the training's common conditions gives the exit its own
+/// copy (the other exits keep theirs).
 struct MacExitInspector: View {
     @Binding var plan: TrainingPlan
     let exitID: UUID
@@ -50,7 +52,7 @@ struct MacExitInspector: View {
             FlowLayout(spacing: 5) {
                 ForEach(Array(plan.exits[index].triggers.enumerated()), id: \.offset) { offset, trigger in
                     HStack(spacing: 4) {
-                        Text(trigger).lineLimit(2)
+                        Text(trigger).lineLimit(2).foregroundStyle(Theme.warning)
                         Button {
                             plan.exits[index].triggers.remove(at: offset)
                         } label: {
@@ -62,7 +64,7 @@ struct MacExitInspector: View {
                     .padding(.leading, 8)
                     .padding(.trailing, 6)
                     .padding(.vertical, 3)
-                    .background(.white.opacity(0.08), in: Capsule())
+                    .background(Theme.warning.opacity(0.12), in: Capsule())
                 }
             }
             TextField("Добавить…", text: $newTrigger)
@@ -116,10 +118,11 @@ struct MacExitInspector: View {
     private func note(_ index: Int) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             title(String(localized: "Заметка"), symbol: "text.bubble", tint: .secondary)
-            TextField("Своя заметка к выходу", text: Binding(
+            TextField(String(localized: "Заметка"), text: Binding(
                 get: { plan.exits[index].note ?? "" },
-                set: { plan.exits[index].note = $0.isEmpty ? nil : $0 }), axis: .vertical)
+                set: { plan.exits[index].note = $0.isEmpty ? nil : $0 }), prompt: Text(verbatim: ""), axis: .vertical)
                 .textFieldStyle(.roundedBorder)
+                .labelsHidden()
                 .lineLimit(3...6)
         }
     }
@@ -153,7 +156,8 @@ private struct MacEntryRow: View {
                 Button {
                     editingDelay = true
                 } label: {
-                    Text(entry.delayDescription).monospacedDigit()
+                    // Blue, as the time in her words.
+                    Text(entry.delayDescription).monospacedDigit().fontWeight(.semibold).foregroundStyle(MacPalette.blue)
                 }
                 .help("Через сколько входить")
                 .popover(isPresented: $editingDelay, arrowEdge: .bottom) {
@@ -168,13 +172,17 @@ private struct MacEntryRow: View {
                 .buttonStyle(.borderless)
                 .help("Убрать условие")
             }
-            TextField("От начала движения, когда сняла фокус с двери…", text: Binding(
-                get: { entry.detail ?? "" },
-                set: { entry.detail = $0.isEmpty ? nil : $0 }))
-                .textFieldStyle(.plain)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .padding(.leading, 21)
+            // The trainer's words after the time («от начала движения…»), only where she wrote some.
+            if let detail = entry.detail, !detail.isEmpty {
+                TextField(String(localized: "Заметка"), text: Binding(
+                    get: { entry.detail ?? "" },
+                    set: { entry.detail = $0.isEmpty ? nil : $0 }), prompt: Text(verbatim: ""))
+                    .textFieldStyle(.plain)
+                    .labelsHidden()
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 21)
+            }
         }
     }
 }

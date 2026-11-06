@@ -118,6 +118,10 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
     public var usesCommonEarlyEntries: Bool
     /// An extra exit added after the schedule's last one: no planned time, its timer counts up.
     public var isOpen: Bool
+    /// Which of the exits in the trainer's text this one is (0-based, in her order): its lines in
+    /// `PlanParser.sourceLines` carry the same `exitIndex`, whatever number a reorder gives it. nil for an exit added
+    /// by hand and for plans from builds before it.
+    public var sourceIndex: Int?
 
     public init(id: UUID = UUID(),
                 number: Int,
@@ -128,7 +132,8 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
                 triggers: [String] = [],
                 earlyEntries: [EarlyEntry] = [],
                 usesCommonEarlyEntries: Bool = true,
-                isOpen: Bool = false) {
+                isOpen: Bool = false,
+                sourceIndex: Int? = nil) {
         self.id = id
         self.number = number
         self.duration = duration
@@ -139,10 +144,12 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
         self.earlyEntries = earlyEntries
         self.usesCommonEarlyEntries = usesCommonEarlyEntries
         self.isOpen = isOpen
+        self.sourceIndex = sourceIndex
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, number, duration, untilStanding, note, breakAfter, triggers, earlyEntries, usesCommonEarlyEntries, isOpen
+        case sourceIndex
     }
 
     /// Plans from builds before triggers and conditions decode with none of their own.
@@ -158,6 +165,7 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
         earlyEntries = try container.decodeIfPresent([EarlyEntry].self, forKey: .earlyEntries) ?? []
         usesCommonEarlyEntries = try container.decodeIfPresent(Bool.self, forKey: .usesCommonEarlyEntries) ?? true
         isOpen = try container.decodeIfPresent(Bool.self, forKey: .isOpen) ?? false
+        sourceIndex = try container.decodeIfPresent(Int.self, forKey: .sourceIndex)
     }
 
     /// The extra exit «Ещё выход» starts after the schedule's last one.

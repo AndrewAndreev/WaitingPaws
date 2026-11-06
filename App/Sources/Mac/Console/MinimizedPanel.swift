@@ -166,9 +166,18 @@ private struct MinimizedStrip: View {
                             }
                             .buttonStyle(HUDButtonStyle(tint: primary.tint ?? MacPalette.pink, height: 36))
                         }
-                        if ReadoutContent(session: session).showsFalseStart(at: context.date) {
-                            Button { ui.falseStart(model) } label: { Label("Фальстарт", systemImage: "arrow.uturn.backward") }
-                                .buttonStyle(HUDButtonStyle(height: 36))
+                        let content = ReadoutContent(session: session)
+                        if content.showsFalseStart(at: context.date) {
+                            // Orange, as in the panel; what a click does is in the pointer's tip.
+                            Button { ui.falseStart(model) } label: {
+                                Label("Фальстарт", systemImage: "arrow.uturn.backward")
+                                    .foregroundStyle(MacPalette.orange)
+                            }
+                            .buttonStyle(HUDButtonStyle(height: 36))
+                            .help([String(localized: "Фальстарт"), content.falseStartHint]
+                                .compactMap { $0 }.joined(separator: " — "))
+                            .accessibilityLabel(content.falseStartAccessibilityLabel)
+                            .accessibilityHint(content.falseStartHint ?? "")
                         }
                     } else {
                         Text(askingStop ? "Остановить запись?" : "Запись без тренировки").font(.system(size: 12.5, weight: .semibold))

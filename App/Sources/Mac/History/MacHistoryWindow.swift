@@ -31,8 +31,7 @@ struct MacHistoryWindow: View {
                         if let selected {
                             MacHistoryInspector(row: selected)
                         } else {
-                            ContentUnavailableView("Ничего не выбрано", systemImage: "sidebar.trailing",
-                                                   description: Text("Выберите тренировку или запись в таблице."))
+                            ContentUnavailableView("Ничего не выбрано", systemImage: "sidebar.trailing")
                         }
                     }
                     .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).minX }) { inspectorMinX = $0 }
@@ -89,24 +88,18 @@ struct MacHistoryWindow: View {
         if isEmpty {
             ContentUnavailableView {
                 Label("Пока нет тренировок", systemImage: "pawprint")
-            } description: {
-                Text("Вставьте расписание тренера (⇧⌘V) и проведите тренировку — здесь появятся её лог, видео и график: сколько собака спокойно ждёт за дверью.")
             } actions: {
                 Button("Перейти к тренировке") { openWindow(id: "main") }
             }
         } else {
             let records = controller.records(model)
             VStack(spacing: 0) {
-                if records.isEmpty {
-                    Label("График прогресса появится после первой тренировки.", systemImage: "chart.xyaxis.line")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                } else {
+                // Only recordings so far: no chart, the table alone.
+                if !records.isEmpty {
                     MacHistoryProgressPanel(records: records, selected: selected?.record)
+                    Divider()
                 }
-                Divider()
-                MacHistoryTable(rows: rows, longestEver: records.map(\.longestStayBehindDoor).max() ?? 0)
+                MacHistoryTable(rows: rows)
                     .overlay { if rows.isEmpty { noRows } }
             }
         }
@@ -117,11 +110,9 @@ struct MacHistoryWindow: View {
         if !controller.search.trimmingCharacters(in: .whitespaces).isEmpty {
             ContentUnavailableView.search(text: controller.search)
         } else if controller.scope == .clips {
-            ContentUnavailableView("Нет записей без тренировки", systemImage: "film",
-                                   description: Text("Здесь будут видео, снятые кнопкой записи без тренировки, и видео, у которых удалили лог."))
+            ContentUnavailableView("Нет записей без тренировки", systemImage: "film")
         } else {
-            ContentUnavailableView("Тренировок пока нет", systemImage: "pawprint",
-                                   description: Text("Есть только записи без тренировки — они во вкладке «Только видео»."))
+            ContentUnavailableView("Тренировок пока нет", systemImage: "pawprint")
         }
     }
 

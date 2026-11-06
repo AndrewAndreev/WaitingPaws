@@ -38,14 +38,19 @@ public struct SessionEvent: Codable, Equatable, Identifiable {
     public var exitNumber: Int?
     public var attempt: Int?
     public var detail: String?
+    /// A `.note` the owner marked from behind the door («легла», «залаяла», «замолчала»): the log puts it on its
+    /// exit's line. Absent in older records (and ignored by older builds).
+    public var observed: Bool?
 
-    public init(id: UUID = UUID(), time: Date, kind: SessionEventKind, exitNumber: Int? = nil, attempt: Int? = nil, detail: String? = nil) {
+    public init(id: UUID = UUID(), time: Date, kind: SessionEventKind, exitNumber: Int? = nil, attempt: Int? = nil,
+                detail: String? = nil, observed: Bool? = nil) {
         self.id = id
         self.time = time
         self.kind = kind
         self.exitNumber = exitNumber
         self.attempt = attempt
         self.detail = detail
+        self.observed = observed
     }
 }
 
@@ -138,6 +143,20 @@ public struct TrainingRecord: Codable, Equatable, Identifiable {
     public var duration: TimeInterval { finishedAt.timeIntervalSince(startedAt) }
     public var completedExits: Int { results.filter { !$0.falseStart }.count }
     public var falseStarts: Int { results.filter { $0.falseStart }.count }
+
+    /// Longest successful stay behind the door (false starts don't count).
+    public var longestStayBehindDoor: TimeInterval {
+        results.filter { !$0.falseStart }.map(\.awayDuration).max() ?? 0
+    }
+
+    /// Longest exit in the trainer's plan.
+    public var longestPlannedExit: TimeInterval { plan.exits.map(\.duration).max() ?? 0 }
+
+    /// The successful exit that lasted longest behind the door: next to its time goes its own plan («2:32 · план
+    /// 2:30»), not the longest one of the schedule.
+    public var longestResult: ExitResult? {
+        results.filter { !$0.falseStart }.max { $0.awayDuration < $1.awayDuration }
+    }
 }
 
 /// Renders a record as a short plain-text report, one line per exit in the trainer's own notation
@@ -146,11 +165,11 @@ public struct TrainingRecord: Codable, Equatable, Identifiable {
 ///     Тренировка на пятницу · Андрей
 ///     25.09.2026, 18:00–18:41 (41 мин) · выходов 9 из 9 · фальстартов 1
 ///
-///     1 выход — 2 с: за дверью 0:03 ✅ · перерыв 2:10
-///     2 выход — 5 с: фальстарт, за дверью 0:01 ❌ · перерыв 1:00 (план 5 мин)
-///     2 выход — 5 с, попытка 2: за дверью 0:06 ✅ · перерыв 5:05
+///     1 выход — 2 с: за дверью 0:03 ✅ · перерыв после 2:10
+///     2 выход — 5 с: фальстарт, за дверью 0:01 ❌ · перерыв после 1:00 (план 5 мин)
+///     2 выход — 5 с, попытка 2: за дверью 0:06 ✅ · перерыв после 5:05 (план 5 мин)
 ///
-///     Exit 2 — 5 s, attempt 2: outside 0:06 ✅ · break 5:05
+///     Exit 2 — 5 s, attempt 2: outside 0:06 ✅ · break after: 5:05 (plan 5 min)
 ///
 /// Every press is still kept in `TrainingRecord.events` (JSON); the text leaves out what the exit lines already say.
 public enum SessionLogFormatter {
@@ -174,12 +193,14 @@ public enum SessionLogFormatter {
             if result.untilStanding { line += " " + PlannedExit.untilStandingText }
             if result.attempt > 1 { line += tr(", попытка \(result.attempt)", ", attempt \(result.attempt)") }
             line += ": \(outcome(of: result)) \(result.falseStart ? "❌" : "✅")"
+            let seen = observations(of: result, in: record)
+            if !seen.isEmpty { line += " · " + seen.joined(separator: ", ") }
             // The break after the last exit only ends the session.
-            if index < record.results.count - 1, let text = breakText(for: result) { line += " · \(text)" }
+            if index < record.results.count - 1, let text = breakText(for: result, in: record) { line += " · \(text)" }
             lines.append(line)
         }
 
-        let notes = record.events.filter { $0.kind == .note && !($0.detail ?? "").isEmpty }
+        let notes = record.events.filter { $0.kind == .note && $0.observed != true && !($0.detail ?? "").isEmpty }
         if !notes.isEmpty {
             lines.append("")
             for note in notes {
@@ -189,6 +210,20 @@ public enum SessionLogFormatter {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    /// What the owner marked during this attempt, as moments from behind the door: «легла на 0:20», «залаяла на
+    /// 0:35», «замолчала на 0:41» / "lay down at 0:20" — «легла 0:20» read as «lay down for 20 s». One form for the
+    /// log, the finish, the history and the Mac.
+    public static func observations(of result: ExitResult, in record: TrainingRecord) -> [String] {
+        let start = result.leftAt ?? result.startedAt
+        return record.events
+            .filter { $0.kind == .note && $0.observed == true && $0.exitNumber == result.number && $0.attempt == result.attempt }
+            .compactMap { event in
+                guard let text = event.detail, !text.isEmpty else { return nil }
+                let moment = DurationText.clock(max(0, event.time.timeIntervalSince(start)))
+                return tr("\(text) на \(moment)", "\(text) at \(moment)")
+            }
     }
 
     /// "3 выход" / "Exit 3": how the trainer's schedule names an exit.
@@ -206,11 +241,17 @@ public enum SessionLogFormatter {
         return away ?? tr("не выходили за дверь", "didn't go outside")
     }
 
-    /// "перерыв 2:10", with the plan only when the break was noticeably different from it.
-    public static func breakText(for result: ExitResult) -> String? {
+    /// "перерыв после 2:10" / "break after: 2:10": the break that followed the exit, said as the plan says it («После —
+    /// перерыв 5 мин»; design council, round 10: «перерыв 2:02» on an exit's line didn't say where it was). Its plan
+    /// goes next to it when the break was noticeably different from it — and, given the `record`, when it was the
+    /// exit's own break, not the training's common one (the trainer's «Перерыв 5 минут» after exit 6), so the
+    /// trainer checks her five minutes even when they were kept: «перерыв после 5:02 (план 5 мин)».
+    public static func breakText(for result: ExitResult, in record: TrainingRecord? = nil) -> String? {
         guard let actual = result.actualBreak else { return nil }
-        var text = tr("перерыв \(DurationText.clock(actual))", "break \(DurationText.clock(actual))")
-        if abs(actual - result.plannedBreak) > 15 {
+        var text = tr("перерыв после \(DurationText.clock(actual))", "break after: \(DurationText.clock(actual))")
+        let differs = abs(actual - result.plannedBreak) > 15
+        let ownBreak = record.map { abs(result.plannedBreak - $0.plan.defaultBreak) >= 1 } ?? false
+        if differs || ownBreak {
             text += tr(" (план \(DurationText.short(result.plannedBreak)))", " (plan \(DurationText.short(result.plannedBreak)))")
         }
         return text

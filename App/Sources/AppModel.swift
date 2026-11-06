@@ -31,9 +31,14 @@ final class AppModel {
     #else
     /// Finds Macs running Waiting Paws and mirrors a training running there.
     let syncClient = SyncClient()
+    /// The training without looking at the screen: vibrations when its timers run out, the Live Activity and the
+    /// Dynamic Island (`TrainingGlance` follows `session` by itself; started at the end of `init`).
+    let glance = TrainingGlance()
     #endif
 
     private(set) var session: TrainingSession?
+    /// What the owner marked from behind the door on this device (a tap on «Легла», on «Залаяла»): see `exitWatch`.
+    private var storedExitWatch: ExitWatch?
     private(set) var history: [TrainingRecord] = []
     /// The record of the session that has just finished (drives the summary card).
     var lastRecord: TrainingRecord?
@@ -176,6 +181,9 @@ final class AppModel {
         if settings.showPerformance || CommandLine.arguments.contains("--perf") { performance.start() }
         #if os(iOS)
         KeyboardPrewarmer.prewarm(after: 2)
+        // Vibrations and the Live Activity of a training here or mirrored from a Mac (it looks for one by itself,
+        // so the demo sessions set up below are found too).
+        glance.start(model: self)
         #endif
         #if DEBUG
         // `--demo-clip <seconds>` records without a training for that long (the standalone recording flow).
@@ -238,9 +246,47 @@ final class AppModel {
             // the door an older iPhone's «Начать выход» starts).
             if let index = CommandLine.arguments.firstIndex(of: "--demo-phase"), index + 1 < CommandLine.arguments.count {
                 let phase = CommandLine.arguments[index + 1]
-                if phase == "leaving" { session?.startExit() } else { session?.markBehindDoor() }
+                // Outside with marks (below): out for a while before them, so the marks fall inside the exit.
+                let lead = phase == "away" ? Self.demoMarksLead() : nil
+                if phase == "leaving" {
+                    session?.startExit()
+                } else {
+                    session?.markBehindDoor(at: lead.map { Date().addingTimeInterval(-$0) })
+                }
                 if phase == "break" || phase == "finish" { session?.endExit() }
                 if phase == "finish" { finishSession() }
+            }
+            // `--demo-mark <n>` (with `--demo-mark-ago <s>`, 5 by default): the owner tapped the exit's n-th condition
+            // s seconds ago; `--demo-barking`: the dog is barking; `--demo-quiet-ago <s>`: quiet for s seconds (`ExitWatch`).
+            if let session, case .away = session.phase, let exit = session.currentExit {
+                let arguments = CommandLine.arguments
+                func number(_ flag: String) -> Double? {
+                    guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else { return nil }
+                    return Double(arguments[index + 1])
+                }
+                var watch = ExitWatch(exitID: exit.id, attempt: session.attempt)
+                let entries = session.plan.earlyEntries(of: exit)
+                // In the log as well, as a tap puts them there («Отмечено: легла на 0:06 — в логе»).
+                if let mark = number("--demo-mark").map({ Int($0) }), entries.indices.contains(mark - 1) {
+                    let at = Date().addingTimeInterval(-(number("--demo-mark-ago") ?? 5))
+                    watch.mark(entries[mark - 1], at: at)
+                    session.observe(entries[mark - 1].event.lowercased(), at: at)
+                }
+                if arguments.contains("--demo-barking") {
+                    watch.markBarking(at: Date())
+                    session.observe(String(localized: "залаяла"), at: Date().addingTimeInterval(-3))
+                }
+                if let ago = number("--demo-quiet-ago") {
+                    watch.markQuiet(at: Date().addingTimeInterval(-ago))
+                    session.observe(String(localized: "залаяла"), at: Date().addingTimeInterval(-ago - 9))
+                    session.observe(String(localized: "замолчала"), at: Date().addingTimeInterval(-ago))
+                }
+                if !watch.isEmpty { storedExitWatch = watch }
+            }
+            // `--demo-false-start`: «Фальстарт» just pressed — outside (`--demo-phase away`) or in a break before the
+            // next exit (`--demo-phase break`); its «Отменить фальстарт» stays through the break that follows.
+            if CommandLine.arguments.contains("--demo-false-start"), session?.phase.canFalseStart == true {
+                falseStart()
             }
         }
         #endif
@@ -248,6 +294,21 @@ final class AppModel {
 
     #if DEBUG
     private final class DemoClock: @unchecked Sendable { var offset: TimeInterval = 0 }
+
+    /// How long before now a demo exit with marks (`--demo-mark-ago`, `--demo-barking`, `--demo-quiet-ago`) went
+    /// outside: a few seconds before the earliest of them. nil without marks (the exit starts now).
+    private static func demoMarksLead() -> TimeInterval? {
+        let arguments = CommandLine.arguments
+        func number(_ flag: String) -> Double? {
+            guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else { return nil }
+            return Double(arguments[index + 1])
+        }
+        var earliest: [TimeInterval] = []
+        if arguments.contains("--demo-mark") { earliest.append(number("--demo-mark-ago") ?? 5) }
+        if arguments.contains("--demo-barking") { earliest.append(3) }
+        if let ago = number("--demo-quiet-ago") { earliest.append(ago + 9) }
+        return earliest.max().map { $0 + 6 }
+    }
 
     /// A session of `plan` whose first `exitsDone` exits happened in the past at a realistic pace; it is now
     /// in the break after the last of them.
@@ -266,12 +327,35 @@ final class AppModel {
         clock.offset = -(total - early)
         let session = TrainingSession(plan: plan, clock: { Date().addingTimeInterval(clock.offset) })
         if args.contains("--demo-recording") { session.noteRecording(started: true, fileName: "demo.mp4") }
+        // `--demo-marks`: the owner's marks from behind the door on the replayed exits, in the record like real ones.
+        let marks = args.contains("--demo-marks")
         for index in 0..<done {
-            session.markBehindDoor(); clock.offset += plan.exits[index].duration + linger
+            let away = plan.exits[index].duration + linger
+            session.markBehindDoor()
+            var at: TimeInterval = 0
+            for (text, moment) in marks ? demoMarks(plan, exit: plan.exits[index], away: away) : [] {
+                clock.offset += moment - at; at = moment
+                session.observe(text)
+            }
+            clock.offset += away - at
             session.endExit(); clock.offset += plan.breakAfter(exitAt: index)
         }
         clock.offset = 0
         return session
+    }
+
+    /// What an owner would have tapped on a replayed exit, and when (from behind the door): the exit's condition
+    /// with the shortest wait, as long before the return as it says («легла» 0:20 before), or on a long exit without
+    /// one the bark and the quiet the rule waits for — so each return follows from its marks.
+    private static func demoMarks(_ plan: TrainingPlan, exit: PlannedExit, away: TimeInterval) -> [(String, TimeInterval)] {
+        let timed = plan.earlyEntries(of: exit).compactMap { entry in entry.delay.map { (entry, $0) } }.filter { $0.1 > 0 }
+        if let (entry, delay) = timed.min(by: { $0.1 < $1.1 }), away - delay >= 5 {
+            return [(entry.event.lowercased(), away - delay)]
+        }
+        if away >= 90, let quiet = plan.doNotEnterRule?.quietTime, away - quiet >= 20 {
+            return [(String(localized: "залаяла"), away - quiet - 9), (String(localized: "замолчала"), away - quiet)]
+        }
+        return []
     }
 
     /// The demo schedule; `-demoPlanText <text>` puts another one there (UI checks of a given trainer's text).
@@ -485,6 +569,105 @@ final class AppModel {
         lastRecord = nil
         tickTask?.cancel()
         keepAwake(false)
+    }
+
+    // MARK: - What the owner sees from behind the door
+
+    /// The marks of the exit under way (`ExitWatch`): nil outside an exit, and forgotten by itself when the exit ends,
+    /// a false start repeats it or the next one begins. They stay on this device: the app does not see the dog, it
+    /// times what the owner saw, and the owner is the one holding this phone.
+    var exitWatch: ExitWatch? {
+        guard let watch = storedExitWatch, let session, case .away = session.phase,
+              session.currentExit?.id == watch.exitID, session.attempt == watch.attempt else { return nil }
+        return watch
+    }
+
+    /// A tap on a condition («Легла»): seen now, its countdown starts (again).
+    func markCondition(_ entry: EarlyEntry) {
+        updateExitWatch { $0.mark(entry, at: Date()) }
+        // For the trainer: what was seen and when, on this exit's line of the log.
+        session?.observe(entry.event.lowercased())
+    }
+
+    /// A tap on the rule against coming in: «Лает» (wait, nothing counts) and «Замолчала» (the quiet counts from now)
+    /// in turn — what the owner hears, in the order it happens.
+    func tapQuietRule() {
+        var barking = false
+        updateExitWatch { watch in
+            if watch.barking { watch.markQuiet(at: Date()) } else { watch.markBarking(at: Date()) }
+            barking = watch.barking
+        }
+        session?.observe(barking ? String(localized: "залаяла") : String(localized: "замолчала"))
+    }
+
+    /// «Фальстарт» just pressed on this device: the training before it, the exit it was about and the break it led
+    /// to, for «Отменить фальстарт» all through that break. Not on a mirror (the Mac owns that training).
+    struct FalseStartUndo {
+        let snapshot: TrainingSession.Snapshot
+        let exitNumber: Int
+        /// When it was pressed: an undo later than `backOutsideFor` ends the exit there instead of going back out.
+        let pressedAt: Date
+        /// The break the press started (`afterExitIndex`, `since`): the undo lasts while it does.
+        let breakAfter: Int
+        let breakSince: Date
+        /// Pressed in a break (the dog went to the door before «Вышли»): that break started over, «Перерыв начат
+        /// заново»; outside, the exit ended and this break is the one before its repeat.
+        var fromBreak = false
+    }
+    private var storedFalseStartUndo: FalseStartUndo?
+
+    /// The way back from the last «Фальстарт»: until the next exit starts (the break it led to is over), not a few
+    /// seconds — in the break the owner is busy with the dog, not with the phone.
+    var falseStartUndo: FalseStartUndo? {
+        guard let undo = storedFalseStartUndo, let session, session.isSameSession(as: undo.snapshot),
+              case .breakTime(let after, let since, _, _) = session.phase,
+              after == undo.breakAfter, since == undo.breakSince else { return nil }
+        return undo
+    }
+
+    /// An undo this soon after the press puts the owner back outside, the exit still running (a press by mistake
+    /// behind the door); later they are plainly inside, and the exit ends normally at the press.
+    static let falseStartBackOutsideFor: TimeInterval = 10
+
+    /// «Фальстарт» of the exit the session is at: outside, the one under way (back inside early); in a break (or
+    /// before the first exit), the next one — the dog went to the door before «Вышли», the break starts over. Either
+    /// way that exit repeats after a break.
+    func falseStart() {
+        guard let session else { return }
+        let before = session.snapshot
+        let number = session.currentExit?.number
+        let inBreak: Bool = if case .breakTime = session.phase { true } else { false }
+        session.resetExit()
+        guard !isMirroringSession, let number, case .breakTime(let after, let since, _, _) = session.phase else {
+            storedFalseStartUndo = nil
+            return
+        }
+        storedFalseStartUndo = FalseStartUndo(snapshot: before, exitNumber: number, pressedAt: Date(),
+                                              breakAfter: after, breakSince: since, fromBreak: inBreak)
+    }
+
+    /// «Отменить фальстарт»: as if it was never pressed. In a break that was that break going on; outside, right
+    /// after the press, the exit still running — and later, the exit ended normally at the press (the owner came in
+    /// then), its break counting from there.
+    func undoFalseStart() {
+        guard let undo = falseStartUndo, let session else { return }
+        session.revert(to: undo.snapshot)
+        if session.phase.isOutside, Date().timeIntervalSince(undo.pressedAt) > Self.falseStartBackOutsideFor {
+            session.endExit(at: undo.pressedAt)
+        }
+        storedFalseStartUndo = nil
+    }
+
+    /// ✕ next to what the big number says: every mark of this exit taken back, the plan's countdown again.
+    func clearMarks() {
+        updateExitWatch { $0.clear() }
+    }
+
+    private func updateExitWatch(_ change: (inout ExitWatch) -> Void) {
+        guard let session, case .away = session.phase, let exit = session.currentExit else { return }
+        var watch = exitWatch ?? ExitWatch(exitID: exit.id, attempt: session.attempt)
+        change(&watch)
+        storedExitWatch = watch.isEmpty ? nil : watch
     }
 
     private func startTicking() {

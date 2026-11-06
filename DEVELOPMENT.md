@@ -28,7 +28,12 @@ Packages/WaitingPawsCore         — Swift Package без UI, с тестами
   Storage/SessionStore.swift     — сохранение логов/видео
 Design/logos-v2                  — все концепты логотипа кодом (SVG) + галерея-мокап, см. README там
 Design/app-icon                  — исходники иконки приложения (концепт 07 «Песочные часы», палитра «Ночь»)
+.claude/skills/design-council    — скилл дизайн-консилиума (`/design-council <критерий>`), см. SKILL.md там
 ```
+
+Дизайн-консилиум сравнивает экраны с референсами уровня Apple тремя моделями и дорабатывает их раундами, пока не
+выполнен критерий из аргумента скилла. Запуски с референсами и скриншотами — вне репозитория, в
+`~/projects/WaitingPaws-design-history/` (там же консилиум 1.7, `2026-11-council/`).
 
 Иконка приложения генерируется из кода: `node Design/logos-v2/app-icon.js` пересобирает SVG в
 `Design/app-icon` и все PNG в `App/Resources/Assets.xcassets/AppIcon.appiconset` (нужны

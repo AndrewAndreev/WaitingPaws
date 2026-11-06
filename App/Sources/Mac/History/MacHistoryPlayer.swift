@@ -86,8 +86,10 @@ struct MacHistoryPlayerView: NSViewRepresentable {
 
 // MARK: - Exit strip
 
-/// The training laid along its recording: walks to the door, time behind it (numbered), false starts, breaks.
-/// The white bar follows the video; a click or drag seeks.
+/// The training laid along its recording: walks to the door, time behind it (numbered), false starts, breaks, and
+/// what the owner marked from behind the door as dots on it (the console's «Факт» lane: a condition in its trainer's
+/// colour, the barking and the quiet after it red). The white bar follows the video; a click or drag seeks, a click on
+/// a dot goes to that moment.
 struct MacHistoryExitStrip: View {
     let record: TrainingRecord
     /// Clock time of offset 0 (the start of the recording, or of the training without a video).
@@ -106,7 +108,35 @@ struct MacHistoryExitStrip: View {
         let exit: Int
     }
 
+    /// «Выход 3 · легла на 0:43» at `offset` (from `base`).
+    private struct Mark: Identifiable {
+        let id: UUID
+        let offset: TimeInterval
+        let color: Color
+        let text: String
+    }
+
     private let trackHeight: CGFloat = 6
+
+    /// The marks of each attempt, worded as the log words them (`SessionLogFormatter.observations`, in that order).
+    private var marks: [Mark] {
+        record.results.flatMap { result -> [Mark] in
+            let events = record.events.filter {
+                $0.kind == .note && $0.observed == true && $0.exitNumber == result.number && $0.attempt == result.attempt
+                    && !($0.detail ?? "").isEmpty
+            }
+            let words = SessionLogFormatter.observations(of: result, in: record)
+            let exit = result.attempt > 1 ? String(localized: "Выход \(result.number), попытка \(result.attempt)")
+                                          : String(localized: "Выход \(result.number)")
+            return events.enumerated().map { index, event in
+                let said = words.indices.contains(index) ? words[index] : event.detail ?? ""
+                return Mark(id: event.id, offset: event.time.timeIntervalSince(base),
+                            color: SessionTimelineView.color(of: event.detail ?? "", exit: result.number, in: record.plan),
+                            text: "\(exit) · \(said)")
+            }
+        }
+        .filter { $0.offset >= 0 && $0.offset <= total }
+    }
 
     private var segments: [Segment] {
         var segments: [Segment] = []
@@ -153,6 +183,7 @@ struct MacHistoryExitStrip: View {
                 .frame(height: trackHeight)
                 .clipShape(Capsule())
                 .frame(maxHeight: .infinity)
+                .overlay { markDots(width: geo.size.width) }
                 .overlay(alignment: .leading) {
                     if let player, player.url != nil {
                         Playhead(player: player, total: total, width: geo.size.width, trackHeight: trackHeight)
@@ -196,6 +227,27 @@ struct MacHistoryExitStrip: View {
                 .foregroundStyle(.secondary)
                 .help("Выход \(segment.exit)")
         }
+    }
+
+    /// The marks on the track, a dark ring keeping them apart from the pink under them; their words under the pointer.
+    private func markDots(width: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(marks) { mark in
+                Circle()
+                    .fill(mark.color)
+                    .overlay(Circle().strokeBorder(Color.black.opacity(0.6), lineWidth: 1.5))
+                    .frame(width: 9, height: 9)
+                    .frame(width: 14, height: trackHeight + 10)
+                    .contentShape(Rectangle())
+                    .help(mark.text)
+                    .onTapGesture {
+                        guard let player, player.url != nil else { return }
+                        player.seek(to: mark.offset)
+                    }
+                    .position(x: min(max(4.5, x(mark.offset, width)), width - 4.5), y: (trackHeight + 10) / 2)
+            }
+        }
+        .frame(width: width, height: trackHeight + 10, alignment: .topLeading)
     }
 
     private func x(_ offset: TimeInterval, _ width: CGFloat) -> CGFloat {

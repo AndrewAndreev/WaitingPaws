@@ -13,6 +13,9 @@ struct SessionTimelineView: View {
 
     private let labelWidth: CGFloat = 86
     private let laneHeight: CGFloat = 34
+    private let laneSpacing: CGFloat = 10
+    /// The lanes start under the ruler.
+    private let lanesTop: CGFloat = 30
     /// Room before the first exit, so its start is not glued to the lane titles.
     private let lead: TimeInterval = 15
 
@@ -34,6 +37,10 @@ struct SessionTimelineView: View {
         var split: Date? = nil
         var splitColor: Color? = nil
         var edge: PlanEdge? = nil
+        /// Striped: a false start, never mistaken for the plain orange tail of an exit past its plan.
+        var hatched = false
+        /// Said instead of `label` where it fits: «после 6-го — 5 мин» for a break of its own.
+        var wideLabel: String? = nil
     }
 
     private struct EdgeDrag {
@@ -42,6 +49,12 @@ struct SessionTimelineView: View {
         /// The axis frozen for the drag, so the edge stays under the pointer while the plan grows.
         let axis: ClosedRange<Date>
         let width: CGFloat
+    }
+
+    /// What an observation in an older log is (`color(of:exit:in:)`, the history's marks): a condition, «залаяла» or
+    /// «замолчала». The live timeline draws none: conditions are read, not marked.
+    enum MarkKind {
+        case condition, bark, quiet
     }
 
     @State private var drag: EdgeDrag?
@@ -62,12 +75,12 @@ struct SessionTimelineView: View {
                 let axis = drag?.axis ?? axisRange
                 ZStack(alignment: .topLeading) {
                     ruler(width: width, axis: axis)
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: laneSpacing) {
                         lane(String(localized: "План"), segments: planSegments, width: width, axis: axis)
                         lane(String(localized: "Факт"), segments: factSegments, width: width, axis: axis)
                         lane(String(localized: "Запись"), segments: recordSegments, width: width, axis: axis, height: 14)
                     }
-                    .padding(.top, 30)
+                    .padding(.top, lanesTop)
                     playhead(width: width, axis: axis, height: geo.size.height)
                     if let drag {
                         dragTip(drag, width: width, axis: axis)
@@ -108,10 +121,13 @@ struct SessionTimelineView: View {
             t = t.addingTimeInterval(exit.duration)
             if index < plan.exits.count - 1 {
                 let b = plan.breakAfter(exitAt: index)
+                // A break of its own says whose it is where it fits, as the plan's review does.
+                let own = exit.breakAfter != nil
                 segments.append(Segment(start: t, end: t.addingTimeInterval(b),
-                                        color: exit.breakAfter != nil ? MacPalette.breakOwn : MacPalette.breakFill,
-                                        label: exit.breakAfter != nil ? DurationText.short(b) : nil,
-                                        edge: PlanEdge(index: index, kind: .pause)))
+                                        color: own ? MacPalette.breakOwn : MacPalette.breakFill,
+                                        label: own ? DurationText.short(b) : nil,
+                                        edge: PlanEdge(index: index, kind: .pause),
+                                        wideLabel: own ? String(localized: "после \(exit.number)-го — \(DurationText.short(b))") : nil))
                 t = t.addingTimeInterval(b)
             }
         }
@@ -130,16 +146,17 @@ struct SessionTimelineView: View {
                 segments.append(Segment(start: left, end: max(r.endedAt, left.addingTimeInterval(4)),
                                         color: r.falseStart ? MacPalette.orange : MacPalette.pink,
                                         label: r.falseStart ? "↺" : "\(r.number)", strong: true,
-                                        split: !r.falseStart && r.endedAt > planned ? planned : nil, splitColor: MacPalette.orange))
+                                        split: !r.falseStart && r.endedAt > planned ? planned : nil, splitColor: Theme.overtime,
+                                        hatched: r.falseStart))
             } else if r.falseStart {
                 // A false start before «Вышли»: a short mark where the break started over.
                 segments.append(Segment(start: r.startedAt, end: max(r.endedAt, r.startedAt.addingTimeInterval(4)),
-                                        color: MacPalette.orange, label: "↺", strong: true))
+                                        color: MacPalette.orange, label: "↺", strong: true, hatched: true))
             }
             let next = i + 1 < results.count ? results[i + 1].startedAt : (currentStart ?? model.now)
             let planned = r.endedAt.addingTimeInterval(r.plannedBreak)
             segments.append(Segment(start: r.endedAt, end: next, color: MacPalette.breakFill,
-                                    split: next > planned ? planned : nil, splitColor: MacPalette.orange))
+                                    split: next > planned ? planned : nil, splitColor: Theme.overtime))
         }
         switch model.phase {
         case .leaving(_, let since):
@@ -149,7 +166,7 @@ struct SessionTimelineView: View {
             let planned = leftAt.addingTimeInterval(plan.exits[index].duration)
             segments.append(Segment(start: leftAt, end: max(model.now, leftAt.addingTimeInterval(1)), color: MacPalette.pink,
                                     label: "\(plan.exits[index].number)", strong: true,
-                                    split: model.now > planned ? planned : nil, splitColor: MacPalette.orange))
+                                    split: model.now > planned ? planned : nil, splitColor: Theme.overtime))
         default: break
         }
         // What is left, projected from now: the rest of the current exit or break, then the plan as it goes.
@@ -195,7 +212,29 @@ struct SessionTimelineView: View {
 
     private var recordSegments: [Segment] {
         guard let since = model.recordingSince else { return [] }
-        return [Segment(start: since, end: model.now, color: MacPalette.red.opacity(0.75), label: "REC \(model.recordingText ?? "")")]
+        // The bar alone: the time recorded is in the toolbar's REC.
+        return [Segment(start: since, end: model.now, color: MacPalette.red.opacity(0.75))]
+    }
+
+    /// The colour of a mark's chip: barking and the quiet after it red, a condition its trainer's 🟡 / 🟢 (found by its
+    /// words, on its exit first), else the plain condition's blue.
+    static func color(of words: String, exit number: Int?, in plan: TrainingPlan) -> Color {
+        if kind(of: words) != .condition { return MacPalette.red }
+        let words = words.lowercased()
+        let exits = plan.exits.filter { $0.number == number } + plan.exits.filter { $0.number != number }
+        for exit in exits {
+            if let entry = plan.earlyEntries(of: exit).first(where: { $0.event.lowercased() == words }) { return entry.tone.color }
+        }
+        return EarlyEntry.Tone.plain.color
+    }
+
+    /// «залаяла», «замолчала» (in either language, as the log has them), or a condition.
+    static func kind(of words: String) -> MarkKind {
+        let words = words.lowercased()
+        func any(_ list: [String]) -> Bool { list.contains { $0.lowercased() == words } }
+        if any([String(localized: "залаяла"), "залаяла", "barked"]) { return .bark }
+        if any([String(localized: "замолчала"), "замолчала", "went quiet"]) { return .quiet }
+        return .condition
     }
 
     // MARK: - Drawing
@@ -285,6 +324,7 @@ struct SessionTimelineView: View {
             }
         }
         .overlay {
+            if s.hatched { Stripes().clipShape(shape) }
             if s.dashed {
                 shape.strokeBorder(s.color, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
             }
@@ -294,10 +334,16 @@ struct SessionTimelineView: View {
         }
         .overlay {
             if let label = s.label, w > 12 || s.strong || h < 20 {
-                Text(label)
-                    .font(.system(size: h < 20 ? 9 : 10, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(s.strong || s.edge?.kind == .exit ? Color.black.opacity(0.75) : .primary.opacity(0.85))
-                    .fixedSize()
+                let font = Font.system(size: h < 20 ? 9 : 10, weight: .semibold).monospacedDigit()
+                let tint = s.strong || s.edge?.kind == .exit ? Color.black.opacity(0.75) : .primary.opacity(0.85)
+                ViewThatFits(in: .horizontal) {
+                    if let wide = s.wideLabel { Text(wide).fixedSize() }
+                    Text(label).fixedSize()
+                }
+                .font(font)
+                .foregroundStyle(tint)
+                // The bar's width to choose the words by; a short false start's «↺» still shows past its ends.
+                .frame(width: max(w - 6, 0))
             }
         }
         .frame(width: w, height: h)
@@ -366,7 +412,7 @@ struct SessionTimelineView: View {
         let delta = value - drag.startValue
         let end = planSegments.first { $0.edge == drag.edge }?.end ?? model.now
         // One attributed text (`Text + Text` is deprecated; interpolating Texts would add a key to the catalog).
-        var clock = AttributedString(DurationText.clock(value))
+        var clock = AttributedString(MacPlanFormat.cell(value))
         clock.inlinePresentationIntent = .stronglyEmphasized
         var change = AttributedString(delta == 0 ? "" : " (\(MacPlanFormat.signed(delta)))")
         change.foregroundColor = .black.opacity(0.55)
@@ -477,8 +523,8 @@ struct SessionTimelineView: View {
     }
 }
 
-/// «Таймлайн», the legend, and the whole training at a glance: exits, false starts, how long it runs, the planned
-/// end and how far it is from the plan. «Расписание…» opens the schedule in the editor.
+/// Over the lanes, when the training ends by the plan, «≈ 22:03», then «Расписание…». What a bar is, its colour says (the
+/// same as the chips'); how many exits and false starts, the strip and the lanes.
 private struct TimelineHeader: View {
     let model: LiveSessionModel
     @Environment(AppModel.self) private var app
@@ -486,19 +532,8 @@ private struct TimelineHeader: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Text("Таймлайн").font(.headline)
-            // The legend goes first when the window is narrow; the numbers stay.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 14) {
-                    legendItems
-                    Spacer(minLength: 12)
-                    stats
-                }
-                HStack(spacing: 14) {
-                    Spacer(minLength: 0)
-                    stats
-                }
-            }
+            Spacer(minLength: 0)
+            numbers
             Button { ui.editSessionPlan(app) } label: {
                 Label("Расписание…", systemImage: "slider.horizontal.3")
             }
@@ -509,47 +544,37 @@ private struct TimelineHeader: View {
         .frame(height: 40)
     }
 
-    @ViewBuilder
-    private var legendItems: some View {
-        legend(MacPalette.pink, String(localized: "выход"))
-        legend(MacPalette.breakFill, String(localized: "перерыв"))
-        legend(MacPalette.orange, String(localized: "сверх плана / фальстарт"))
+    /// «≈ 22:03» alone: the end already takes in how far the training runs from the plan (that is in the tip).
+    private var numbers: some View {
+        Text(verbatim: "≈ \(MacFormat.time.string(from: model.eta))")
+            .font(.system(size: 13, weight: .semibold).monospacedDigit())
+            .fixedSize()
+            .help(tip)
     }
 
-    private var stats: some View {
-        let falseStarts = model.session.falseStartsCount
-        return HStack(spacing: 16) {
-            stat(String(localized: "\(model.session.completedExitsCount) из \(model.plan.exits.count)"), String(localized: "выходов"))
-            stat("\(falseStarts)", String(localized: "фальстартов"), tint: falseStarts > 0 ? MacPalette.orange : nil)
-            stat(model.sessionElapsed, String(localized: "идёт тренировка"))
-            stat("≈ \(MacFormat.time.string(from: model.eta))", String(localized: "конец по плану"))
-            if let drift = model.drift, abs(drift) >= 1 {
-                stat((drift > 0 ? "+" : "−") + DurationText.clock(abs(drift)), String(localized: "от плана"),
-                     tint: drift > 60 ? MacPalette.orange : nil)
-                    .help(drift > 0 ? String(localized: "отстаём от плана на \(DurationText.clock(drift))")
-                                    : String(localized: "опережаем план на \(DurationText.clock(-drift))"))
+    /// «конец по плану», and how far from it while the plan's own arithmetic holds (a false start repeats an exit).
+    private var tip: String {
+        let end = String(localized: "конец по плану")
+        guard let drift = model.drift, abs(drift) >= 1, model.session.falseStartsCount == 0 else { return end }
+        return end + " · " + (drift > 0 ? String(localized: "отстаём от плана на \(DurationText.clock(drift))")
+                                        : String(localized: "опережаем план на \(DurationText.clock(-drift))"))
+    }
+}
+
+/// Dark diagonal stripes over a false start's orange.
+private struct Stripes: View {
+    var body: some View {
+        Canvas { context, size in
+            var path = Path()
+            var x = -size.height
+            while x < size.width {
+                path.move(to: CGPoint(x: x, y: size.height))
+                path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                x += 5
             }
+            context.stroke(path, with: .color(.black.opacity(0.32)), lineWidth: 1.6)
         }
-        .fixedSize()
-    }
-
-    private func stat(_ value: String, _ label: String, tint: Color? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(value)
-                .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                .foregroundStyle(tint ?? .primary)
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func legend(_ color: Color, _ text: String) -> some View {
-        HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 12, height: 8)
-            Text(text).font(.caption).foregroundStyle(.secondary)
-        }
-        .fixedSize()
+        .allowsHitTesting(false)
     }
 }
 #endif

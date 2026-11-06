@@ -570,6 +570,39 @@ final class PlanParserTests: XCTestCase {
         XCTAssertEqual(lines.map(\.exitNumber), [nil, nil, 1, 1, 1])
     }
 
+    /// The plan shows each exit with the trainer's lines it was read from: an exit keeps them by its place in the text
+    /// (`sourceIndex` ↔ `exitIndex`) through a reorder and a renumbering, a hand-added exit has none, and an own break
+    /// after a blank line is its exit's line, as `parse` reads it.
+    func testExitsKeepTheirLines() {
+        let text = """
+        🐹 Тренировка - 04.10.2026
+        ➡️ Все перерывы 2 минуты
+        3 выход - 10 секунд
+        3 выход - 2 минуты
+        🟢 Если легла - входим через 20 секунд
+
+        Перерыв 5 минут
+        🚩 Если залаяла - ждём, входим когда молчала 30 секунд
+        """
+        var plan = PlanParser.parse(text)
+        XCTAssertEqual(plan.exits.map(\.sourceIndex), [0, 1])
+        XCTAssertEqual(plan.exits[1].breakAfter, 300)
+        let lines = PlanParser.sourceLines(text)
+        XCTAssertEqual(lines.map(\.kind), [.header, .note, .exit, .exit, .earlyEntry, .blank, .breakTime, .doNotEnter])
+        XCTAssertEqual(lines.map(\.exitIndex), [nil, nil, 0, 1, 1, nil, 1, nil])
+        XCTAssertEqual(lines.map(\.exitNumber), [nil, nil, 3, 3, 3, nil, 3, nil])
+
+        plan.exits.swapAt(0, 1)
+        plan.exits.append(PlannedExit(number: 0, duration: 30))
+        plan.renumber()
+        XCTAssertEqual(plan.exits.map(\.sourceIndex), [1, 0, nil])
+        let decoded = try? JSONDecoder().decode(TrainingPlan.self, from: JSONEncoder().encode(plan))
+        XCTAssertEqual(decoded?.exits.map(\.sourceIndex), [1, 0, nil])
+        // A plan saved before the field decodes without it.
+        let old = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","number":1,"duration":10,"untilStanding":false}"#
+        XCTAssertNil(try JSONDecoder().decode(PlannedExit.self, from: Data(old.utf8)).sourceIndex)
+    }
+
     /// «…входим через 30 секунд, не заходя в комнату» was taken for a rule against coming in: the condition was lost
     /// and the line became the plan's «Не входить».
     func testHowToComeInIsNoRuleAgainstIt() {

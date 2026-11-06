@@ -34,13 +34,23 @@ struct ExitEditorView: View {
 
     private func form(_ index: Int) -> some View {
         let exit = draft.exits[index]
+        // The trainer's lines of this exit, over the fields read from them: what she wrote stays in sight while the
+        // owner changes it (a time changed here is struck through in her words).
+        let words = TrainerSource(draft).words(of: exit, in: draft)
         return Form {
+            if !words.isEmpty {
+                Section {
+                    TrainerQuote(lines: words)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                }
+            }
             Section {
                 HStack {
                     Text("За дверью")
                     Spacer()
                     DurationButton(value: $draft.keepingCommonEntriesScope.exits[index].duration, title: String(localized: "Выход \(exit.number)"),
-                                   presets: DurationPresets.exits)
+                                   presets: DurationPresets.exits, tint: Theme.accent)
                 }
                 if index < draft.exits.count - 1 {
                     HStack {
@@ -48,7 +58,8 @@ struct ExitEditorView: View {
                         Spacer()
                         DurationButton(value: $draft.exits[index].breakAfter,
                                        title: String(localized: "Перерыв после выхода \(exit.number)"),
-                                       presets: DurationPresets.breaks, defaultValue: draft.defaultBreak, secondsStep: 5)
+                                       presets: DurationPresets.breaks, defaultValue: draft.defaultBreak, secondsStep: 5,
+                                       tint: Theme.info)
                     }
                 }
             }
@@ -73,9 +84,9 @@ struct ExitEditorView: View {
                 }
                 .padding(.vertical, 4)
             } header: {
+                // No sentence under it (design council, round 17): the trainer's words over the fields show what a
+                // trigger is.
                 Label("Триггеры на выходе", systemImage: "bolt.fill")
-            } footer: {
-                Text("Что взять или сделать, выходя: куртка, обувь, звякнуть ключами.")
             }
 
             entriesSection(index)
@@ -87,8 +98,6 @@ struct ExitEditorView: View {
                     .lineLimit(3...10)
             } header: {
                 Label("Заметка", systemImage: "text.bubble")
-            } footer: {
-                Text("Во время тренировки заметка свёрнута в одну строку под условиями.")
             }
         }
         #if os(macOS)
@@ -123,7 +132,8 @@ struct ExitEditorView: View {
                 triggerEdit = TriggerEdit(index: offset)
             } label: {
                 Label {
-                    Text(trigger).lineLimit(2)
+                    // Amber, as the trigger in the trainer's words.
+                    Text(trigger).lineLimit(2).foregroundStyle(Theme.warning)
                 } icon: {
                     Image(systemName: "bolt.fill").foregroundStyle(Theme.warning)
                 }
@@ -199,10 +209,6 @@ struct ExitEditorView: View {
                 Spacer()
                 if common { Text("общие").foregroundStyle(Theme.warning) }
             }
-        } footer: {
-            Text(common
-                 ? "Эти условия тренер написал для всей тренировки. Изменения здесь касаются только этого выхода."
-                 : "Когда вернуться раньше плана: что сделала собака и через сколько входить.")
         }
     }
 
@@ -217,10 +223,20 @@ struct ExitEditorView: View {
     }
 }
 
-/// One condition: the trainer's colour, what the dog does, after how long, and the trainer's words under it.
+/// One condition: the trainer's colour, what the dog does, after how long (in the condition's blue, as in her words),
+/// and her words about it under them when she wrote any («от начала движения…»). No hint in an empty field (design
+/// council, round 17: «От начала движения, когда сняла фокус с двери…» under every condition read as her words).
 private struct EntryEditorRow: View {
     @Binding var entry: EarlyEntry
     var isCommon: Bool
+    /// The words under it, while it has some: kept for the editing, also when they are typed away.
+    @State private var hasDetail: Bool
+
+    init(entry: Binding<EarlyEntry>, isCommon: Bool) {
+        _entry = entry
+        self.isCommon = isCommon
+        _hasDetail = State(initialValue: entry.wrappedValue.detail?.isEmpty == false)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -251,17 +267,20 @@ private struct EntryEditorRow: View {
                 }
                 DurationButton(value: Binding(get: { entry.delay ?? 0 }, set: { entry.delay = $0 > 0 ? $0 : nil }),
                                title: String(localized: "Через сколько входить"), presets: DurationPresets.entryDelays,
-                               zeroTitle: String(localized: "сразу"))
+                               zeroTitle: String(localized: "сразу"), tint: Theme.info)
             }
-            TextField("От начала движения, когда сняла фокус с двери…", text: Binding(
-                get: { entry.detail ?? "" },
-                set: { entry.detail = $0.isEmpty ? nil : $0 }), axis: .vertical)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .lineLimit(1...4)
-                .padding(.leading, 34)
+            if hasDetail {
+                TextField(text: Binding(get: { entry.detail ?? "" }, set: { entry.detail = $0.isEmpty ? nil : $0 }),
+                          axis: .vertical) { EmptyView() }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1...4)
+                    .padding(.leading, 34)
+            }
         }
         .padding(.vertical, 2)
+        // The line between two conditions from the row's start, not from the time.
+        .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
     }
 }
 

@@ -81,7 +81,9 @@ struct MacConsoleView: View {
             }
             .frame(maxHeight: .infinity)
             .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { cameraHeight = $0 }
-            if !clipMode {
+            // Before anything is pasted there is nothing to lay out in time: the camera takes the room, and the
+            // timeline comes up with the plan.
+            if !clipMode, model.session != nil || model.pendingPlan != nil {
                 Divider()
                 timeline
                     .frame(height: 232)
@@ -89,6 +91,7 @@ struct MacConsoleView: View {
             }
         }
         .animation(.smooth(duration: 0.35), value: clipMode)
+        .animation(.smooth(duration: 0.35), value: model.session == nil && model.pendingPlan == nil)
         .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).width }) { windowWidth = $0 }
         .onChange(of: [panelEdge ?? -1, buttonsWidth ?? -1, windowWidth, clipMode ? 1 : 0]) { updateToolbarFit() }
         #if DEBUG
@@ -98,7 +101,11 @@ struct MacConsoleView: View {
                                                groupMaxX: cameraGroupMaxX)
         }
         #endif
-        .onChange(of: toolbarSignature) { updateToolbarFit() }
+        .onChange(of: toolbarSignature) {
+            // REC came or went: the probe reads the toolbar again.
+            toolbarToken += 1
+            updateToolbarFit()
+        }
         .background(Color.black)
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
@@ -223,9 +230,7 @@ struct MacConsoleView: View {
                 .environment(ui)
         }
         .sheet(item: lastRecordBinding, onDismiss: { focused = true }) { record in
-            MacSummarySheet(record: record,
-                            onHistory: { model.lastRecord = nil; openWindow(id: "history") },
-                            onClose: { model.lastRecord = nil })
+            MacSummarySheet(record: record, onClose: { model.lastRecord = nil })
                 .environment(model)
         }
         .sheet(item: lastClipBinding, onDismiss: { focused = true }) { clip in
@@ -284,9 +289,8 @@ struct MacConsoleView: View {
                 SessionTimelineView(model: live(session, at: context.date))
             }
         } else if model.pendingPlan != nil {
-            MacPlanTimelineEditor(plan: pendingPlanBinding, original: model.pendingOriginal)
-        } else {
-            EmptyTimeline()
+            MacPlanTimelineEditor(plan: pendingPlanBinding, original: model.pendingOriginal,
+                                  pointer: Binding(get: { ui.planPointer }, set: { ui.planPointer = $0 }))
         }
     }
 
@@ -320,7 +324,8 @@ struct MacConsoleView: View {
             return trainers + String(localized: "с \(MacFormat.time.string(from: session.startedAt))")
         }
         if let plan = model.pendingPlan {
-            return (plan.trainers.isEmpty ? "" : "\(plan.trainers) · ") + String(localized: "перед стартом")
+            // The trainers alone: that it hasn't started, the panel's «Начать тренировку» says.
+            return plan.trainers
         }
         if model.isRecordingClip { return String(localized: "запись без тренировки") }
         return ui.cameraOnly ? String(localized: "только камера") : String(localized: "новая тренировка")
@@ -411,9 +416,13 @@ struct MacConsoleView: View {
             .sharedBackgroundVisibility(.hidden)
         }
         ToolbarItemGroup {
-            // The first of the panel's buttons: «REC 9:59» → «REC 10:00» moves where they begin.
-            RecordingToolbarButton(compact: compactToolbar)
-                .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { _ in toolbarToken += 1 }
+            // The first of the panel's buttons: «REC 9:59» → «REC 10:00» moves where they begin. Only while something
+            // records, or in a training (to record it later): before one, the panel's «Записать без тренировки» is
+            // the one way to record, as on the iPhone.
+            if model.isRecordingNow || model.session != nil {
+                RecordingToolbarButton(compact: compactToolbar)
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { _ in toolbarToken += 1 }
+            }
             Toggle(isOn: Binding(get: { model.settings.audioEnabled }, set: { model.settings.audioEnabled = $0 })) {
                 Label("Звук", systemImage: model.settings.audioEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
                     .padding(.horizontal, ToolbarLook.padding)
@@ -445,35 +454,15 @@ struct MacConsoleView: View {
             .help("История тренировок · ⌘Y")
             if model.session != nil {
                 Button { ui.confirmFinish = true } label: {
-                    // While recording, finishing stops the recording too: the button says so.
-                    Label(model.isRecordingNow ? String(localized: "Завершить тренировку и запись") : String(localized: "Завершить"),
-                          systemImage: "flag.checkered")
+                    // One short word, so the panel's buttons keep their words over the panel (a recording stops with
+                    // the training: the confirmation says so).
+                    Label(String(localized: "Завершить"), systemImage: "flag.checkered")
                         .labelStyle(ToolbarFitLabelStyle(compact: compactToolbar))
                         .padding(.horizontal, ToolbarLook.padding)
                 }
                 .help("Завершить тренировку · ⌘.")
             }
         }
-    }
-}
-
-/// Before anything is pasted: where the plan will appear.
-private struct EmptyTimeline: View {
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 26, weight: .light))
-                .foregroundStyle(.tertiary)
-            Text("Здесь появится план на шкале времени")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            // The paste itself lives in the panel on the right: one place for it.
-            Text("После вставки расписания выходы и перерывы можно растянуть мышью перед стартом.")
-                .font(.callout)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .underPageBackgroundColor))
     }
 }
 
@@ -544,7 +533,11 @@ private struct CameraToolbarMenu: View {
     }
 
     private var cameraOnline: Bool {
-        model.settings.connectionMode == .external || model.embedded.status.isRunning
+        #if DEBUG
+        // `--demo-camera`: the still picture is the camera, and it is on screen (go2rtc never runs in these copies).
+        if DemoData.cameraImage != nil { return true }
+        #endif
+        return model.settings.connectionMode == .external || model.embedded.status.isRunning
     }
 
     /// The camera on screen's quality; nil when it is not a Mi Home camera.
@@ -600,7 +593,7 @@ extension PanTiltDirection {
     }
 }
 
-/// REC with the running time, or «Запись» to start one (⌘R).
+/// REC with the running time, or in a training not recorded «Запись» to start it (⌘R).
 private struct RecordingToolbarButton: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui
@@ -610,15 +603,22 @@ private struct RecordingToolbarButton: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             Button { ui.toggleRecording(model) } label: {
                 if model.isRecordingNow {
-                    RecBadge(text: DurationText.clock(model.recordingDuration(at: context.date)))
-                        .padding(.horizontal, ToolbarLook.padding + 4)
+                    // «● REC» alone, as on the iPhone: the time recorded is in the tip and for VoiceOver.
+                    HStack(spacing: 5) {
+                        Circle().fill(MacPalette.red).frame(width: 7, height: 7)
+                        Text(verbatim: "REC").font(.system(size: 10, weight: .bold)).foregroundStyle(MacPalette.red)
+                    }
+                    .padding(.horizontal, ToolbarLook.padding + 4)
+                    .accessibilityValue(DurationText.clock(model.recordingDuration(at: context.date)))
                 } else {
                     Label("Запись", systemImage: "record.circle")
                         .padding(.horizontal, ToolbarLook.padding)
                         .labelStyle(ToolbarFitLabelStyle(compact: compact))
                 }
             }
-            .help(model.isRecordingNow ? "Остановить запись · ⌘R" : "Записать видео · ⌘R")
+            .help(model.isRecordingNow
+                  ? "REC \(DurationText.clock(model.recordingDuration(at: context.date))) — \(String(localized: "Остановить запись · ⌘R"))"
+                  : String(localized: "Записать видео · ⌘R"))
             .disabled(!model.isRecordingNow && !model.settings.isConfigured)
         }
     }

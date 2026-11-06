@@ -37,7 +37,8 @@ public enum PlanParser {
             if line.isEmpty { continue }
             defer { contentIndex += 1 }
 
-            if let exit = parseExit(line) {
+            if var exit = parseExit(line) {
+                exit.sourceIndex = exits.count
                 exits.append(exit)
                 attachedExit = exits.count - 1
                 inConditions = false
@@ -234,11 +235,18 @@ public enum PlanParser {
         public let kind: Kind
         /// The exit the line is about: the exit's own line, its conditions and break right under it.
         public let exitNumber: Int?
+        /// The same exit as the n-th one of the text (0-based): `PlannedExit.sourceIndex` of the exit `parse` made of
+        /// it, which keeps it through a reorder.
+        public let exitIndex: Int?
     }
 
     public static func sourceLines(_ text: String) -> [SourceLine] {
         var result: [SourceLine] = []
-        var attachedExit: Int?
+        /// The exit the next lines belong to (its number as written, its place in the text), while no blank line has
+        /// come after it; and the last exit so far, which an own break goes to as in `parse`.
+        var attachedExit: (number: Int, index: Int)?
+        var lastExit: (number: Int, index: Int)?
+        var exitCount = 0
         var inConditions = false
         var contentIndex = 0
         var rows = lines(of: text)
@@ -247,33 +255,37 @@ public enum PlanParser {
         for (index, rawLine) in rows.enumerated() {
             if rawLine.isEmpty {
                 attachedExit = nil
-                result.append(SourceLine(id: index, text: "", kind: .blank, exitNumber: nil))
+                result.append(SourceLine(id: index, text: "", kind: .blank, exitNumber: nil, exitIndex: nil))
                 continue
             }
             let line = stripDecorations(rawLine)
             // A lone «➡️» is no line of the schedule for `parse`: not the header, and an exit's lines go on past it.
             if line.isEmpty {
-                result.append(SourceLine(id: index, text: rawLine, kind: .note, exitNumber: attachedExit))
+                result.append(SourceLine(id: index, text: rawLine, kind: .note, exitNumber: attachedExit?.number,
+                                         exitIndex: attachedExit?.index))
                 continue
             }
             defer { contentIndex += 1 }
             let lower = line.lowercased()
             var kind: SourceLine.Kind = .note
-            var number: Int?
+            var owner: (number: Int, index: Int)?
             if let exit = parseExit(line) {
                 kind = .exit
-                number = exit.number
-                attachedExit = exit.number
+                owner = (exit.number, exitCount)
+                exitCount += 1
+                attachedExit = owner
+                lastExit = owner
                 inConditions = false
-            } else if isExitBreak(lower), attachedExit != nil, DurationText.sumOfUnits(in: line) != nil {
+            } else if isExitBreak(lower), let lastExit, DurationText.sumOfUnits(in: line) != nil {
+                // After a blank line too: `parse` gives it to the last exit all the same.
                 kind = .breakTime
-                number = attachedExit
+                owner = lastExit
             } else if parseEarlyEntry(rawLine) != nil {
                 kind = .earlyEntry
-                number = attachedExit
+                owner = attachedExit
                 inConditions = attachedExit != nil
             } else if attachedExit != nil, inConditions, isExitNote(rawLine) {
-                number = attachedExit
+                owner = attachedExit
             } else {
                 attachedExit = nil
                 if contentIndex == 0 {
@@ -284,7 +296,7 @@ public enum PlanParser {
                     kind = .falseStart
                 }
             }
-            result.append(SourceLine(id: index, text: rawLine, kind: kind, exitNumber: number))
+            result.append(SourceLine(id: index, text: rawLine, kind: kind, exitNumber: owner?.number, exitIndex: owner?.index))
         }
         return result
     }
