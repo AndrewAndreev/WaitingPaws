@@ -101,16 +101,16 @@ struct CameraStreamView: View {
 
     var body: some View {
         let status = self.status ?? own
+        // A new page starts black: no last frame to keep (`onPageStart`). Only then, not when the view appears: the
+        // Mac's training window closed and opened again from the Dock keeps its player, whose page plays on and has
+        // nothing new to say — reset there, the overlay stayed on «Подключаемся к камере…» over the moving picture.
         CameraWebView(server: server, stream: stream, mode: mode, audioEnabled: audioEnabled, fill: fill,
                       reloadToken: reloadToken, onVideoSize: onVideoSize, onDelay: onDelay,
-                      onPhase: { status.update($0) }, zoomScale: zoom?.scale ?? 1, zoomOffset: zoom?.offset ?? .zero,
-                      bleedTop: bleedTop)
+                      onPhase: { status.update($0) }, onPageStart: { status.restart() },
+                      zoomScale: zoom?.scale ?? 1, zoomOffset: zoom?.offset ?? .zero, bleedTop: bleedTop)
             .overlay {
                 if showsStatus && self.status == nil { CameraStatusOverlay(status: own) }
             }
-            .onAppear { status.restart() }
-            // A new page starts black: no last frame to keep.
-            .onChange(of: "\(server.baseURL)|\(stream)|\(mode.rawValue)|\(reloadToken)") { status.restart() }
     }
 }
 
@@ -364,6 +364,8 @@ struct CameraWebView {
     var onDelay: ((Double, Double?) -> Void)? = nil
     /// Called when the player's phase changes ("state …" messages).
     var onPhase: ((PlayerPhase) -> Void)? = nil
+    /// Called when a new page replaces the old one (WebKit committed the load): the first load, and every reload.
+    var onPageStart: (() -> Void)? = nil
     /// The picture's zoom (`ZoomState`) on the Mac, applied by the web view's layer (`PlayerWebView`): scaled around
     /// the centre, then shifted by the offset. (The iPhone's picture zooms in SwiftUI.)
     var zoomScale: CGFloat = 1
@@ -800,6 +802,7 @@ struct CameraWebView {
     }
 
     func load(into webView: WKWebView, coordinator: Coordinator) {
+        coordinator.onPageStart = onPageStart
         guard coordinator.loadedKey != key else {
             applyMute(to: webView, coordinator: coordinator)
             return
@@ -891,6 +894,12 @@ struct CameraWebView {
         var loadedKey: String?
         var server: Go2RTCServer?
         var audioEnabled = false
+        var onPageStart: (() -> Void)?
+
+        /// The new page is in (black, before its script runs): whatever the player says from here on is about it.
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            onPageStart?()
+        }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.isHidden = false
