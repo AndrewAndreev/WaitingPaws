@@ -1212,5 +1212,9 @@
  "Добавить камеру по адресу: rtsp://, onvif://, http://": "Add a camera by address: rtsp://, onvif://, http://",
  "Скрыть текст тренера": "Hide Trainer’s Text",
  "Показать текст тренера": "Show Trainer’s Text",
- "нет записи": "no recording"
+ "нет записи": "no recording",
+ "не начата": "not started",
+ "на связи": "online",
+ "не на связи": "offline",
+ "запись": "recording"
 }

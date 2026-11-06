@@ -535,7 +535,8 @@ struct ClipRecordingHUD: View {
     private func distance(_ a: CGPoint, _ b: CGPoint) -> CGFloat { hypot(a.x - b.x, a.y - b.y) }
 }
 
-/// The floating panels' glass: `ClipRecordingHUD.glass`, shaded while the window is inactive.
+/// The floating panels' glass: `ClipRecordingHUD.glass`, shaded while the window is inactive, with the shadow of the
+/// header's pieces floating over the picture (the owner, 2026-11-06: the same shadow, the plate's own glass).
 private struct HUDGlass: ViewModifier {
     @Environment(\.appearsActive) private var appearsActive
 
@@ -543,6 +544,7 @@ private struct HUDGlass: ViewModifier {
         content
             .background(Capsule().fill(.black.opacity(appearsActive ? 0 : ClipRecordingHUD.inactiveShade)))
             .glassEffect(ClipRecordingHUD.glass, in: .capsule)
+            .modifier(FloatingShadow(amount: 1))
     }
 }
 
