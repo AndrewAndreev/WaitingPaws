@@ -136,8 +136,29 @@ cd Packages/WaitingPawsCore && swift test   # ядро: парсер, трени
 редактора расписания занимает в разы дольше, чем без отладчика. Клавиатура прогревается через 2 с после
 старта, чтобы первый ввод не ждал её загрузки.
 
-Журнал приложения (stdout/stderr, go2rtc) — `Library/Caches/Logs`, последние 5 запусков, пароли в адресах
-(`rtsp://user:pass@…`) маскируются. На Mac: Настройки → Диагностика → «Показать в Finder».
+Журнал приложения (stdout/stderr, go2rtc) — `Library/Caches/Logs`, последние 20 запусков, пароли в адресах
+(`rtsp://user:pass@…`) маскируются. На Mac: Настройки → Диагностика → «Показать в Finder» (папка
+`~/Library/Containers/su.comrade.waitingpaws/Data/Library/Caches/Logs`), с iPhone — `xcrun devicectl device copy from
+--device <UDID> --domain-type appDataContainer --domain-identifier su.comrade.waitingpaws --source Library/Caches/Logs
+--destination /tmp/wp-iphone-logs`. Первая строка — какая сборка писала: `=== Waiting Paws launch 2026-11-07 13:05:01
++01:00; app 1.7.16 (c041ec9), build 17, built 2026-11-07 12:58; Version 26.1 (Build 25B78); Mac16,1 ===` (сборка из
+Xcode — `app dev`, их различает время сборки). Время go2rtc и на iPhone местное.
+
+Подключение к камере Xiaomi по шагам (время от `[player] … mode mse` до `playing` — это ожидание картинки):
+
+* `xiaomi: keys for 192.168.1.20 from Mi Cloud in 640 ms` — ключи сессии из облака, перед каждым подключением;
+* `cs2: connected to 192.168.1.20:13780 over UDP in 840 ms (search 120 ms, punch 30 ms)` — камера ответила на поиск
+  и пробивку (`search 2011 ms (3 sent)` — на первые пакеты камера не ответила; `…, 2 failed: … no route to host` —
+  они даже не ушли с устройства); `cs2: no session with … after 5003 ms: cs2: no answer to the LAN search: … i/o
+  timeout (5 sent)` — не ответила совсем;
+* `cs2: first video from … 2300 ms after connecting` — первый кадр; `cs2: no video from … 5 s after connecting
+  (commands acknowledged 2 of 2)` — сессию камера приняла, а видео не шлёт (обычно она ещё обслуживает другую сессию:
+  камера держит одну); `cs2: … acknowledged no try of command 4097 in 5 s` — не отвечает на команды;
+* `cs2: closed the session to … after 12.3 s, the camera was told` — закрыли мы (камере отправлено закрытие PPPP);
+  `cs2: the session to … ended after …: …` — сессия кончилась сама: таймаут чтения или
+  `the camera closed the session` (через полсекунды после подключения — камера ещё держит чужую или брошенную
+  сессию: другое устройство, Mi Home, приложение, убитое без выхода); `[app] quitting: N camera session(s) closed` —
+  выход из приложения, после него новых сессий нет.
 
 Плеер (MSE) — своя замена `onmse` из `video-rtc.js` в `CameraStreamView`: воспроизведение отстаёт от «живого края»
 на адаптивный запас: 0,8 с, сразу растёт (до 3,5 с), чтобы покрыть паузу в данных, и каждые 10 с плавно (по 0,3 с)
@@ -151,7 +172,7 @@ cd Packages/WaitingPawsCore && swift test   # ядро: парсер, трени
 
 * `[player] 12:03:30 stats 30s: stalls …, max data gap … ms, lag …, cushion …` — плеер (только если что-то случилось или отставание больше 1,5 с);
 * `[go2rtc] 12:03:30 mse/fmp4 ws … fell behind: N frames dropped` — go2rtc выбросил кадры отставшему зрителю;
-* `12:03:30 cs2: connected to 192.168.1.20:13780 over UDP in 840 ms` — как камера подключилась;
+* `12:03:30 cs2: connected to 192.168.1.20:13780 over UDP in 840 ms (…)` — как камера подключилась;
 * `12:03:30 cs2: 30s over TCP: 450 video frames (15.0 fps), … kbit/s, longest pause … ms (camera time … ms),
   delivery spread … ms` — вход потока от камеры (через 30 с после подключения и дальше только при паузах от 0,7 с,
   ожидании потерянного UDP-пакета от 0,3 с или переполнении). Пауза в доставке при ровном времени камеры — данные задержались в сети (их догонит запас

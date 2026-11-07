@@ -856,11 +856,13 @@ struct CameraWebView {
             default:
                 guard state.hasPrefix("error") else { return nil }
                 let error = state.dropFirst(5).lowercased()
-                if error.contains("timeout") { return .failed(String(localized: "нет ответа")) }
-                if error.contains("refused") { return .failed(String(localized: "соединение отклонено")) }
+                // Before the timeout: a camera search that timed out says why its sends failed
+                // ("i/o timeout (5 sent, all failed: … no route to host)").
                 if error.contains("unreachable") || error.contains("no route") {
                     return .failed(String(localized: "камера недоступна по сети"))
                 }
+                if error.contains("timeout") { return .failed(String(localized: "нет ответа")) }
+                if error.contains("refused") { return .failed(String(localized: "соединение отклонено")) }
                 let reason = state.dropFirst(5).split(separator: ":").last.map { $0.trimmingCharacters(in: .whitespaces) }
                 return .failed(reason.flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "нет ответа"))
             }

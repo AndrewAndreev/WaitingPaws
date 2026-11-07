@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/AlexxIT/go2rtc/internal/api"
 	"github.com/AlexxIT/go2rtc/internal/api/ws"
@@ -21,6 +22,7 @@ import (
 	"github.com/AlexxIT/go2rtc/internal/streams"
 	"github.com/AlexxIT/go2rtc/internal/webrtc"
 	"github.com/AlexxIT/go2rtc/internal/xiaomi"
+	"github.com/AlexxIT/go2rtc/pkg/xiaomi/miss/cs2"
 )
 
 var (
@@ -92,4 +94,21 @@ func SetLANPassword(username, password string) {
 // Version returns the embedded go2rtc version.
 func Version() string {
 	return app.Version
+}
+
+// CloseCameraSessions tells every camera with an open Xiaomi CS2 session that it is over and returns how many there
+// were. The app calls it when it quits: a camera serves one session at a time, and one left open by a process that is
+// gone made the next launch's connection wait (connected, then no video for 15 s or "can't send command").
+func CloseCameraSessions() int {
+	return cs2.CloseAll()
+}
+
+// SetTimeZone gives Go the device's time zone for log lines: on iOS Go cannot read it and wrote UTC, next to the
+// app's own lines in local time. Called before Start.
+func SetTimeZone(name string, offsetSeconds int) {
+	if location, err := time.LoadLocation(name); err == nil {
+		time.Local = location
+	} else {
+		time.Local = time.FixedZone(name, offsetSeconds) // no zone database on iOS: today's offset is enough for a log
+	}
 }

@@ -2,12 +2,12 @@ import Foundation
 import WaitingPawsCore
 
 /// Mirrors everything written to stdout/stderr (Swift `print`, go2rtc logs) into `Library/Caches/Logs/<timestamp>.log`
-/// (`AppModel.logsDirectory`) while still passing it to the console. Keeps the last few files; the Mac shows the
-/// folder in Settings → Диагностика, on an iPhone it can be pulled with devicectl. Passwords in URLs
-/// (`rtsp://user:pass@…`) are masked before anything is written.
+/// (`AppModel.logsDirectory`) while still passing it to the console. Keeps the last 20 launches (5 used to leave no log
+/// of the build before last to compare with); the Mac shows the folder in Settings → Диагностика, on an iPhone it can
+/// be pulled with devicectl. Passwords in URLs (`rtsp://user:pass@…`) are masked before anything is written.
 enum LogMirror {
     private static var started = false
-    private static let keepFiles = 5
+    private static let keepFiles = 20
 
     static func start(directory: URL) {
         guard !started else { return }
@@ -67,8 +67,42 @@ enum LogMirror {
         thread.qualityOfService = .utility
         thread.start()
 
-        let header = "=== Waiting Paws launch \(Date()) ===\n"
+        let header = "=== Waiting Paws launch \(launchLine) ===\n"
         _ = header.withCString { fputs($0, stdout) }
+    }
+
+    /// "2026-11-07 13:05:01 +01:00; app 1.7.16 (c041ec9), build 17, built 2026-11-07 12:58; Version 26.1 (Build 25B78);
+    /// Mac16,1": which build wrote the log (a build from Xcode says "dev", so its build time tells two apart) and where.
+    private static var launchLine: String {
+        let stamp = DateFormatter()
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+        stamp.dateFormat = "yyyy-MM-dd HH:mm:ss xxxxx"
+        let info = Bundle.main.infoDictionary
+        var app = "app \(AppInfo.version), build \(info?["CFBundleVersion"] as? String ?? "?")"
+        if let executable = Bundle.main.executableURL,
+           let built = try? executable.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate {
+            stamp.dateFormat = "yyyy-MM-dd HH:mm"
+            app += ", built \(stamp.string(from: built))"
+            stamp.dateFormat = "yyyy-MM-dd HH:mm:ss xxxxx"
+        }
+        return "\(stamp.string(from: Date())); \(app); \(ProcessInfo.processInfo.operatingSystemVersionString); \(hardwareModel)"
+    }
+
+    /// "Mac16,1", "iPhone17,2".
+    private static var hardwareModel: String {
+        #if os(macOS)
+        var size = 0
+        guard sysctlbyname("hw.model", nil, &size, nil, 0) == 0, size > 0 else { return "?" }
+        var model = [CChar](repeating: 0, count: size)
+        guard sysctlbyname("hw.model", &model, &size, nil, 0) == 0 else { return "?" }
+        return String(cString: model)
+        #else
+        var system = utsname()
+        uname(&system)
+        return withUnsafeBytes(of: &system.machine) { bytes in
+            String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+        }
+        #endif
     }
 
     /// `scheme://user:password@host` → `scheme://user:•••@host`.
