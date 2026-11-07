@@ -54,8 +54,13 @@ struct WelcomeView: View {
                 VStack(alignment: .leading, spacing: compact ? 14 : 22) {
                     WelcomeFeatureRow(symbol: "list.bullet.clipboard.fill", title: String(localized: "Расписание тренера"),
                                       text: String(localized: "Вставьте сообщение: выходы и перерывы пойдут по таймеру"))
+                    #if WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`)
+                    WelcomeFeatureRow(symbol: "video.fill", title: String(localized: "Камера"),
+                                      text: String(localized: "Собака видна, пока вы за дверью"))
+                    #else
                     WelcomeFeatureRow(symbol: "video.fill", title: String(localized: "Камера Mi Home"),
                                       text: String(localized: "Собака видна, пока вы за дверью"))
+                    #endif
                     WelcomeFeatureRow(symbol: "doc.text.fill", title: String(localized: "Лог для тренера"),
                                       text: String(localized: "Выходы, фальстарты и видео одной кнопкой"))
                 }
@@ -69,7 +74,12 @@ struct WelcomeView: View {
     private var buttons: some View {
         VStack(spacing: 12) {
             serverProblem
+            #if WP_NO_XIAOMI
+            // A build without Xiaomi: the first button opens the camera list, where a stream is added by its address.
+            WideGlassButton(title: String(localized: "Подключить камеру"), systemImage: "video.badge.plus", action: onSignIn)
+            #else
             WideGlassButton(title: String(localized: "Войти в Xiaomi"), systemImage: "person.crop.circle.fill", action: onSignIn)
+            #endif
             WideGlassButton(title: String(localized: "Другие способы"), prominent: false, action: onOtherWays)
             if let onContinueWithoutCamera {
                 Button("Продолжить без камеры", action: onContinueWithoutCamera)
@@ -319,9 +329,11 @@ struct NearbyComputerCard: View {
             failure.padding(.top, 10)
             WideGlassButton(title: String(localized: "Подключиться к \(kind)")) { model.syncClient.connect(to: host) }
                 .padding(.top, 22)
+            #if !WP_NO_XIAOMI
             Button("Нет, войти в Xiaomi на iPhone", action: onSignIn)
                 .font(.system(size: 15, weight: .semibold))
                 .padding(.top, 14)
+            #endif
             if !model.syncClient.isPaired(host.device) {
                 Text("На \(kind) один раз появится запрос «Разрешить»")
                     .font(.footnote)
@@ -334,12 +346,17 @@ struct NearbyComputerCard: View {
 
     private func text(_ host: SyncClient.DiscoveredHost) -> String {
         let kind = host.device.kindTitle
+        #if WP_NO_XIAOMI
+        if host.info.sessionRunning { return NoXiaomiText.joinTraining }
+        if !host.info.cameraTitle.isEmpty { return NoXiaomiText.joinCamera(host.info.cameraTitle, from: kind) }
+        #else
         if host.info.sessionRunning {
             return String(localized: "iPhone покажет камеру и станет пультом для этой тренировки, входить в Xiaomi не нужно.")
         }
         if !host.info.cameraTitle.isEmpty {
             return String(localized: "На нём уже подключена камера «\(host.info.cameraTitle)». iPhone покажет её и тренировку с \(kind), входить в Xiaomi не нужно.")
         }
+        #endif
         return String(localized: "iPhone будет показывать тренировку и камеру с \(kind), когда она там появится.")
     }
 
@@ -353,11 +370,19 @@ struct NearbyComputerCard: View {
                 Spacer(minLength: 8)
                 GlassCircleButton(action: onDismiss).accessibilityLabel("Закрыть")
             }
+            #if WP_NO_XIAOMI
+            Text(NoXiaomiText.joinSeveral)
+                .font(.system(size: 15))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6)
+            #else
             Text("На них уже подключена камера: iPhone покажет её и тренировку, входить в Xiaomi не нужно.")
                 .font(.system(size: 15))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
+            #endif
             failure.padding(.top, 10)
             VStack(spacing: 8) {
                 ForEach(hosts) { host in
@@ -367,10 +392,12 @@ struct NearbyComputerCard: View {
                 }
             }
             .padding(.top, 16)
+            #if !WP_NO_XIAOMI
             Button("Нет, войти в Xiaomi на iPhone", action: onSignIn)
                 .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.top, 16)
+            #endif
         }
     }
 

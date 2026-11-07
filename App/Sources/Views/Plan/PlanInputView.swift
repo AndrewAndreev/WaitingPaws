@@ -20,7 +20,7 @@ struct PlanInputView: View {
                         .padding(8)
                         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     if text.isEmpty {
-                        Text("🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n2 выход - 10 секунд\n…")
+                        Text("🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n2 выход - 10 секунд\n…")
                             .font(.system(.body, design: .monospaced))
                             .foregroundStyle(.white.opacity(0.3))
                             .padding(16)

@@ -18,14 +18,18 @@ struct OnboardingFlow: View {
     }
 
     enum Sheet: String, Identifiable {
+        #if WP_NO_XIAOMI // a build without Xiaomi has no sign-in (`NoXiaomiText`)
+        case otherWays
+        #else
         case signIn, otherWays
+        #endif
         var id: String { rawValue }
     }
 
     var body: some View {
         NavigationStack(path: $path) {
             WelcomeView(addingCamera: onClose != nil,
-                        onSignIn: { sheet = .signIn },
+                        onSignIn: signIn,
                         onOtherWays: { sheet = .otherWays },
                         onContinueWithoutCamera: onClose == nil ? continueWithoutCamera : nil)
                 .navigationDestination(for: Step.self) { step in
@@ -52,8 +56,10 @@ struct OnboardingFlow: View {
         .sheet(item: $sheet) { sheet in
             Group {
                 switch sheet {
+                #if !WP_NO_XIAOMI
                 case .signIn:
                     XiaomiSignInSheet { accountID in path.append(.camera(accountID: accountID)) }
+                #endif
                 case .otherWays:
                     otherWays
                 }
@@ -65,11 +71,19 @@ struct OnboardingFlow: View {
         // camera picker right after a sign-in (UI checks).
         .onAppear {
             guard let demo = SignInDemo.stage, onClose == nil else { return }
+            #if WP_NO_XIAOMI
+            if demo == "cameras" {
+                path = [.camera(accountID: nil)]
+            } else if demo == "other" {
+                sheet = .otherWays
+            }
+            #else
             if demo == "cameras" {
                 path = [.camera(accountID: SetupDemo.accountID)]
             } else {
                 sheet = demo == "other" ? .otherWays : .signIn
             }
+            #endif
         }
         #endif
         #if os(iOS)
@@ -83,7 +97,7 @@ struct OnboardingFlow: View {
                         .onTapGesture { if !model.syncClient.isBusy { dismissNearby() } }
                     NearbyComputerCard(hosts: nearbyHosts, onDismiss: dismissNearby, onSignIn: {
                         dismissNearby()
-                        sheet = .signIn
+                        signIn()
                     })
                     .padding(.horizontal, 10)
                     .padding(.bottom, 4)
@@ -134,6 +148,16 @@ struct OnboardingFlow: View {
     #else
     private var otherWays: some View { EmptyView() }
     #endif
+
+    /// «Войти в Xiaomi». A build without Xiaomi (`NoXiaomiText`) has the welcome's first button open the camera list
+    /// instead, where a stream is added by its address.
+    private func signIn() {
+        #if WP_NO_XIAOMI
+        path.append(.camera(accountID: nil))
+        #else
+        sheet = .signIn
+        #endif
+    }
 
     private func continueWithoutCamera() {
         sheet = nil
@@ -194,7 +218,9 @@ struct ServerSetupView: View {
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
                     statusView
+                    #if !WP_NO_XIAOMI // any go2rtc plays RTSP
                     Text("go2rtc должен быть собран с поддержкой xiaomi (версия 1.9.11 и новее). Если камера уже добавлена в go2rtc, вход в Xiaomi не нужен.")
+                    #endif
                 }
                 .padding(.top, 4)
             }

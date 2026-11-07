@@ -35,7 +35,7 @@ public enum SyncPlatform: String, CaseIterable, Sendable {
 /// bound to, so two Macs with the same name (or a renamed one) never mix up.
 public struct SyncDevice: Equatable, Hashable, Identifiable, Sendable {
     public var id: String
-    /// The name its owner gave it («MacBook Pro — Андрей», «iPhone Тани»).
+    /// The name its owner gave it («MacBook Pro — Марк», «iPhone Ани»).
     public var name: String
     /// nil: a kind this build doesn't know.
     public var kind: SyncPlatform?
@@ -60,7 +60,7 @@ public struct SyncDevice: Equatable, Hashable, Identifiable, Sendable {
     /// The name alone says nothing new about the model (an iPhone keeps its model as the default name).
     public var nameIsModel: Bool { name == modelTitle }
 
-    /// The model for a detail line, unless the name already says it ("MacBook Pro — Андрей").
+    /// The model for a detail line, unless the name already says it ("MacBook Pro — Марк").
     public var distinctModel: String? {
         name.localizedCaseInsensitiveContains(modelTitle) ? nil : modelTitle
     }

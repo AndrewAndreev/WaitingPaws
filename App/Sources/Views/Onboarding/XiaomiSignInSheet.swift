@@ -1,6 +1,7 @@
 import SwiftUI
 import WaitingPawsCore
 
+#if !WP_NO_XIAOMI // a build without Xiaomi has no sign-in (`NoXiaomiText`)
 /// «Войти в Xiaomi» on the iPhone (S1 → S3), the counterpart of the Mac sign-in sheet: login, password and region in
 /// one group, then the code Xiaomi sends by SMS or e-mail. A captcha appears only when go2rtc's answer carries one
 /// (Xiaomi's anti-bot check) — as a small block inside the current step. Everything goes to go2rtc
@@ -455,7 +456,7 @@ struct XiaomiSignInSheet: View {
     private func applyDemo() {
         #if DEBUG
         guard let demo = SignInDemo.stage else { return }
-        login = "tanya.k@example.com"
+        login = "anna.k@example.com"
         password = "demo-password"
         switch demo {
         case "captcha":
@@ -472,6 +473,7 @@ struct XiaomiSignInSheet: View {
         #endif
     }
 }
+#endif
 
 /// Settings-style row: a fixed-width label and the field (Wi‑Fi password, Apple Account sign-in).
 struct SignInFieldRow<Field: View>: View {
@@ -489,6 +491,7 @@ struct SignInFieldRow<Field: View>: View {
     }
 }
 
+#if !WP_NO_XIAOMI
 /// Six cells for the code Xiaomi sends. They draw one hidden `.oneTimeCode` field: one field per digit makes
 /// iOS 26 paste the code from Messages into a single cell. The code goes out as soon as it is complete.
 private struct SignInCodeField: View {
@@ -540,6 +543,7 @@ private struct SignInCodeField: View {
         .onAppear { if !SignInDemo.isOn { focused = true } }
     }
 }
+#endif
 
 /// DEBUG `--demo-onboarding <stage>` for UI checks of the iPhone setup screens:
 /// `signin`, `code`, `captcha` (the sign-in sheet at that point), `other` («Другие способы»).

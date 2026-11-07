@@ -6,7 +6,8 @@ network, so reports about either are welcome.
 ## Reporting a vulnerability
 
 Please report privately: the repository's **Security** tab → **Report a vulnerability**. Don't open a public issue
-for a vulnerability. The discussion and the fix will happen in that private advisory.
+for a vulnerability. The discussion and the fix will happen in that private advisory. If that form is unavailable,
+e-mail andrew@comrade.su.
 
 Supported versions: the latest release on each platform.
 
@@ -18,6 +19,9 @@ Supported versions: the latest release on each platform.
   (`Packages/WaitingPawsCore/Sources/WaitingPawsCore/Sync/`, `App/Sources/Sync/`, `Desktop/src/core/node/syncCrypto.ts`,
   `Desktop/src/main/sync/`).
 - How the apps keep the Xiaomi sign-in, recordings and logs on the device.
+
+Known and not fixed yet: the computer's camera video and go2rtc API reach a linked iPhone over plain HTTP/WebSocket on
+the local network, protected by a password (HTTP Basic) but not encrypted; only the link's own channel is encrypted.
 
 Bugs in go2rtc itself go to [go2rtc](https://github.com/AlexxIT/go2rtc), unless they come from our patches
 (`GoMobile/build.sh`, `Desktop/scripts/build-go2rtc.mjs`). Xiaomi's cloud and camera firmware are out of scope.

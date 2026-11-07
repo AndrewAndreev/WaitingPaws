@@ -44,8 +44,12 @@ struct CameraPickerView: View {
                 unavailable(title: String(localized: "Камеры не загрузились"), symbol: "exclamationmark.triangle", text: message)
             case .ready:
                 if groups.isEmpty {
+                    #if WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`)
+                    unavailable(title: String(localized: "Камер не найдено"), symbol: "video.slash", text: NoXiaomiText.addCamera)
+                    #else
                     unavailable(title: String(localized: "Камер не найдено"), symbol: "video.slash",
                                 text: String(localized: "В аккаунте Mi Home нет камер, а других камер не добавлено."))
+                    #endif
                 } else {
                     tiles
                 }
@@ -237,7 +241,7 @@ struct CameraPickerView: View {
                 .fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 10) {
                 WideGlassButton(title: String(localized: "Обновить"), prominent: false) { Task { await reload(force: true) } }
-                WideGlassButton(title: String(localized: "Добавить поток RTSP / ONVIF"), prominent: false) { addingStream = true }
+                WideGlassButton(title: String(localized: "Добавить поток RTSP"), prominent: false) { addingStream = true }
                 if let onContinueWithoutCamera {
                     WideGlassButton(title: String(localized: "Продолжить без камеры"), action: onContinueWithoutCamera)
                 }
@@ -536,7 +540,7 @@ private struct AddStreamTile: View {
     }
 }
 
-/// «Поток RTSP / ONVIF»: any go2rtc source by its address (a camera that is not in Mi Home, a recorder).
+/// «Поток RTSP»: any go2rtc source by its address (a camera that is not in Mi Home, a recorder).
 private struct AddStreamSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -558,7 +562,7 @@ private struct AddStreamSheet: View {
                             .foregroundStyle(.white)
                             .frame(width: 60, height: 60)
                             .background(Theme.info.gradient, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                        Text("Поток RTSP / ONVIF")
+                        Text("Поток RTSP")
                             .font(.system(size: 24, weight: .bold))
                         Text("Адрес из настроек камеры или видеорегистратора.")
                             .font(.system(size: 15))
@@ -585,7 +589,7 @@ private struct AddStreamSheet: View {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(Theme.danger)
                     } else {
-                        Text("Подходят rtsp://, onvif:// и http://. Камера должна быть в той же сети Wi‑Fi.")
+                        Text("Подходят rtsp:// и http://; камеру ONVIF добавьте по её адресу rtsp://. Камера должна быть в той же сети Wi‑Fi.")
                     }
                 }
             }

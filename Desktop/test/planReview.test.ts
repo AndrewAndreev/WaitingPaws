@@ -26,7 +26,7 @@ import {
 import { classifyLines, exitForLine, exitLines, highlightLine, linkedLines } from '../src/renderer/src/plan/planText'
 import { DraftSync } from '../src/renderer/src/plan/draftSync'
 
-const demo = `🐹 Тренировка на воскресенье - Таня/Андрей - 04.10.2026
+const demo = `🐹 Тренировка на воскресенье - Аня/Марк - 04.10.2026
 
 ➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки
 ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна

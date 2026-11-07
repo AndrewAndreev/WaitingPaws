@@ -6,6 +6,12 @@ DerivedData/
 *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 GoMobile/build/
 Frameworks/
+# Desktop/.gitignore's node_modules/ skips a symlink (a worktree may link the main checkout's node_modules)
+Desktop/node_modules
 
 # Claude Code: everything local to this machine (preview servers, agent worktrees, screenshots, skills)
 .claude/
+
+# App Store Connect API keys (AuthKey_<id>.p8) live in ~/.appstoreconnect/private_keys, never in the repo
+*.p8
+private_keys/

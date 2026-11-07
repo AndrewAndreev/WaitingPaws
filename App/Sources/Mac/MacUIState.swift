@@ -13,7 +13,8 @@ final class MacUIState {
     var showCameraPicker = false
     /// «Вторая камера…»: the picker for the camera only to look at.
     var showSecondCameraPicker = false
-    /// Xiaomi sign-in from the camera menu (e.g. after starting with a plain go2rtc stream).
+    /// Xiaomi sign-in from the camera menu (e.g. after starting with a plain go2rtc stream); never in a build without
+    /// Xiaomi (`NoXiaomiText`).
     var showXiaomiSignIn = false
     var confirmFinish = false
     var confirmAbandon = false

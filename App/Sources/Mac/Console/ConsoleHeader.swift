@@ -555,8 +555,10 @@ private struct CameraMenuSegment: View {
             if model.hasSecondCamera {
                 Button("Убрать вторую камеру", systemImage: "rectangle.badge.minus") { model.removeSecondCamera() }
             }
+            #if !WP_NO_XIAOMI
             Button(model.settings.xiaomiAccountID.isEmpty ? "Войти в Xiaomi…" : "Войти в другой аккаунт Xiaomi…",
                    systemImage: "person.crop.circle.badge.plus") { ui.showXiaomiSignIn = true }
+            #endif
             Divider()
             Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
             // The quality of the camera on screen, the one recorded.

@@ -1457,7 +1457,7 @@ enum TrainerWords {
         }
     }
 
-    /// «🐹 Тренировка на воскресенье - Таня/Андрей - 04.10.2026»: the date and the trainers the plan read (the name
+    /// «🐹 Тренировка на воскресенье - Аня/Марк - 04.10.2026»: the date and the trainers the plan read (the name
     /// went to the screen's title); struck through where the owner has changed them.
     private static func headerSpans(_ text: String, plan: TrainingPlan?) -> [Span] {
         let read = PlanParser.parse(PlanParser.stripDecorations(text))

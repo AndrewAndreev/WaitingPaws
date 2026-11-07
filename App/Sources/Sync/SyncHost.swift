@@ -120,9 +120,9 @@ final class SyncHost {
         #if DEBUG
         // `--demo-iphone`: a connected iPhone in the toolbar and Settings (nothing listens).
         if CommandLine.arguments.contains("--demo-iphone") {
-            connectedDevices = [SyncDevice(id: "demo-iphone", name: "iPhone Тани", kind: .iphone, model: "iPhone 16")]
+            connectedDevices = [SyncDevice(id: "demo-iphone", name: "iPhone Ани", kind: .iphone, model: "iPhone 16")]
             if !pairedDevices.contains(where: { $0.deviceID == "demo-iphone" }) {
-                pairedDevices = [PairedDevice(deviceID: "demo-iphone", name: "iPhone Тани", token: "", platform: "iphone",
+                pairedDevices = [PairedDevice(deviceID: "demo-iphone", name: "iPhone Ани", token: "", platform: "iphone",
                                               model: "iPhone 16", lastSeen: Date()),
                                  PairedDevice(deviceID: "demo-iphone-2", name: "iPhone 15 Pro", token: "", platform: "iphone",
                                               model: "iPhone 15 Pro", lastSeen: Date().addingTimeInterval(-3 * 86_400))]

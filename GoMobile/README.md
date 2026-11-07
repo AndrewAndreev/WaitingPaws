@@ -11,7 +11,7 @@
 
 ```bash
 brew install go xcodegen
-go install golang.org/x/mobile/cmd/gomobile@latest && ~/go/bin/gomobile init
+go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20260908204917-8b95e45f8d3e && ~/go/bin/gomobile init
 ./GoMobile/build.sh
 ```
 

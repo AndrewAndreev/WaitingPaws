@@ -98,7 +98,7 @@ describe('History', () => {
 
   it('filters by scope and searches title, trainers, file and date', () => {
     const rows = buildRows(
-      [training(new Date(2026, 9, 2, 18, 36), [10], { title: 'Тренировка на пятницу', trainers: 'Таня / Андрей' }), training(new Date(2026, 8, 30, 19, 12), [10], { title: 'Тренировка на среду', trainers: 'Андрей' })],
+      [training(new Date(2026, 9, 2, 18, 36), [10], { title: 'Тренировка на пятницу', trainers: 'Аня / Марк' }), training(new Date(2026, 8, 30, 19, 12), [10], { title: 'Тренировка на среду', trainers: 'Марк' })],
       [{ fileName: '2026-10-04_19-53.mp4', date: new Date(2026, 9, 4, 19, 53).getTime(), size: 1 }],
       new Map(),
       'Запись без тренировки',
@@ -106,7 +106,7 @@ describe('History', () => {
     expect(filterRows(rows, 'all', '').length).toBe(3)
     expect(filterRows(rows, 'trainings', '').length).toBe(2)
     expect(filterRows(rows, 'clips', '').map((row) => row.kind)).toEqual(['clip'])
-    expect(filterRows(rows, 'all', 'таня').length).toBe(1)
+    expect(filterRows(rows, 'all', 'аня').length).toBe(1)
     expect(filterRows(rows, 'all', '  ПЯТНИЦ ').length).toBe(1)
     expect(filterRows(rows, 'all', '19-53').length).toBe(1)
     expect(filterRows(rows, 'all', 'сент').length).toBe(1)

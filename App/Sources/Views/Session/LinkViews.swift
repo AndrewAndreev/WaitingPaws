@@ -236,7 +236,9 @@ struct MacLinkCard: View {
                                                : String(localized: "камера «\(host.info.cameraTitle)» не в сети"))
         }
         if host.info.sessionRunning, let exit = host.info.currentExit { parts.append(String(localized: "выход \(exit)")) }
+        #if !WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`) doesn't speak of it
         if !host.info.sessionRunning { parts.append(String(localized: "вход в Xiaomi уже выполнен на \(host.device.kindTitle)")) }
+        #endif
         return parts.joined(separator: " · ")
     }
 

@@ -60,8 +60,10 @@ struct MacSettingsView: View {
                 switch sheet {
                 case .picker(let account):
                     MacCameraPickerSheet(accountID: account)
+                #if !WP_NO_XIAOMI
                 case .signIn:
                     SetupXiaomiSignInSheet { account in show(.picker(accountID: account)) }
+                #endif
                 }
             }
             .environment(model)
@@ -142,7 +144,9 @@ struct MacSettingsView: View {
             pane = demoPane
         }
         switch SetupDemo.argument(after: "--demo-settings-sheet") {
+        #if !WP_NO_XIAOMI
         case "signin", "captcha", "verify": sheet = .signIn
+        #endif
         case "picker": sheet = .picker(accountID: nil)
         default: break
         }
@@ -152,12 +156,16 @@ struct MacSettingsView: View {
 
 enum MacSettingsSheet: Identifiable, Hashable {
     case picker(accountID: String?)
+    #if !WP_NO_XIAOMI // a build without Xiaomi has no sign-in (`NoXiaomiText`)
     case signIn
+    #endif
 
     var id: String {
         switch self {
         case .picker(let account): return "picker-\(account ?? "all")"
+        #if !WP_NO_XIAOMI
         case .signIn: return "signIn"
+        #endif
         }
     }
 }

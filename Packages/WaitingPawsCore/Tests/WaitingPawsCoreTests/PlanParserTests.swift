@@ -9,7 +9,7 @@ final class PlanParserTests: XCTestCase {
     }
 
     let sampleWithDefaultBreaks = """
-    🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
+    🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026
 
     ➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
     ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
@@ -28,7 +28,7 @@ final class PlanParserTests: XCTestCase {
     """
 
     let sampleWithExplicitBreaks = """
-    🐹 Тренировка на пятницу - Андрей - 25.09.2026
+    🐹 Тренировка на пятницу - Марк - 25.09.2026
 
     ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
     ➡️ В перерывах сидите за столом, работаете
@@ -57,7 +57,7 @@ final class PlanParserTests: XCTestCase {
         let plan = PlanParser.parse(sampleWithDefaultBreaks)
 
         XCTAssertEqual(plan.title, "Тренировка на понедельник")
-        XCTAssertEqual(plan.trainers, "Таня/Андрей")
+        XCTAssertEqual(plan.trainers, "Аня/Марк")
         XCTAssertEqual(plan.date.map { TrainingPlan.dateFormatter.string(from: $0) }, "05.10.2026")
         XCTAssertEqual(plan.defaultBreak, 120)
         XCTAssertEqual(plan.exits.count, 7)
@@ -73,7 +73,7 @@ final class PlanParserTests: XCTestCase {
         let plan = PlanParser.parse(sampleWithExplicitBreaks)
 
         XCTAssertEqual(plan.title, "Тренировка на пятницу")
-        XCTAssertEqual(plan.trainers, "Андрей")
+        XCTAssertEqual(plan.trainers, "Марк")
         XCTAssertEqual(plan.exits.count, 9)
         XCTAssertEqual(plan.exits[0].duration, 0)
         XCTAssertEqual(plan.exits[0].note, "выйти и сразу вернуться")
@@ -116,7 +116,7 @@ final class PlanParserTests: XCTestCase {
     /// перерыв», and every break of the training became 20 s instead of «Все перерывы 2 минуты».
     func testOtherTimesInNotesDoNotChangeTheBreak() {
         let plan = PlanParser.parse("""
-        🐹 Тренировка на вторник - Таня - 06.10.2026
+        🐹 Тренировка на вторник - Аня - 06.10.2026
 
         ➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
         ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
@@ -256,7 +256,7 @@ final class PlanParserTests: XCTestCase {
     /// conditions nested under exit 6 («🟡 Если встала за это время: …») landed among the training's rules.
     func testBreakTimeOfAnExitAndNotesUnderAnExit() {
         let plan = PlanParser.parse("""
-        🐹 Тренировка на пятницу - Андрей - 23.10.2026
+        🐹 Тренировка на пятницу - Марк - 23.10.2026
 
         ➡️ Гостей уводим из квартиры минимум за 1 час, без скрытия ухода➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
         ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна

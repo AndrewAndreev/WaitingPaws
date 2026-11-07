@@ -45,9 +45,11 @@ Design/app-icon                  — исходники иконки прило�
 
    ```bash
    brew install go xcodegen
-   go install golang.org/x/mobile/cmd/gomobile@latest && ~/go/bin/gomobile init
+   go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20260908204917-8b95e45f8d3e && ~/go/bin/gomobile init
    ./GoMobile/build.sh
    ```
+
+   Версия gomobile — та же, что `XMOBILE_VERSION` в `GoMobile/build.sh`.
 
 2. Проект:
 
@@ -58,6 +60,12 @@ Design/app-icon                  — исходники иконки прило�
 
 Схемы `WaitingPaws-iOS` и `WaitingPaws-macOS`. Команда разработчика задана в `project.yml`
 (`DEVELOPMENT_TEAM`); для своей сборки поменяйте её там.
+
+Своя сборка (форк): в `project.yml` — своя `DEVELOPMENT_TEAM`, `bundleIdPrefix` и `PRODUCT_BUNDLE_IDENTIFIER` вместо
+`su.comrade.waitingpaws` (iPhone и Mac) и `su.comrade.waitingpaws.widgets` (виджет: id приложения + суффикс), в
+`Tools/ExportOptions-AppStore.plist` — свой `teamID`. Имя «Waiting Paws» и иконка под лицензию не попадают
+([README](README.ru.md#лицензия)): у форка свои — `CFBundleDisplayName`/`CFBundleName` в `project.yml`, `AppIcon` и
+`AppIconImage` в `App/Resources/Assets.xcassets`.
 
 ### Локализация
 
@@ -87,8 +95,7 @@ Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает ката�
 * `App/Resources/Legal/` — политика конфиденциальности (ru/en, показывается в «О приложении») и лицензии открытого ПО.
   `GoMobile/licenses.sh` пересобирает лицензии по модулям, реально попадающим во встроенный go2rtc;
   `Tools/legal_html.py` пишет `docs/privacy.html` для URL политики в App Store Connect.
-* `docs/` — страницы поддержки и политики (GitHub Pages из папки `/docs`), `docs/app-store/` — заметки для App Review
-  и черновик метаданных.
+* `docs/` — страницы поддержки и политики (GitHub Pages из папки `/docs`).
 * `docs/screenshots/app-store/<en|ru>/` — скриншоты для App Store (iPhone 6.9″ 1320×2868, Mac 2880×1800),
   `docs/screenshots/showcase/` — картинки с рамками устройств и подписями. Пересъёмка: `Tools/screenshots/make.sh`
   (отдельный симулятор «WP Screens», фоновые копии Mac-приложения с `--retina`, только DEBUG-демо-данные;
@@ -111,15 +118,65 @@ Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает ката�
   архивы, `WaitingPaws-1.6.N-mac.zip` и `manifest.txt` (коммит, версии, sha256 zip). Windows собирает GitHub
   Actions после `git push origin v1.6.N`: версия из тега, установщик — в черновике релиза. Если Windows в этом
   выпуске не выходит, черновик удаляют.
+* `WP_NO_XIAOMI=1 Tools/release.sh build|export v1.6.N …` — сборка без входа в Xiaomi (условие компиляции Swift
+  `WP_NO_XIAOMI`) в отдельную папку `DerivedData/Release/v1.6.N-no-xiaomi/`; вариант записан в `manifest.txt`.
 * go2rtc для iPhone и Mac — `Frameworks/Go2RTC.xcframework`, его нет в git. `GoMobile/build.sh` записывает рядом
   `Go2RTC.source` — git-дерево `GoMobile/`, из которого он собран, а `release.sh build` сверяет его с тегом. После
   любой правки в `GoMobile/` перед выпуском — `GoMobile/build.sh`.
 * Пересобрать тот же код (например, загрузка в App Store не прошла) — ещё один тег на тот же коммит: номер сборки
   новый, правило «версия = коммит» сохраняется.
-* Mac — подпись Apple Development, без нотаризации: на другом Mac первый запуск — «Открыть всё равно» в
-  «Конфиденциальность и безопасность» (или `xattr -dr com.apple.quarantine /Applications/WaitingPaws.app`).
+* Mac-zip — подпись Apple Development, без нотаризации: на другом Mac первый запуск — «Открыть всё равно» в
+  «Конфиденциальность и безопасность» (или `xattr -dr com.apple.quarantine /Applications/WaitingPaws.app`). В App
+  Store идут не архивы и не zip, а файлы из `release.sh export` (ниже).
 * Выпуски до 1.6 — теги `ios-v*`, `mac-v*`, `windows-v*` (у каждой платформы своя версия; последняя сборка iPhone и
   Mac — 9).
+
+### В App Store
+
+Один раз, владелец:
+
+* Платное членство Apple Developer Program у команды `849CANCD26`, вход в неё в Xcode → Settings → Accounts.
+* Сертификаты Apple Distribution (подпись приложений iPhone и Mac) и Mac Installer Distribution (подпись `.pkg` для
+  Mac App Store, в подписи — «3rd Party Mac Developer Installer»). При автоматической подписи они облачные (cloud
+  managed): их хранит Apple, а `release.sh export` (`-allowProvisioningUpdates`) подписывает ими от имени команды,
+  поэтому экспорт запускает только владелец. В «Связке ключей» их нет, так и должно быть; проверка — вывод
+  `release.sh export`. Профили App Store для `su.comrade.waitingpaws` и `su.comrade.waitingpaws.widgets` Xcode делает
+  при экспорте сам.
+* До первой загрузки — запись в App Store Connect (iOS и macOS, bundle id `su.comrade.waitingpaws`).
+
+Каждый выпуск:
+
+1. Тег ставят на main, в котором уже есть слитая работа: `git switch main && git pull --ff-only`, затем
+   `git cat-file -e HEAD:Tools/ExportOptions-AppStore.plist` (код 0). Иначе тег встанет на старый локальный main
+   (c041ec9), и все проверки `export` всё равно пройдут. Потом `Tools/release.sh tag 1.7`,
+   `Tools/release.sh build v1.7.N` — архивы.
+2. `Tools/release.sh export v1.7.N [ios] [mac]` — `xcodebuild -exportArchive` по `Tools/ExportOptions-AppStore.plist`
+   (app-store-connect, автоматическая подпись, символы для отчётов о сбоях, версия и сборка — тега) →
+   `"DerivedData/Release/v1.7.N/export-ios/Waiting Paws.ipa"` и
+   `"DerivedData/Release/v1.7.N/export-mac/Waiting Paws.pkg"` (с пробелом в имени). Потом скрипт распаковывает их и
+   проверяет: подпись Apple Distribution (у `.pkg` — 3rd Party Mac Developer Installer), профиль App Store (без списка
+   устройств), `get-task-allow` false у приложения и виджета, у Mac — `Contents/embedded.provisionprofile`,
+   `com.apple.application-identifier`, `com.apple.developer.team-identifier` и песочница; версия, сборка и коммит —
+   тега. Хоть один FAIL — ошибка, такой файл не загружают.
+3. Проверка и загрузка — отдельно и руками. В Transporter: перетащить `.ipa` и `.pkg`, у каждого сначала «Verify»,
+   затем «Deliver». Или altool: `xcrun altool --validate-app "<файл>" --api-key <KEY_ID> --api-issuer <ISSUER_ID>`,
+   затем `xcrun altool --upload-package "<файл>" --api-key <KEY_ID> --api-issuer <ISSUER_ID>` (платформу altool берёт
+   из файла) с ключом App Store Connect API (Users and Access → Integrations, роль App Manager) в
+   `~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8` — не в репозитории. Organizer (Distribute App → App Store
+   Connect) тоже загрузит, но свой экспорт, а не проверенный файл.
+4. App Store Connect обрабатывает сборку обычно от минут до часа, ошибки приходят письмом (ITMS-…). Обработанная
+   сборка появляется в TestFlight, её можно поставить себе до ревью. Вопроса о шифровании у сборки нет: у обеих
+   платформ `ITSAppUsesNonExemptEncryption` = NO. Это верно, пока в приложении только стандартные алгоритмы
+   (TLS, DTLS/SRTP, CryptoKit) и оно не распространяется во Франции; если что-то из этого изменится, ответ
+   пересматривают.
+5. В версиях iOS и macOS выбрать эти сборки и отправить на ревью.
+
+* Номер сборки (`N` тега, `CFBundleVersion`) должен быть больше, чем у всех уже загруженных сборок этой платформы,
+  даже отклонённых или не прошедших обработку. Загрузить тот же код ещё раз — новый тег на тот же коммит (выше).
+* `CODE_SIGN_IDENTITY: "Apple Development"` у Mac в `project.yml` — подпись сборок и архивов: без неё Mac-сборка была
+  бы ad hoc и теряла разрешения локальной сети при каждой пересборке (у iPhone xcodegen ставит такую же сам). На App
+  Store она не влияет: экспорт переподписывает приложение Apple Distribution с профилем App Store — это и проверяет
+  `export`.
 
 ### Тесты
 

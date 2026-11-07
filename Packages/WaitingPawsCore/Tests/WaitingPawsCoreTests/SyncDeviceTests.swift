@@ -49,12 +49,12 @@ final class SyncDeviceTests: XCTestCase {
         struct OldWelcome: Decodable { var hostName: String; var go2rtcPort: Int; var username: String; var password: String; var addresses: [String] }
         struct Wrapped<T: Decodable>: Decodable { var _0: T }
 
-        let hello = SyncHello(deviceID: "D1", deviceName: "iPhone Тани", publicKey: Data([1, 2]),
+        let hello = SyncHello(deviceID: "D1", deviceName: "iPhone Ани", publicKey: Data([1, 2]),
                               platform: SyncPlatform.iphone.rawValue, model: "iPhone 16")
         let helloJSON = try JSONSerialization.jsonObject(with: SyncMessage.hello(hello).encoded()) as! [String: Any]
         let helloBody = try JSONSerialization.data(withJSONObject: helloJSON["hello"]!)
         let old = try SyncProtocol.decoder().decode(Wrapped<OldHello>.self, from: helloBody)._0
-        XCTAssertEqual(old.deviceName, "iPhone Тани")
+        XCTAssertEqual(old.deviceName, "iPhone Ани")
         XCTAssertEqual(old.protocolVersion, SyncProtocol.version)
 
         let welcome = SyncWelcome(hostName: "MacBook Pro", go2rtcPort: 11984, username: "u", password: "p",
@@ -81,7 +81,7 @@ final class SyncDeviceTests: XCTestCase {
         XCTAssertEqual(DeviceModelName.mac(productName: nil, identifier: "iMacPro1,1"), "iMac Pro")
         XCTAssertEqual(DeviceModelName.mac(productName: nil, identifier: "Mac15,7"), "Mac")
 
-        XCTAssertNil(SyncDevice(id: "1", name: "MacBook Pro — Андрей", kind: .mac, model: "MacBook Pro").distinctModel)
+        XCTAssertNil(SyncDevice(id: "1", name: "MacBook Pro — Марк", kind: .mac, model: "MacBook Pro").distinctModel)
         XCTAssertEqual(SyncDevice(id: "2", name: "Кухня", kind: .mac, model: "Mac mini").distinctModel, "Mac mini")
         XCTAssertEqual(SyncDevice(id: "3", name: "DESKTOP-7QK", kind: .windows, model: "").distinctModel, SyncPlatform.windows.title)
 

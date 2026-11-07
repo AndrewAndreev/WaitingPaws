@@ -232,6 +232,7 @@ struct MacConsoleView: View {
                                onDone: { ui.editingSessionPlan = nil })
                 .environment(model)
         }
+        #if !WP_NO_XIAOMI
         .sheet(isPresented: $ui.showXiaomiSignIn, onDismiss: { focused = true }) {
             SetupXiaomiSignInSheet(onSignedIn: { _ in
                 ui.showXiaomiSignIn = false
@@ -241,6 +242,7 @@ struct MacConsoleView: View {
             .environment(model)
             .environment(ui)
         }
+        #endif
         .sheet(isPresented: $ui.showSecondCameraPicker, onDismiss: { focused = true }) {
             MacCameraPickerSheet(target: .second) { model.showCamera(second: true) }
         }

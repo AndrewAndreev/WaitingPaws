@@ -18,7 +18,7 @@ class Clock {
 }
 
 const plan = () =>
-  PlanParser.parse(`Тренировка на воскресенье - Таня/Андрей - 04.10.2026
+  PlanParser.parse(`Тренировка на воскресенье - Аня/Марк - 04.10.2026
 Все перерывы 2 минуты
 1 выход - 10 секунд
 2 выход - 30 секунд
@@ -155,7 +155,7 @@ describe('Sync', () => {
 
   it('host info TXT round trip', () => {
     const info = SyncHostInfo.make({
-      name: 'MacBook Андрея',
+      name: 'MacBook Марка',
       cameraTitle: 'Прихожая',
       cameraReady: true,
       sessionRunning: true,

@@ -67,16 +67,18 @@ camera while you are behind the door, and send the trainer a ready log afterward
   are counted as attempts. Under the timer: when to come back early and when not to come in; in a break, what to take
   for the next exit. The trainer's whole text opens right on the training screen.
 - **Live camera** while you are outside: full screen, pinch to zoom. Add a second camera (another room, say) and switch
-  between them without reconnecting; the first one is recorded. Picture quality and the camera's own settings
-  (night mode, image flip, status light and whatever else the model supports) are right in the app.
+  between them without reconnecting. On iPhone and Mac the recording follows the camera on screen; Windows records
+  the first one. Picture quality and the camera's own settings (night mode, image flip, status light and whatever
+  else the model supports) are right in the app.
 - **Video recording** of every training, or a recording without one. Saved as a regular MP4 with sound, ready to share;
   on iPhone also copied to Photos.
 - **A log for the trainer**: one line per attempt, in the trainer's notation, sent as plain text.
 - **History** of trainings with their videos and logs. On Mac and Windows: a progress chart, a table of all trainings
   and "jump to the exit" in the video.
 - **iPhone and a computer together.** Leave the Mac or PC with the camera and take the iPhone outside: it shows the
-  computer's camera and drives the same training. The link works over your home network and is encrypted end to end;
-  the first connection is approved on the computer.
+  computer's camera and drives the same training. The link works over your home network, and the first connection is
+  approved on the computer. Pairing, the training and its commands are encrypted; the camera's video, sound and
+  controls go unencrypted, protected only by a password.
 - **Works without a camera**: timers, schedules and logs only.
 - English and Russian.
 
@@ -115,8 +117,8 @@ camera while you are behind the door, and send the trainer a ready log afterward
 - **Xiaomi (Mi Home) cameras**: sign in with your Xiaomi account right in the app (password, then the code from the
   SMS or e-mail) and pick the camera that faces the door. Cameras of homes shared with your account are listed too.
   Tested with the Xiaomi C200 and C302.
-- **Other cameras**: any camera with an RTSP stream. Anything else that [go2rtc](https://github.com/AlexxIT/go2rtc)
-  supports (ONVIF and more) works through your own go2rtc server.
+- **Other cameras**: any camera with an RTSP or HTTP stream works with the built-in go2rtc. ONVIF and anything else that
+  [go2rtc](https://github.com/AlexxIT/go2rtc) supports work through your own go2rtc server.
 - The camera and your phone or computer must be on the same Wi-Fi network: the video goes straight over it.
 - The iPhone app shows and records video while it is open. In the background the recording pauses and continues when
   you come back.
@@ -143,7 +145,7 @@ Until then you can build it from source with Xcode, see [DEVELOPMENT.md](DEVELOP
 
 ## Privacy
 
-No accounts, no analytics, no ads, no tracking and no servers of our own. Settings, logs and videos stay on your
+No Waiting Paws account, no analytics, no ads, no tracking and no servers of our own. Settings, logs and videos stay on your
 devices. The Xiaomi sign-in goes from the app straight to Xiaomi; the password is not stored. See the
 [privacy policy](App/Resources/Legal/PrivacyPolicy-en.md).
 
@@ -159,17 +161,20 @@ please report them privately, see [SECURITY.md](SECURITY.md).
 - [DEVELOPMENT.md](DEVELOPMENT.md): building, project layout, localization, tests, diagnostics, demo mode, in Russian.
 - [GoMobile/README.md](GoMobile/README.md): the embedded go2rtc and its patches, in Russian.
 - [Desktop/README.md](Desktop/README.md): the Windows app.
+- `Design/`: design labs and logo drafts, not part of the apps' build.
 
 ## License
 
 The code is under the [MIT license](LICENSE). The Waiting Paws name and the app icon are not covered by it: forks and
 redistributed builds need their own name and icon. The icon is concept 07 "Hourglass" in any rendering, including
 `App/Resources/Assets.xcassets/AppIcon.appiconset/` and `AppIconImage.imageset/`, `Design/app-icon/`,
-`Design/logos-v2/**/07-hourglass*`, `Desktop/build/icon.*`, `Desktop/resources/icon.png` and
+`Design/logos-v2/**/07*`, `Design/logos-v2/sheets/`, `Desktop/build/icon.*`, `Desktop/resources/icon.png` and
 `Desktop/src/renderer/src/assets/logo.svg`.
 
 go2rtc and other third-party code keep their own licenses: `App/Resources/Legal/Acknowledgements.txt`,
 `Desktop/build/ThirdPartyNotices-desktop.txt`.
+
+Apple, iPhone, Mac and App Store are trademarks of Apple Inc.
 
 Not affiliated with, endorsed or sponsored by Xiaomi. "Xiaomi" and "Mi Home" are trademarks of their owners. Like
 go2rtc and Home Assistant, the app uses Xiaomi's cloud API to sign in to your own account, list its cameras and change

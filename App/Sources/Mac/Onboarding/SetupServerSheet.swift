@@ -45,9 +45,15 @@ struct SetupServerSheet: View {
                             .disabled(check == .checking || Go2RTCServer.parse(urlText) == nil)
                     }
                 } footer: {
+                    #if WP_NO_XIAOMI
+                    Text(NoXiaomiText.serverPassword)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    #else
                     Text("Нужна версия 1.9.11 или новее с модулем xiaomi. Пароль сервера хранится в связке ключей.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    #endif
                 }
             }
             .formStyle(.grouped)

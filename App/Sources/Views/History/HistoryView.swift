@@ -1535,7 +1535,7 @@ struct HistoryDetailView: View {
 
     private func summary(longest: ExitResult?) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            // "Тренировка на пятницу · Таня / Андрей" over "18:36–19:01 · 25 мин", as the log starts; where the
+            // "Тренировка на пятницу · Аня / Марк" over "18:36–19:01 · 25 мин", as the log starts; where the
             // first line doesn't fit, the trainers open the second one instead of breaking off mid-name.
             ViewThatFits(in: .horizontal) {
                 titleLines(trainersFirst: false)

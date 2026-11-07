@@ -138,7 +138,7 @@ struct DebugWindowOpener: ViewModifier {
             if CommandLine.arguments.contains("--demo-pairing"), !Self.pairingShown {
                 Self.pairingShown = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    let iPhone = SyncDevice(id: "demo", name: "iPhone Тани", kind: .iphone, model: "iPhone 16")
+                    let iPhone = SyncDevice(id: "demo", name: "iPhone Ани", kind: .iphone, model: "iPhone 16")
                     MacPairingPrompt.present(SyncHost.PairingRequest(id: UUID(), device: iPhone), host: model.syncHost)
                 }
             }

@@ -55,7 +55,7 @@ export const SyncPlatform = {
  */
 export interface SyncDevice {
   id: string
-  /** The name its owner gave it («MacBook Pro — Андрей», «iPhone Тани»). */
+  /** The name its owner gave it («MacBook Pro — Марк», «iPhone Ани»). */
   name: string
   /** null: a kind this build doesn't know. */
   kind: SyncPlatform | null
@@ -87,7 +87,7 @@ export const SyncDevice = {
     return device.name === SyncDevice.modelTitle(device)
   },
 
-  /** The model for a detail line, unless the name already says it ("MacBook Pro — Андрей"). */
+  /** The model for a detail line, unless the name already says it ("MacBook Pro — Марк"). */
   distinctModel(device: SyncDevice): string | null {
     const model = SyncDevice.modelTitle(device)
     return device.name.toLocaleLowerCase().includes(model.toLocaleLowerCase()) ? null : model

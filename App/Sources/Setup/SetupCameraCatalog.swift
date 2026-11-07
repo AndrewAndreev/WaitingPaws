@@ -145,8 +145,13 @@ final class SetupCameraCatalog {
         }
         let region = model.settings.xiaomiRegion
         async let loadedStreams = Self.loadStreams(client)
+        #if WP_NO_XIAOMI
+        // A build without Xiaomi (`NoXiaomiText`) lists streams only.
+        let ids: [String] = []
+        #else
         // A server without the xiaomi module answers 404 here: simply no accounts.
         let ids = (try? await client.xiaomiAccounts()) ?? []
+        #endif
         let wanted = account.map { [$0] } ?? ids
         var loaded: [Account] = []
         await withTaskGroup(of: (Int, Account).self) { group in

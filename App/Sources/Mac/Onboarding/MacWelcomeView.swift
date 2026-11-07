@@ -21,14 +21,18 @@ struct MacWelcomeView: View {
     private static let titleBarHeight: CGFloat = 32
 
     enum WelcomeSheet: Identifiable, Hashable {
+        #if !WP_NO_XIAOMI // a build without Xiaomi has no sign-in (`NoXiaomiText`)
         case signIn
+        #endif
         case streams
         case server
         case cameras(accountID: String?)
 
         var id: String {
             switch self {
+            #if !WP_NO_XIAOMI
             case .signIn: return "signIn"
+            #endif
             case .streams: return "streams"
             case .server: return "server"
             case .cameras(let account): return "cameras-\(account ?? "all")"
@@ -52,8 +56,10 @@ struct MacWelcomeView: View {
         .sheet(item: $sheet) { sheet in
             Group {
                 switch sheet {
+                #if !WP_NO_XIAOMI
                 case .signIn:
                     SetupXiaomiSignInSheet { account in show(.cameras(accountID: account)) }
+                #endif
                 case .streams:
                     MacCameraPickerSheet(onlyStreams: true, onChosen: finish)
                 case .server:
@@ -101,10 +107,12 @@ struct MacWelcomeView: View {
                 .padding(.top, 10)
 
             VStack(spacing: 6) {
+                #if !WP_NO_XIAOMI
                 WelcomeActionRow(symbol: "person.badge.key", title: String(localized: "Войти в Xiaomi…"),
                                  subtitle: String(localized: "Камеры из приложения Mi Home")) { sheet = .signIn }
+                #endif
                 WelcomeActionRow(symbol: "antenna.radiowaves.left.and.right", title: String(localized: "Выбрать поток go2rtc…"),
-                                 subtitle: String(localized: "RTSP, ONVIF и другие источники")) { sheet = .streams }
+                                 subtitle: String(localized: "RTSP, HTTP и другие источники")) { sheet = .streams }
                 WelcomeActionRow(symbol: "server.rack", title: String(localized: "Свой сервер go2rtc…"),
                                  subtitle: serverSubtitle) { sheet = .server }
                 WelcomeActionRow(symbol: "timer", title: String(localized: "Продолжить без камеры"),
@@ -214,6 +222,18 @@ struct MacWelcomeView: View {
                 .padding(.bottom, 4)
             Text("Камер пока нет")
                 .font(.headline)
+            #if WP_NO_XIAOMI
+            // A build without Xiaomi: the stream is the way.
+            Text(NoXiaomiText.addCamera)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Добавить поток RTSP") { sheet = .streams }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.top, 10)
+            #else
             Text("Войдите в аккаунт Xiaomi — камеры из приложения Mi Home появятся здесь.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -223,10 +243,11 @@ struct MacWelcomeView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .padding(.top, 10)
-            Button("Или добавьте поток RTSP / ONVIF…") { sheet = .streams }
+            Button("Или добавьте поток RTSP…") { sheet = .streams }
                 .buttonStyle(.borderless)
                 .font(.callout)
                 .padding(.top, 2)
+            #endif
         }
         .padding(.horizontal, 44)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -234,6 +255,7 @@ struct MacWelcomeView: View {
 
     private var list: some View {
         List(selection: $selection) {
+            #if !WP_NO_XIAOMI
             if catalog.accounts.isEmpty {
                 // Only streams so far: the Mi Home cameras are one sign-in away.
                 Section {
@@ -243,6 +265,7 @@ struct MacWelcomeView: View {
                     WelcomeSectionHeader(title: "Mi Home", detail: nil)
                 }
             }
+            #endif
             ForEach(catalog.accounts) { account in
                 Section {
                     if let error = account.error {
@@ -381,7 +404,9 @@ struct MacWelcomeView: View {
     private func openDemoSheet() {
         #if DEBUG
         switch SetupDemo.argument(after: "--demo-welcome-sheet") {
+        #if !WP_NO_XIAOMI
         case "signin", "captcha", "verify": sheet = .signIn
+        #endif
         case "streams": sheet = .streams
         case "server": sheet = .server
         case "picker": sheet = .cameras(accountID: nil)

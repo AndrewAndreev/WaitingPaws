@@ -69,6 +69,9 @@ struct SettingsView: View {
 
                 Section {
                     LabeledContent("Поток", value: settings.cameraDisplayName.isEmpty ? "—" : settings.cameraDisplayName)
+                    #if WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`): no account, no sign-in
+                    Button("Выбрать камеру…") { showCameraPicker = true }
+                    #else
                     LabeledContent("Аккаунт Xiaomi", value: settings.xiaomiAccountID.isEmpty ? "—" : "ID \(settings.xiaomiAccountID) · \(settings.xiaomiRegion.rawValue)")
                     Button("Выбрать камеру…") { showCameraPicker = true }
                     if settings.xiaomiAccountID.isEmpty {
@@ -83,12 +86,15 @@ struct SettingsView: View {
                         }
                         .disabled(signingOut)
                     }
+                    #endif
                 } header: {
                     Text("Камера")
                 } footer: {
+                    #if !WP_NO_XIAOMI
                     if !settings.xiaomiAccountID.isEmpty {
                         Text("После выхода ключ доступа Xiaomi удаляется с устройства, а камеры этого аккаунта — из приложения.")
                     }
+                    #endif
                 }
 
                 Section {
@@ -187,6 +193,7 @@ struct SettingsView: View {
                     Button("Готово") { dismiss() }
                 }
             }
+            #if !WP_NO_XIAOMI
             .sheet(isPresented: $showXiaomi) {
                 XiaomiSignInSheet { _ in
                     showXiaomi = false
@@ -208,6 +215,7 @@ struct SettingsView: View {
             } message: {
                 Text("Камеры этого аккаунта перестанут показываться. Войти снова можно в любой момент.")
             }
+            #endif
             .sheet(isPresented: $showCameraPicker) {
                 NavigationStack {
                     CameraPickerView(showsClose: true) { _ in

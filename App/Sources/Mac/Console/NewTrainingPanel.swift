@@ -159,7 +159,7 @@ struct NewTrainingPanel: View {
         }
     }
 
-    /// «Таня/Андрей · ≈ 25 мин · конец ≈ 21:13», one line: the exits are counted on the timeline under it.
+    /// «Аня/Марк · ≈ 25 мин · конец ≈ 21:13», one line: the exits are counted on the timeline under it.
     private func summary(_ plan: TrainingPlan) -> String {
         var parts: [String] = []
         if !plan.trainers.isEmpty { parts.append(plan.trainers) }

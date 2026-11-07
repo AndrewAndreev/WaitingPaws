@@ -258,7 +258,7 @@ export const TrainingRecord = {
  * Renders a record as a short plain-text report, one line per exit in the trainer's own notation
  * (in the app's language, `coreLanguage()`):
  *
- *     Тренировка на пятницу · Андрей
+ *     Тренировка на пятницу · Марк
  *     25.09.2026, 18:00–18:41 (41 мин) · выходов 9 из 9 · фальстартов 1
  *
  *     1 выход — 2 с: за дверью 0:03 ✅ · перерыв 2:10

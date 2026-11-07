@@ -104,7 +104,7 @@ export function WelcomePage() {
           <ActionRow
             icon={<StreamIcon />}
             title={t('Выбрать поток go2rtc…')}
-            subtitle={t('RTSP, ONVIF и другие источники')}
+            subtitle={t('RTSP, HTTP и другие источники')}
             onClick={() => openCameraPicker({ onlyStreams: true })}
           />
           <ActionRow icon={<ServerIcon />} title={t('Свой сервер go2rtc…')} subtitle={serverSubtitle} onClick={() => ui.set({ showServerSetup: true })} />
@@ -406,7 +406,7 @@ function SignInEmpty() {
         {t('Войти в Xiaomi…')}
       </Button>
       <Button variant="link" onClick={() => openCameraPicker({ onlyStreams: true })}>
-        {t('Или добавьте поток RTSP / ONVIF…')}
+        {t('Или добавьте поток RTSP…')}
       </Button>
     </div>
   )

@@ -597,7 +597,7 @@ describe('TrainingSession store', () => {
     let now = start
     const plan = TrainingPlan.make({
       title: 'Тренировка на пятницу',
-      trainers: 'Андрей',
+      trainers: 'Марк',
       exits: [
         PlannedExit.make({ number: 1, duration: 2 }),
         PlannedExit.make({ number: 2, duration: 5, breakAfter: 300 }),
@@ -612,7 +612,7 @@ describe('TrainingSession store', () => {
     session.finish()
     const text = SessionLogFormatter.text(session.makeRecord(null))
     expect(text.split('\n')).toEqual([
-      'Тренировка на пятницу · Андрей',
+      'Тренировка на пятницу · Марк',
       '25.09.2026, 18:00–18:13 (13 мин) · выходов 2 из 2 · фальстартов 1',
       '',
       '1 выход — 2 с: за дверью 0:03 ✅ · перерыв 2:08',

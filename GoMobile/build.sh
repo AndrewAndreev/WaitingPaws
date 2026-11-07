@@ -94,6 +94,7 @@ go mod tidy >/dev/null
 NEW="$BUILD/Go2RTC.xcframework"
 rm -rf "$NEW"
 gomobile bind -target ios,iossimulator,macos -iosversion 17.0 -ldflags="-s -w" -o "$NEW" ./mobile
+mkdir -p "$(dirname "$OUT")" # Frameworks/ is not in git: a fresh clone has none
 rm -rf "$OUT" "$STAMP"
 mv "$NEW" "$OUT"
 [ -z "$SOURCE" ] || echo "$SOURCE" > "$STAMP"
