@@ -437,6 +437,9 @@ struct CameraWebView {
             } catch (e) { report('still ' + e); }
           };
           const dropFrame = () => { const still = document.getElementById('still'); if (still) still.remove(); };
+          // Quick retries after a first try that failed (`Player.onclose`): the waits in turn, then upstream's rhythm.
+          const quickWaits = [1000, 2000, 3000, 4000, 5000];
+          let quickTries = 0;
           // How far behind live the MSE player plays (seconds): starts at \(Self.jitterBuffer), grows at once to cover a gap in
           // the data (a camera on weak Wi-Fi, lost packets resent) up to 3.5, and every 10 s eases towards the longest gap
           // of the last 30 s + 0.4. Behind a door the gaps stay around 0.8 s: the cushion then settles near 1.2 s, where
@@ -507,6 +510,7 @@ struct CameraWebView {
               this.video.addEventListener('playing', () => {
                 if (first) { first = false; report('playing ' + this.video.videoWidth + 'x' + this.video.videoHeight); }
                 played = true;
+                quickTries = 0;
                 dropFrame();
                 setPhase('playing');
               });
@@ -567,11 +571,29 @@ struct CameraWebView {
                     this.onmjpeg();
                   } else {
                     report('reconnect after: ' + msg.value);
+                    this.retrySoon = true;
                     if (this.ws) this.ws.close();
                   }
                 };
               }
               return modes;
+            }
+            // Upstream reconnects RECONNECT_TIMEOUT (15 s) after the last try began. A camera that turns the session down
+            // (it still holds another one: an app killed without quitting, another device) does so within a second and
+            // holds the old session up to ~15 s more, so one refusal cost the whole 15 s on top. A first try that failed is
+            // tried again after 1, 2, 3, 4 and 5 s instead (each try asks Mi Cloud for keys and the camera once), then at
+            // upstream's pace; the picture playing starts the count over.
+            onclose() {
+              if (this.retrySoon) {
+                this.retrySoon = false;
+                if (quickTries < quickWaits.length) {
+                  const wait = quickWaits[quickTries++];
+                  // Upstream waits until RECONNECT_TIMEOUT after `connectTS`: date the last try back so the wait is `wait`.
+                  this.connectTS = Math.min(this.connectTS, Date.now() - (this.RECONNECT_TIMEOUT - wait));
+                  report('retry in ' + wait / 1000 + ' s');
+                }
+              }
+              return super.onclose();
             }
 
             // MSE with a small jitter buffer. Upstream video-rtc.js keeps the buffer nearly empty (playbackRate = buffered
@@ -778,11 +800,18 @@ struct CameraWebView {
             default:
                 guard state.hasPrefix("error") else { return nil }
                 let error = state.dropFirst(5).lowercased()
-                if error.contains("timeout") { return .failed(String(localized: "нет ответа")) }
-                if error.contains("refused") { return .failed(String(localized: "соединение отклонено")) }
+                // The camera turned the session down: it still serves another one (go2rtc's "the camera closed the
+                // session"; a camera that ignores the newcomer instead leaves "can't send command").
+                if error.contains("closed the session") || error.contains("can't send command") {
+                    return .failed(String(localized: "занята другим подключением"))
+                }
+                // Before the timeout: a camera search that timed out says why its sends failed
+                // ("i/o timeout (5 sent, all failed: … no route to host)").
                 if error.contains("unreachable") || error.contains("no route") {
                     return .failed(String(localized: "камера недоступна по сети"))
                 }
+                if error.contains("timeout") { return .failed(String(localized: "нет ответа")) }
+                if error.contains("refused") { return .failed(String(localized: "соединение отклонено")) }
                 let reason = state.dropFirst(5).split(separator: ":").last.map { $0.trimmingCharacters(in: .whitespaces) }
                 return .failed(reason.flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "нет ответа"))
             }

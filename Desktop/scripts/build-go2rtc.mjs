@@ -45,6 +45,8 @@ const PATCHES = [
   { file: 'internal/mp4/mp4.go', line: '\tcons := mp4.NewConsumer(medias)', append: '; cons.KeepTimeline() // Waiting Paws: GoMobile/mp4/muxer.go' },
   { file: 'pkg/xiaomi/miss/producer.go', line: '\tvar audioTS uint32', append: '; audio := newAudioClock(p.client) // Waiting Paws: audioclock.go' },
   { file: 'pkg/xiaomi/miss/producer.go', line: '\t\tp.Recv += len(pkt.Payload)', append: '; audioTS = audio.follow(audioTS, pkt) // Waiting Paws' },
+  // 2a'. The camera's Mi Cloud key time in the log (GoMobile/xiaomi/keys.go).
+  { file: 'internal/xiaomi/xiaomi.go', end: 'rawURL, err = getCameraURL(u)', to: 'rawURL, err = getCameraURLLogged(u) // Waiting Paws: keys.go' },
   // 2b. 256 frames per viewer instead of 64.
   { file: 'pkg/core/track.go', end: 'bufSize = 64', to: 'bufSize = 256 // Waiting Paws: 64 upstream' },
   // 3. HEVC in MP4 as `hvc1` (Apple only plays hvc1).
@@ -62,6 +64,7 @@ const CHECKS = [
   ['internal/mp4/mp4.go', 'cons.KeepTimeline() // Waiting Paws', true, 'stream.mp4 timeline'],
   ['pkg/xiaomi/miss/producer.go', 'audio := newAudioClock(p.client)', true, 'xiaomi audio clock'],
   ['pkg/xiaomi/miss/producer.go', 'audioTS = audio.follow(audioTS, pkt)', true, 'xiaomi audio clock'],
+  ['internal/xiaomi/xiaomi.go', 'getCameraURLLogged(u) // Waiting Paws', true, 'xiaomi keys timing'],
   ['pkg/core/track.go', 'bufSize = 256 // Waiting Paws', true, 'sender buffer'],
   ['pkg/iso/codecs.go', 'StartAtom("hvc1")', true, 'hvc1'],
   ['pkg/iso/reader.go', 'case "avc1", "hev1", "hvc1":', true, 'hvc1 reader'],

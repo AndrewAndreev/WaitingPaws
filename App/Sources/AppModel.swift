@@ -103,6 +103,13 @@ final class AppModel {
         LogMirror.start(directory: Self.logsDirectory)
         reloadHistory()
         startEmbeddedIfNeeded()
+        #if os(iOS)
+        // Swiped away while still running (in the background grace): the cameras are told their sessions are over, as
+        // on the Mac (MacAppDelegate). A suspended app is killed without notice; its sessions run out on the camera.
+        NotificationCenter.default.addObserver(forName: UIApplication.willTerminateNotification, object: nil, queue: nil) { _ in
+            EmbeddedGo2RTC.closeCameraSessions()
+        }
+        #endif
         setUpSync()
         startStreamDiagnostics()
         #if DEBUG

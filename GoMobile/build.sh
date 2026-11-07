@@ -62,6 +62,10 @@ sed -i '' 's|^	var audioTS uint32$|&; audio := newAudioClock(p.client) // Waitin
 sed -i '' 's|^		p.Recv += len(pkt.Payload)$|&; audioTS = audio.follow(audioTS, pkt) // Waiting Paws|' "$MISS"
 grep -q 'audio := newAudioClock(p.client)' "$MISS" && grep -q 'audioTS = audio.follow(audioTS, pkt)' "$MISS" ||
   { echo "xiaomi audio clock patch failed"; exit 1; }
+# 2a'. The time the camera's keys take from Mi Cloud before every connect goes to the log (GoMobile/xiaomi/keys.go).
+XIAOMI="$SRC/internal/xiaomi/xiaomi.go"
+sed -i '' 's|rawURL, err = getCameraURL(u)$|rawURL, err = getCameraURLLogged(u) // Waiting Paws: keys.go|' "$XIAOMI"
+grep -q 'getCameraURLLogged(u) // Waiting Paws' "$XIAOMI" || { echo "xiaomi keys timing patch failed"; exit 1; }
 # 2b. Each viewer (MSE player, recording, linked iPhone) gets a queue of 64 frames (~3 s at 20 fps); a viewer that
 #     falls behind for longer loses frames and freezes until the next keyframe. 256 frames ride out such hiccups.
 TRACK="$SRC/pkg/core/track.go"

@@ -117,6 +117,11 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         }
         return .terminateLater
     }
+
+    /// The cameras are told their sessions are over, so the next launch connects at once.
+    func applicationWillTerminate(_ notification: Notification) {
+        EmbeddedGo2RTC.closeCameraSessions()
+    }
 }
 
 /// DEBUG `--open history|settings|welcome|main`: open that window at launch (UI checks without clicks).

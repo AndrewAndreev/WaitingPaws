@@ -17,30 +17,49 @@
 //   - every 30 s the log gets the video's timing when it was uneven (and once, 30 s after connecting, in any case):
 //     frames, bitrate, the longest pause between frames with the camera's own time for that pause (a pause in
 //     arrival only = delivery held up; in camera time too = frames never sent), the spread of delivery against the
-//     camera's clock (the cushion a player needs) and, over UDP, the resend counters.
+//     camera's clock (the cushion a player needs) and, over UDP, the resend counters;
+//   - the camera is told when a session ends (PPPP close, 0xF0; upstream only closed the socket, and its msgClose 0xF1
+//     is the header magic, not a message). A camera serves one session at a time and held the old one until its own
+//     timeout, so the next one connected and then got no video for 15 s or "can't send command": an app quit and
+//     opened again, a recording stopped and the player back two seconds later. CloseAll does it for every open
+//     session when the app quits and refuses new ones from then on (go2rtc redials at once). A camera that still holds
+//     another session closes the new one within a second: that close now ends it at once and says so, where upstream
+//     ignored it and waited out the 15 s probe ("xiaomi: probe: … i/o timeout");
+//   - the LAN search and the punch keep resending every second when a send fails (upstream stopped at the first failed
+//     send and then waited out the deadline, so "no route to host" at launch looked like a silent camera); the
+//     step's time in the log, or the error, says how many were sent when one was not enough and why sending failed;
+//   - a command waiting for its acknowledgement gives up as soon as the session is over;
+//   - the log follows a session: each handshake step's time, the first video frame (or "no video 5 s after
+//     connecting" with the commands the camera acknowledged), an unacknowledged command, how and when it ended.
 package cs2
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 func Dial(host, transport string) (*Conn, error) {
+	if quitting.Load() {
+		return nil, errQuitting
+	}
 	started := time.Now()
 	if transport == "" && strugglingOverUDP(host) {
 		logf("cs2: %s struggled over UDP lately, asking for TCP", host)
 		transport = "tcp"
 	}
-	conn, err := handshake(host, transport)
+	conn, steps, err := handshake(host, transport)
 	if err != nil {
+		logf("cs2: no session with %s after %d ms: %v", host, time.Since(started).Milliseconds(), err)
 		return nil, err
 	}
 
@@ -53,14 +72,97 @@ func Dial(host, transport string) (*Conn, error) {
 		channels: [4]*dataChannel{
 			newDataChannel(0, 100), nil, newDataChannel(2048, 1000), nil,
 		},
-		done: make(chan struct{}),
+		done:        make(chan struct{}),
+		connectedAt: time.Now(),
 	}
 	c.channels[2].timing = true
+	sessions.Store(c, struct{}{})
+	if quitting.Load() { // CloseAll ran while this one was connecting
+		_ = c.Close()
+		return nil, errQuitting
+	}
 	go c.worker()
 	go c.report()
 	go c.watch()
-	logf("cs2: connected to %s over %s in %d ms", conn.RemoteAddr(), c.transport(), time.Since(started).Milliseconds())
+	go c.waitForVideo()
+	logf("cs2: connected to %s over %s in %d ms (%s)", conn.RemoteAddr(), c.transport(), time.Since(started).Milliseconds(), steps)
 	return c, nil
+}
+
+// Open sessions (Waiting Paws): CloseAll tells their cameras goodbye when the app quits.
+var sessions sync.Map // *Conn → struct{}
+
+// Set by CloseAll: go2rtc redials a stream whose session ended at once (keys from Mi Cloud in ~70 ms, then the
+// camera), and a session opened by a process about to exit would be the very one the camera then holds.
+var quitting atomic.Bool
+
+var errQuitting = errors.New("cs2: the app is quitting")
+
+// CloseAll ends every open session and tells each camera (Waiting Paws), returning how many there were. The app calls
+// it when it quits: otherwise the camera holds the session of a process that is gone and ignores the next launch's.
+func CloseAll() int {
+	quitting.Store(true)
+	n := 0
+	sessions.Range(func(key, _ any) bool {
+		_ = key.(*Conn).Close()
+		n++
+		return true
+	})
+	return n
+}
+
+// Close tells the camera the session is over, then closes the socket (Waiting Paws, see the header).
+func (c *Conn) Close() error {
+	err := net.ErrClosed
+	c.closeOnce.Do(func() {
+		c.closing.Store(true)
+		sessions.Delete(c)
+		bye := []byte{magic, msgClose, 0, 0}
+		_, sendErr := c.Conn.Write(bye)
+		if !c.isTCP {
+			_, _ = c.Conn.Write(bye) // a datagram may get lost; a second close costs nothing
+		}
+		err = c.Conn.Close()
+		told := "the camera was told"
+		if sendErr != nil {
+			told = "telling the camera failed: " + sendErr.Error()
+		}
+		logf("cs2: closed the session to %s after %s, %s", c.host, c.age(), told)
+	})
+	return err
+}
+
+// age is how long the session has been open, for the log.
+func (c *Conn) age() string {
+	return fmt.Sprintf("%.1f s", time.Since(c.connectedAt).Seconds())
+}
+
+// waitForVideo logs how soon the first video frame came after connecting (Waiting Paws), and says so at 5 s when none
+// has: a camera that took the session but sends nothing (it still serves another one) otherwise shows only as go2rtc's
+// probe timeout 15 s later.
+func (c *Conn) waitForVideo() {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	warned := false
+	for {
+		select {
+		case <-c.done:
+			return
+		case <-ticker.C:
+			if at := c.channels[2].firstFrameAt(); !at.IsZero() {
+				logf("cs2: first video from %s %d ms after connecting", c.host, at.Sub(c.connectedAt).Milliseconds())
+				return
+			}
+			if !warned && time.Since(c.connectedAt) >= 5*time.Second {
+				warned = true
+				acks := fmt.Sprintf("commands acknowledged %d of %d", c.cmdAcked.Load(), c.cmdSent.Load())
+				if c.isTCP {
+					acks = fmt.Sprintf("commands sent %d", c.cmdSent.Load())
+				}
+				logf("cs2: no video from %s 5 s after connecting (%s)", c.host, acks)
+			}
+		}
+	}
 }
 
 func logf(format string, args ...any) {
@@ -99,7 +201,7 @@ func (c *Conn) watch() {
 				udpTrouble.Store(c.host, time.Now())
 				logf("cs2: UDP to %s is struggling (a missing packet has held the video for %.1f s), reconnecting over TCP",
 					c.host, held.Seconds())
-				_ = c.Conn.Close()
+				_ = c.Close()
 				return
 			}
 		}
@@ -156,6 +258,12 @@ type Conn struct {
 
 	cmdMu  sync.Mutex
 	cmdAck func()
+
+	// Waiting Paws: the session's story for the log, and Close telling the camera.
+	connectedAt       time.Time
+	cmdSent, cmdAcked atomic.Int32
+	closeOnce         sync.Once
+	closing           atomic.Bool // we are closing it: the reader's error is ours, not the camera's
 }
 
 const (
@@ -170,25 +278,42 @@ const (
 	msgDrwAck    = 0xD1
 	msgPing      = 0xE0
 	msgPong      = 0xE1
-	msgClose     = 0xF1
+	msgClose     = 0xF0 // Waiting Paws: PPPP's close (upstream 0xF1, the header magic, and never sent)
 )
 
-func handshake(host, transport string) (net.Conn, error) {
-	conn, err := newUDPConn(host, 32108)
+// The cameras' CS2 port on the LAN (a variable for the tests' fake camera).
+var lanPort = 32108
+
+func handshake(host, transport string) (net.Conn, string, error) {
+	conn, err := newUDPConn(host, lanPort)
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+	udp := conn.(*udpConn)
+
+	// Waiting Paws: each step's time goes to the "connected" line, a failed step names itself.
+	var steps []string
+	step := time.Now()
+	took := func(name, sends string) {
+		line := fmt.Sprintf("%s %d ms", name, time.Since(step).Milliseconds())
+		if sends != "" {
+			line += " (" + sends + ")" // the camera missed a send or sending failed: launch, Wi-Fi, permission
+		}
+		steps = append(steps, line)
+		step = time.Now()
 	}
 
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 
 	req := []byte{magic, msgLanSearch, 0, 0}
-	res, err := conn.(*udpConn).WriteUntil(req, func(res []byte) bool {
+	res, sends, err := udp.WriteUntil(req, func(res []byte) bool {
 		return res[1] == msgPunchPkt
 	})
 	if err != nil {
 		_ = conn.Close()
-		return nil, err
+		return nil, "", fmt.Errorf("cs2: no answer to the LAN search: %w", err)
 	}
+	took("search", sends)
 
 	// Waiting Paws: `transport` (UDP by default) is a preference, not a requirement. The camera answers with the
 	// transport it likes (the C302: TCP); when another one was asked for, it gets a moment to offer that too,
@@ -197,18 +322,19 @@ func handshake(host, transport string) (net.Conn, error) {
 		transport = "udp"
 	}
 	punch := res
-	res, err = conn.(*udpConn).WriteUntil(punch, func(res []byte) bool {
+	res, sends, err = udp.WriteUntil(punch, func(res []byte) bool {
 		return res[1] == msgP2PRdyUDP || res[1] == msgP2PRdyTCP
 	})
 	if err != nil {
 		_ = conn.Close()
-		return nil, err
+		return nil, "", fmt.Errorf("cs2: the camera answered the LAN search, not the punch: %w", err)
 	}
+	took("punch", sends)
 
 	want := map[string]byte{"udp": msgP2PRdyUDP, "tcp": msgP2PRdyTCP}[transport]
 	if want != 0 && res[1] != want {
 		_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
-		if other, err := conn.(*udpConn).WriteUntil(punch, func(res []byte) bool { return res[1] == want }); err == nil {
+		if other, _, err := udp.WriteUntil(punch, func(res []byte) bool { return res[1] == want }); err == nil {
 			res = other
 		} else {
 			offered := "UDP"
@@ -217,6 +343,7 @@ func handshake(host, transport string) (net.Conn, error) {
 			}
 			logf("cs2: %s asked for, the camera offers only %s", transport, offered)
 		}
+		took("waiting for "+transport, "")
 	}
 
 	_ = conn.SetDeadline(time.Time{})
@@ -224,10 +351,15 @@ func handshake(host, transport string) (net.Conn, error) {
 	if res[1] == msgP2PRdyTCP {
 		_ = conn.Close()
 		//host := fmt.Sprintf("%d.%d.%d.%d:%d", b[31], b[30], b[29], b[28], uint16(b[27])<<8|uint16(b[26]))
-		return newTCPConn(conn.RemoteAddr().String())
+		tcp, err := newTCPConn(conn.RemoteAddr().String())
+		if err != nil {
+			return nil, "", fmt.Errorf("cs2: TCP to the camera: %w", err)
+		}
+		took("tcp", "")
+		return tcp, strings.Join(steps, ", "), nil
 	}
 
-	return conn, nil
+	return conn, strings.Join(steps, ", "), nil
 }
 
 func (c *Conn) worker() {
@@ -235,6 +367,10 @@ func (c *Conn) worker() {
 		c.channels[0].Close()
 		c.channels[2].Close()
 		close(c.done)
+		// Waiting Paws: a session that ended by itself, not by Close, says how and when.
+		if !c.closing.Load() {
+			logf("cs2: the session to %s ended after %s: %v", c.host, c.age(), c.err)
+		}
 	}()
 
 	var keepaliveTS time.Time // only for TCP
@@ -288,7 +424,12 @@ func (c *Conn) worker() {
 
 		case msgPing:
 			_, _ = c.Conn.Write([]byte{magic, msgPong, 0, 0})
-		case msgPong, msgP2PRdyUDP, msgP2PRdyTCP, msgClose: // skip it
+		case msgClose:
+			// Waiting Paws: the camera ended the session (another client took it, or it restarts): go2rtc reconnects
+			// now instead of after a 10 s read timeout.
+			c.err = fmt.Errorf("%s: the camera closed the session", "cs2")
+			return
+		case msgPong, msgP2PRdyUDP, msgP2PRdyTCP: // skip it
 		case msgDrwAck: // only for UDP
 			if c.cmdAck != nil {
 				c.cmdAck()
@@ -333,6 +474,7 @@ func (c *Conn) WriteCommand(cmd uint32, data []byte) error {
 
 	req := marshalCmd(0, c.seqCh0, cmd, data)
 	c.seqCh0++
+	c.cmdSent.Add(1) // Waiting Paws: for "no video … after connecting"
 
 	if c.isTCP {
 		_, err := c.Conn.Write(req)
@@ -354,12 +496,21 @@ func (c *Conn) WriteCommand(cmd uint32, data []byte) error {
 		if _, err := c.Conn.Write(req); err != nil {
 			return err
 		}
-		<-timeout.C
+		select {
+		case <-timeout.C:
+		case <-c.done:
+			// Waiting Paws: the session is over (the camera closed it, refusing a newcomer while it holds another): no
+			// acknowledgement is coming, and the 5 tries used to keep the player waiting 5 s for "can't send command".
+			return c.Error()
+		}
 		r := repeat.Add(-1)
 		if r < 0 {
+			c.cmdAcked.Add(1)
 			return nil
 		}
 		if r == 0 {
+			// Waiting Paws: which camera and how far into the session (4097 is every MISS command: 0x1001, encoded).
+			logf("cs2: %s acknowledged no try of command %d in 5 s, %s after connecting", c.host, cmd, c.age())
 			return fmt.Errorf("%s: can't send command %d", "cs2", cmd)
 		}
 	}
@@ -468,21 +619,62 @@ func (c *udpConn) RemoteAddr() net.Addr {
 	return c.addr
 }
 
-func (c *udpConn) WriteUntil(req []byte, ok func(res []byte) bool) ([]byte, error) {
-	var t *time.Timer
-	t = time.AfterFunc(1, func() {
-		if _, err := c.Write(req); err == nil && t != nil {
-			t.Reset(time.Second)
+// WriteUntil sends req every second until a reply passes ok or the deadline. Waiting Paws: a failed send no longer
+// stops the resending (upstream rescheduled only after a successful one, so one "no route to host" turned into a
+// silent 5 s wait), and a timeout says how many were sent and how sending failed.
+func (c *udpConn) WriteUntil(req []byte, ok func(res []byte) bool) ([]byte, string, error) {
+	var sent, failed int
+	var sendErr error
+	stop, stopped := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(stopped)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			if _, err := c.Write(req); err != nil {
+				failed++
+				if sendErr == nil {
+					sendErr = err
+				}
+			}
+			sent++
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+			}
 		}
-	})
-	defer t.Stop()
+	}()
+	// The counters and c.addr are the sender's until it has stopped.
+	finish := func() {
+		close(stop)
+		<-stopped
+	}
+	// "" for a single send that went out; otherwise "3 sent" or "3 sent, 2 failed: … no route to host".
+	sends := func() string {
+		switch {
+		case sent == 1 && failed == 0:
+			return ""
+		case failed == 0:
+			return fmt.Sprintf("%d sent", sent)
+		case failed == sent:
+			return fmt.Sprintf("%d sent, all failed: %v", sent, sendErr)
+		default:
+			return fmt.Sprintf("%d sent, %d failed: %v", sent, failed, sendErr)
+		}
+	}
 
 	buf := make([]byte, 1200)
 
 	for {
 		n, addr, err := c.UDPConn.ReadFromUDP(buf)
 		if err != nil {
-			return nil, err
+			finish()
+			summary := sends()
+			if summary == "" {
+				summary = "1 sent"
+			}
+			return nil, summary, fmt.Errorf("%w (%s)", err, summary)
 		}
 
 		if string(addr.IP) != string(c.addr.IP) || n < 16 {
@@ -490,8 +682,9 @@ func (c *udpConn) WriteUntil(req []byte, ok func(res []byte) bool) ([]byte, erro
 		}
 
 		if ok(buf[:n]) {
+			finish()
 			c.addr.Port = addr.Port
-			return buf[:n], nil
+			return buf[:n], sends(), nil
 		}
 	}
 }
@@ -562,6 +755,7 @@ type dataChannel struct {
 	timing      bool      // the media channel: note every video frame's arrival
 	lastFrame   time.Time // arrival of the previous video frame
 	lastFrameTS int64     // its capture time on the camera's clock, ms
+	firstFrame  time.Time // arrival of the session's first video frame (Waiting Paws, for the log)
 }
 
 type channelStats struct {
@@ -592,6 +786,9 @@ func (c *dataChannel) observe(msg []byte) {
 	defer c.statsMu.Unlock()
 	s := &c.stats
 	s.frames++
+	if c.firstFrame.IsZero() {
+		c.firstFrame = now
+	}
 	s.videoBytes += len(msg)
 	if !c.lastFrame.IsZero() {
 		if pause := now.Sub(c.lastFrame); pause > s.longestPause {
@@ -605,6 +802,13 @@ func (c *dataChannel) observe(msg []byte) {
 	} else {
 		s.minOffset, s.maxOffset = min(s.minOffset, offset), max(s.maxOffset, offset)
 	}
+}
+
+// firstFrameAt is when the session's first video frame arrived, zero before that.
+func (c *dataChannel) firstFrameAt() time.Time {
+	c.statsMu.Lock()
+	defer c.statsMu.Unlock()
+	return c.firstFrame
 }
 
 func (c *dataChannel) count(update func(s *channelStats)) {

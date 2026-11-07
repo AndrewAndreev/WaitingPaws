@@ -31,6 +31,8 @@ final class EmbeddedGo2RTC {
     nonisolated(unsafe) private(set) static var apiPort = preferredAPIPort
     nonisolated(unsafe) private(set) static var webrtcPort = preferredAPIPort + 1
     nonisolated static var baseURL: URL { URL(string: "http://127.0.0.1:\(apiPort)/")! }
+    /// go2rtc was started in this process (`closeCameraSessions` has something to close).
+    nonisolated(unsafe) private static var goStarted = false
 
     static var isAvailable: Bool {
         #if canImport(Go2RTC)
@@ -104,7 +106,10 @@ final class EmbeddedGo2RTC {
                 }
             }
             try Self.ensureConfig(at: configURL)
+            // go2rtc's log lines in local time like the app's own (on iOS Go cannot read the zone and wrote UTC).
+            MobileSetTimeZone(TimeZone.current.identifier, TimeZone.current.secondsFromGMT())
             var error: NSError?
+            Self.goStarted = true
             if !MobileStart(configURL.path, Self.overrides(lanPassword: lanPassword), &error) {
                 throw error ?? NSError(domain: "go2rtc", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "go2rtc не запустился")])
             }
@@ -143,6 +148,19 @@ final class EmbeddedGo2RTC {
         return false
         #else
         return false
+        #endif
+    }
+
+    /// The app is quitting: every camera with an open session is told it is over. A camera serves one session at a
+    /// time, and one left by a process that is gone made the next launch wait: connected, then no video for 15 s or
+    /// "can't send command". A few datagrams, no waiting for answers; the short pause lets the log mirror write the
+    /// lines before the process ends.
+    nonisolated static func closeCameraSessions() {
+        #if canImport(Go2RTC)
+        guard goStarted, MobileIsRunning() else { return } // never wake the Go runtime just to quit
+        let count = MobileCloseCameraSessions()
+        print("[app] quitting: \(count) camera session(s) closed")
+        Thread.sleep(forTimeInterval: 0.1)
         #endif
     }
 
