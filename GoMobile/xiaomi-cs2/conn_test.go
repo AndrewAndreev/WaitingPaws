@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -129,6 +130,8 @@ type fakeCamera struct {
 	conn     *net.UDPConn
 	received chan byte
 	client   chan *net.UDPAddr
+	// refuse closes a session at its first command, as a camera does while it holds another session.
+	refuse atomic.Bool
 }
 
 func newFakeCamera(t *testing.T) *fakeCamera {
@@ -163,6 +166,12 @@ func newFakeCamera(t *testing.T) *fakeCamera {
 				reply[1] = msgPunchPkt
 			case msgPunchPkt:
 				reply[1] = msgP2PRdyUDP
+			case msgDrw:
+				if !cam.refuse.Load() {
+					continue
+				}
+				_, _ = conn.WriteToUDP([]byte{magic, msgClose, 0, 0}, addr)
+				continue
 			default:
 				continue
 			}
@@ -316,5 +325,23 @@ func TestOneAnsweredSearchLeavesTheStepPlain(t *testing.T) {
 	defer conn.Close()
 	if strings.Contains(steps, "sent") || !strings.HasPrefix(steps, "search ") || !strings.Contains(steps, ", punch ") {
 		t.Fatalf("steps %q", steps)
+	}
+}
+
+func TestCommandGivesUpWhenTheCameraClosesTheSession(t *testing.T) {
+	cam := newFakeCamera(t)
+	cam.refuse.Store(true)
+	c, err := Dial("127.0.0.1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	started := time.Now()
+	err = c.WriteCommand(0x1001, []byte("login"))
+	if err == nil || !strings.Contains(err.Error(), "the camera closed the session") {
+		t.Fatalf("error %v", err)
+	}
+	if took := time.Since(started); took > 500*time.Millisecond {
+		t.Fatalf("waited %v for an acknowledgement from a closed session", took)
 	}
 }

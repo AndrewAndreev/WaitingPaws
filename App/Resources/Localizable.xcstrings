@@ -4930,6 +4930,22 @@
         }
       }
     },
+    "занята другим подключением" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "busy with another connection"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "занята другим подключением"
+          }
+        }
+      }
+    },
     "Занято" : {
       "localizations" : {
         "en" : {

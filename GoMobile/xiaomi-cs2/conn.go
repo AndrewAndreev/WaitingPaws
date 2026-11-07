@@ -28,6 +28,7 @@
 //   - the LAN search and the punch keep resending every second when a send fails (upstream stopped at the first failed
 //     send and then waited out the deadline, so "no route to host" at launch looked like a silent camera); the
 //     step's time in the log, or the error, says how many were sent when one was not enough and why sending failed;
+//   - a command waiting for its acknowledgement gives up as soon as the session is over;
 //   - the log follows a session: each handshake step's time, the first video frame (or "no video 5 s after
 //     connecting" with the commands the camera acknowledged), an unacknowledged command, how and when it ended.
 package cs2
@@ -495,7 +496,13 @@ func (c *Conn) WriteCommand(cmd uint32, data []byte) error {
 		if _, err := c.Conn.Write(req); err != nil {
 			return err
 		}
-		<-timeout.C
+		select {
+		case <-timeout.C:
+		case <-c.done:
+			// Waiting Paws: the session is over (the camera closed it, refusing a newcomer while it holds another): no
+			// acknowledgement is coming, and the 5 tries used to keep the player waiting 5 s for "can't send command".
+			return c.Error()
+		}
 		r := repeat.Add(-1)
 		if r < 0 {
 			c.cmdAcked.Add(1)
