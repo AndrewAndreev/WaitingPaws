@@ -221,6 +221,12 @@ struct SessionCapsule: View {
     private static let avatar: CGFloat = 28
     /// A wide window's ceiling for the text.
     private static let maxText: CGFloat = 480
+    /// The room before the avatar that the toolbar item is laid out with, always: in full screen it is the room shown.
+    /// Beside the window's buttons the capsule is moved (an offset, not a padding) so the avatar is 8.5 pt after the
+    /// hairline. The item's width must not follow where the item is: AppKit centres the item in its viewer and rounds
+    /// to half points, so a padding read from the item's place changed its width, which moved the item again — a
+    /// half-point cycle that never settled, the capsule shaking and a layout pass on every frame.
+    private static let itemLead: CGFloat = 4
 
     var body: some View {
         let geometry = layout
@@ -236,7 +242,7 @@ struct SessionCapsule: View {
             }
             .frame(width: geometry.text, alignment: .leading)
         }
-        .padding(.leading, geometry.lead)
+        .padding(.leading, Self.itemLead)
         .padding(.trailing, 14)
         .frame(height: HeaderLook.height)
         .background(alignment: .trailing) {
@@ -248,6 +254,8 @@ struct SessionCapsule: View {
             .frame(width: geometry.lead + Self.avatar + 8 + geometry.text + 14 + geometry.well)
             .modifier(HeaderGlass(floating: 1))
         }
+        // Drawn moved, laid out in place: the probe below stays on the item itself and reads where AppKit put it.
+        .offset(x: geometry.lead - Self.itemLead)
         // Clicks go through to the title bar under it, as on a window's title: it drags the window. A toolbar item
         // takes no double click of the title bar: the probe does what the user set for one. The full title, when it
         // is cut, is the probe's tooltip (AppKit's, under the pointer whatever takes the clicks).
@@ -289,7 +297,7 @@ struct SessionCapsule: View {
     }
 
     private var layout: Layout {
-        var lead: CGFloat = 4
+        var lead = Self.itemLead
         var well: CGFloat = 0
         var hairline: CGFloat?
         if let lights, let capsuleMinX = lights.capsuleMinX, let rule = lights.hairlineX {
