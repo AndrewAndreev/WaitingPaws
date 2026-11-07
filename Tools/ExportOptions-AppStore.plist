@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- Tools/release.sh export: an archive → a file for App Store Connect (iPhone .ipa, Mac .pkg), signed automatically
+     with Apple Distribution (the Mac .pkg with Mac Installer Distribution) and App Store profiles. Written to disk only:
+     uploading is a separate step, see DEVELOPMENT.md «В App Store». The version and build stay the tag's. -->
+<dict>
+	<key>destination</key>
+	<string>export</string>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>teamID</key>
+	<string>849CANCD26</string>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>

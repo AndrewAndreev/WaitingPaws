@@ -220,7 +220,7 @@ struct MacSourceLine: Identifiable, Equatable {
         case .blank:
             return AttributedString()
         case .header:
-            // «Тренировка на воскресенье - Таня/Андрей - 04.10.2026»: the parts between the dashes, as the parser reads them.
+            // «Тренировка на воскресенье - Аня/Марк - 04.10.2026»: the parts between the dashes, as the parser reads them.
             let trainer = context.trainer
             var cursor = 0
             var parts: [NSRange] = []

@@ -369,7 +369,7 @@ final class AppModel {
     static var demoPlanText: String {
         if let text = UserDefaults.standard.string(forKey: "demoPlanText"), !text.isEmpty { return text }
         return CoreLanguage.current == .ru ? """
-        🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
+        🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026
         ➡️ Все перерывы 2 минуты
         1 выход - 15 секунд
         2 выход - 30 секунд

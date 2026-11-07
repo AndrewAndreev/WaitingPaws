@@ -146,6 +146,7 @@ targets:
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
         LSApplicationCategoryType: public.app-category.lifestyle
+        ITSAppUsesNonExemptEncryption: false
         NSHumanReadableCopyright: © 2026 Andrew Andreev
         NSLocalNetworkUsageDescription: Waiting Paws connects to your camera and to Waiting Paws on your other devices over the local network.
         NSBonjourServices:

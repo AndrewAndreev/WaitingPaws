@@ -12,7 +12,7 @@ import {
   setCoreLanguage,
 } from '@core/index'
 
-const sample = `🐶 Monday training - Anna/Andrew - 25.10.2026
+const sample = `🐶 Monday training - Anna/Mark - 25.10.2026
 ➡️ All breaks 2 minutes
 Exit 1 - 5 seconds
 Exit 2 - 10 seconds
@@ -28,7 +28,7 @@ describe('English', () => {
   it('parses an English schedule', () => {
     const plan = PlanParser.parse(sample)
     expect(plan.title).toBe('Monday training')
-    expect(plan.trainers).toBe('Anna/Andrew')
+    expect(plan.trainers).toBe('Anna/Mark')
     expect(plan.date).not.toBeNull()
     expect(plan.defaultBreak).toBe(120)
     expect(plan.exits.map((e) => e.number)).toEqual([1, 2, 3, 4])

@@ -1,4 +1,4 @@
-#if os(macOS)
+#if os(macOS) && !WP_NO_XIAOMI // a build without Xiaomi has no sign-in (`NoXiaomiText`)
 import AppKit
 import SwiftUI
 import WaitingPawsCore

@@ -14,7 +14,7 @@ final class EnglishTests: XCTestCase {
     }
 
     private let sample = """
-    🐶 Monday training - Anna/Andrew - 25.10.2026
+    🐶 Monday training - Anna/Mark - 25.10.2026
     ➡️ All breaks 2 minutes
     Exit 1 - 5 seconds
     Exit 2 - 10 seconds
@@ -27,7 +27,7 @@ final class EnglishTests: XCTestCase {
     func testEnglishSchedule() {
         let plan = PlanParser.parse(sample)
         XCTAssertEqual(plan.title, "Monday training")
-        XCTAssertEqual(plan.trainers, "Anna/Andrew")
+        XCTAssertEqual(plan.trainers, "Anna/Mark")
         XCTAssertNotNil(plan.date)
         XCTAssertEqual(plan.defaultBreak, 120)
         XCTAssertEqual(plan.exits.map(\.number), [1, 2, 3, 4])

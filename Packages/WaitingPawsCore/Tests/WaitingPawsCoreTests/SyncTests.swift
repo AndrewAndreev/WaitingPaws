@@ -9,7 +9,7 @@ final class SyncTests: XCTestCase {
 
     private func plan() -> TrainingPlan {
         PlanParser.parse("""
-        Тренировка на воскресенье - Таня/Андрей - 04.10.2026
+        Тренировка на воскресенье - Аня/Марк - 04.10.2026
         Все перерывы 2 минуты
         1 выход - 10 секунд
         2 выход - 30 секунд
@@ -328,7 +328,7 @@ final class SyncTests: XCTestCase {
     }
 
     func testHostInfoTXTRoundTrip() {
-        let info = SyncHostInfo(name: "MacBook Андрея", cameraTitle: "Прихожая", cameraReady: true, sessionRunning: true, currentExit: 6)
+        let info = SyncHostInfo(name: "MacBook Марка", cameraTitle: "Прихожая", cameraReady: true, sessionRunning: true, currentExit: 6)
         XCTAssertEqual(SyncHostInfo(name: info.name, txt: info.txt), info)
     }
 }

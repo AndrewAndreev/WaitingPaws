@@ -46,10 +46,10 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
   useEffect(() => {
     const demo = (window as unknown as { __wpSetupDemo?: { signIn?: 'captcha' | 'verify' } }).__wpSetupDemo?.signIn
     if (!demo) return
-    setLogin('tanya.k@example.com')
+    setLogin('anna.k@example.com')
     setPassword('demo-password')
     if (demo === 'captcha') {
-      setCaptchaLogin('tanya.k@example.com')
+      setCaptchaLogin('anna.k@example.com')
       setCaptchaImage(demoCaptcha())
       setCaptcha('x7K')
     } else {

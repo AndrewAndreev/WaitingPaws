@@ -11,7 +11,12 @@ enum PhotoLibrarySaver {
 
         var errorDescription: String? {
             switch self {
-            case .denied: return String(localized: "Нет разрешения добавлять видео в Фото. Включите его в Настройках iOS → Waiting Paws.")
+            case .denied:
+                #if os(macOS)
+                return String(localized: "Нет разрешения добавлять видео в Фото. Включите его в Системных настройках → Конфиденциальность и безопасность → Фото.")
+                #else
+                return String(localized: "Нет разрешения добавлять видео в Фото. Включите его в Настройках iOS → Waiting Paws.")
+                #endif
             case .failed(let why): return String(localized: "Не удалось сохранить в Фото: \(why)")
             }
         }

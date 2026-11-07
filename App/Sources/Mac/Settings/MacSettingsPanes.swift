@@ -134,17 +134,22 @@ private struct SettingsCameraPane: View {
             .padding(.vertical, 10)
         }
         .task(id: settings.streamName) { await load(camera) }
+        #if !WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`) asks go2rtc for no accounts
         // Again after a sign-in or a camera change in a sheet.
         .task(id: "\(model.setupServerReady)|\(sheet == nil)") { await loadAccounts() }
+        #endif
 
+        #if !WP_NO_XIAOMI
         if accounts?.isEmpty == true {
             // No Xiaomi account on go2rtc: the way to Mi Home cameras, right under the picture.
             Section {
                 SetupMiHomeSignInCard(style: .formRow) { sheet = .signIn }
             }
         }
+        #endif
 
         Section {
+            #if !WP_NO_XIAOMI // the quality is a Mi Home camera's: none in a build without Xiaomi
             LabeledContent {
                 Picker("Качество", selection: quality(camera)) {
                     ForEach(AppModel.XiaomiQuality.allCases) { Text(model.qualityTitle($0, source: source)).tag($0) }
@@ -163,6 +168,7 @@ private struct SettingsCameraPane: View {
                     Text("На экране и в записи.")
                 }
             }
+            #endif
             LabeledContent("Сейчас") {
                 HStack(spacing: 6) {
                     if switchingQuality { ProgressView().controlSize(.mini) }
@@ -212,14 +218,17 @@ private struct SettingsCameraPane: View {
         } footer: {
             HStack(spacing: 8) {
                 Spacer()
+                #if !WP_NO_XIAOMI
                 // With no account the card above already offers the sign-in.
                 if accounts?.isEmpty != true {
                     Button(accounts == nil ? "Войти в Xiaomi…" : "Войти в другой аккаунт Xiaomi…") { sheet = .signIn }
                 }
+                #endif
                 Button("Выбрать камеру…") { sheet = .picker(accountID: nil) }
             }
         }
 
+        #if !WP_NO_XIAOMI
         if let accounts, !accounts.isEmpty {
             Section {
                 ForEach(accounts, id: \.self) { account in
@@ -257,6 +266,7 @@ private struct SettingsCameraPane: View {
                 Text("Камеры этого аккаунта перестанут показываться. Войти снова можно в любой момент.")
             }
         }
+        #endif
     }
 
     private func qualityAvailable(_ camera: SettingsCamera) -> Bool {
@@ -265,7 +275,11 @@ private struct SettingsCameraPane: View {
 
     /// "Камера Xiaomi · аккаунт 6218440137" (the Mi Home model id stays in the tooltip) or "RTSP · 192.168.1.20".
     private func detailLine(_ camera: SettingsCamera) -> String {
+        #if WP_NO_XIAOMI
+        guard camera.isConfigured else { return String(localized: "Сначала выберите камеру.") }
+        #else
         guard camera.isConfigured else { return String(localized: "Выберите камеру Mi Home или поток go2rtc.") }
+        #endif
         if camera.isXiaomi {
             return [SetupText.cameraKind(model: cameraModel(camera)),
                     camera.accountID.isEmpty ? nil : String(localized: "аккаунт \(camera.accountID)")].compactMap { $0 }.joined(separator: " · ")
@@ -521,7 +535,11 @@ private struct SettingsConnectionPane: View {
         @Bindable var settings = model.settings
         // A training or a recording runs: switching the server would cut the camera (and the recording) off.
         let busy = model.session != nil || model.isRecordingNow
+        #if WP_NO_XIAOMI
+        SettingsPaneHeader(pane: .connection, text: NoXiaomiText.connectionHeader)
+        #else
         SettingsPaneHeader(pane: .connection, text: String(localized: "Где работает go2rtc — сервер, который забирает видео с камеры Xiaomi."))
+        #endif
         Section {
             Picker("Режим", selection: modeSelection) {
                 ForEach(ConnectionMode.allCases) { Text($0.title).tag($0) }
@@ -540,7 +558,11 @@ private struct SettingsConnectionPane: View {
                     Button("Показать в Finder") { Finder.reveal(EmbeddedGo2RTC.configURL) }
                 } label: {
                     Text("Файл go2rtc.yaml")
+                    #if WP_NO_XIAOMI
+                    Text(NoXiaomiText.configFile)
+                    #else
                     Text("Потоки и вход в Xiaomi. Не пересылайте его: в нём токены.")
+                    #endif
                 }
             }
         } footer: {
@@ -606,9 +628,13 @@ private struct SettingsConnectionPane: View {
     private var result: some View {
         switch check {
         case .idle:
+            #if WP_NO_XIAOMI
+            EmptyView() // any go2rtc plays RTSP
+            #else
             Text("Нужна версия 1.9.11 или новее с модулем xiaomi.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+            #endif
         case .checking:
             ProgressView().controlSize(.small)
         case .ok(let version):

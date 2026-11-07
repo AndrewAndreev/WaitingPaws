@@ -35,7 +35,8 @@
             "value" : "© 2026 Andrew Andreev"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "NSLocalNetworkUsageDescription" : {
       "comment" : "Privacy - Local Network Usage Description",

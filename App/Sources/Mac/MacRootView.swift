@@ -23,7 +23,11 @@ struct MacMainWindow: View {
             ContentUnavailableView {
                 Label("Камера не подключена", systemImage: "video.slash")
             } description: {
+                #if WP_NO_XIAOMI
+                Text(NoXiaomiText.macNoCamera)
+                #else
                 Text("Войдите в Xiaomi, выберите поток go2rtc или продолжите без камеры в окне приветствия.")
+                #endif
             } actions: {
                 Button("Подключить камеру…") { openWindow(id: "welcome") }
                     .buttonStyle(.borderedProminent)

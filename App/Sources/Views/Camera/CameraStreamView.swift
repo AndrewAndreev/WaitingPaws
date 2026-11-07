@@ -393,13 +393,11 @@ struct CameraWebView {
         // A box of one size at the page's top-left, whatever the window does: `PlayerWebView` fits and zooms it.
         let fit = "contain"
         let box = "position: absolute; left: 0; top: 0; width: \(Int(PlayerWebView.pictureBox))px; height: \(Int(PlayerWebView.pictureBox))px;"
-        let ambient = false
         #else
         let fit = fill ? "cover" : "contain"
+        // The whole frame letterboxed on black: no blurred copy of it in the margins (design council, round 14:
+        // decoration with nothing to tell).
         let box = "display: block; position: relative; width: 100%; height: 100%;"
-        // The whole frame letterboxed on black: no blurred copy of it in the margins any more (`#ambient` off — design
-        // council, round 14: decoration with nothing to tell).
-        let ambient = false
         #endif
         return """
         <!doctype html>
@@ -408,19 +406,8 @@ struct CameraWebView {
         <style>
           html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
           video-rtc { \(box) }
-          video-rtc video { width: 100%; height: 100%; object-fit: \(fit); background: \(ambient ? "transparent" : "#000"); }
+          video-rtc video { width: 100%; height: 100%; object-fit: \(fit); background: #000; }
           #still { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: \(fit); pointer-events: none; }
-          /* The page in a few pixels (`FrameGlow`): the frame where the video shows it, its edges mirrored into the
-             margins round it, darkened and fading into black over each margin, drawn in the canvas. Stretched over the
-             page under the video: the stretch itself is the blur (no CSS filter to redraw with every video frame); the
-             mask only softens the page's own edges, which are not the screen's (no box round the picture). Fades in
-             after the first frame. */
-          #ambient { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none;
-            opacity: 0; transition: opacity 0.8s;
-            -webkit-mask-image: linear-gradient(to right, transparent, #000 \(Int(FrameGlow.sideFade * 100))%, #000 \(100 - Int(FrameGlow.sideFade * 100))%, transparent),
-              linear-gradient(to bottom, transparent, #000 \(Int(FrameGlow.endFade * 100))%, #000 \(100 - Int(FrameGlow.endFade * 100))%, transparent);
-            -webkit-mask-composite: source-in; mask-composite: intersect; }
-          #ambient.on { opacity: 1; }
         </style>
         </head><body>
         <script type="module">
@@ -718,71 +705,6 @@ struct CameraWebView {
           player.background = true;
           player.src = \(socket);
           document.body.appendChild(player);
-          // The margins round the letterboxed frame (iPhone): every 2 s while the picture plays, a blurred, darkened copy
-          // of the frame under the video (`#ambient`, laid out as `FrameGlow`). A few draws into a canvas of some
-          // 10 × 20 pixels; nothing while the page is hidden or the picture stands still.
-          if (\(ambient ? "true" : "false")) {
-            const ambient = document.createElement('canvas');
-            ambient.id = 'ambient';
-            document.body.insertBefore(ambient, player);
-            const context = ambient.getContext('2d');
-            setInterval(() => {
-              const video = player.video;
-              if (document.hidden || phase !== 'playing' || !video || !video.videoWidth || video.paused) return;
-              const page = { w: window.innerWidth, h: window.innerHeight };
-              if (!page.w || !page.h) return;
-              const k = \(FrameGlow.short) / Math.min(page.w, page.h);
-              const w = Math.max(1, Math.round(page.w * k)), h = Math.max(1, Math.round(page.h * k));
-              if (ambient.width !== w) ambient.width = w;
-              if (ambient.height !== h) ambient.height = h;
-              const vw = video.videoWidth, vh = video.videoHeight;
-              // The picture where the video shows it (object-fit: contain).
-              const fit = Math.min(w / vw, h / vh), pw = vw * fit, ph = vh * fit, px = (w - pw) / 2, py = (h - ph) / 2;
-              // The margins grow with the room round the picture (the main screen's most): lighter there.
-              const room = Math.max(py / ph, px / pw);
-              const dim = \(FrameGlow.dimMost) - (\(FrameGlow.dimMost) - \(FrameGlow.dimLeast)) * Math.min(1, Math.max(0, (room - 0.5) / 0.4));
-              // A band of the frame by each edge, mirrored outwards: the margin by an edge takes that edge's colours.
-              const band = (margin, length) => Math.min(\(FrameGlow.band), margin / length);
-              try {
-                context.imageSmoothingQuality = 'high';
-                context.globalCompositeOperation = 'source-over';
-                context.clearRect(0, 0, w, h);
-                context.drawImage(video, px, py, pw, ph);
-                if (py > 0.5) {
-                  const f = band(py, ph);
-                  context.save(); context.translate(0, py); context.scale(1, -1);
-                  context.drawImage(video, 0, 0, vw, vh * f, px, 0, pw, py);
-                  context.restore();
-                  context.save(); context.translate(0, h); context.scale(1, -1);
-                  context.drawImage(video, 0, vh * (1 - f), vw, vh * f, px, 0, pw, py);
-                  context.restore();
-                }
-                if (px > 0.5) {
-                  const f = band(px, pw);
-                  context.save(); context.translate(px, 0); context.scale(-1, 1);
-                  context.drawImage(video, 0, 0, vw * f, vh, 0, py, px, ph);
-                  context.restore();
-                  context.save(); context.translate(w, 0); context.scale(-1, 1);
-                  context.drawImage(video, vw * (1 - f), 0, vw * f, vh, 0, py, px, ph);
-                  context.restore();
-                }
-                context.fillStyle = 'rgba(0, 0, 0, ' + dim + ')';
-                context.fillRect(0, 0, w, h);
-                // Into black at the page's edges, over the outer part of each margin.
-                const fade = (x0, y0, x1, y1) => {
-                  const gradient = context.createLinearGradient(x0, y0, x1, y1);
-                  gradient.addColorStop(0, 'rgba(0, 0, 0, \(FrameGlow.edgeBlack))');
-                  gradient.addColorStop(Math.min(0.5, 0.5 / Math.max(1, Math.hypot(x1 - x0, y1 - y0))), 'rgba(0, 0, 0, \(FrameGlow.edgeBlack))');
-                  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                  context.fillStyle = gradient;
-                  context.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0) || w, Math.abs(y1 - y0) || h);
-                };
-                if (py > 0.5) { fade(0, 0, 0, py * \(FrameGlow.fade)); fade(0, h, 0, h - py * \(FrameGlow.fade)); }
-                if (px > 0.5) { fade(0, 0, px * \(FrameGlow.fade), 0); fade(w, 0, w - px * \(FrameGlow.fade), 0); }
-                ambient.classList.add('on');
-              } catch (e) {}
-            }, 2000);
-          }
         </script>
         </body></html>
         """
@@ -1101,124 +1023,6 @@ extension CameraWebView: NSViewRepresentable {
         webView.fill = fill
         webView.bleedTop = bleedTop
         webView.zoom(scale: zoomScale, offset: zoomOffset, animated: context.transaction.animation != nil)
-    }
-}
-#endif
-
-/// The margins round a letterboxed frame on the iPhone (design council, round 6): not a flat glow but the frame itself,
-/// blurred and darkened, as Apple TV's artwork dissolves into its background. The page in a few pixels (`short` along
-/// its shorter side, ~40 pt each once stretched over it: that is the blur): the frame where the video shows it, a band
-/// of it by each edge mirrored outwards into the margin (the wall above the picture, the floor under it), darkened by
-/// `dim`, then into black over the outer `fade` of each margin. Lighter where the margins are wide against the
-/// picture (the main screen's, where the picture is smallest), darker where they are narrow (a training's, over the
-/// card). Drawn by the player page every 2 s (`CameraWebView`, `#ambient`) and, for the demo still, by `render`.
-enum FrameGlow {
-    /// Pixels along the page's shorter side.
-    static let short = 10
-    /// The darkening: `dimMost` while the margins are at most half the picture's height (or width), `dimLeast` from
-    /// 0.9 of it on.
-    static let dimMost = 0.78
-    static let dimLeast = 0.66
-    /// At most this much of the frame is mirrored into a margin (stretched when the margin is wider).
-    static let band = 0.45
-    /// The outer part of a margin that fades into black, and how black its edge gets (its outer half pixel all of it).
-    static let fade = 0.8
-    static let edgeBlack = 1.0
-    /// The page's own edges, softened (its sides by `sideFade` of its width, its top and bottom by `endFade` of its
-    /// height): the page is inset from the screen's edges, and the glow must not end in a straight line.
-    static let sideFade = 0.08
-    static let endFade = 0.05
-
-    #if DEBUG && os(iOS)
-    /// The canvas the page draws for `image` in an area of `page` points (`#ambient`), for the demo still.
-    static func render(_ image: UIImage, page: CGSize) -> UIImage? {
-        guard page.width > 0, page.height > 0, let cgImage = image.cgImage, cgImage.width > 0, cgImage.height > 0 else { return nil }
-        let k = CGFloat(short) / min(page.width, page.height)
-        let w = max(1, (page.width * k).rounded()), h = max(1, (page.height * k).rounded())
-        let vw = CGFloat(cgImage.width), vh = CGFloat(cgImage.height)
-        let fit = min(w / vw, h / vh)
-        let pw = vw * fit, ph = vh * fit, px = (w - pw) / 2, py = (h - ph) / 2
-        let room = max(py / ph, px / pw)
-        let dim = dimMost - (dimMost - dimLeast) * min(1, max(0, (room - 0.5) / 0.4))
-        func crop(_ rect: CGRect) -> UIImage? { cgImage.cropping(to: rect.integral).map { UIImage(cgImage: $0) } }
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        return UIGraphicsImageRenderer(size: CGSize(width: w, height: h), format: format).image { context in
-            let cg = context.cgContext
-            cg.interpolationQuality = .high
-            image.draw(in: CGRect(x: px, y: py, width: pw, height: ph))
-            // Mirrored about an axis: the edge's own row (or column) next to the picture.
-            func mirrored(_ source: CGRect, into rect: CGRect, axisX: CGFloat? = nil, axisY: CGFloat? = nil) {
-                guard let band = crop(source) else { return }
-                cg.saveGState()
-                if let axisY { cg.translateBy(x: 0, y: axisY); cg.scaleBy(x: 1, y: -1) }
-                if let axisX { cg.translateBy(x: axisX, y: 0); cg.scaleBy(x: -1, y: 1) }
-                band.draw(in: rect)
-                cg.restoreGState()
-            }
-            if py > 0.5 {
-                let f = min(band, py / ph)
-                mirrored(CGRect(x: 0, y: 0, width: vw, height: vh * f), into: CGRect(x: px, y: 0, width: pw, height: py), axisY: py)
-                mirrored(CGRect(x: 0, y: vh * (1 - f), width: vw, height: vh * f), into: CGRect(x: px, y: 0, width: pw, height: py), axisY: h)
-            }
-            if px > 0.5 {
-                let f = min(band, px / pw)
-                mirrored(CGRect(x: 0, y: 0, width: vw * f, height: vh), into: CGRect(x: 0, y: py, width: px, height: ph), axisX: px)
-                mirrored(CGRect(x: vw * (1 - f), y: 0, width: vw * f, height: vh), into: CGRect(x: 0, y: py, width: px, height: ph), axisX: w)
-            }
-            UIColor.black.withAlphaComponent(dim).setFill()
-            context.fill(CGRect(x: 0, y: 0, width: w, height: h), blendMode: .normal)
-            let edge = UIColor.black.withAlphaComponent(edgeBlack).cgColor
-            func fadeOut(from start: CGPoint, to end: CGPoint) {
-                let length = max(1, hypot(end.x - start.x, end.y - start.y))
-                let colors = [edge, edge, UIColor.black.withAlphaComponent(0).cgColor] as CFArray
-                guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors,
-                                                locations: [0, min(0.5, 0.5 / length), 1]) else { return }
-                cg.saveGState()
-                cg.clip(to: CGRect(x: min(start.x, end.x), y: min(start.y, end.y),
-                                   width: start.x == end.x ? w : abs(end.x - start.x), height: start.y == end.y ? h : abs(end.y - start.y)))
-                cg.drawLinearGradient(gradient, start: start, end: end, options: [])
-                cg.restoreGState()
-            }
-            if py > 0.5 {
-                fadeOut(from: CGPoint(x: 0, y: 0), to: CGPoint(x: 0, y: py * fade))
-                fadeOut(from: CGPoint(x: 0, y: h), to: CGPoint(x: 0, y: h - py * fade))
-            }
-            if px > 0.5 {
-                fadeOut(from: CGPoint(x: 0, y: 0), to: CGPoint(x: px * fade, y: 0))
-                fadeOut(from: CGPoint(x: w, y: 0), to: CGPoint(x: w - px * fade, y: 0))
-            }
-        }
-    }
-    #endif
-}
-
-#if DEBUG && os(iOS)
-/// A still picture's margins as the live player draws them (`FrameGlow`), filling the area it is put behind: for the
-/// demo camera (`--demo-camera`), whose still is not played by the page.
-struct FrameGlowView: View {
-    let image: UIImage
-
-    var body: some View {
-        GeometryReader { geometry in
-            if let glow = FrameGlow.render(image, page: geometry.size) {
-                Image(uiImage: glow)
-                    .resizable()
-                    .interpolation(.medium)
-                    // The page's `#ambient` mask.
-                    .mask {
-                        LinearGradient(stops: Self.edges(FrameGlow.sideFade), startPoint: .leading, endPoint: .trailing)
-                            .mask(LinearGradient(stops: Self.edges(FrameGlow.endFade), startPoint: .top, endPoint: .bottom))
-                    }
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    private static func edges(_ fade: Double) -> [Gradient.Stop] {
-        [.init(color: .clear, location: 0), .init(color: .black, location: fade),
-         .init(color: .black, location: 1 - fade), .init(color: .clear, location: 1)]
     }
 }
 #endif

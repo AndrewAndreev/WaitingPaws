@@ -28,7 +28,7 @@ struct MacHistoryInspector: View {
                 VStack(alignment: .leading, spacing: 10) {
                     preview
                     if let record = row.record { strip(record) }
-                    // Two lines, as the iPhone's: «Тренировка на пятницу · Таня/Андрей» / «Пт, 2 окт. · 18:36–19:04 ·
+                    // Two lines, as the iPhone's: «Тренировка на пятницу · Аня/Марк» / «Пт, 2 окт. · 18:36–19:04 ·
                     // 28 мин» — the trainers and the length are what the table leaves out.
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .firstTextBaseline, spacing: 0) {
@@ -162,7 +162,7 @@ struct MacHistoryInspector: View {
                 Button("В Фото", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
                     .disabled(preparing || model.photosStatus(for: video.fileName).saved)
                     .help("Сохранить видео в Фото")
-                ShareLink(item: video.url) { Image(systemName: "square.and.arrow.up") }
+                MacShareButton(.file(video.url)) { Image(systemName: "square.and.arrow.up") }
                     .disabled(preparing)
                     .help("Отправить видео…")
             }

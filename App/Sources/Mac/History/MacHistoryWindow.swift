@@ -145,7 +145,7 @@ struct MacHistoryWindow: View {
 
         ToolbarItemGroup(placement: .primaryAction) {
             if let selected, let record = selected.record, let text = selected.logText {
-                ShareLink(item: text, subject: Text(record.plan.title), preview: SharePreview(record.plan.title)) {
+                MacShareButton(.text(text, title: record.plan.title, subject: record.plan.title)) {
                     Label("Отправить лог", systemImage: "square.and.arrow.up")
                 }
                 .help("Отправить лог тренеру")

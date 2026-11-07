@@ -10,42 +10,54 @@
 <nav><a href="index.html">Waiting Paws</a> · <a href="#en">English</a> · <a href="#ru">Русский</a></nav>
 <article id="en" lang="en">
 <h1>Waiting Paws Privacy Policy</h1>
-<p>Effective October 4, 2026.</p>
+<p>Effective November 6, 2026.</p>
 <h2>In short</h2>
-<p>Waiting Paws has no accounts, ads, analytics or tracking. The developer does not collect, receive or sell any of your data. Everything the app works with stays on your devices.</p>
+<p>There is no Waiting Paws account, and no ads, analytics or tracking. The developer does not collect, receive or sell any of your data. Everything the app works with stays on your devices.</p>
 <h2>What stays on your device</h2>
-<p>Settings, training schedules, training logs, video recordings and the app&#x27;s diagnostic log are stored only in the app&#x27;s storage on your iPhone or Mac. Videos and logs are also included in your device backups. You can delete trainings and videos in History at any time; deleting the app deletes all of its data.</p>
+<p>Settings, training schedules, training logs, video recordings and the app&#x27;s diagnostic log are stored only on your device: in the app&#x27;s storage on iPhone and Mac, in the Documents\Waiting Paws and %APPDATA%\Waiting Paws folders on Windows. Device backups (iCloud, Time Machine and others) may include them; iPhone backups leave out the diagnostic log. You can delete trainings and videos in History at any time.</p>
+<h2>Deleting the app</h2>
+<p><strong>iPhone.</strong> Deleting the app deletes its data, except two things in the iOS Keychain that iOS may keep: the password of your own go2rtc server and the keys that pair the iPhone with your computers. To remove them, clear that password and choose Forget for each computer in Settings before deleting the app.</p>
+<p><strong>Mac.</strong> Moving the app to the Trash leaves its data on the Mac. To remove it, also delete the folder ~/Library/Containers/su.comrade.waitingpaws. The password of your own go2rtc server, if you set one, is in Keychain Access under su.comrade.waitingpaws.</p>
+<p><strong>Windows.</strong> Uninstalling the app, or deleting its portable version, leaves your data. To remove it, delete the folders %APPDATA%\Waiting Paws (settings, the Xiaomi sign-in, the diagnostic log) and Documents\Waiting Paws (trainings and videos).</p>
+<p>Videos saved to Photos, shared or exported stay where you put them.</p>
 <h2>Camera and Xiaomi account</h2>
-<p>If you connect a Xiaomi (Mi Home) camera, the app&#x27;s built-in go2rtc component sends your Xiaomi login and password directly from your device to Xiaomi&#x27;s servers to sign in. The password is not saved. The access token Xiaomi returns is kept only on your device and is deleted when you choose &quot;Sign out of Xiaomi&quot; in Settings or delete the app. Video goes from the camera to your device over your local network. Your Xiaomi account is covered by Xiaomi&#x27;s own privacy policy.</p>
+<p>If you connect a Xiaomi (Mi Home) camera, the app&#x27;s built-in go2rtc component sends your Xiaomi login and password directly from your device to Xiaomi&#x27;s servers to sign in. The password is not saved. The access token Xiaomi returns is kept only on your device and is deleted when you choose &quot;Sign Out of Xiaomi&quot; in Settings or delete the app&#x27;s data as described above. Video goes from the camera to your device over your local network. Your Xiaomi account is covered by Xiaomi&#x27;s own privacy policy.</p>
 <p>To show which settings your camera model supports (night mode and others), the app downloads public descriptions of camera models from miot-spec.org. Only the model identifier is requested.</p>
-<h2>iPhone and Mac</h2>
-<p>When you link an iPhone with a Mac running Waiting Paws, the two devices talk to each other directly over your local network. The connection is encrypted, and nothing passes through the developer&#x27;s servers.</p>
+<p>The WebRTC player, the default with your own go2rtc server (on Windows it can also be chosen for the built-in one), contacts go2rtc&#x27;s public STUN servers stun.cloudflare.com and stun.l.google.com to learn your network&#x27;s public IP address; they see that address and nothing else. The MSE and HLS players, the default with the built-in go2rtc, don&#x27;t; you can choose them under Player in Settings.</p>
+<h2>iPhone and computer</h2>
+<p>When you link an iPhone with a Mac or Windows PC running Waiting Paws, the devices talk to each other directly over your local network, and nothing passes through the developer&#x27;s servers. Pairing, the training and its commands are encrypted. Not encrypted: the devices&#x27; names and models, the camera&#x27;s name and whether a training is running, which the devices announce on the network; and the camera&#x27;s video, sound and controls (settings, turning), which are protected only by a password the app creates. Someone who can watch the traffic on your local network could see them and that password.</p>
 <h2>Photos</h2>
 <p>With your permission, the app adds training videos to your Photos library. It can only add videos and cannot read your photos.</p>
 <h2>Children</h2>
 <p>The app does not collect data from anyone, including children.</p>
 <h2>Changes and contact</h2>
-<p>If this policy changes, the new version will be published with an app update. For questions, use the support link on the app&#x27;s App Store page.</p>
+<p>If this policy changes, the new version will be published with an app update. For questions, write to andrew@comrade.su or use the support link on the app&#x27;s App Store page.</p>
 </article>
 <hr>
 <article id="ru" lang="ru">
 <h1>Политика конфиденциальности Waiting Paws</h1>
-<p>Действует с 4 октября 2026 года.</p>
+<p>Действует с 6 ноября 2026 года.</p>
 <h2>Коротко</h2>
-<p>В Waiting Paws нет аккаунтов, рекламы, аналитики и отслеживания. Разработчик не собирает, не получает и не продаёт ваши данные. Всё, с чем работает приложение, остаётся на ваших устройствах.</p>
+<p>Аккаунта Waiting Paws нет; нет и рекламы, аналитики и отслеживания. Разработчик не собирает, не получает и не продаёт ваши данные. Всё, с чем работает приложение, остаётся на ваших устройствах.</p>
 <h2>Что хранится на устройстве</h2>
-<p>Настройки, расписания и логи тренировок, видеозаписи и технический журнал приложения хранятся только в хранилище приложения на вашем iPhone или Mac. Видео и логи также попадают в резервные копии устройства. Тренировки и видео можно удалить в истории в любой момент; при удалении приложения удаляются все его данные.</p>
+<p>Настройки, расписания и логи тренировок, видеозаписи и технический журнал приложения хранятся только на вашем устройстве: в хранилище приложения на iPhone и Mac, в папках Documents\Waiting Paws и %APPDATA%\Waiting Paws на Windows. Они могут попасть в резервные копии устройства (iCloud, Time Machine и другие); технический журнал в резервные копии iPhone не попадает. Тренировки и видео можно удалить в истории в любой момент.</p>
+<h2>Удаление приложения</h2>
+<p><strong>iPhone.</strong> При удалении приложения удаляются его данные, кроме двух записей в связке ключей iOS, которые iOS может сохранить: пароля вашего собственного сервера go2rtc и ключей, которыми iPhone сопряжён с вашими компьютерами. Чтобы избавиться и от них, перед удалением приложения сотрите этот пароль и нажмите «Забыть» у каждого компьютера в настройках.</p>
+<p><strong>Mac.</strong> Если перенести приложение в Корзину, его данные остаются на Mac. Чтобы стереть их, удалите и папку ~/Library/Containers/su.comrade.waitingpaws. Пароль вашего собственного сервера go2rtc, если вы его задавали, — в «Связке ключей» под именем su.comrade.waitingpaws.</p>
+<p><strong>Windows.</strong> После удаления приложения или его переносной версии ваши данные остаются. Чтобы стереть их, удалите папки %APPDATA%\Waiting Paws (настройки, вход в Xiaomi, технический журнал) и Documents\Waiting Paws (тренировки и видео).</p>
+<p>Видео, сохранённые в «Фото», отправленные или экспортированные, остаются там, куда вы их поместили.</p>
 <h2>Камера и аккаунт Xiaomi</h2>
-<p>Если вы подключаете камеру Xiaomi (Mi Home), встроенный компонент go2rtc отправляет логин и пароль Xiaomi напрямую с вашего устройства на серверы Xiaomi, чтобы войти в аккаунт. Пароль не сохраняется. Ключ доступа, который возвращает Xiaomi, хранится только на вашем устройстве и удаляется, когда вы выбираете «Выйти из аккаунта Xiaomi» в настройках или удаляете приложение. Видео идёт с камеры на ваше устройство по локальной сети. На аккаунт Xiaomi распространяется политика конфиденциальности Xiaomi.</p>
+<p>Если вы подключаете камеру Xiaomi (Mi Home), встроенный компонент go2rtc отправляет логин и пароль Xiaomi напрямую с вашего устройства на серверы Xiaomi, чтобы войти в аккаунт. Пароль не сохраняется. Ключ доступа, который возвращает Xiaomi, хранится только на вашем устройстве и удаляется, когда вы выбираете «Выйти из аккаунта Xiaomi» в настройках или удаляете данные приложения, как описано выше. Видео идёт с камеры на ваше устройство по локальной сети. На аккаунт Xiaomi распространяется политика конфиденциальности Xiaomi.</p>
 <p>Чтобы показать, какие настройки есть у вашей модели камеры (ночной режим и другие), приложение загружает открытые описания моделей с сайта miot-spec.org. Запрашивается только идентификатор модели.</p>
-<h2>iPhone и Mac</h2>
-<p>Когда вы связываете iPhone с Mac, на котором работает Waiting Paws, устройства обмениваются данными напрямую по локальной сети. Соединение зашифровано и не проходит через серверы разработчика.</p>
+<p>Плеер WebRTC — он выбран по умолчанию для вашего собственного сервера go2rtc, а на Windows его можно выбрать и для встроенного — обращается к открытым STUN-серверам go2rtc stun.cloudflare.com и stun.l.google.com, чтобы узнать внешний IP-адрес вашей сети; они видят этот адрес и ничего больше. Плееры MSE и HLS, выбранные по умолчанию для встроенного go2rtc, этого не делают; их можно выбрать в настройках в пункте «Плеер».</p>
+<h2>iPhone и компьютер</h2>
+<p>Когда вы связываете iPhone с Mac или ПК с Windows, на котором работает Waiting Paws, устройства обмениваются данными напрямую по локальной сети и ничего не проходит через серверы разработчика. Сопряжение, тренировка и её команды зашифрованы. Не зашифрованы имена и модели устройств, название камеры и то, идёт ли тренировка, — устройства объявляют их в сети, — а также видео, звук и управление камерой (настройки, поворот), которые защищены только паролем, созданным приложением. Тот, кто может видеть трафик вашей локальной сети, может увидеть их и этот пароль.</p>
 <h2>Фото</h2>
 <p>С вашего разрешения приложение добавляет видео тренировок в медиатеку «Фото». Оно может только добавлять видео и не видит ваши фотографии.</p>
 <h2>Дети</h2>
 <p>Приложение не собирает данные ни о ком, в том числе о детях.</p>
 <h2>Изменения и связь</h2>
-<p>Если политика изменится, новая версия выйдет вместе с обновлением приложения. С вопросами пишите через ссылку поддержки на странице приложения в App Store.</p>
+<p>Если политика изменится, новая версия выйдет вместе с обновлением приложения. С вопросами пишите на andrew@comrade.su или через ссылку поддержки на странице приложения в App Store.</p>
 </article>
 </body>
 </html>

@@ -699,18 +699,18 @@
         }
       }
     },
-    "🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n2 выход - 10 секунд\n…" : {
+    "🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n2 выход - 10 секунд\n…" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "🐹 Monday training - Anna/Andrew - 25.10.2026\n➡️ All breaks 2 minutes\nExit 1 - 5 seconds\nExit 2 - 10 seconds\n…"
+            "value" : "🐹 Monday training - Anna/Mark - 25.10.2026\n➡️ All breaks 2 minutes\nExit 1 - 5 seconds\nExit 2 - 10 seconds\n…"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n2 выход - 10 секунд\n…"
+            "value" : "🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n2 выход - 10 секунд\n…"
           }
         }
       }
@@ -1117,6 +1117,22 @@
         }
       }
     },
+    "iPhone покажет камеру и станет пультом для этой тренировки." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone will show the camera and become a remote for this training."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone покажет камеру и станет пультом для этой тренировки."
+          }
+        }
+      }
+    },
     "Mac виден приложению Waiting Paws на iPhone в той же Wi‑Fi сети." : {
       "localizations" : {
         "en" : {
@@ -1174,18 +1190,18 @@
         }
       }
     },
-    "RTSP, ONVIF и другие источники" : {
+    "RTSP, HTTP и другие источники" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RTSP, ONVIF and other sources"
+            "value" : "RTSP, HTTP and other sources"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RTSP, ONVIF и другие источники"
+            "value" : "RTSP, HTTP и другие источники"
           }
         }
       }
@@ -3058,6 +3074,22 @@
         }
       }
     },
+    "Выберите поток go2rtc или продолжите без камеры в окне приветствия." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a go2rtc stream or continue without a camera in the welcome window."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите поток go2rtc или продолжите без камеры в окне приветствия."
+          }
+        }
+      }
+    },
     "Выберите строку, чтобы добавить триггеры, условия и заметку" : {
       "localizations" : {
         "en" : {
@@ -3682,6 +3714,22 @@
         }
       }
     },
+    "Где работает go2rtc — сервер, который забирает видео с камеры." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where go2rtc runs — the server that pulls video from the camera."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Где работает go2rtc — сервер, который забирает видео с камеры."
+          }
+        }
+      }
+    },
     "главный поток %lld %%" : {
       "localizations" : {
         "en" : {
@@ -3954,18 +4002,18 @@
         }
       }
     },
-    "Добавить камеру по адресу: rtsp://, onvif://, http://" : {
+    "Добавить камеру по адресу rtsp:// или http:// (камеру ONVIF — по её адресу rtsp://)" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add a camera by address: rtsp://, onvif://, http://"
+            "value" : "Add a camera by an rtsp:// or http:// address (an ONVIF camera by its rtsp:// address)"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добавить камеру по адресу: rtsp://, onvif://, http://"
+            "value" : "Добавить камеру по адресу rtsp:// или http:// (камеру ONVIF — по её адресу rtsp://)"
           }
         }
       }
@@ -3986,18 +4034,18 @@
         }
       }
     },
-    "Добавить поток RTSP / ONVIF" : {
+    "Добавить поток RTSP" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add an RTSP / ONVIF Stream"
+            "value" : "Add an RTSP Stream"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добавить поток RTSP / ONVIF"
+            "value" : "Добавить поток RTSP"
           }
         }
       }
@@ -4046,6 +4094,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавляем камеру…"
+          }
+        }
+      }
+    },
+    "Добавьте камеру по её адресу RTSP — она появится здесь." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a camera by its RTSP address and it will appear here."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавьте камеру по её адресу RTSP — она появится здесь."
           }
         }
       }
@@ -5714,18 +5778,18 @@
         }
       }
     },
-    "Или добавьте поток RTSP / ONVIF…" : {
+    "Или добавьте поток RTSP…" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Or Add an RTSP / ONVIF Stream…"
+            "value" : "Or Add an RTSP Stream…"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Или добавьте поток RTSP / ONVIF…"
+            "value" : "Или добавьте поток RTSP…"
           }
         }
       }
@@ -7218,6 +7282,22 @@
         }
       }
     },
+    "На нём уже подключена камера «%@». iPhone покажет её и тренировку с %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It already has the camera “%1$@”. iPhone will show it and the training from the %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На нём уже подключена камера «%@». iPhone покажет её и тренировку с %@."
+          }
+        }
+      }
+    },
     "На них уже подключена камера: iPhone покажет её и тренировку, входить в Xiaomi не нужно." : {
       "localizations" : {
         "en" : {
@@ -7230,6 +7310,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На них уже подключена камера: iPhone покажет её и тренировку, входить в Xiaomi не нужно."
+          }
+        }
+      }
+    },
+    "На них уже подключена камера: iPhone покажет её и тренировку." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They already have the camera: iPhone will show it and the training."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На них уже подключена камера: iPhone покажет её и тренировку."
           }
         }
       }
@@ -7966,6 +8062,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет разрешения добавлять видео в Фото. Включите его в Настройках iOS → Waiting Paws."
+          }
+        }
+      }
+    },
+    "Нет разрешения добавлять видео в Фото. Включите его в Системных настройках → Конфиденциальность и безопасность → Фото." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No permission to add videos to Photos. Turn it on in System Settings → Privacy & Security → Photos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет разрешения добавлять видео в Фото. Включите его в Системных настройках → Конфиденциальность и безопасность → Фото."
           }
         }
       }
@@ -9138,6 +9250,22 @@
         }
       }
     },
+    "Пароль сервера хранится в связке ключей." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server password is stored in the keychain."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пароль сервера хранится в связке ключей."
+          }
+        }
+      }
+    },
     "Пароль уходит только вашему серверу go2rtc, Waiting Paws его не хранит." : {
       "localizations" : {
         "en" : {
@@ -10162,18 +10290,18 @@
         }
       }
     },
-    "Подходят rtsp://, onvif:// и http://. Камера должна быть в той же сети Wi‑Fi." : {
+    "Подходят rtsp:// и http://; камеру ONVIF добавьте по её адресу rtsp://. Камера должна быть в той же сети Wi‑Fi." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "rtsp://, onvif:// and http:// work. The camera must be on the same Wi‑Fi."
+            "value" : "rtsp:// and http:// work; add an ONVIF camera by its rtsp:// address. The camera must be on the same Wi‑Fi."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Подходят rtsp://, onvif:// и http://. Камера должна быть в той же сети Wi‑Fi."
+            "value" : "Подходят rtsp:// и http://; камеру ONVIF добавьте по её адресу rtsp://. Камера должна быть в той же сети Wi‑Fi."
           }
         }
       }
@@ -10738,18 +10866,18 @@
         }
       }
     },
-    "Поток RTSP / ONVIF" : {
+    "Поток RTSP" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RTSP / ONVIF Stream"
+            "value" : "RTSP Stream"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Поток RTSP / ONVIF"
+            "value" : "Поток RTSP"
           }
         }
       }
@@ -10766,6 +10894,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Потоки go2rtc"
+          }
+        }
+      }
+    },
+    "Потоки go2rtc. Не пересылайте его: в адресах камер бывают пароли." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "go2rtc streams. Don’t share it: camera addresses may contain passwords."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потоки go2rtc. Не пересылайте его: в адресах камер бывают пароли."
           }
         }
       }

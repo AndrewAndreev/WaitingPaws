@@ -166,7 +166,7 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
       <div className="picker__empty">
         <VideoOffIcon className="picker__empty-icon" />
         <div className="empty-state__title">{t('В go2rtc нет потоков')}</div>
-        <div className="muted">{t('Добавьте источник по адресу: rtsp://, onvif:// или http://.')}</div>
+        <div className="muted">{t('Добавьте источник по адресу rtsp:// или http:// (камеру ONVIF — по её адресу rtsp://).')}</div>
         <AddStreamButton setup={setup} variant="default" onAdded={(stream) => void catalog.reload().then(() => setSelection(streamID(stream.name)))} />
       </div>
     )
@@ -199,7 +199,7 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
           }
         >
           {others.length === 0 ? (
-            <div className="picker__note muted">{t('Здесь появятся RTSP, ONVIF и другие источники go2rtc.')}</div>
+            <div className="picker__note muted">{t('Здесь появятся RTSP, HTTP и другие источники go2rtc.')}</div>
           ) : (
             <div className="picker__grid">{others.map((stream) => tile({ kind: 'stream', stream }))}</div>
           )}
@@ -217,7 +217,7 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
         forSecond
           ? t('Чтобы видеть другую комнату: переключайтесь в верхней панели или Ctrl+1 / Ctrl+2. Запись, качество и режимы остаются у основной камеры.')
           : onlyStreams
-            ? t('RTSP, ONVIF и другие источники, которые уже есть в go2rtc.')
+            ? t('RTSP, HTTP и другие источники, которые уже есть в go2rtc.')
             : t('Нужна та, что смотрит на входную дверь. Видео идёт по локальной сети через go2rtc.')
       }
       width={800}
@@ -417,7 +417,7 @@ function AddStreamButton({ setup, variant, onAdded }: { setup: SetupServer; vari
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Tooltip content={t('Добавить источник по адресу: rtsp://, onvif://, http://')}>
+      <Tooltip content={t('Добавить источник по адресу rtsp:// или http:// (камеру ONVIF — по её адресу rtsp://)')}>
         <Popover.Trigger asChild>
           <Button variant={variant} size={variant === 'subtle' ? 'sm' : 'md'} icon={<AddIcon />} disabled={!setup.ready}>
             {t('Добавить поток…')}

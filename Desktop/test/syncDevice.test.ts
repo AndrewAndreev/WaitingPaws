@@ -49,10 +49,10 @@ describe('SyncDevice', () => {
   })
 
   it('new hello and welcome are still read by older builds', () => {
-    const hello = SyncHello.make({ deviceID: 'D1', deviceName: 'iPhone Тани', publicKey: new Uint8Array([1, 2]), platform: 'iphone', model: 'iPhone 16' })
+    const hello = SyncHello.make({ deviceID: 'D1', deviceName: 'iPhone Ани', publicKey: new Uint8Array([1, 2]), platform: 'iphone', model: 'iPhone 16' })
     const helloJSON = JSON.parse(SyncMessage.encode({ kind: 'hello', hello }))
     // The fields older builds decode are all there (unknown keys are ignored by `Decodable`).
-    expect(helloJSON.hello._0).toMatchObject({ deviceID: 'D1', deviceName: 'iPhone Тани', publicKey: 'AQI=', protocolVersion: 2 })
+    expect(helloJSON.hello._0).toMatchObject({ deviceID: 'D1', deviceName: 'iPhone Ани', publicKey: 'AQI=', protocolVersion: 2 })
     expect(helloJSON.hello._0).toMatchObject({ platform: 'iphone', model: 'iPhone 16' })
 
     const welcome = SyncWelcome.make({
@@ -89,7 +89,7 @@ describe('SyncDevice', () => {
     expect(DeviceModelName.mac(null, 'iMacPro1,1')).toBe('iMac Pro')
     expect(DeviceModelName.mac(null, 'Mac15,7')).toBe('Mac')
 
-    expect(SyncDevice.distinctModel(SyncDevice.make('1', 'MacBook Pro — Андрей', 'mac', 'MacBook Pro'))).toBeNull()
+    expect(SyncDevice.distinctModel(SyncDevice.make('1', 'MacBook Pro — Марк', 'mac', 'MacBook Pro'))).toBeNull()
     expect(SyncDevice.distinctModel(SyncDevice.make('2', 'Кухня', 'mac', 'Mac mini'))).toBe('Mac mini')
     expect(SyncDevice.distinctModel(SyncDevice.make('3', 'DESKTOP-7QK', 'windows', ''))).toBe(SyncPlatform.title('windows'))
     expect(SyncPlatform.title('windows')).toBe('ПК')

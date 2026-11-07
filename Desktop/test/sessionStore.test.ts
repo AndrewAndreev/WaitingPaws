@@ -196,7 +196,7 @@ const swiftRecord = `{
     ],
     "rawText" : "1 выход - 2 секунды\\n2 выход - 20 секунд",
     "title" : "Тренировка на пятницу",
-    "trainers" : "Андрей"
+    "trainers" : "Марк"
   },
   "recordingFileName" : "2026-09-25_18-00-trenirovka-na-patnicu.mp4",
   "results" : [

@@ -14,7 +14,7 @@ import {
   withBlockValue,
 } from '../src/renderer/src/plan/timelineGeometry'
 
-const text = `Тренировка - Таня - 04.10.2026
+const text = `Тренировка - Аня - 04.10.2026
 Все перерывы 2 минуты
 1 выход - 10 секунд
 2 выход - 1 минута ИЛИ до вставания

@@ -3,7 +3,7 @@ import Foundation
 /// Parses the free-form training schedule text sent by the trainer, in Russian or English.
 ///
 /// Recognised lines:
-/// - header: `🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026`, `Monday training - Anna - 10/05/2026`
+/// - header: `🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026`, `Monday training - Anna - 10/05/2026`
 /// - exit:   `3 выход - 5 секунд`, `5 выход - 30 секунд ИЛИ до вставания`, `1 выход - 0 секунд (выйти и сразу вернуться)`,
 ///           `Exit 3 - 5 seconds`, `Exit 5 - 30 seconds OR until the dog stands up`
 /// - break:  `Перерыв 5 минут`, `Break 5 minutes` (applies to the preceding exit)

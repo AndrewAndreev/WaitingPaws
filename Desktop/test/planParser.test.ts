@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DurationText, EarlyEntry, PlanParser, PlannedExit, TrainingPlan, setCoreLanguage, setCoreRegion } from '@core/index'
 
-const sampleWithDefaultBreaks = `🐹 Тренировка на понедельник - Таня/Андрей - 05.10.2026
+const sampleWithDefaultBreaks = `🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026
 
 ➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
 ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
@@ -19,7 +19,7 @@ const sampleWithDefaultBreaks = `🐹 Тренировка на понедель
 
 🔖 Фальстарт: если пошла к двери во время длинного выхода или если при выходе вы услышали звуки, на которые она будет реагировать - сразу возвращаемся, через обычный перерыв снова идём на длинный выход. Если на третьей попытке выхода снова зафальстартила - завершаем тренировку`
 
-const sampleWithExplicitBreaks = `🐹 Тренировка на пятницу - Андрей - 25.09.2026
+const sampleWithExplicitBreaks = `🐹 Тренировка на пятницу - Марк - 25.09.2026
 
 ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
 ➡️ В перерывах сидите за столом, работаете
@@ -51,7 +51,7 @@ describe('PlanParser (Russian)', () => {
     const plan = PlanParser.parse(sampleWithDefaultBreaks)
 
     expect(plan.title).toBe('Тренировка на понедельник')
-    expect(plan.trainers).toBe('Таня/Андрей')
+    expect(plan.trainers).toBe('Аня/Марк')
     expect(plan.date === null ? null : TrainingPlan.formatDate(plan.date)).toBe('05.10.2026')
     expect(plan.defaultBreak).toBe(120)
     expect(plan.exits).toHaveLength(7)
@@ -67,7 +67,7 @@ describe('PlanParser (Russian)', () => {
     const plan = PlanParser.parse(sampleWithExplicitBreaks)
 
     expect(plan.title).toBe('Тренировка на пятницу')
-    expect(plan.trainers).toBe('Андрей')
+    expect(plan.trainers).toBe('Марк')
     expect(plan.exits).toHaveLength(9)
     expect(plan.exits[0].duration).toBe(0)
     expect(plan.exits[0].note).toBe('выйти и сразу вернуться')
@@ -306,7 +306,7 @@ describe('PlanParser (Russian)', () => {
   // The training of 23.10.2026: «- далее после перерыва делаем выход на 15 секунд» made every break 15 s; the
   // conditions nested under exit 6 («🟡 Если встала за это время: …») landed among the training's rules.
   it('keeps an exit\'s time out of the common break and notes under an exit with it', () => {
-    const plan = PlanParser.parse(`🐹 Тренировка на пятницу - Андрей - 23.10.2026
+    const plan = PlanParser.parse(`🐹 Тренировка на пятницу - Марк - 23.10.2026
 
 ➡️ Гостей уводим из квартиры минимум за 1 час, без скрытия ухода➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
 ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна
@@ -637,7 +637,7 @@ describe('PlanParser details', () => {
   // The schedule of 06.10.2026: the false-start rule names a time («первые 20 секунд») and mentions «обычный
   // перерыв», and every break of the training became 20 s instead of «Все перерывы 2 минуты».
   it('does not take other times in the notes for the break', () => {
-    const plan = PlanParser.parse(`🐹 Тренировка на вторник - Таня - 06.10.2026
+    const plan = PlanParser.parse(`🐹 Тренировка на вторник - Аня - 06.10.2026
 
 ➡️ Второго человека уводим из квартиры минимум за 30-40 минут до начала тренировки с обязательным сокрытием ухода. Вернуться можно минимум через 20-30 минут после окончания тренировки
 ➡️ За 30-60 минут включить музыку, отпереть дверь изнутри, закрыть окна

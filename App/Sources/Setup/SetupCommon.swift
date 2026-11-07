@@ -98,6 +98,33 @@ enum SetupText {
 }
 
 
+// MARK: - A build without Xiaomi
+
+/// `WP_NO_XIAOMI` (an active compilation condition given only on the xcodebuild command line, see Tools/release.sh): an
+/// App Store build with no way to sign in to Xiaomi and no Xiaomi or Mi Home wording, ready in case App Review insists
+/// on guideline 5.2.2. Cameras come by an RTSP/HTTP address, from the user's own go2rtc server or from a Mac nearby;
+/// «Продолжить без камеры» stays. The embedded go2rtc keeps its xiaomi module: nothing in the UI reaches it. Without
+/// the flag nothing changes. These are the texts that build shows instead of ones naming Xiaomi; they stay outside the
+/// condition so a build without the flag extracts them into the string catalog too.
+enum NoXiaomiText {
+    /// An empty camera list: the iPhone's picker, the Mac's welcome window.
+    static var addCamera: String { String(localized: "Добавьте камеру по её адресу RTSP — она появится здесь.") }
+    /// The «рядом» card of a computer (iPhone).
+    static var joinTraining: String { String(localized: "iPhone покажет камеру и станет пультом для этой тренировки.") }
+    static func joinCamera(_ camera: String, from kind: String) -> String {
+        String(localized: "На нём уже подключена камера «\(camera)». iPhone покажет её и тренировку с \(kind).")
+    }
+    static var joinSeveral: String { String(localized: "На них уже подключена камера: iPhone покажет её и тренировку.") }
+    /// The Mac's main window before a camera is chosen.
+    static var macNoCamera: String { String(localized: "Выберите поток go2rtc или продолжите без камеры в окне приветствия.") }
+    /// Mac Settings → Подключение.
+    static var connectionHeader: String { String(localized: "Где работает go2rtc — сервер, который забирает видео с камеры.") }
+    static var configFile: String { String(localized: "Потоки go2rtc. Не пересылайте его: в адресах камер бывают пароли.") }
+    /// The Mac's «Свой сервер go2rtc» sheet.
+    static var serverPassword: String { String(localized: "Пароль сервера хранится в связке ключей.") }
+}
+
+
 // MARK: - DEBUG demo data
 
 /// DEBUG launch arguments for UI checks of the setup screens without a server or a Xiaomi account:
@@ -135,7 +162,7 @@ enum SetupDemo {
 
     static let go2rtcVersion = "1.9.14"
     static let serverHost = "192.168.1.10:1984"
-    static let login = "tanya.k@example.com"
+    static let login = "anna.k@example.com"
     static let accountID = "6218440137"
     static let maskedPhone = "+7 *** ***-**-42"
     static let cameraStream = "prihozhaya"
@@ -145,8 +172,15 @@ enum SetupDemo {
     static let rtspStream = "testcam"
     static let rtspSize = CGSize(width: 1280, height: 720)
 
-    /// `--demo-catalog no-xiaomi|empty`: go2rtc without a Xiaomi account (and without streams).
-    static var hasXiaomi: Bool { argument(after: "--demo-catalog") == nil }
+    /// `--demo-catalog no-xiaomi|empty`: go2rtc without a Xiaomi account (and without streams). Never one in a build
+    /// without Xiaomi (`NoXiaomiText`).
+    static var hasXiaomi: Bool {
+        #if WP_NO_XIAOMI
+        return false
+        #else
+        return argument(after: "--demo-catalog") == nil
+        #endif
+    }
     static var hasStreams: Bool { argument(after: "--demo-catalog") != "empty" }
 
     #if DEBUG

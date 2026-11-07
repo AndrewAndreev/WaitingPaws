@@ -49,6 +49,7 @@ struct MacCameraPickerSheet: View {
         .frame(width: 680, height: onlyStreams ? 380 : 548)
         // Fresh stills on every opening, as the iPhone's (design council, round 14: no ↻).
         .task(id: model.setupServerReady) { await reload(force: true) }
+        #if !WP_NO_XIAOMI
         .sheet(isPresented: $signingIn) {
             SetupXiaomiSignInSheet { account in
                 allAccounts = true
@@ -56,6 +57,7 @@ struct MacCameraPickerSheet: View {
             }
             .environment(model)
         }
+        #endif
     }
 
     // MARK: Header
@@ -106,10 +108,12 @@ struct MacCameraPickerSheet: View {
     private var grid: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                #if !WP_NO_XIAOMI
                 if !onlyStreams && catalog.accounts.isEmpty {
                     SetupMiHomeSignInCard(style: .card) { signingIn = true }
                         .disabled(!model.setupServerReadyOrDemo)
                 }
+                #endif
                 ForEach(visibleAccounts) { account in
                     // The account's id and region only tell two accounts apart (Settings shows them).
                     section(title: "Mi Home",
@@ -135,7 +139,7 @@ struct MacCameraPickerSheet: View {
                 // The cameras added by address, and «Своя камера» as one more tile (design council, round 14: one
                 // sign, no row of words). The welcome window's «Выбрать поток go2rtc…» has the title say «Потоки
                 // go2rtc» already: no header there.
-                section(title: onlyStreams ? nil : String(localized: "Другие камеры"), detail: nil) {
+                section(title: othersTitle, detail: nil) {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
                         ForEach(catalog.otherStreams) { stream in
                             tile(.stream(stream))
@@ -151,6 +155,15 @@ struct MacCameraPickerSheet: View {
         .scrollBounceBehavior(.basedOnSize)
     }
 
+    /// «Другие камеры» under the Mi Home ones; none in a build without Xiaomi, where these are all there is.
+    private var othersTitle: String? {
+        #if WP_NO_XIAOMI
+        return nil
+        #else
+        return onlyStreams ? nil : String(localized: "Другие камеры")
+        #endif
+    }
+
     private enum SectionAccessory { case signIn }
 
     private func section<Content: View>(title: String?, detail: String?, accessory: SectionAccessory? = nil,
@@ -163,12 +176,14 @@ struct MacCameraPickerSheet: View {
                         Text(detail).font(.callout).foregroundStyle(.secondary)
                     }
                     Spacer()
+                    #if !WP_NO_XIAOMI
                     if accessory == .signIn {
                         Button("Войти в другой аккаунт…", systemImage: "person.badge.key") { signingIn = true }
                             .buttonStyle(.borderless)
                             .help("Добавить камеры ещё одного аккаунта Xiaomi")
                             .disabled(!model.setupServerReadyOrDemo)
                     }
+                    #endif
                 }
             }
             content()
@@ -196,7 +211,7 @@ struct MacCameraPickerSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Добавить камеру по адресу: rtsp://, onvif://, http://")
+        .help("Добавить камеру по адресу rtsp:// или http:// (камеру ONVIF — по её адресу rtsp://)")
         .accessibilityLabel(String(localized: "Добавить свою камеру"))
         .disabled(!model.setupServerReadyOrDemo)
         .popover(isPresented: $addingStream, arrowEdge: .bottom) {
@@ -394,6 +409,7 @@ private struct SetupPickerTile: View {
     }
 }
 
+#if !WP_NO_XIAOMI // a build without Xiaomi has no sign-in (`NoXiaomiText`)
 /// «Камеры Mi Home» when go2rtc has no Xiaomi account: one sentence and a prominent «Войти в Xiaomi…».
 struct SetupMiHomeSignInCard: View {
     enum Style {
@@ -435,6 +451,7 @@ struct SetupMiHomeSignInCard: View {
         }
     }
 }
+#endif
 
 /// «Добавить поток…»: any go2rtc source by its address.
 struct SetupAddStreamForm: View {

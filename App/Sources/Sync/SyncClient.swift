@@ -497,15 +497,15 @@ final class SyncClient {
     func demoHosts(single: Bool = false) {
         let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: 9)
         hosts = [
-            DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "MacBook Pro — Андрей", cameraTitle: "Прихожая",
+            DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "MacBook Pro — Марк", cameraTitle: "Прихожая",
                                                                  cameraReady: true, id: "demo-mbp", platform: "mac",
                                                                  model: "MacBook Pro")),
-            DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "MacBook Air — Татьяна", cameraTitle: "Xiaomi C200",
+            DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "MacBook Air — Анна", cameraTitle: "Xiaomi C200",
                                                                  cameraReady: true, sessionRunning: true, currentExit: 3,
                                                                  id: "demo-mba", platform: "mac", model: "MacBook Air")),
             DiscoveredHost(endpoint: endpoint, info: SyncHostInfo(name: "DESKTOP-7QK", id: "demo-pc", platform: "windows")),
         ]
-        pairedHosts = [PairedHost(id: "demo-mbp", name: "MacBook Pro — Андрей", platform: "mac", model: "MacBook Pro",
+        pairedHosts = [PairedHost(id: "demo-mbp", name: "MacBook Pro — Марк", platform: "mac", model: "MacBook Pro",
                                   lastConnected: Date().addingTimeInterval(-86_400)),
                        PairedHost(id: "demo-mini", name: "Mac mini", platform: "mac", model: "Mac mini",
                                   lastConnected: Date().addingTimeInterval(-20 * 86_400))]

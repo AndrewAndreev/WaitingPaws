@@ -16,6 +16,8 @@ struct MacHistoryTable: View {
     var body: some View {
         table
             .background { MacTableContentHeight(rowCount: rows.count) { contentHeight = $0 } }
+            // Where a row's «Отправить…» opens the share picker (at the pointer, where its menu was).
+            .background { MacShareAnchorView(anchor: controller.shareAnchor) }
             // The stripes of alternating rows would go on under the last row, as rows with nothing in them.
             .frame(maxHeight: rows.isEmpty ? nil : contentHeight)
             .frame(maxHeight: .infinity, alignment: .top)
@@ -125,14 +127,15 @@ struct MacHistoryRowMenu: View {
         }
         if let video = row.video {
             Button("Сохранить в Фото", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
-            ShareLink(item: video.url) { Label("Отправить видео…", systemImage: "film") }
+            // AppKit's share picker with the file itself, not ShareLink (see `MacShareItem`).
+            Button("Отправить видео…", systemImage: "film") { controller.shareAnchor.show(.file(video.url), atPointer: true) }
                 .disabled(model.finalizingFileNames.contains(video.fileName))
         }
         if let record = row.record, let log = row.logText {
             Divider()
             Button("Скопировать лог", systemImage: "doc.on.doc") { controller.copyLog(of: row) }
-            ShareLink(item: log, subject: Text(record.plan.title), preview: SharePreview(record.plan.title)) {
-                Label("Отправить лог…", systemImage: "square.and.arrow.up")
+            Button("Отправить лог…", systemImage: "square.and.arrow.up") {
+                controller.shareAnchor.show(.text(log, title: record.plan.title, subject: record.plan.title), atPointer: true)
             }
         }
         Divider()

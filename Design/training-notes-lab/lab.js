@@ -160,7 +160,7 @@
 
   // Mac toolbar: data-title, data-sub, data-cam (html for the camera control), data-rec, data-extra (html before История)
   function tbar(el) {
-    el.innerHTML = '<span class="lights"><i></i><i></i><i></i></span><span class="wt"><b>' + (el.dataset.title || 'Тренировка на понедельник') + '</b><span>' + (el.dataset.sub || 'Таня/Андрей · с 18:12') + '</span></span><span class="sp"></span>' +
+    el.innerHTML = '<span class="lights"><i></i><i></i><i></i></span><span class="wt"><b>' + (el.dataset.title || 'Тренировка на понедельник') + '</b><span>' + (el.dataset.sub || 'Аня/Марк · с 18:12') + '</span></span><span class="sp"></span>' +
       (el.dataset.cam || '<span class="tbtn">' + svg('video') + 'Прихожая ⌄</span>') +
       '<span class="tbtn rec"><span class="dot"></span>REC ' + (el.dataset.rec || '1:28') + '</span>' +
       '<span class="tbtn">' + svg('sound') + 'Звук</span>' + (el.dataset.extra || '') +

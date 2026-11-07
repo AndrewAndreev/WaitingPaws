@@ -83,8 +83,9 @@ struct MacSummarySheet: View {
                 Spacer()
                 Button("Готово", action: onClose)
                     .keyboardShortcut(.cancelAction)
-                // ShareLink on the Mac ignores `.borderedProminent`: the prominent look is its own label.
-                ShareLink(item: log, preview: SharePreview(record.plan.displayTitle)) {
+                // The prominent look is the label's own (a plain-styled button). AppKit's picker, not ShareLink: see
+                // `MacShareItem` (Telegram never sent ShareLink's log and its sheet stuck).
+                MacShareButton(.text(log, title: record.plan.displayTitle)) {
                     Label("Отправить тренеру…", systemImage: "square.and.arrow.up")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white)
@@ -233,7 +234,7 @@ struct MacClipSavedSheet: View {
                 }
             }
             HStack {
-                ShareLink(item: clip.url) { Label("Отправить…", systemImage: "square.and.arrow.up") }
+                MacShareButton(.file(clip.url)) { Label("Отправить…", systemImage: "square.and.arrow.up") }
                 Button("Показать в Finder") { Finder.reveal(clip.url) }
                 Spacer()
                 Button("История", action: onHistory)
