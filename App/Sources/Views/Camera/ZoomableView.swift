@@ -36,6 +36,11 @@ final class ZoomState {
     private(set) var memory = Memory()
     /// Keeps `memory` (the iPhone); the Mac's double click zooms in where it is.
     let remembers: Bool
+    /// How much the whole picture (1×) may be enlarged to fill the area rather than leave thin black bars beside it:
+    /// 1.03 (the Mac) fills an area within 3 % of the picture's shape, cutting that little off its edges — bars of a few
+    /// points read as a gap, not as the picture's frame (the owner, 2026-11-07). 1: never (the iPhone: nothing is cut
+    /// until the owner zooms in).
+    let fillSlack: CGFloat
 
     struct Memory: Equatable {
         var framing: CameraFraming?
@@ -50,11 +55,20 @@ final class ZoomState {
     @ObservationIgnored private var baseScale: CGFloat = 1
     @ObservationIgnored private var baseOffset: CGSize = .zero
 
-    init(remembers: Bool = false) {
+    init(remembers: Bool = false, fillSlack: CGFloat = 1) {
         self.remembers = remembers
+        self.fillSlack = fillSlack
     }
 
     var isZoomed: Bool { scale > 1.01 }
+
+    /// The scale the content is drawn at: it fits itself into the area, and the whole picture (1×) may be larger than
+    /// that (`picture`: it uses the room past the area too). `scale` is the zoom the owner sees (the pill's «1.4×»).
+    var contentScale: CGFloat {
+        let inArea = Self.fitted(aspect, in: viewport)
+        guard inArea.width > 0 else { return scale }
+        return scale * picture.width / inArea.width
+    }
 
     /// The scale at which the picture covers the whole area (1 when it already does).
     var fillScale: CGFloat {
@@ -88,9 +102,9 @@ final class ZoomState {
     /// The whole picture. The iPhone keeps the framing for a double tap.
     func reset() {
         scale = 1
-        offset = .zero
+        offset = clamped(.zero)
         baseScale = 1
-        baseOffset = .zero
+        baseOffset = offset
         commit()
     }
 
@@ -101,7 +115,7 @@ final class ZoomState {
     func toggle(at anchor: CGPoint) {
         if isZoomed {
             scale = 1
-            offset = .zero
+            offset = clamped(.zero)
         } else if remembers, let framing = memory.framing, scale(for: framing) > 1.01 {
             zoom(to: scale(for: framing), anchor: anchor)
         } else if aspect != nil {
@@ -123,7 +137,7 @@ final class ZoomState {
     func toggleZoomIn() {
         if isZoomed {
             scale = 1
-            offset = .zero
+            offset = clamped(.zero)
         } else if remembers, let framing = memory.framing, scale(for: framing) > 1.01 {
             show(framing)
         } else {
@@ -156,7 +170,7 @@ final class ZoomState {
             show(framing)
         } else {
             scale = 1
-            offset = .zero
+            offset = clamped(.zero)
         }
         baseScale = scale
         baseOffset = offset
@@ -173,7 +187,7 @@ final class ZoomState {
         }
         if !isZoomed {
             scale = 1
-            offset = .zero
+            offset = clamped(.zero)
         }
         baseScale = scale
         baseOffset = offset
@@ -205,7 +219,7 @@ final class ZoomState {
 
     /// The whole zoomed picture in an area of `size`, past its edges too (`ZoomableView.overflows`).
     func pictureFrame(in size: CGSize, aspect: CGFloat?) -> CGRect {
-        let picture = Self.fitted(aspect, in: size)
+        let picture = Self.fitted(aspect, in: size, bleed: bleed)
         let width = picture.width * scale, height = picture.height * scale
         return CGRect(x: (size.width - width) / 2 + offset.width, y: (size.height - height) / 2 + offset.height,
                       width: width, height: height)
@@ -224,8 +238,24 @@ final class ZoomState {
 
     // MARK: Math
 
-    /// The picture at 1×: fitted into the area.
-    private var picture: CGSize { Self.fitted(aspect, in: viewport) }
+    /// The picture at 1×, the whole of it: fitted into the area together with the room past it where it shows (`bleed`;
+    /// the Mac: up under the header), so as large as that whole frame lets it be without cutting any of it — not the
+    /// area alone, which left black bars beside it and the black under the header (the owner, 2026-11-07). `clamped`
+    /// places it: in the area's middle where it fits the area, else covering it, the rest in that room.
+    /// Within `fillSlack` of filling the area, it fills it.
+    private var picture: CGSize {
+        let fitted = Self.fitted(aspect, in: viewport, bleed: bleed)
+        guard aspect != nil, fillSlack > 1, fitted.width > 0, fitted.height > 0 else { return fitted }
+        let fill = max(viewport.width / fitted.width, viewport.height / fitted.height)
+        return fill > 1 && fill <= fillSlack ? CGSize(width: fitted.width * fill, height: fitted.height * fill) : fitted
+    }
+
+    /// The picture fitted into `area` with `bleed` round it; the area alone for content that fills it itself.
+    private static func fitted(_ aspect: CGFloat?, in area: CGSize, bleed: EdgeInsets) -> CGSize {
+        guard aspect != nil else { return area }
+        return fitted(aspect, in: CGSize(width: area.width + bleed.leading + bleed.trailing,
+                                         height: area.height + bleed.top + bleed.bottom))
+    }
 
     private static func fitted(_ aspect: CGFloat?, in area: CGSize) -> CGSize {
         guard let aspect, aspect > 0, area.width > 0, area.height > 0 else { return area }
@@ -391,7 +421,7 @@ struct ZoomableView<Content: View, Chrome: View>: View {
                 content
                     .allowsHitTesting(false)
                     // Always the same modifier chain: an `if` here would change the view identity and recreate the web view.
-                    .scaleEffect(contentZooms ? 1 : zoom.scale)
+                    .scaleEffect(contentZooms ? 1 : zoom.contentScale)
                     .offset(contentZooms ? .zero : zoom.offset)
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .environment(contentZooms ? zoom : nil)

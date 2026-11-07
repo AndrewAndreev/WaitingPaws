@@ -107,7 +107,7 @@ struct CameraStreamView: View {
         CameraWebView(server: server, stream: stream, mode: mode, audioEnabled: audioEnabled, fill: fill,
                       reloadToken: reloadToken, onVideoSize: onVideoSize, onDelay: onDelay,
                       onPhase: { status.update($0) }, onPageStart: { status.restart() },
-                      zoomScale: zoom?.scale ?? 1, zoomOffset: zoom?.offset ?? .zero, bleedTop: bleedTop)
+                      zoomScale: zoom?.contentScale ?? 1, zoomOffset: zoom?.offset ?? .zero, bleedTop: bleedTop)
             .overlay {
                 if showsStatus && self.status == nil { CameraStatusOverlay(status: own) }
             }
@@ -390,14 +390,18 @@ struct CameraWebView {
         let socket = Self.jsString(client.playerSocketURL(stream: stream).absoluteString)
         let muted = audioEnabled ? "false" : "true"
         #if os(macOS)
-        // A box of one size at the page's top-left, whatever the window does: `PlayerWebView` fits and zooms it.
+        // A box at the page's top-left that never follows the window: `PlayerWebView` fits and zooms it. In the picture's
+        // own shape (`PlayerWebView.box(for:)`; 16:9 until the video says), set again when the video's size changes.
         let fit = "contain"
-        let box = "position: absolute; left: 0; top: 0; width: \(Int(PlayerWebView.pictureBox))px; height: \(Int(PlayerWebView.pictureBox))px;"
+        let start = PlayerWebView.box(for: CGSize(width: 16, height: 9))
+        let box = "position: absolute; left: 0; top: 0; width: \(Int(start.width))px; height: \(Int(start.height))px;"
+        let shapesBox = "true", boxMost = Int(PlayerWebView.pictureBox)
         #else
         let fit = fill ? "cover" : "contain"
         // The whole frame letterboxed on black: no blurred copy of it in the margins (design council, round 14:
         // decoration with nothing to tell).
         let box = "display: block; position: relative; width: 100%; height: 100%;"
+        let shapesBox = "false", boxMost = 0
         #endif
         return """
         <!doctype html>
@@ -545,7 +549,28 @@ struct CameraWebView {
               document.addEventListener('visibilitychange', () => {
                 if (!document.hidden && !first && this.video.paused) this.video.play().catch(() => {});
               });
-              this.video.addEventListener('resize', () => report('size ' + this.video.videoWidth + 'x' + this.video.videoHeight));
+              this.video.addEventListener('resize', () => {
+                const width = this.video.videoWidth, height = this.video.videoHeight;
+                // The Mac: the box in the picture's shape, in whole pixels, as `PlayerWebView.box(for:)` works it out.
+                // A square one with `contain` left WebKit to round a 90.57-px-high picture (848×480) to 159×90.
+                if (\(shapesBox) && width > 0 && height > 0) {
+                  const gcd = (a, b) => b ? gcd(b, a % b) : a;
+                  const w = Math.round(width), h = Math.round(height), g = gcd(w, h), long = Math.max(w, h) / g;
+                  const most = \(boxMost);
+                  let boxW, boxH;
+                  if (long <= most) {
+                    const times = Math.floor(most / long);
+                    boxW = w / g * times; boxH = h / g * times;
+                  } else if (w >= h) {
+                    boxW = most; boxH = Math.max(1, Math.round(most * h / w));
+                  } else {
+                    boxW = Math.max(1, Math.round(most * w / h)); boxH = most;
+                  }
+                  this.style.width = boxW + 'px';
+                  this.style.height = boxH + 'px';
+                }
+                report('size ' + width + 'x' + height);
+              });
               this.video.addEventListener('error', () => report('video error ' + (this.video.error ? this.video.error.code : '?')));
             }
             onwebrtc() { report('mode webrtc'); return super.onwebrtc(); }
@@ -897,8 +922,29 @@ extension CameraWebView: UIViewRepresentable {
 /// video layer is scaled from the decoded frames, not from a bitmap of the box: the picture stays as sharp. The view's
 /// frame is left as SwiftUI lays it out (a SwiftUI scale on it brought WebKit's toolbar inset, see `ZoomableView`).
 final class PlayerWebView: WKWebView {
-    /// CSS px; every place the player is shown (the training window, the settings card) is larger.
+    /// CSS px, the box's longer side at most; every place the player is shown (the training window, the settings card)
+    /// is larger.
     static let pictureBox: CGFloat = 160
+
+    /// The page's box for a picture of `size`: the picture's own shape in whole CSS pixels, its longer side as close to
+    /// `pictureBox` as that allows (848×480 → 159×90, 16:9 → 160×90, 4:3 → 160×120), so the video fills it exactly.
+    /// A 160-px square with `contain` put an 848×480 picture (the C302's SD stream) at 160×90.57 px, which WebKit drew
+    /// as 159×90 half a pixel in: ×8 in the window, a black strip at the left and the picture 1 % short (the owner,
+    /// 2026-11-07). The page works it out the same way when the video's size changes (`CameraWebView.html`). A shape
+    /// with no small whole-number form: the longer side 160, the other rounded.
+    static func box(for size: CGSize) -> CGSize {
+        let width = Int(size.width.rounded()), height = Int(size.height.rounded())
+        guard width > 0, height > 0 else { return CGSize(width: pictureBox, height: pictureBox) }
+        func gcd(_ a: Int, _ b: Int) -> Int { b == 0 ? a : gcd(b, a % b) }
+        let g = gcd(width, height), most = Int(pictureBox), long = max(width, height) / g
+        if long <= most {
+            let times = most / long
+            return CGSize(width: width / g * times, height: height / g * times)
+        }
+        return width >= height
+            ? CGSize(width: most, height: max(1, Int((Double(most * height) / Double(width)).rounded())))
+            : CGSize(width: max(1, Int((Double(most * width) / Double(height)).rounded())), height: most)
+    }
 
     /// The video's own size: the picture's aspect in the box and in the view (16:9 until the player knows).
     var videoSize = CGSize(width: 16, height: 9) {
@@ -973,8 +1019,7 @@ final class PlayerWebView: WKWebView {
     /// anchor at the top-left, so the transform works in the view's own points.
     private func fitPicture(animated: Bool) {
         guard let layer, bounds.width > 0, bounds.height > 0, videoSize.width > 0, videoSize.height > 0 else { return }
-        let box = CGSize(width: Self.pictureBox, height: Self.pictureBox)
-        let inPage = Self.place(videoSize, in: box, fill: false)
+        let inPage = Self.place(videoSize, in: Self.box(for: videoSize), fill: false)
         let inView = Self.place(videoSize, in: bounds.size, fill: fill)
         let k = inView.width / inPage.width
         let centre = CGPoint(x: bounds.width / 2, y: bounds.height / 2)

@@ -7,10 +7,10 @@ import WaitingPawsCore
 /// Zoomed in, the picture is not cut at the toolbar: the camera's column reaches up to the window's top edge, and what
 /// of the picture lies above the area shows under the toolbar, where the header's pieces float over it on their own
 /// glass with a shadow (`ConsoleHeader`; the owner, 2026-11-06, in place of a frosted band under the whole toolbar).
-/// The area under the toolbar is still what is framed: gestures and the corner pill keep to it. Panning takes the
-/// picture up to the window's top, so zoomed in far enough it fills the window under the header too (the owner,
-/// 2026-11-07: the top of the pan left black there). The sides and the bottom stay cut: the panel and the timeline
-/// are there.
+/// The area under the toolbar is still what is framed: gestures and the corner pill keep to it. The picture uses the
+/// room under the header as well (the owner, 2026-11-07): the whole picture is as large as the area with that room
+/// lets it be, and panning takes a zoomed one up to the window's top. The sides and the bottom stay cut: the panel
+/// and the timeline are there.
 struct MacCameraArea: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui

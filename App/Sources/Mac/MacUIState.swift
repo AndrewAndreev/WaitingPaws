@@ -26,7 +26,7 @@ final class MacUIState {
     /// without recording (someone else records, or the dog is just being watched). A training brings the panels back.
     var cameraOnly = false
     /// Zoom of the camera picture in the training window (gestures and the View menu).
-    let cameraZoom = ZoomState()
+    let cameraZoom = ZoomState(fillSlack: 1.03)
     /// Before the start: what the pointer is over, a block on the plan's timeline or a line of the trainer's text on
     /// the panel; the other one lights.
     var planPointer: MacPlanPointer?
