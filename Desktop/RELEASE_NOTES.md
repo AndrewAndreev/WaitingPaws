@@ -1,6 +1,21 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.7.15**
+**New in 1.7.17**
+
+* The same version as iPhone and Mac 1.7.17, built from the same code (1.7.16 was a Mac-only build).
+* Xiaomi cameras: a camera serves one session at a time, and go2rtc now tells it when a session ends instead of just
+  dropping it, so the camera is free for the next one sooner. A session the camera turns away (it still holds another
+  one) ends at once instead of after go2rtc's 15-second wait. The camera search on the local network keeps trying
+  when a send fails, and the log follows every connection step: the Mi Cloud key time, the handshake, the first video
+  frame and how a session ended.
+* Adding a camera by its address offers rtsp:// and http:// (an ONVIF camera by its rtsp:// address). onvif:// was
+  offered before, but the built-in go2rtc has no ONVIF module.
+* The third-party licenses shipped with the app list every package.
+* On the Mac: the session's capsule in the window's header, with the window's buttons, no longer shakes; a zoomed
+  camera picture pans up under the header and fills the window; the C302's SD picture no longer leaves a black strip
+  at the left.
+
+**In 1.7.15**
 
 * The same version as iPhone and Mac 1.7.15, built from the same code. The Windows app itself has not changed since
   1.6.12. 1.7.15 fixes «Подключаемся к камере…» staying over a camera picture that plays (on the Mac, after the
