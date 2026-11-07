@@ -7,8 +7,10 @@ import WaitingPawsCore
 /// Zoomed in, the picture is not cut at the toolbar: the camera's column reaches up to the window's top edge, and what
 /// of the picture lies above the area shows under the toolbar, where the header's pieces float over it on their own
 /// glass with a shadow (`ConsoleHeader`; the owner, 2026-11-06, in place of a frosted band under the whole toolbar).
-/// The area under the toolbar is still what is framed: gestures, panning and the corner pill keep to it. The sides and
-/// the bottom stay cut: the panel and the timeline are there.
+/// The area under the toolbar is still what is framed: gestures and the corner pill keep to it. Panning takes the
+/// picture up to the window's top, so zoomed in far enough it fills the window under the header too (the owner,
+/// 2026-11-07: the top of the pan left black there). The sides and the bottom stay cut: the panel and the timeline
+/// are there.
 struct MacCameraArea: View {
     @Environment(AppModel.self) private var model
     @Environment(MacUIState.self) private var ui
@@ -43,13 +45,21 @@ struct MacCameraArea: View {
                 model.panTilt.stop()
             }
             #if DEBUG
-            // `--demo-zoom=<scale>`: the picture zoomed in (UI checks). One argument: a lone value would shift
-            // AppKit's `-key value` pairing and be opened as a document (no window).
+            // `--demo-zoom=<scale>[@x,y]`: the picture zoomed in (UI checks), round its point x, y (0…1) where the
+            // edges allow (`0,0`: panned as far as it goes to the top-left corner). One argument: a lone value would
+            // shift AppKit's `-key value` pairing and be opened as a document (no window).
             .task {
-                guard let raw = CommandLine.arguments.first(where: { $0.hasPrefix("--demo-zoom=") })?.dropFirst(12),
-                      let scale = Double(raw) else { return }
+                guard let raw = CommandLine.arguments.first(where: { $0.hasPrefix("--demo-zoom=") })?.dropFirst(12)
+                else { return }
+                let parts = raw.split(separator: "@")
+                let point = parts.count > 1 ? parts[1].split(separator: ",").compactMap { Double($0) } : []
+                guard let scale = parts.first.flatMap({ Double($0) }) else { return }
                 try? await Task.sleep(for: .milliseconds(600))
-                ui.cameraZoom.zoom(to: scale)
+                if point.count == 2 {
+                    ui.cameraZoom.frame(scale: scale, x: point[0], y: point[1])
+                } else {
+                    ui.cameraZoom.zoom(to: scale)
+                }
             }
             #endif
     }
@@ -69,7 +79,8 @@ struct MacCameraArea: View {
     private func content(bleedTop: CGFloat) -> some View {
         #if DEBUG
         if let image = DemoData.cameraImage {
-            ZoomableView(zoom: ui.cameraZoom, aspect: aspect, overflows: true) {
+            ZoomableView(zoom: ui.cameraZoom, aspect: aspect, overflows: true,
+                         bleed: EdgeInsets(top: bleedTop, leading: 0, bottom: 0, trailing: 0)) {
                 ZStack {
                     Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
                         .opacity(model.isShowingSecondCamera ? 0 : 1)
@@ -98,7 +109,8 @@ struct MacCameraArea: View {
         } else if let server = model.settings.server, !model.settings.streamName.isEmpty {
             // Both cameras play all the time: the switcher only shows one, so switching never reconnects.
             // The player zooms the picture in its layer and lets it run up under the toolbar itself (`PlayerWebView`).
-            ZoomableView(zoom: ui.cameraZoom, contentZooms: true, aspect: aspect, overflows: true) {
+            ZoomableView(zoom: ui.cameraZoom, contentZooms: true, aspect: aspect, overflows: true,
+                         bleed: EdgeInsets(top: bleedTop, leading: 0, bottom: 0, trailing: 0)) {
                 ZStack {
                     CameraStreamView(server: server,
                                      stream: model.settings.streamName,

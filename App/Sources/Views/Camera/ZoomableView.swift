@@ -25,6 +25,11 @@ final class ZoomState {
     /// Width over height of the picture when it is letterboxed in the area (the iPhone: the area runs from the top bar
     /// to the card, the picture fits in it); nil: the content fills the area itself (the Mac's player).
     private(set) var aspect: CGFloat?
+    /// How far past the area the zoomed picture still shows (`ZoomableView.overflows`; the Mac: the column runs up under
+    /// the toolbar to the window's top). Panning takes the picture's edges out to there, so a picture large enough
+    /// fills the window up to its top instead of stopping at the area's edge with black above it (the owner,
+    /// 2026-11-07). None: the area's own edges.
+    private(set) var bleed = EdgeInsets()
     /// The iPhone: the last framing zoomed in, and whether it is on. «Приблизить» on the whole picture goes back to
     /// it (a double tap only takes its scale); it is saved per camera when a gesture ends, and a new size of the area
     /// shows it anew.
@@ -56,6 +61,14 @@ final class ZoomState {
         let picture = picture
         guard picture.width > 0, picture.height > 0 else { return 1 }
         return max(viewport.width / picture.width, viewport.height / picture.height)
+    }
+
+    /// The scale at which the picture covers the area and all the room past it where it shows (`bleed`).
+    private var bleedFillScale: CGFloat {
+        let picture = picture
+        guard picture.width > 0, picture.height > 0 else { return 1 }
+        return max((viewport.width + bleed.leading + bleed.trailing) / picture.width,
+                   (viewport.height + bleed.top + bleed.bottom) / picture.height)
     }
 
     /// Multiplies the scale keeping `anchor` (a viewport point, top-left origin) in place; the centre without one.
@@ -149,11 +162,14 @@ final class ZoomState {
         baseOffset = offset
     }
 
-    /// After a gesture: a hair above 1× is 1×, a hair off filling the area fills it.
+    /// After a gesture: a hair above 1× is 1×, a hair off filling the area (or the area with the room past it where the
+    /// picture shows, `bleed`) fills it.
     func settle() {
         if aspect != nil, isZoomed {
-            let fill = fillScale
-            if fill > 1.05, abs(scale - fill) < fill * 0.06 { set(scale: fill, from: scale, offset: offset, anchor: nil) }
+            let fills = [fillScale, bleedFillScale].filter { $0 > 1.05 }
+            if let fill = fills.min(by: { abs(scale - $0) < abs(scale - $1) }), abs(scale - fill) < fill * 0.06 {
+                set(scale: fill, from: scale, offset: offset, anchor: nil)
+            }
         }
         if !isZoomed {
             scale = 1
@@ -164,12 +180,13 @@ final class ZoomState {
         commit()
     }
 
-    /// The area's size and the picture's aspect, from `ZoomableView`. The iPhone shows its framing in the new area;
-    /// elsewhere the zoom stays as it is.
-    func layout(viewport newViewport: CGSize, aspect newAspect: CGFloat?) {
-        guard newViewport != viewport || newAspect != aspect else { return }
+    /// The area's size, the picture's aspect and the room past the area where it shows, from `ZoomableView`. The
+    /// iPhone shows its framing in the new area; elsewhere the zoom stays as it is.
+    func layout(viewport newViewport: CGSize, aspect newAspect: CGFloat?, bleed newBleed: EdgeInsets = EdgeInsets()) {
+        guard newViewport != viewport || newAspect != aspect || newBleed != bleed else { return }
         viewport = newViewport
         aspect = newAspect
+        bleed = newBleed
         if remembers, memory.isOn, let framing = memory.framing {
             show(framing)
         } else {
@@ -278,13 +295,27 @@ final class ZoomState {
         offset = clamped(newOffset)
     }
 
-    /// Keeps the zoomed picture covering the area where it is larger than the area, centred where it is not.
+    /// Keeps the zoomed picture covering the area where it is larger than the area, centred where it is not; and, as
+    /// far as it is larger, covering the room past the area where it shows (`bleed`).
     private func clamped(_ proposed: CGSize) -> CGSize {
         let picture = picture
-        let maxX = max(0, (picture.width * scale - viewport.width) / 2)
-        let maxY = max(0, (picture.height * scale - viewport.height) / 2)
-        return CGSize(width: min(maxX, max(-maxX, proposed.width)),
-                      height: min(maxY, max(-maxY, proposed.height)))
+        return CGSize(width: Self.clamped(proposed.width, size: picture.width * scale, area: viewport.width,
+                                          before: bleed.leading, after: bleed.trailing),
+                      height: Self.clamped(proposed.height, size: picture.height * scale, area: viewport.height,
+                                           before: bleed.top, after: bleed.bottom))
+    }
+
+    /// One axis: `offset` moves the picture (`size` long, centred on an `area`) towards `after`; `before` and `after`
+    /// are the room past the area's two edges. A picture no longer than the area stays in its middle. A longer one
+    /// always covers the area; where it is long enough to cover the room on both sides too, its edges never come in
+    /// past that room's edges; where it is not, the part past the area goes into that room, anywhere along it (what
+    /// stays black is the same) — with room on one side only, all to that side.
+    private static func clamped(_ offset: CGFloat, size: CGFloat, area: CGFloat, before: CGFloat, after: CGFloat) -> CGFloat {
+        let excess = (size - area) / 2
+        guard excess > 0 else { return 0 }
+        let low = max(-excess, min(after - excess, excess - before))
+        let high = min(excess, max(after - excess, excess - before))
+        return min(high, max(low, offset))
     }
 }
 
@@ -314,6 +345,7 @@ struct ZoomableView<Content: View, Chrome: View>: View {
     private let aspect: CGFloat?
     private let showsZoomPill: Bool
     private let overflows: Bool
+    private let bleed: EdgeInsets
     private let content: Content
     private let chrome: Chrome
     @State private var own = ZoomState()
@@ -327,15 +359,19 @@ struct ZoomableView<Content: View, Chrome: View>: View {
     /// `overflows`: the zoomed picture is not cut at the area's edges: what of it lies past them shows round the area,
     /// behind what is there (the iPhone's bar and card, the Mac's toolbar) instead of the black. The content must be
     /// the picture alone, no black round it (sized to its aspect), and the caller draws the area under its neighbours
-    /// and cuts it where it must (the screen, the window's camera column). The zoom still frames the area: gestures,
-    /// panning and the chrome keep to it.
+    /// and cuts it where it must (the screen, the window's camera column). The zoom still frames the area: gestures
+    /// and the chrome keep to it.
+    /// `bleed`: with `overflows`, how far past the area the picture shows where nothing opaque covers it (the Mac's
+    /// toolbar): panning takes the picture's edges out to there (`ZoomState.bleed`).
     init(zoom: ZoomState? = nil, contentZooms: Bool = false, aspect: CGFloat? = nil, showsZoomPill: Bool = true,
-         overflows: Bool = false, @ViewBuilder content: () -> Content, @ViewBuilder chrome: () -> Chrome) {
+         overflows: Bool = false, bleed: EdgeInsets = EdgeInsets(), @ViewBuilder content: () -> Content,
+         @ViewBuilder chrome: () -> Chrome) {
         external = zoom
         self.contentZooms = contentZooms
         self.aspect = aspect
         self.showsZoomPill = showsZoomPill
         self.overflows = overflows
+        self.bleed = overflows ? bleed : EdgeInsets()
         self.content = content()
         self.chrome = chrome()
     }
@@ -343,6 +379,7 @@ struct ZoomableView<Content: View, Chrome: View>: View {
     private struct LayoutKey: Equatable {
         var size: CGSize
         var aspect: CGFloat?
+        var bleed: EdgeInsets
         var zoom: ObjectIdentifier
     }
 
@@ -387,8 +424,9 @@ struct ZoomableView<Content: View, Chrome: View>: View {
                 .position(x: visible.midX, y: visible.midY)
             }
             // A switch to the other camera's state, too: it may never have been laid out.
-            .onChange(of: LayoutKey(size: geometry.size, aspect: aspect, zoom: ObjectIdentifier(zoom)), initial: true) { _, key in
-                zoom.layout(viewport: key.size, aspect: key.aspect)
+            .onChange(of: LayoutKey(size: geometry.size, aspect: aspect, bleed: bleed, zoom: ObjectIdentifier(zoom)),
+                      initial: true) { _, key in
+                zoom.layout(viewport: key.size, aspect: key.aspect, bleed: key.bleed)
             }
         }
         .modifier(ClipsUnless(overflows: overflows))
@@ -407,9 +445,9 @@ struct ZoomableView<Content: View, Chrome: View>: View {
 
 extension ZoomableView where Chrome == EmptyView {
     init(zoom: ZoomState? = nil, contentZooms: Bool = false, aspect: CGFloat? = nil, overflows: Bool = false,
-         @ViewBuilder content: () -> Content) {
-        self.init(zoom: zoom, contentZooms: contentZooms, aspect: aspect, overflows: overflows, content: content,
-                  chrome: { EmptyView() })
+         bleed: EdgeInsets = EdgeInsets(), @ViewBuilder content: () -> Content) {
+        self.init(zoom: zoom, contentZooms: contentZooms, aspect: aspect, overflows: overflows, bleed: bleed,
+                  content: content, chrome: { EmptyView() })
     }
 }
 
