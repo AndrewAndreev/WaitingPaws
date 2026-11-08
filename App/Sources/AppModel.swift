@@ -1079,7 +1079,7 @@ final class AppModel {
             guard let self else { return }
             let names = unfinishedFileNames
             guard !names.isEmpty else { return }
-            let files = names.map { store.recordingsDirectory.appendingPathComponent($0) }
+            let files = names.map { self.store.recordingsDirectory.appendingPathComponent($0) }
                 .sorted { (Self.creationDate($0) ?? .distantPast) > (Self.creationDate($1) ?? .distantPast) }
             print("[rec] \(files.count) recording(s) left unprepared by an earlier run: preparing them now")
             for url in files where unfinishedFileNames.contains(url.lastPathComponent) {
