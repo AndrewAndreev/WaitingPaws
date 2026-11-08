@@ -16,6 +16,11 @@ struct MacHistoryVideo: Equatable {
     var duration: TimeInterval?
     /// Changes when the file is rewritten (remuxed after recording): the table's thumbnail is keyed by it.
     var modified: Date?
+    /// Still go2rtc's raw stream (`RecordingFinalizer.isUnfinished`): never opened here, not even for its length or a
+    /// frame, until it is prepared.
+    var unfinished = false
+    /// An unfinished file's length from its own times (`RecordingDurations.estimate`).
+    var estimate: TimeInterval?
 
     var fileName: String { url.lastPathComponent }
 }
@@ -287,24 +292,30 @@ final class MacHistoryController {
             + model.finalizingFileNames.sorted().map { "…" + $0 }
     }
 
-    /// Re-reads which videos exist and their sizes, then loads the lengths that are not known yet.
+    /// Re-reads which videos exist, their sizes and whether they are prepared yet, then the lengths not known yet:
+    /// one file at a time, each read once per version of it (`RecordingDurations` keeps them on disk). An unfinished
+    /// file is not opened at all.
     func refreshFiles(_ model: AppModel) async {
         var found: [String: MacHistoryVideo] = [:]
         func add(_ url: URL) {
             let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
             let bytes = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
-            found[url.lastPathComponent] = MacHistoryVideo(url: url, bytes: bytes, duration: videos[url.lastPathComponent]?.duration,
-                                                          modified: attributes?[.modificationDate] as? Date)
+            let unfinished = RecordingFinalizer.isUnfinished(url)
+            found[url.lastPathComponent] = MacHistoryVideo(url: url, bytes: bytes,
+                                                          duration: unfinished ? nil : RecordingDurations.shared.cached(url),
+                                                          modified: attributes?[.modificationDate] as? Date,
+                                                          unfinished: unfinished,
+                                                          estimate: unfinished ? RecordingDurations.estimate(url) : nil)
         }
         for record in records(model) {
             if let url = videoURL(for: record, model: model) { add(url) }
         }
         for clip in clips(model) { add(clip.url) }
         videos = found
-        for (name, video) in found where video.duration == nil {
-            guard let length = try? await AVURLAsset(url: video.url).load(.duration), length.isNumeric else { continue }
+        for (name, video) in found where video.duration == nil && !video.unfinished {
+            guard let seconds = await RecordingDurations.shared.duration(of: video.url) else { continue }
             if Task.isCancelled { return }
-            videos[name]?.duration = length.seconds
+            videos[name]?.duration = seconds
         }
     }
 

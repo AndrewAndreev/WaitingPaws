@@ -102,6 +102,7 @@ final class AppModel {
     init() {
         LogMirror.start(directory: Self.logsDirectory)
         reloadHistory()
+        finishLeftoverRecordings()
         startEmbeddedIfNeeded()
         #if os(iOS)
         // Swiped away while still running (in the background grace): the cameras are told their sessions are over, as
@@ -1001,9 +1002,14 @@ final class AppModel {
     private func joinRecording(_ url: URL, segments: [RecordingSegment], startedAt: Date) async {
         let name = url.lastPathComponent
         finalizingFileNames.insert(name)
-        defer { finalizingFileNames.remove(name) }
+        videoPreparations[name] = VideoPreparation()
+        defer {
+            finalizingFileNames.remove(name)
+            videoPreparations[name] = nil
+        }
         do {
-            let used = try await RecordingFinalizer.join(segments, startedAt: startedAt, into: url)
+            let used = try await RecordingFinalizer.join(segments, startedAt: startedAt, into: url,
+                                                         progress: preparationProgress(name))
             print("[rec] joined \(used) parts into \(name)")
         } catch {
             print("[rec] joining \(name) failed: \(error.localizedDescription)")
@@ -1013,6 +1019,96 @@ final class AppModel {
     /// Recordings being remuxed right now (file names); sharing waits for them.
     private(set) var finalizingFileNames: Set<String> = []
     private var finalizeTasks: [String: Task<Void, Never>] = [:]
+
+    /// How far a recording being prepared right now is (`RecordingFinalizer`'s progress), for the history's ring and
+    /// «Готовим видео · 42 % · ещё ≈ 6 мин». A usual recording takes a second or two; a night's one, minutes (14.5 h:
+    /// about 4 on an M-series Mac).
+    struct VideoPreparation: Equatable {
+        var fraction = 0.0
+        let startedAt = Date()
+        /// Left raw by an earlier run (closed, or stuck, before it was prepared), finished now in the background.
+        var leftover = false
+        /// Seconds left, once the pace is clear (5 s and 3 % in): linear from the pace so far.
+        var remaining: TimeInterval?
+    }
+
+    /// By file name, while its finalize or join runs.
+    private(set) var videoPreparations: [String: VideoPreparation] = [:]
+    /// Recordings still in go2rtc's raw form that nothing is preparing right now: waiting their turn after a launch
+    /// (`finishLeftoverRecordings`), or their finalize failed. The history shows them without opening them (see
+    /// `RecordingDurations`); opening one in the history prepares it at once.
+    private(set) var unfinishedFileNames: Set<String> = []
+    /// Why preparing a recording failed, by file name, until it is tried again.
+    private(set) var preparationErrors: [String: String] = [:]
+
+    private func preparationProgress(_ name: String) -> RecordingFinalizer.ProgressHandler {
+        { [weak self] fraction in
+            Task { @MainActor in self?.notePreparation(name, at: fraction) }
+        }
+    }
+
+    private func notePreparation(_ name: String, at fraction: Double) {
+        guard var preparation = videoPreparations[name], fraction > preparation.fraction else { return }
+        preparation.fraction = fraction
+        let elapsed = Date().timeIntervalSince(preparation.startedAt)
+        preparation.remaining = fraction >= 0.03 && elapsed >= 5 ? elapsed / fraction * (1 - fraction) : nil
+        videoPreparations[name] = preparation
+    }
+
+    /// Recordings an earlier run did not get to prepare stay go2rtc's raw stream, which every player and the history
+    /// open slowly: the app was closed meanwhile (⌘Q waits 30 s for it), or the finalize hung — the night's recording
+    /// of 29 Oct did, on its sound past 12 h 25 min (see `RecordingFinalizer.SoundReader`). A few seconds after launch
+    /// they are prepared one at a time, newest first. Temporary files an interrupted finalize left are removed first.
+    private func finishLeftoverRecordings() {
+        #if DEBUG
+        // A UI preview's history is shared by every Debug copy (other sessions' screenshots): its raw files are left
+        // alone unless asked (`--finish-unfinished`, with a copy signed into a container of its own).
+        if Self.isUIPreview, !CommandLine.arguments.contains("--finish-unfinished") { return }
+        #endif
+        Task { [weak self] in
+            // Only the app's own temporary directory: an unsandboxed Debug copy shares the user's.
+            #if os(macOS)
+            if ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil {
+                RecordingFinalizer.removeAbandonedTemporaryFiles()
+            }
+            #else
+            RecordingFinalizer.removeAbandonedTemporaryFiles()
+            #endif
+            // The camera and the windows first.
+            try? await Task.sleep(for: .seconds(8))
+            guard let self else { return }
+            let names = unfinishedFileNames
+            guard !names.isEmpty else { return }
+            let files = names.map { store.recordingsDirectory.appendingPathComponent($0) }
+                .sorted { (Self.creationDate($0) ?? .distantPast) > (Self.creationDate($1) ?? .distantPast) }
+            print("[rec] \(files.count) recording(s) left unprepared by an earlier run: preparing them now")
+            for url in files where unfinishedFileNames.contains(url.lastPathComponent) {
+                #if os(iOS)
+                let background = beginFinishingInBackground()
+                #endif
+                await finalizeInPlace(url)
+                #if os(iOS)
+                endFinishingInBackground(background)
+                #endif
+            }
+        }
+    }
+
+    private static func creationDate(_ url: URL) -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path))?[.creationDate] as? Date
+    }
+
+    /// Which recordings are still raw (a few header bytes each), leaving out the one being written and those being
+    /// prepared.
+    private func refreshUnfinished() {
+        let files = (try? FileManager.default.contentsOfDirectory(at: store.recordingsDirectory, includingPropertiesForKeys: nil)) ?? []
+        let active = currentRecordingURL?.lastPathComponent
+        unfinishedFileNames = Set(files.filter { url in
+            let name = url.lastPathComponent
+            return url.pathExtension == "mp4" && name != active && !finalizingFileNames.contains(name)
+                && recordingFinishTasks[name] == nil && RecordingFinalizer.isUnfinished(url)
+        }.map(\.lastPathComponent))
+    }
 
     /// Turns a finished recording into a regular MP4 with an audio track (see `RecordingFinalizer`).
     /// Cheap for files that are already done; concurrent calls for one file share the work. A recording just stopped
@@ -1029,14 +1125,29 @@ final class AppModel {
             await running.value
             return
         }
+        // Already a regular MP4 (the app writes AAC sound into every one it prepares): nothing to open.
+        guard RecordingFinalizer.isUnfinished(url) else {
+            unfinishedFileNames.remove(name)
+            return
+        }
         finalizingFileNames.insert(name)
+        videoPreparations[name] = VideoPreparation(leftover: unfinishedFileNames.contains(name))
+        unfinishedFileNames.remove(name)
+        preparationErrors[name] = nil
         let task = Task {
+            let started = Date()
             do {
-                if try await RecordingFinalizer.finalize(url) { print("[rec] finalized \(name)") }
+                if try await RecordingFinalizer.finalize(url, progress: preparationProgress(name)) {
+                    print("[rec] finalized \(name) in \(Int(Date().timeIntervalSince(started))) s")
+                }
             } catch {
                 print("[rec] finalize failed \(name): \(error.localizedDescription)")
+                preparationErrors[name] = error.localizedDescription
             }
+            // Still raw (it failed): shown as unfinished again, never opened by the history.
+            if RecordingFinalizer.isUnfinished(url) { unfinishedFileNames.insert(name) }
             finalizingFileNames.remove(name)
+            videoPreparations[name] = nil
             finalizeTasks[name] = nil
         }
         finalizeTasks[name] = task
@@ -1321,6 +1432,7 @@ final class AppModel {
         #endif
         history = store.loadAll()
         reloadClips()
+        refreshUnfinished()
     }
 
     private func reloadClips() {
@@ -1356,6 +1468,8 @@ final class AppModel {
     /// then, without the copy to Photos.
     private func removeLeftovers(of url: URL) {
         let name = url.lastPathComponent
+        unfinishedFileNames.remove(name)
+        preparationErrors[name] = nil
         guard let work = recordingFinishTasks[name] ?? finalizeTasks[name] else { return removeParts(of: url) }
         deletedWhileFinishing.insert(name)
         Task {
@@ -1917,7 +2031,6 @@ struct RecordingClip: Identifiable, Hashable {
     var id: String { url.lastPathComponent }
 
     func loadDuration() async -> TimeInterval? {
-        guard let duration = try? await AVURLAsset(url: url).load(.duration), duration.isNumeric else { return nil }
-        return duration.seconds
+        await RecordingDurations.shared.duration(of: url)
     }
 }

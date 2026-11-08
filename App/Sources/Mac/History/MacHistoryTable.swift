@@ -30,7 +30,9 @@ struct MacHistoryTable: View {
             Table(rows, selection: $controller.selection, sortOrder: $controller.sortOrder) {
                 TableColumn("Дата", value: \.date) { row in
                     HStack(spacing: 8) {
-                        MacHistoryThumbnail(video: row.video, preparing: preparing(row), isClip: row.isClip)
+                        MacHistoryThumbnail(video: row.video, preparing: preparing(row),
+                                            progress: row.video.flatMap { model.videoPreparations[$0.fileName]?.fraction } ?? 0,
+                                            isClip: row.isClip)
                         Text(verbatim: "\(MacHistoryFormat.day(row.date)), \(MacFormat.time.string(from: row.date))")
                             .monospacedDigit()
                     }

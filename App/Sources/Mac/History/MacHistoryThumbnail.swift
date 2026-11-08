@@ -9,6 +9,8 @@ struct MacHistoryThumbnail: View {
     let video: MacHistoryVideo?
     /// The file is being remuxed right now: its frame is made once that is done.
     let preparing: Bool
+    /// How far that is (`AppModel.VideoPreparation`), for the ring in the tile.
+    var progress: Double = 0
     let isClip: Bool
 
     static let size = CGSize(width: 46, height: 26)
@@ -42,8 +44,9 @@ struct MacHistoryThumbnail: View {
         .overlay(shape.strokeBorder(selected ? Color.white.opacity(0.3) : Color.primary.opacity(0.13), lineWidth: 0.5))
         .help(isClip ? "Запись без тренировки" : "Тренировка")
         .accessibilityHidden(true)
-        .task(id: preparing ? nil : key) {
-            guard !preparing, let video, let key, MacHistoryThumbnails.shared.cached(video) == nil else { return }
+        // An unfinished file gets no frame until it is prepared (its key then changes with its modification date).
+        .task(id: preparing || video?.unfinished == true ? nil : key) {
+            guard !preparing, let video, !video.unfinished, let key, MacHistoryThumbnails.shared.cached(video) == nil else { return }
             let image = await MacHistoryThumbnails.shared.image(for: video)
             withAnimation(.easeOut(duration: 0.18)) { loaded = (key, image) }
         }
@@ -52,7 +55,15 @@ struct MacHistoryThumbnail: View {
     @ViewBuilder
     private var content: some View {
         if let video {
-            if let image = MacHistoryThumbnails.shared.cached(video) ?? loaded.flatMap({ $0.key == key ? $0.image : nil }) {
+            if preparing {
+                // No flash for the second a usual recording takes.
+                MacHistoryDelayed {
+                    PreparationRing(fraction: progress, lineWidth: 1.6)
+                        .frame(width: 13, height: 13)
+                }
+            } else if video.unfinished {
+                glyph("hourglass")
+            } else if let image = MacHistoryThumbnails.shared.cached(video) ?? loaded.flatMap({ $0.key == key ? $0.image : nil }) {
                 Image(nsImage: image)
                     .resizable()
                     .interpolation(.high)
@@ -140,7 +151,7 @@ final class MacHistoryThumbnails {
         generator.maximumSize = CGSize(width: 92, height: 52)
         generator.requestedTimeToleranceBefore = .zero
         generator.requestedTimeToleranceAfter = CMTime(seconds: 1, preferredTimescale: 600)
-        let length = (try? await asset.load(.duration)).map(\.seconds) ?? 0
+        let length = await RecordingDurations.shared.duration(of: url) ?? 0
         let time = length > 2 ? CMTime(seconds: 1, preferredTimescale: 600) : .zero
         guard let image = try? await generator.image(at: time).image else { return nil }
         return NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))

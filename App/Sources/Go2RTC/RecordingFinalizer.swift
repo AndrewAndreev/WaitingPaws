@@ -34,10 +34,80 @@ enum RecordingFinalizer {
         }
     }
 
+    /// How far a finalize or a join is, 0…1. Called on AVFoundation's queues, only when it moved by half a percent.
+    typealias ProgressHandler = @Sendable (Double) -> Void
+
+    /// Where the sound's conversion ends and the export begins on the progress scale, so the bar moves evenly in time.
+    /// Measured on the night's recording of 29 Oct (14.5 h, Opus, 702 MB) on an M-series Mac: ~225 s for the sound
+    /// (finding its pauses ~17 s, then decoding and AAC), ~18 s for the export — about 4 minutes in all.
+    static let soundShare = 0.9
+    /// Within the sound's part: finding the pauses reads every packet without decoding them.
+    static let pausesShare = 0.08
+
+    /// Whether `url` is still go2rtc's raw fragmented MP4 (a recording in progress, or one whose finalize never ran
+    /// to the end: the app closed meanwhile). Reads only the top-level atom headers, so it is safe for any file size:
+    /// AVFoundation, on the other hand, indexes such a file by reading every fragment (a night's recording has millions)
+    /// — the history must not open one. `false` for a file that cannot be read.
+    static func isUnfinished(_ url: URL) -> Bool {
+        guard let file = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? file.close() }
+        var offset: UInt64 = 0
+        for _ in 0..<16 {
+            try? file.seek(toOffset: offset)
+            guard let header = try? file.read(upToCount: 16), header.count >= 8 else { return false }
+            var size = UInt64(header.prefix(4).reduce(0) { $0 << 8 | UInt32($1) })
+            let type = String(decoding: header[4..<8], as: UTF8.self)
+            if size == 1, header.count == 16 { size = header[8..<16].reduce(0) { $0 << 8 | UInt64($1) } }
+            switch type {
+            case "moof": return true
+            case "mdat": return false
+            // go2rtc's header: the movie says fragments follow (`mvex`), even before the first one is written.
+            case "moov": if moovHasFragments(file, at: offset, size: size) { return true }
+            default: break
+            }
+            guard size >= 8 else { return false } // 0 = to the end of the file
+            offset += size
+        }
+        return false
+    }
+
+    /// Whether the `moov` at `offset` holds an `mvex` box (the movie is extended by fragments).
+    private static func moovHasFragments(_ file: FileHandle, at offset: UInt64, size: UInt64) -> Bool {
+        guard size > 8, size < 16 << 20 else { return false }
+        try? file.seek(toOffset: offset + 8)
+        guard let body = try? file.read(upToCount: Int(size) - 8) else { return false }
+        var index = body.startIndex
+        while index + 8 <= body.endIndex {
+            let length = Int(body[index..<index + 4].reduce(0) { $0 << 8 | UInt32($1) })
+            if String(decoding: body[index + 4..<index + 8], as: UTF8.self) == "mvex" { return true }
+            guard length >= 8 else { return false }
+            index += length
+        }
+        return false
+    }
+
+    /// Temporary files a finalize leaves behind when the app is closed in the middle of it (its sound converted to
+    /// .m4a, a half-written export): removed at launch. A file touched in the last 10 minutes is kept, in case another
+    /// copy of the app is still writing it.
+    static func removeAbandonedTemporaryFiles() {
+        let directory = FileManager.default.temporaryDirectory
+        let keys: [URLResourceKey] = [.contentModificationDateKey, .isRegularFileKey]
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: keys)) ?? []
+        for file in files where ["m4a", "mp4"].contains(file.pathExtension) && UUID(uuidString: file.deletingPathExtension().lastPathComponent) != nil {
+            let values = try? file.resourceValues(forKeys: Set(keys))
+            guard values?.isRegularFile == true, let modified = values?.contentModificationDate,
+                  modified < Date().addingTimeInterval(-600) else { continue }
+            let megabytes = ((try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int64) ?? 0) / 1_000_000
+            try? FileManager.default.removeItem(at: file)
+            print("[rec] removed an abandoned temporary file \(file.lastPathComponent) (\(megabytes) MB)")
+        }
+    }
+
     /// Returns `false` when the file is already a regular MP4 with AAC sound.
     /// Throws (leaving the file untouched) when the sound cannot be converted.
     @discardableResult
-    static func finalize(_ url: URL) async throws -> Bool {
+    static func finalize(_ url: URL, progress: ProgressHandler? = nil) async throws -> Bool {
+        let reporter = ProgressReporter(progress)
         let asset = AVURLAsset(url: url)
         let videoTracks = try await asset.loadTracks(withMediaType: .video)
         guard !videoTracks.isEmpty else { throw FinalizeError.noVideo }
@@ -46,6 +116,7 @@ enum RecordingFinalizer {
         if let audioTrack { audioIsAAC = try await isAAC(audioTrack) }
         let fragmented = try await asset.load(.canContainFragments)
         if !fragmented, audioIsAAC { return false }
+        let exportFrom = audioTrack != nil && !audioIsAAC ? soundShare : 0
 
         let composition = AVMutableComposition()
         var end = CMTime.zero
@@ -65,7 +136,7 @@ enum RecordingFinalizer {
             let range = try await audioTrack.load(.timeRange)
             var source = audioTrack
             if !audioIsAAC {
-                let m4a = AVURLAsset(url: try await transcodeToAAC(audioTrack, of: asset))
+                let m4a = AVURLAsset(url: try await transcodeToAAC(audioTrack, of: asset, progress: reporter.part(0, exportFrom)))
                 converted = m4a
                 guard let track = try await m4a.loadTracks(withMediaType: .audio).first else {
                     throw FinalizeError.failed(String(localized: "звук не перекодировался"))
@@ -89,9 +160,39 @@ enum RecordingFinalizer {
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("mp4")
         session.shouldOptimizeForNetworkUse = true
-        try await export(session, to: output)
+        try await export(session, to: output, progress: reporter.part(exportFrom, 1))
         _ = try FileManager.default.replaceItemAt(url, withItemAt: output)
+        reporter.report(1)
         return true
+    }
+
+    /// Passes a fraction on to the handler only when it grew by half a percent (the sound reports every buffer), so
+    /// the bar never moves back. Thread-safe: the sound's queue and the export's watcher both report.
+    final class ProgressReporter: @unchecked Sendable {
+        private let handler: ProgressHandler?
+        private let lock = NSLock()
+        private var last = -1.0
+
+        init(_ handler: ProgressHandler?) { self.handler = handler }
+
+        func report(_ fraction: Double) {
+            guard let handler, fraction.isFinite else { return }
+            let value = min(1, max(0, fraction))
+            lock.lock()
+            guard value >= last + 0.005 || (value == 1 && last < 1) else {
+                lock.unlock()
+                return
+            }
+            last = value
+            lock.unlock()
+            handler(value)
+        }
+
+        /// A handler for one stage of the work that fills `from…to` of this one.
+        func part(_ from: Double, _ to: Double) -> ProgressHandler? {
+            guard handler != nil else { return nil }
+            return { [self] in report(from + (to - from) * min(1, max(0, $0))) }
+        }
     }
 
     /// Joins the parts of a recording into `output`, each at its own time (`placedAt`) since the first part's first
@@ -103,7 +204,12 @@ enum RecordingFinalizer {
     /// rest still make the video. Only the parts that went into it are deleted afterwards (other than `output`): one left
     /// out stays where it is. `output` may be one of the parts, or an empty file; if it is a part with frames that
     /// failed, nothing is joined (it would be lost under the result). Returns how many parts went into the video.
-    static func join(_ segments: [RecordingSegment], startedAt: Date, into output: URL) async throws -> Int {
+    /// `progress`: each part's finalize fills its share of the first 85 %, by size; the joined export the rest.
+    static func join(_ segments: [RecordingSegment], startedAt: Date, into output: URL,
+                     progress: ProgressHandler? = nil) async throws -> Int {
+        let reporter = ProgressReporter(progress)
+        let totalBytes = Double(max(1, segments.reduce(Int64(0)) { $0 + max($1.bytes, 1) }))
+        var doneBytes = 0.0
         let composition = AVMutableComposition()
         guard let video = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
               let audio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
@@ -113,12 +219,17 @@ enum RecordingFinalizer {
         var parts: [(segment: RecordingSegment, video: AVAssetTrack, sound: AVAssetTrack?)] = []
         for segment in segments {
             let name = segment.url.lastPathComponent
+            let share = Double(max(segment.bytes, 1)) / totalBytes * 0.85
+            defer {
+                doneBytes += share
+                reporter.report(doneBytes)
+            }
             do {
                 guard try await hasFrames(segment.url) else {
                     print("[rec] \(name): no video, left out of the join")
                     continue
                 }
-                try await finalize(segment.url)
+                try await finalize(segment.url, progress: reporter.part(doneBytes, doneBytes + share))
                 let asset = AVURLAsset(url: segment.url)
                 guard let track = try await asset.loadTracks(withMediaType: .video).first else { throw FinalizeError.noVideo }
                 assets.append(asset)
@@ -174,7 +285,7 @@ enum RecordingFinalizer {
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("mp4")
         session.shouldOptimizeForNetworkUse = true
-        try await export(session, to: joined)
+        try await export(session, to: joined, progress: reporter.part(0.85, 1))
         if FileManager.default.fileExists(atPath: output.path) {
             _ = try FileManager.default.replaceItemAt(output, withItemAt: joined)
         } else {
@@ -198,23 +309,22 @@ enum RecordingFinalizer {
     }
 
     /// `export(to:as:)` where the system has it (iOS 18, macOS 15), the old completion-style export before.
-    private static func export(_ session: AVAssetExportSession, to output: URL) async throws {
-        #if os(macOS)
-        do {
-            try await session.export(to: output, as: .mp4)
-        } catch {
-            try? FileManager.default.removeItem(at: output)
-            throw FinalizeError.failed(error.localizedDescription)
-        }
-        #else
-        if #available(iOS 18, *) {
+    private static func export(_ session: AVAssetExportSession, to output: URL, progress: ProgressHandler? = nil) async throws {
+        nonisolated(unsafe) let session = session
+        if #available(iOS 18, macOS 15, *) {
+            let exporting = Task { try await session.export(to: output, as: .mp4) }
+            let watcher = Task.detached { await watch(session, progress) { exporting.cancel() } }
+            defer { watcher.cancel() }
             do {
-                try await session.export(to: output, as: .mp4)
+                try await exporting.value
             } catch {
                 try? FileManager.default.removeItem(at: output)
-                throw FinalizeError.failed(error.localizedDescription)
+                throw FinalizeError.failed(exporting.isCancelled ? String(localized: "экспорт завис") : error.localizedDescription)
             }
         } else {
+            #if os(iOS)
+            let watcher = Task.detached { await watch(session, progress) { session.cancelExport() } }
+            defer { watcher.cancel() }
             session.outputURL = output
             session.outputFileType = .mp4
             await session.export()
@@ -222,8 +332,46 @@ enum RecordingFinalizer {
                 try? FileManager.default.removeItem(at: output)
                 throw FinalizeError.failed(session.error?.localizedDescription ?? String(localized: "экспорт не завершился"))
             }
+            #endif
         }
-        #endif
+    }
+
+    /// Reports the export's progress about twice a second until cancelled, and calls `stalled` when it has not moved
+    /// for `stallLimit` × 2: the export then throws, and the recording stays as it was instead of «Готовим видео» for
+    /// ever.
+    private static func watch(_ session: AVAssetExportSession, _ report: ProgressHandler?,
+                              stalled: @escaping @Sendable () -> Void) async {
+        var last = -1.0
+        var movedAt = Date()
+        /// `false` once it is stuck.
+        func note(_ fraction: Double) -> Bool {
+            if fraction > last {
+                last = fraction
+                movedAt = Date()
+                report?(fraction)
+            } else if Date().timeIntervalSince(movedAt) > stallLimit * 2 {
+                print("[rec] the export has not moved for \(Int(stallLimit * 2)) s at \(Int(last * 100)) %: cancelled")
+                stalled()
+                return false
+            }
+            return true
+        }
+        if #available(iOS 18, macOS 15, *) {
+            for await state in session.states(updateInterval: 0.5) {
+                if Task.isCancelled { return }
+                // Before it starts there is no progress yet: a wait in the queue is not a stall.
+                guard case .exporting(let progress) = state else {
+                    movedAt = Date()
+                    continue
+                }
+                if !note(progress.fractionCompleted) { return }
+            }
+        } else {
+            while !Task.isCancelled {
+                if !note(Double(session.progress)) { return }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
     }
 
     private static func isAAC(_ track: AVAssetTrack) async throws -> Bool {
@@ -232,15 +380,22 @@ enum RecordingFinalizer {
 
     /// Decodes the camera's sound (Opus, FLAC, …) and encodes it as AAC into a temporary .m4a, with silence for the
     /// pauses in it (see `SoundPauses`).
-    private static func transcodeToAAC(_ track: AVAssetTrack, of asset: AVAsset) async throws -> URL {
+    private static func transcodeToAAC(_ track: AVAssetTrack, of asset: AVAsset, progress: ProgressHandler? = nil) async throws -> URL {
         let description = try await track.load(.formatDescriptions).first
         let sourceChannels = description.flatMap { CMAudioFormatDescriptionGetStreamBasicDescription($0)?.pointee.mChannelsPerFrame } ?? 1
         let channels = sourceChannels >= 2 ? 2 : 1
         let sampleRate = 44_100
-        let pauses = try SoundPauses(in: track, of: asset)
+        let range = try await track.load(.timeRange)
+        let reporter = ProgressReporter(progress)
+        // How far into the sound a buffer starting at `time` is.
+        let along: @Sendable (CMTime) -> Double = { time in
+            range.duration.seconds > 0 ? (time - range.start).seconds / range.duration.seconds : 0
+        }
+        let pausesProgress = reporter.part(0, pausesShare)
+        let pauses = try SoundPauses(in: track, of: asset) { pausesProgress?(along($0)) }
+        let encodeProgress = reporter.part(pausesShare, 1)
 
-        let reader = try AVAssetReader(asset: asset)
-        let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
+        let reader = SoundReader(track: track, of: asset, range: range, settings: [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVSampleRateKey: sampleRate,
             AVNumberOfChannelsKey: channels,
@@ -249,8 +404,6 @@ enum RecordingFinalizer {
             AVLinearPCMIsBigEndianKey: false,
             AVLinearPCMIsNonInterleaved: false,
         ])
-        output.alwaysCopiesSampleData = false
-        reader.add(output)
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -265,46 +418,197 @@ enum RecordingFinalizer {
         input.expectsMediaDataInRealTime = false
         writer.add(input)
 
-        guard reader.startReading(), writer.startWriting() else {
-            let why = (reader.error ?? writer.error)?.localizedDescription ?? "?"
-            throw FinalizeError.failed(String(localized: "не удалось прочитать звук: \(why)"))
+        guard writer.startWriting() else {
+            throw FinalizeError.failed(String(localized: "не удалось прочитать звук: \(writer.error?.localizedDescription ?? "?")"))
         }
-        guard let first = output.copyNextSampleBuffer() else {
+        guard let first = reader.next() else {
             writer.cancelWriting()
+            if let error = reader.error {
+                throw FinalizeError.failed(String(localized: "не удалось прочитать звук: \(error.localizedDescription)"))
+            }
             throw FinalizeError.failed(String(localized: "звуковая дорожка пустая"))
         }
-        writer.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(first))
+        writer.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(first.buffer))
 
-        let queue = DispatchQueue(label: "su.comrade.waitingpaws.transcode")
-        // Reader output, writer input and the loop state are only touched on `queue`, one callback at a time.
+        let queue = DispatchQueue(label: "su.comrade.waitingpaws.transcode", qos: .utility)
+        // Reader, writer input and the loop state are only touched on `queue`, one callback at a time; `done` also by
+        // the watchdog, under its lock.
         nonisolated(unsafe) let writerInput = input
-        nonisolated(unsafe) let readerOutput = output
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        nonisolated(unsafe) let soundReader = reader
+        let done = Once()
+        let stalled = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             nonisolated(unsafe) var placer = pauses
-            nonisolated(unsafe) var pending = placer.place(first)
-            nonisolated(unsafe) var finished = false
+            nonisolated(unsafe) var pending = placer.place(first.buffer)
+            let watchdog = Watchdog(limit: stallLimit) {
+                if done.claim() { continuation.resume(returning: true) }
+            }
             writerInput.requestMediaDataWhenReady(on: queue) {
-                while !finished, writerInput.isReadyForMoreMediaData {
-                    if pending.isEmpty, let next = readerOutput.copyNextSampleBuffer() {
-                        pending = placer.place(next)
+                while !done.isClaimed, writerInput.isReadyForMoreMediaData {
+                    if pending.isEmpty, let next = soundReader.next() {
+                        watchdog.alive()
+                        encodeProgress?(along(next.at))
+                        pending = placer.place(next.buffer)
                     }
                     guard !pending.isEmpty, writerInput.append(pending.removeFirst()) else {
-                        finished = true
-                        writerInput.markAsFinished()
-                        continuation.resume()
+                        watchdog.stop()
+                        if done.claim() {
+                            writerInput.markAsFinished()
+                            continuation.resume(returning: false)
+                        }
                         return
                     }
                 }
             }
         }
+        if stalled {
+            // The reader thread stays where it hung; the half-written sound goes.
+            soundReader.cancel()
+            writer.cancelWriting()
+            try? FileManager.default.removeItem(at: url)
+            throw FinalizeError.failed(String(localized: "звук перестал читаться"))
+        }
         await writer.finishWriting()
 
-        guard reader.status != .failed, writer.status == .completed else {
+        guard reader.error == nil, writer.status == .completed else {
             try? FileManager.default.removeItem(at: url)
             let why = (reader.error ?? writer.error)?.localizedDescription ?? "?"
             throw FinalizeError.failed(String(localized: "не удалось перекодировать звук: \(why)"))
         }
         return url
+    }
+
+    /// With no new sound for this long, the conversion is given up (an `AVAssetReader` that hangs never returns).
+    static let stallLimit: TimeInterval = 60
+
+    /// The camera's sound decoded, read in windows of 4 hours with a new reader for each: one `AVAssetReader` stops
+    /// for good after 2³¹ samples of a track (12 h 25 min at 48 kHz) — `copyNextSampleBuffer` never returns. The night
+    /// recording of 29 Oct (14.5 h, Opus) hung there on every try (found 2026-11-08). Each window's buffers are moved
+    /// to follow on from the one before, so the sound runs on as from a single reader (pauses and all: `SoundPauses`
+    /// places them on that timeline). Used on one queue only.
+    final class SoundReader {
+        static let window = CMTime(seconds: 4 * 3600, preferredTimescale: 600)
+
+        private let track: AVAssetTrack
+        private let asset: AVAsset
+        private let range: CMTimeRange
+        private let settings: [String: Any]
+        /// Where the next window starts.
+        private var start: CMTime
+        private var reader: AVAssetReader?
+        private var output: AVAssetReaderTrackOutput?
+        /// Added to the current window's times; set by its first buffer.
+        private var offset: CMTime?
+        /// Where the last buffer handed out ends.
+        private var end: CMTime?
+        private(set) var error: Error?
+
+        init(track: AVAssetTrack, of asset: AVAsset, range: CMTimeRange, settings: [String: Any]) {
+            self.track = track
+            self.asset = asset
+            self.range = range
+            self.settings = settings
+            start = range.start
+        }
+
+        /// The next decoded buffer, and where it was in the track (for the progress); `nil` at the end or on an error.
+        func next() -> (buffer: CMSampleBuffer, at: CMTime)? {
+            while true {
+                if output == nil, !openNextWindow() { return nil }
+                guard let reader, let output else { return nil }
+                if let buffer = output.copyNextSampleBuffer() {
+                    let at = CMSampleBufferGetPresentationTimeStamp(buffer)
+                    let offset = self.offset ?? (end.map { $0 - at } ?? .zero)
+                    self.offset = offset
+                    let placed = offset == .zero ? buffer : Self.moved(buffer, by: offset)
+                    end = CMSampleBufferGetPresentationTimeStamp(placed) + CMSampleBufferGetDuration(placed)
+                    return (placed, at)
+                }
+                if reader.status == .failed {
+                    error = reader.error
+                    return nil
+                }
+                self.reader = nil
+                self.output = nil
+            }
+        }
+
+        func cancel() { reader?.cancelReading() }
+
+        private func openNextWindow() -> Bool {
+            guard start < range.end else { return false }
+            let windowEnd = min(range.end, start + Self.window)
+            do {
+                let reader = try AVAssetReader(asset: asset)
+                // The whole sound when it fits in one window: exactly the reading it had before windows.
+                if start != range.start || windowEnd != range.end {
+                    reader.timeRange = CMTimeRange(start: start, end: windowEnd)
+                }
+                let output = AVAssetReaderTrackOutput(track: track, outputSettings: settings)
+                output.alwaysCopiesSampleData = false
+                reader.add(output)
+                guard reader.startReading() else {
+                    error = reader.error ?? FinalizeError.failed(String(localized: "не удалось прочитать звук"))
+                    return false
+                }
+                self.reader = reader
+                self.output = output
+                offset = nil
+                start = windowEnd
+                return true
+            } catch {
+                self.error = error
+                return false
+            }
+        }
+
+        /// `buffer` with every time moved by `offset`.
+        static func moved(_ buffer: CMSampleBuffer, by offset: CMTime) -> CMSampleBuffer {
+            guard var timings = try? buffer.sampleTimingInfos() else { return buffer }
+            for i in timings.indices { timings[i].presentationTimeStamp = timings[i].presentationTimeStamp + offset }
+            var copy: CMSampleBuffer?
+            guard CMSampleBufferCreateCopyWithNewTiming(allocator: kCFAllocatorDefault, sampleBuffer: buffer,
+                                                        sampleTimingEntryCount: timings.count, sampleTimingArray: timings,
+                                                        sampleBufferOut: &copy) == noErr, let copy else { return buffer }
+            return copy
+        }
+    }
+
+    /// A flag set once, from any thread: the first to `claim` it wins.
+    final class Once: @unchecked Sendable {
+        private let lock = NSLock()
+        private var claimed = false
+        var isClaimed: Bool { lock.withLock { claimed } }
+        func claim() -> Bool {
+            lock.withLock {
+                defer { claimed = true }
+                return !claimed
+            }
+        }
+    }
+
+    /// Calls `fire` once if `alive` is not called for `limit` seconds (checked every few seconds), until `stop`.
+    final class Watchdog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var last = Date()
+        private var stopped = false
+
+        init(limit: TimeInterval, fire: @escaping @Sendable () -> Void) {
+            let check = min(5, limit / 2)
+            Thread.detachNewThread { [self] in
+                while true {
+                    Thread.sleep(forTimeInterval: check)
+                    let (quiet, over) = lock.withLock { (Date().timeIntervalSince(last), stopped) }
+                    if over { return }
+                    if quiet > limit {
+                        fire()
+                        return
+                    }
+                }
+            }
+        }
+
+        func alive() { lock.withLock { last = Date() } }
+        func stop() { lock.withLock { stopped = true } }
     }
 
     /// Puts back the pauses that decoding takes out of the camera's sound. Our go2rtc keeps a pause in the recording
@@ -319,7 +623,8 @@ enum RecordingFinalizer {
 
         /// Finds the pauses from the packet times of `track` (without decoding it): a packet longer than the usual
         /// length by 5 ms or more is followed by a pause.
-        init(in track: AVAssetTrack, of asset: AVAsset) throws {
+        /// `reached`: the start of each buffer read, for the progress.
+        init(in track: AVAssetTrack, of asset: AVAsset, reached: ((CMTime) -> Void)? = nil) throws {
             let reader = try AVAssetReader(asset: asset)
             let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
             output.alwaysCopiesSampleData = false
@@ -327,6 +632,7 @@ enum RecordingFinalizer {
             var packets: [(start: CMTime, duration: CMTime)] = []
             if reader.startReading() {
                 while let buffer = output.copyNextSampleBuffer() {
+                    reached?(CMSampleBufferGetPresentationTimeStamp(buffer))
                     let timings = (try? buffer.sampleTimingInfos()) ?? []
                     let count = CMSampleBufferGetNumSamples(buffer)
                     if timings.count == 1, count > 1, timings[0].duration.isNumeric { // one timing for packets of one length

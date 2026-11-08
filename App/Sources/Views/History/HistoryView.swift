@@ -841,8 +841,13 @@ private struct HistoryRow: View {
 }
 
 private struct ClipRow: View {
+    @Environment(AppModel.self) private var model
     let clip: RecordingClip
     @State private var duration: TimeInterval?
+
+    private var preparing: Bool { model.finalizingFileNames.contains(clip.id) }
+    /// Still raw and not being prepared (waiting its turn): its length from the file's times, never opened.
+    private var unfinished: Bool { model.unfinishedFileNames.contains(clip.id) }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -861,13 +866,29 @@ private struct ClipRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            Image(systemName: "film").foregroundStyle(.secondary)
-            Text(duration.map { DurationText.clock($0) } ?? " ")
-                .font(.system(.subheadline, design: .rounded).monospacedDigit())
-                .foregroundStyle(.secondary)
+            Group {
+                if preparing {
+                    let fraction = model.videoPreparations[clip.id]?.fraction ?? 0
+                    PreparationDelayed {
+                        HStack(spacing: 6) {
+                            PreparationRing(fraction: fraction).frame(width: 15, height: 15)
+                            Text(PreparationText.percent(fraction))
+                        }
+                    }
+                } else if unfinished {
+                    Image(systemName: "hourglass")
+                    Text(RecordingDurations.estimate(clip.url).map(PreparationText.estimate) ?? " ")
+                } else {
+                    Image(systemName: "film")
+                    Text(duration.map { DurationText.clock($0) } ?? " ")
+                }
+            }
+            .font(.system(.subheadline, design: .rounded).monospacedDigit())
+            .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
-        .task(id: clip.id) { duration = await clip.loadDuration() }
+        // Read again once it is prepared (an unfinished file is not opened: `RecordingDurations`).
+        .task(id: "\(clip.id)|\(preparing)") { duration = await clip.loadDuration() }
     }
 }
 
@@ -1232,18 +1253,39 @@ private struct RecordingSection: View {
     @State private var started = false
 
     var body: some View {
+        let name = url.lastPathComponent
+        let preparing = model.finalizingFileNames.contains(name)
         VideoPlayer(player: player)
             .aspectRatio(16 / 9, contentMode: .fit)
-            .overlay { if !started { poster } }
+            .overlay {
+                if player == nil, preparing || model.unfinishedFileNames.contains(name) {
+                    // Until it is a regular MP4 the player is not even made: it would index go2rtc's raw stream frame by
+                    // frame (minutes for a night's recording).
+                    ZStack {
+                        Color.black
+                        if let error = model.preparationErrors[name], !preparing {
+                            Label("Видео не подготовлено", systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.white.opacity(0.75))
+                                .help(error)
+                        } else {
+                            PreparationDelayed { PreparationPoster(preparation: model.videoPreparations[name]) }
+                        }
+                    }
+                } else if !started {
+                    poster
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .onAppear { if player == nil { player = AVPlayer(url: url) } }
+            .onAppear { if player == nil, !RecordingFinalizer.isUnfinished(url) { player = AVPlayer(url: url) } }
             .onDisappear { player?.pause() }
-            // Recordings made before finalization existed are converted on first open; the length is read after.
+            // Recordings not yet a regular MP4 (just stopped, made before finalization existed, or left raw by a closed
+            // app) are prepared first; then the player and the length.
             .task(id: url) {
                 await model.finalizeRecording(url)
+                guard !RecordingFinalizer.isUnfinished(url) else { return }
+                if player == nil { player = AVPlayer(url: url) }
                 duration = await RecordingClip(url: url, date: .now).loadDuration()
             }
-        let preparing = model.finalizingFileNames.contains(url.lastPathComponent)
         HStack {
             ShareLink(item: url) {
                 Label(preparing ? "Готовим видео…" : "Поделиться", systemImage: "square.and.arrow.up")
@@ -1257,7 +1299,12 @@ private struct RecordingSection: View {
         }
         .buttonStyle(.bordered)
         let status = model.photosStatus(for: url.lastPathComponent)
-        if let error = status.error {
+        if preparing, model.videoPreparations[name]?.leftover == true {
+            Label(PreparationText.leftover, systemImage: "hourglass").font(.footnote).foregroundStyle(.secondary)
+        } else if let error = model.preparationErrors[name], !preparing {
+            Label(String(localized: "Не удалось подготовить видео: \(error)"), systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote).foregroundStyle(Theme.warning)
+        } else if let error = status.error {
             Label(error, systemImage: "exclamationmark.triangle.fill").font(.footnote).foregroundStyle(Theme.warning)
         } else if status.saved {
             Label("Сохранено в Фото", systemImage: "checkmark.circle.fill").font(.footnote).foregroundStyle(Theme.accent)
@@ -1793,6 +1840,7 @@ private struct RecordingTile: View {
         .accessibilityAddTraits(.isButton)
         .task(id: url) {
             await model.finalizeRecording(url)
+            guard !RecordingFinalizer.isUnfinished(url) else { return }
             let asset = AVURLAsset(url: url)
             duration = await RecordingClip(url: url, date: .now).loadDuration()
             let generator = AVAssetImageGenerator(asset: asset)

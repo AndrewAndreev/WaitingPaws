@@ -35,6 +35,7 @@
 		25DEE27E7DA565261F9B9A46 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */; };
 		26878B09577BBEE4588B8F69 /* MacHistoryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA7FDF9F3698A259C351CEE /* MacHistoryDebug.swift */; };
 		26A1C0AAB8EB7842077F5F44 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
+		2714877A88FFA1789FE4C331 /* RecordingDurations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49838F7F8AEB1A5269FC45A /* RecordingDurations.swift */; };
 		2721F56420F33D188967378C /* MacHistoryTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = E284DBC656F72086C4AECDC8 /* MacHistoryTable.swift */; };
 		28A346170C064EB5D770A44C /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
 		29AFE32CE6BEF6C2D45E65A1 /* Acknowledgements.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5EC3D18A3329671AE524D52A /* Acknowledgements.txt */; };
@@ -55,8 +56,10 @@
 		33E75F82080284406C2D48A4 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		34D011B69D7D63FABCC1EB71 /* Go2RTC.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; };
 		38C28DF7359EA3529CF915AA /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6B39818DB94C898964AF2 /* MacRootView.swift */; };
+		38D6C97B6C7E48BAF2ABDE3D /* VideoPreparationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC4824E50726B55F2CABBDA /* VideoPreparationViews.swift */; };
 		38FD25FEBDF1B3E69F80FA12 /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
 		39F5CF6E49596FCA8A1844DA /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
+		3AAB259914B532D278F8D7AF /* RecordingDurations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49838F7F8AEB1A5269FC45A /* RecordingDurations.swift */; };
 		3C2C291FDBDB142AA9910F71 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
 		3D02A0EC6348B36CDB24C029 /* MacCameraArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */; };
 		3DB175BC9BAF747705E71F92 /* PanTiltPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12AA8AD184DFA81BBF19749 /* PanTiltPad.swift */; };
@@ -192,6 +195,7 @@
 		F6014534F7B547988B28A1EC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
 		F6FA3B31527FB5E795C47C41 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FA2645E678A49495282A8E8B /* InfoPlist.xcstrings */; };
 		F8579DD16D5D4609CBAECB93 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDA8ACA4F9B1F210B85715C4 /* WelcomeView.swift */; };
+		F9A9D8A162FE0834C92CF5CC /* VideoPreparationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC4824E50726B55F2CABBDA /* VideoPreparationViews.swift */; };
 		F9CB40DEBE1D55181631B49F /* ClipCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653F818994AB2BEE3174F824 /* ClipCards.swift */; };
 		FBDACEDE4C8F4CBA44FA6058 /* CameraModeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE70FC878886DBB4722CDA4 /* CameraModeControls.swift */; };
 		FC25D48B82F22E7E4541C0E6 /* TrainerTextDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44218A70D8BAA2006E927B77 /* TrainerTextDrawer.swift */; };
@@ -271,6 +275,7 @@
 		6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPairingPrompt.swift; sourceTree = "<group>"; };
 		734F99F279AB3B2058745E72 /* MacHistoryDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryDemo.swift; sourceTree = "<group>"; };
 		785D1BAD352BFFA46C471742 /* MacWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacWelcomeView.swift; sourceTree = "<group>"; };
+		7BC4824E50726B55F2CABBDA /* VideoPreparationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPreparationViews.swift; sourceTree = "<group>"; };
 		81A6B39818DB94C898964AF2 /* MacRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRootView.swift; sourceTree = "<group>"; };
 		82A543FFBD67D604BF950292 /* SessionHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHUD.swift; sourceTree = "<group>"; };
 		83BAD79086692AA64BD6514C /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -302,6 +307,7 @@
 		CDA8ACA4F9B1F210B85715C4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		CEA5D093822E9CAD83CAB5D2 /* PrivacyPolicy-ru.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "PrivacyPolicy-ru.md"; sourceTree = "<group>"; };
 		D0BC4F2D63E281B08766B2C4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		D49838F7F8AEB1A5269FC45A /* RecordingDurations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDurations.swift; sourceTree = "<group>"; };
 		D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		D74383E2FDB68560D6A4A287 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D82D001539C92D7959753385 /* MacConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacConsoleView.swift; sourceTree = "<group>"; };
@@ -351,6 +357,7 @@
 			isa = PBXGroup;
 			children = (
 				DF078E66FEB0548DFDA1B148 /* HistoryView.swift */,
+				7BC4824E50726B55F2CABBDA /* VideoPreparationViews.swift */,
 			);
 			path = History;
 			sourceTree = "<group>";
@@ -428,6 +435,7 @@
 				A07E8A420FED84FE8A782BFB /* LogMirror.swift */,
 				E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */,
 				01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */,
+				D49838F7F8AEB1A5269FC45A /* RecordingDurations.swift */,
 				211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */,
 			);
 			path = Go2RTC;
@@ -903,6 +911,7 @@
 				1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */,
 				A90B8E31C84A7B8A92DE0493 /* PlanEditorView.swift in Sources */,
 				FE9E782764F4007B64EB8050 /* PlanInputView.swift in Sources */,
+				3AAB259914B532D278F8D7AF /* RecordingDurations.swift in Sources */,
 				A01E860E261BB0E769DF78C8 /* RecordingFinalizer.swift in Sources */,
 				A10E65061FEF9135B2623883 /* RootView.swift in Sources */,
 				89853A4D5CB70C0B6AF8DE80 /* SessionHUD.swift in Sources */,
@@ -924,6 +933,7 @@
 				FC25D48B82F22E7E4541C0E6 /* TrainerTextDrawer.swift in Sources */,
 				97425938A3637C039FF6AB0D /* TrainingAlerts.swift in Sources */,
 				04C5CD81483DCE220A8538CF /* TrainingGlance.swift in Sources */,
+				F9A9D8A162FE0834C92CF5CC /* VideoPreparationViews.swift in Sources */,
 				CD446916425199904EA7EED1 /* WaitingPawsApp.swift in Sources */,
 				4F91CFE9C2454313C4B9C21B /* WelcomeView.swift in Sources */,
 				EA18A48009935560A16D3E9D /* XiaomiSignInSheet.swift in Sources */,
@@ -1004,6 +1014,7 @@
 				25DEE27E7DA565261F9B9A46 /* PhotoLibrarySaver.swift in Sources */,
 				FF09E0C7841537F847238D38 /* PlanEditorView.swift in Sources */,
 				7F5CA5C97017F6F9E02F9A21 /* PlanInputView.swift in Sources */,
+				2714877A88FFA1789FE4C331 /* RecordingDurations.swift in Sources */,
 				C82BDFE4BCBE7EE10DF9670E /* RecordingFinalizer.swift in Sources */,
 				402CC4C9EB23741F56D70616 /* RootView.swift in Sources */,
 				0AD1CD73A6DD1C01A2B7C695 /* SessionHUD.swift in Sources */,
@@ -1027,6 +1038,7 @@
 				CC14EEED21DA943AAB34993E /* TrainingAlerts.swift in Sources */,
 				447EF8DD5C25C3C621440184 /* TrainingGlance.swift in Sources */,
 				89EAA2472728E0086AECC7CA /* TrainingStepIntent.swift in Sources */,
+				38D6C97B6C7E48BAF2ABDE3D /* VideoPreparationViews.swift in Sources */,
 				5F41A4B2A6D07C968B890BCB /* WaitingPawsApp.swift in Sources */,
 				F8579DD16D5D4609CBAECB93 /* WelcomeView.swift in Sources */,
 				A4F5865DCD85736A07D8AD85 /* XiaomiSignInSheet.swift in Sources */,

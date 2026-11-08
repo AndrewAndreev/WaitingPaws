@@ -70,6 +70,8 @@ struct MacHistoryInspector: View {
             }
             if !controller.finalizedURLs.contains(url) {
                 await model.finalizeRecording(url)
+                // Still raw (preparing it failed): never handed to the player, which would index it frame by frame.
+                guard !RecordingFinalizer.isUnfinished(url) else { return }
                 controller.finalizedURLs.insert(url)
             }
             guard !Task.isCancelled else { return }
@@ -87,11 +89,23 @@ struct MacHistoryInspector: View {
         if let video = row.video {
             ZStack {
                 Color.black
-                if preparing || controller.player.url != video.url {
+                if preparing || video.unfinished {
+                    // Why, under the buttons (`videoStatus`).
+                    if model.preparationErrors[video.fileName] != nil, !preparing {
+                        Label("Видео не подготовлено", systemImage: "exclamationmark.triangle")
+                            .font(.callout)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .padding(16)
+                    } else {
+                        MacHistoryDelayed {
+                            PreparationPoster(preparation: model.videoPreparations[video.fileName], compact: true)
+                        }
+                    }
+                } else if controller.player.url != video.url {
                     MacHistoryDelayed {
                         VStack(spacing: 8) {
                             ProgressView().controlSize(.small)
-                            Text(preparing ? "Готовим видео…" : "Открываем видео…").font(.callout)
+                            Text("Открываем видео…").font(.callout)
                         }
                         .foregroundStyle(.white.opacity(0.7))
                     }
@@ -150,7 +164,8 @@ struct MacHistoryInspector: View {
                         .help(video.fileName)
                         .textSelection(.enabled)
                 }
-                info(String(localized: "Длина"), video.duration.map(DurationText.clock) ?? "—")
+                info(String(localized: "Длина"), video.duration.map(DurationText.clock)
+                     ?? video.estimate.map(PreparationText.estimate) ?? "—")
                 info(String(localized: "Размер"), MacHistoryFormat.bytes(video.bytes))
                 if let record = row.record {
                     recordingRow(RecordingReport(record: record, model: model, hasVideo: true))
@@ -160,10 +175,10 @@ struct MacHistoryInspector: View {
                 Button("В Finder", systemImage: "folder") { controller.revealInFinder(row, model: model) }
                     .help("Показать видео в Finder")
                 Button("В Фото", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
-                    .disabled(preparing || model.photosStatus(for: video.fileName).saved)
+                    .disabled(preparing || video.unfinished || model.photosStatus(for: video.fileName).saved)
                     .help("Сохранить видео в Фото")
                 MacShareButton(.file(video.url)) { Image(systemName: "square.and.arrow.up") }
-                    .disabled(preparing)
+                    .disabled(preparing || video.unfinished)
                     .help("Отправить видео…")
             }
             .padding(.top, 10)
@@ -200,9 +215,16 @@ struct MacHistoryInspector: View {
         let status = model.photosStatus(for: video.fileName)
         if preparing {
             MacHistoryDelayed {
-                Label("Готовим видео для отправки…", systemImage: "hourglass")
+                Label(model.videoPreparations[video.fileName]?.leftover == true
+                      ? PreparationText.leftover : String(localized: "Готовим видео для отправки…"),
+                      systemImage: "hourglass")
                     .font(.callout).foregroundStyle(.secondary).padding(.top, 8)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+        } else if let error = model.preparationErrors[video.fileName], video.unfinished {
+            Label(String(localized: "Не удалось подготовить видео: \(error)"), systemImage: "exclamationmark.triangle.fill")
+                .font(.callout).foregroundStyle(MacHistoryInk.orange).padding(.top, 8)
+                .fixedSize(horizontal: false, vertical: true)
         } else if let error = status.error {
             Label(error, systemImage: "exclamationmark.triangle.fill")
                 .font(.callout).foregroundStyle(MacHistoryInk.orange).padding(.top, 8)

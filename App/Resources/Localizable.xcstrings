@@ -2258,6 +2258,22 @@
         }
       }
     },
+    "Видео не подготовлено" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video not prepared"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видео не подготовлено"
+          }
+        }
+      }
+    },
     "Видео появится в истории" : {
       "localizations" : {
         "en" : {
@@ -3746,6 +3762,22 @@
         }
       }
     },
+    "Готовим видео · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing video · %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готовим видео · %@"
+          }
+        }
+      }
+    },
     "Готовим видео для отправки…" : {
       "localizations" : {
         "en" : {
@@ -4446,6 +4478,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ещё %lld"
+          }
+        }
+      }
+    },
+    "ещё ≈ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "≈ %@ left"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ещё ≈ %@"
           }
         }
       }
@@ -5282,6 +5330,22 @@
         }
       }
     },
+    "Запись не успела подготовиться в прошлый раз. Доделываем в фоне." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This recording wasn’t finished preparing last time. Finishing it in the background."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запись не успела подготовиться в прошлый раз. Доделываем в фоне."
+          }
+        }
+      }
+    },
     "Запись остановится, лог и видео будут сохранены." : {
       "localizations" : {
         "en" : {
@@ -5518,6 +5582,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "звук не перекодировался"
+          }
+        }
+      }
+    },
+    "звук перестал читаться" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reading the sound stalled"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "звук перестал читаться"
           }
         }
       }
@@ -7746,6 +7826,22 @@
         }
       }
     },
+    "Не удалось подготовить видео: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t prepare the video: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось подготовить видео: %@"
+          }
+        }
+      }
+    },
     "не удалось подготовить тишину" : {
       "localizations" : {
         "en" : {
@@ -7758,6 +7854,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "не удалось подготовить тишину"
+          }
+        }
+      }
+    },
+    "не удалось прочитать звук" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "couldn’t read the sound"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не удалось прочитать звук"
           }
         }
       }
@@ -14542,6 +14654,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "щёлкните, чтобы вписать, или тяните край (⇧ — по 5 с)"
+          }
+        }
+      }
+    },
+    "экспорт завис" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the export stalled"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "экспорт завис"
           }
         }
       }

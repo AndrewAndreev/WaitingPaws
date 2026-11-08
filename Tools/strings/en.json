@@ -1225,5 +1225,13 @@
  "Выберите поток go2rtc или продолжите без камеры в окне приветствия.": "Choose a go2rtc stream or continue without a camera in the welcome window.",
  "Где работает go2rtc — сервер, который забирает видео с камеры.": "Where go2rtc runs — the server that pulls video from the camera.",
  "Потоки go2rtc. Не пересылайте его: в адресах камер бывают пароли.": "go2rtc streams. Don’t share it: camera addresses may contain passwords.",
- "Пароль сервера хранится в связке ключей.": "The server password is stored in the keychain."
+ "Пароль сервера хранится в связке ключей.": "The server password is stored in the keychain.",
+ "Готовим видео · %@": "Preparing video · %@",
+ "ещё ≈ %@": "≈ %@ left",
+ "Запись не успела подготовиться в прошлый раз. Доделываем в фоне.": "This recording wasn’t finished preparing last time. Finishing it in the background.",
+ "Видео не подготовлено": "Video not prepared",
+ "Не удалось подготовить видео: %@": "Couldn’t prepare the video: %@",
+ "звук перестал читаться": "reading the sound stalled",
+ "экспорт завис": "the export stalled",
+ "не удалось прочитать звук": "couldn’t read the sound"
 }
