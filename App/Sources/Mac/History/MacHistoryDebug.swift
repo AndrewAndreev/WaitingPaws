@@ -15,6 +15,7 @@ import SwiftUI
 ///   --history-seek <seconds>         move the playhead of the selected video
 ///   --history-no-inspector           inspector closed (the search field next to the buttons)
 ///   --history-toggle-inspector <s>   open / close the inspector after that many seconds (the search field moving)
+///   --history-reopen <s>             once: close this window after that many seconds and open it again a second later
 enum MacHistoryDebug {
     static var colorScheme: ColorScheme? {
         #if DEBUG
@@ -46,6 +47,19 @@ enum MacHistoryDebug {
         let arguments = CommandLine.arguments
         guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else { return nil }
         return arguments[index + 1]
+    }
+
+    private static var reopened = false
+
+    /// `--history-reopen`: the window is a `Window` scene, so its view keeps its state across close and reopen.
+    @MainActor
+    static func reopen(close: DismissWindowAction, open: OpenWindowAction) {
+        guard !reopened, let delay = value("--history-reopen").flatMap(Double.init) else { return }
+        reopened = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            close(id: "history")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { open(id: "history") }
+        }
     }
 
     @MainActor

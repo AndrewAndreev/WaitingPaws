@@ -7,10 +7,17 @@ import WaitingPawsCore
 struct MacHistoryWindow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    #if DEBUG
+    @Environment(\.dismissWindow) private var dismissWindow
+    #endif
     @State private var controller = MacHistoryController()
-    /// Where the inspector's left edge is in the window right now (nil while it is closed), and the window's width:
-    /// the search field above the inspector follows that edge, and the buttons before it with it.
+    /// Where the inspector's left edge is in the window, whether the inspector is on screen, and the window's width:
+    /// the search field above the inspector follows that edge, and the buttons before it with it. The edge outlives
+    /// the inspector: «История» is a `Window` scene, so this view and its state stay when the window closes, and on
+    /// reopening `onGeometryChange` stays silent while the edge is where it was. Cleared, it left the field at its
+    /// plain width and the buttons over the inspector until the inspector was resized.
     @State private var inspectorMinX: CGFloat?
+    @State private var inspectorShown = false
     @State private var windowWidth: CGFloat = 0
     @FocusState private var searchFocused: Bool
 
@@ -35,7 +42,8 @@ struct MacHistoryWindow: View {
                         }
                     }
                     .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).minX }) { inspectorMinX = $0 }
-                    .onDisappear { inspectorMinX = nil }
+                    .onAppear { inspectorShown = true }
+                    .onDisappear { inspectorShown = false }
                     .inspectorColumnWidth(min: 290, ideal: 320, max: 440)
                 }
         }
@@ -76,7 +84,10 @@ struct MacHistoryWindow: View {
         }
         .onDisappear { controller.player.load(nil) }
         #if DEBUG
-        .task { await MacHistoryDebug.setUp(controller, model: model) }
+        .task {
+            await MacHistoryDebug.setUp(controller, model: model)
+            MacHistoryDebug.reopen(close: dismissWindow, open: openWindow)
+        }
         .preferredColorScheme(MacHistoryDebug.colorScheme)
         #endif
     }
@@ -205,7 +216,7 @@ struct MacHistoryWindow: View {
     private var searchWidth: CGFloat {
         var covered: CGFloat = 0
         // The first layout passes report the inspector at the window's left: not yet where it will be.
-        if let minX = inspectorMinX, windowWidth > 0, minX >= windowWidth / 2 { covered = windowWidth - minX }
+        if inspectorShown, let minX = inspectorMinX, windowWidth > 0, minX >= windowWidth / 2 { covered = windowWidth - minX }
         return max(Self.plainSearchWidth, covered - Self.searchInsets)
     }
 
