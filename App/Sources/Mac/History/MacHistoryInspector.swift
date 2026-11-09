@@ -22,6 +22,16 @@ struct MacHistoryInspector: View {
         row.video.map { model.finalizingFileNames.contains($0.fileName) } ?? false
     }
 
+    /// Still raw because preparing it failed (the reason is under the buttons): played, sent and saved as it is.
+    private func preparationFailed(_ video: MacHistoryVideo) -> Bool {
+        !preparing && video.unfinished && model.preparationErrors[video.fileName] != nil
+    }
+
+    /// Waiting to be prepared, or being prepared: nothing opens it until then.
+    private func awaitingPreparation(_ video: MacHistoryVideo) -> Bool {
+        preparing || (video.unfinished && !preparationFailed(video))
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -70,9 +80,10 @@ struct MacHistoryInspector: View {
             }
             if !controller.finalizedURLs.contains(url) {
                 await model.finalizeRecording(url)
-                // Still raw (preparing it failed): never handed to the player, which would index it frame by frame.
-                guard !RecordingFinalizer.isUnfinished(url) else { return }
-                controller.finalizedURLs.insert(url)
+                // Still raw: preparing it failed. The player gets it as it is, so it can still be watched: AVFoundation
+                // indexes it frame by frame (seconds for a night's recording), once, and only the player opens it, not
+                // the length or the frame. Selecting it again tries preparing it again.
+                if !RecordingFinalizer.isUnfinished(url) { controller.finalizedURLs.insert(url) }
             }
             guard !Task.isCancelled else { return }
             controller.player.load(url)
@@ -89,17 +100,9 @@ struct MacHistoryInspector: View {
         if let video = row.video {
             ZStack {
                 Color.black
-                if preparing || video.unfinished {
-                    // Why, under the buttons (`videoStatus`).
-                    if model.preparationErrors[video.fileName] != nil, !preparing {
-                        Label("Видео не подготовлено", systemImage: "exclamationmark.triangle")
-                            .font(.callout)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .padding(16)
-                    } else {
-                        MacHistoryDelayed {
-                            PreparationPoster(preparation: model.videoPreparations[video.fileName], compact: true)
-                        }
+                if awaitingPreparation(video) {
+                    MacHistoryDelayed {
+                        PreparationPoster(preparation: model.videoPreparations[video.fileName], compact: true)
                     }
                 } else if controller.player.url != video.url {
                     MacHistoryDelayed {
@@ -175,10 +178,10 @@ struct MacHistoryInspector: View {
                 Button("В Finder", systemImage: "folder") { controller.revealInFinder(row, model: model) }
                     .help("Показать видео в Finder")
                 Button("В Фото", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
-                    .disabled(preparing || video.unfinished || model.photosStatus(for: video.fileName).saved)
+                    .disabled(awaitingPreparation(video) || model.photosStatus(for: video.fileName).saved)
                     .help("Сохранить видео в Фото")
                 MacShareButton(.file(video.url)) { Image(systemName: "square.and.arrow.up") }
-                    .disabled(preparing || video.unfinished)
+                    .disabled(awaitingPreparation(video))
                     .help("Отправить видео…")
             }
             .padding(.top, 10)

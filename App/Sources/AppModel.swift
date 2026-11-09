@@ -1040,6 +1040,8 @@ final class AppModel {
     private(set) var unfinishedFileNames: Set<String> = []
     /// Why preparing a recording failed, by file name, until it is tried again.
     private(set) var preparationErrors: [String: String] = [:]
+    /// ⌘Q is finishing what it waits for (`finishBeforeQuit`): no more leftover recordings are started.
+    private var isQuitting = false
 
     private func preparationProgress(_ name: String) -> RecordingFinalizer.ProgressHandler {
         { [weak self] fraction in
@@ -1083,6 +1085,8 @@ final class AppModel {
                 .sorted { (Self.creationDate($0) ?? .distantPast) > (Self.creationDate($1) ?? .distantPast) }
             print("[rec] \(files.count) recording(s) left unprepared by an earlier run: preparing them now")
             for url in files where unfinishedFileNames.contains(url.lastPathComponent) {
+                // The quit doesn't wait for these (`hasFinalizeToWaitFor`): none is started once it is under way.
+                if isQuitting { break }
                 #if os(iOS)
                 let background = beginFinishingInBackground()
                 #endif
@@ -1144,7 +1148,7 @@ final class AppModel {
                 print("[rec] finalize failed \(name): \(error.localizedDescription)")
                 preparationErrors[name] = error.localizedDescription
             }
-            // Still raw (it failed): shown as unfinished again, never opened by the history.
+            // Still raw (it failed): shown as unfinished again; the history hands it to the player as it is.
             if RecordingFinalizer.isUnfinished(url) { unfinishedFileNames.insert(name) }
             finalizingFileNames.remove(name)
             videoPreparations[name] = nil
@@ -1576,7 +1580,14 @@ final class AppModel {
     #if os(macOS)
     /// ⌘Q (or logging out) finds something to finish first: a training, a recording, or a video still being joined.
     var hasWorkBeforeQuit: Bool {
-        session != nil || isRecordingLocally || !recordingFinishTasks.isEmpty || !finalizeTasks.isEmpty
+        session != nil || isRecordingLocally || !recordingFinishTasks.isEmpty || hasFinalizeToWaitFor
+    }
+
+    /// A finalize the quit waits for. Not one of a recording an earlier run left raw (prepared in the background after a
+    /// launch, or opened in the history): a night's takes minutes, and one cut short stays raw and is prepared again at
+    /// the next launch, so waiting for it would only hold the quit up.
+    private var hasFinalizeToWaitFor: Bool {
+        finalizeTasks.keys.contains { videoPreparations[$0]?.leftover != true }
     }
 
     /// Quitting mid-training keeps what was done, as closing the window does on Windows: the training is finished and
@@ -1584,12 +1595,13 @@ final class AppModel {
     /// cut short by the limit stays as written (its first part; the rest in `.parts`).
     func finishBeforeQuit(limit: Duration) async {
         print("[app] quitting: finishing the training and the recording first")
+        isQuitting = true
         if session != nil { finishSession() } else { stopRecording(deleteFile: false) }
         let deadline = ContinuousClock.now + limit
-        while !recordingFinishTasks.isEmpty || !finalizeTasks.isEmpty, ContinuousClock.now < deadline {
+        while !recordingFinishTasks.isEmpty || hasFinalizeToWaitFor, ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(100))
         }
-        if !recordingFinishTasks.isEmpty || !finalizeTasks.isEmpty { print("[app] quitting before the video was finished") }
+        if !recordingFinishTasks.isEmpty || hasFinalizeToWaitFor { print("[app] quitting before the video was finished") }
     }
     #endif
 

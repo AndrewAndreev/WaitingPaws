@@ -1260,7 +1260,7 @@ private struct RecordingSection: View {
             .overlay {
                 if player == nil, preparing || model.unfinishedFileNames.contains(name) {
                     // Until it is a regular MP4 the player is not even made: it would index go2rtc's raw stream frame by
-                    // frame (minutes for a night's recording).
+                    // frame (minutes for a night's recording). Only if preparing it fails does it get the raw file.
                     ZStack {
                         Color.black
                         if let error = model.preparationErrors[name], !preparing {
@@ -1282,7 +1282,13 @@ private struct RecordingSection: View {
             // app) are prepared first; then the player and the length.
             .task(id: url) {
                 await model.finalizeRecording(url)
-                guard !RecordingFinalizer.isUnfinished(url) else { return }
+                guard !RecordingFinalizer.isUnfinished(url) else {
+                    // Preparing it failed (the reason is under the buttons): the player gets it as it is, so it can
+                    // still be watched. AVFoundation indexes it frame by frame (seconds for a night's recording), once;
+                    // its length is not read. Opening it again tries preparing it again.
+                    if player == nil, model.preparationErrors[name] != nil { player = AVPlayer(url: url) }
+                    return
+                }
                 if player == nil { player = AVPlayer(url: url) }
                 duration = await RecordingClip(url: url, date: .now).loadDuration()
             }

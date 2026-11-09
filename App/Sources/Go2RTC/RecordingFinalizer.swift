@@ -45,7 +45,8 @@ enum RecordingFinalizer {
     static let pausesShare = 0.08
 
     /// Whether `url` is still go2rtc's raw fragmented MP4 (a recording in progress, or one whose finalize never ran
-    /// to the end: the app closed meanwhile). Reads only the top-level atom headers, so it is safe for any file size:
+    /// to the end: the app closed meanwhile). Reads only atom headers (the top level's and `moov`'s children's), so it is
+    /// cheap for any file size:
     /// AVFoundation, on the other hand, indexes such a file by reading every fragment (a night's recording has millions)
     /// — the history must not open one. `false` for a file that cannot be read.
     static func isUnfinished(_ url: URL) -> Bool {
@@ -71,17 +72,21 @@ enum RecordingFinalizer {
         return false
     }
 
-    /// Whether the `moov` at `offset` holds an `mvex` box (the movie is extended by fragments).
+    /// Whether the `moov` at `offset` holds an `mvex` box (the movie is extended by fragments). Reads only its children's
+    /// headers: a prepared file's `moov` comes first and holds the sample tables, 1–1.5 MB per recorded hour, and this
+    /// runs for every recording when the app starts and the history opens.
     private static func moovHasFragments(_ file: FileHandle, at offset: UInt64, size: UInt64) -> Bool {
-        guard size > 8, size < 16 << 20 else { return false }
-        try? file.seek(toOffset: offset + 8)
-        guard let body = try? file.read(upToCount: Int(size) - 8) else { return false }
-        var index = body.startIndex
-        while index + 8 <= body.endIndex {
-            let length = Int(body[index..<index + 4].reduce(0) { $0 << 8 | UInt32($1) })
-            if String(decoding: body[index + 4..<index + 8], as: UTF8.self) == "mvex" { return true }
+        guard size > 8 else { return false }
+        let end = offset + size
+        var child = offset + 8
+        for _ in 0..<64 where child + 8 <= end {
+            try? file.seek(toOffset: child)
+            guard let header = try? file.read(upToCount: 16), header.count >= 8 else { return false }
+            if String(decoding: header[4..<8], as: UTF8.self) == "mvex" { return true }
+            var length = UInt64(header.prefix(4).reduce(0) { $0 << 8 | UInt32($1) })
+            if length == 1, header.count == 16 { length = header[8..<16].reduce(0) { $0 << 8 | UInt64($1) } }
             guard length >= 8 else { return false }
-            index += length
+            child += length
         }
         return false
     }
@@ -368,7 +373,12 @@ enum RecordingFinalizer {
             }
         } else {
             while !Task.isCancelled {
-                if !note(Double(session.progress)) { return }
+                // The same on iOS 17: an export queued behind another (a leftover recording) is not stuck.
+                if session.status == .waiting || session.status == .unknown {
+                    movedAt = Date()
+                } else if !note(Double(session.progress)) {
+                    return
+                }
                 try? await Task.sleep(for: .milliseconds(500))
             }
         }
@@ -457,6 +467,8 @@ enum RecordingFinalizer {
                         }
                         return
                     }
+                    // Hours of silence for a long pause are appended without a read: the conversion is alive meanwhile.
+                    watchdog.alive()
                 }
             }
         }
