@@ -96,9 +96,12 @@ Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает ката�
   `GoMobile/licenses.sh` пересобирает лицензии по модулям, реально попадающим во встроенный go2rtc;
   `Tools/legal_html.py` пишет `docs/privacy.html` для URL политики в App Store Connect.
 * `docs/` — страницы поддержки и политики (GitHub Pages из папки `/docs`).
-* `docs/screenshots/app-store/<en|ru>/` — скриншоты для App Store (iPhone 6.9″ 1320×2868, Mac 2880×1800),
-  `docs/screenshots/showcase/` — картинки с рамками устройств и подписями. Пересъёмка: `Tools/screenshots/make.sh`
-  (отдельный симулятор «WP Screens», фоновые копии Mac-приложения с `--retina`, только DEBUG-демо-данные;
+* `docs/screenshots/app-store/<en|ru>/` — скриншоты для App Store: `iphone-6.3` (1206×2622, iPhone 17 Pro —
+  обязательный набор App Store Connect «iPhone with Dynamic Island, medium display», 6.9″ туда не принимается),
+  `iphone-6.9` (1320×2868, iPhone 17 Pro Max — необязательный набор для больших экранов, его же показывает README),
+  `mac` (2880×1800); `docs/screenshots/showcase/` — картинки с рамками устройств и подписями. Пересъёмка:
+  `Tools/screenshots/make.sh` (симуляторы «WP Screens 6.3» и «WP Screens», каждый в своём родном разрешении, без
+  масштабирования; фоновые копии Mac-приложения с `--retina`, только DEBUG-демо-данные;
   `make.sh compose` пересобирает картинки из уже снятых кадров). Фон — палитры в `compose.swift` (`WP_BG=<имя>`,
   по умолчанию светло-серый `paper`); варианты рядом — `Design/showcase-lab`. `WP_DD`, `WP_SIM` и `WP_RAW` уводят
   сборку, симулятор и кадры в свои папки, чтобы не мешать другим сессиям.

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# App Store screenshots (iPhone 6.9" and Mac, English and Russian) and showcase pictures → docs/screenshots.
+# App Store screenshots (iPhone 6.3" and 6.9", Mac; English and Russian) and showcase pictures → docs/screenshots.
 #
 #   Tools/screenshots/make.sh            build, shoot both platforms, compose
 #   Tools/screenshots/make.sh ios|mac    one platform only (then compose)
@@ -10,7 +10,12 @@
 # (simulator name) and WP_RAW (raw shots) keep a run apart from other sessions that use the default ones.
 #
 # Uses DEBUG launch arguments only (demo schedule, history, cameras, a still camera picture): nothing real is read
-# or written. iPhone shots come from a separate simulator ("WP Screens", iPhone 17 Pro Max, clean 9:41 status bar);
+# or written. iPhone shots come from two separate simulators with a clean 9:41 status bar, each at its own native
+# size, nothing scaled:
+#   iphone-6.3  iPhone 17 Pro, 1206×2622 ("WP Screens 6.3"): the set App Store Connect requires («iPhone with Dynamic
+#               Island, medium display»; it refuses 6.9" pictures there);
+#   iphone-6.9  iPhone 17 Pro Max, 1320×2868 ("WP Screens"): the optional large-display set, also used by the README
+#               and the showcase pictures.
 # Mac shots from separate background copies of the app (Tools/ui-shot.sh with --retina, so they are 2× even when the
 # main display is a 1× external monitor). Raw shots stay in /tmp/wp-shots/raw.
 set -euo pipefail
@@ -44,11 +49,17 @@ PLAN_RU=$'🐹 Тренировка на воскресенье - Аня/Мар�
 SESSION_EN=$'🐶 Monday training - Anna/Mark - 05.10.2026\n➡️ All breaks 2 minutes\nExit 1 - 15 seconds\nExit 2 - 30 seconds\nExit 3 - 1 minute + jacket\n🟡 If she stands up and walks off - come back in 30 seconds\n🟢 If she lies down - come back in 20 seconds\nExit 4 - 45 seconds + take the keys\nExit 5 - 2 minutes OR until the dog stands up'
 SESSION_RU=$'🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 15 секунд\n2 выход - 30 секунд\n3 выход - 1 минута + куртка\n🟡 Если встала и пошла - входим через 30 секунд\n🟢 Если легла - входим через 20 секунд\n4 выход - 45 секунд + взять ключи\n5 выход - 2 минуты ИЛИ до вставания'
 
-if [[ $WHAT == all || $WHAT == ios ]]; then
-  SIM=$(xcrun simctl list devices | awk -F'[()]' -v name="    $SIM_NAME " 'index($0, name) == 1 {print $2; exit}')
+IOS_SHOTS=(01-outside 02-plan 03-break 04-log 05-history 06-home 07-record 08-cameras)
+
+# shoot_ios <raw prefix> <simulator name> <device type>: the eight shots in both languages, at the device's own size.
+shoot_ios() {
+  PREFIX=$1
+  local sim_name=$2 type=$3
+  # The whole name up to " (": "WP Screens" must not find "WP Screens 6.3".
+  SIM=$(xcrun simctl list devices | awk -F'[()]' -v name="    $sim_name (" 'index($0, name) == 1 {print $2; exit}')
   if [[ -z $SIM ]]; then
     RUNTIME=$(xcrun simctl list runtimes | awk '/iOS 26/ {print $NF}' | tail -1)
-    SIM=$(xcrun simctl create "$SIM_NAME" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max $RUNTIME)
+    SIM=$(xcrun simctl create "$sim_name" com.apple.CoreSimulator.SimDeviceType.$type $RUNTIME)
   fi
   xcrun simctl boot $SIM 2>/dev/null || true
   xcrun simctl bootstatus $SIM -b >/dev/null
@@ -58,18 +69,6 @@ if [[ $WHAT == all || $WHAT == ios ]]; then
   DATA=$(xcrun simctl get_app_container $SIM su.comrade.waitingpaws data)
   mkdir -p $DATA/tmp && cp Tools/demo-camera.jpg Tools/demo-camera-kitchen.jpg $DATA/tmp/
 
-  ios() { # ios <lang> <name> [args…]
-    local lang=$1 name=$2; shift 2
-    local -a L
-    if [[ $lang == ru ]]; then L=(-AppleLanguages "(ru)" -AppleLocale ru_RU -cameraTitle "Прихожая")
-    else L=(-AppleLanguages "(en)" -AppleLocale en_US -cameraTitle "Hallway"); fi
-    xcrun simctl terminate $SIM su.comrade.waitingpaws >/dev/null 2>&1 || true
-    xcrun simctl launch $SIM su.comrade.waitingpaws "${L[@]}" -streamName hall --ui-preview \
-      "--demo-camera=$DATA/tmp/demo-camera.jpg" "$@" >/dev/null
-    sleep ${WAIT:-7}
-    xcrun simctl io $SIM screenshot $RAW/ios-$lang-$name.png >/dev/null 2>&1
-    echo "ios-$lang-$name"
-  }
   WAIT=12 ios en warmup   # the first launch of a fresh simulator is slow and may show system banners
   for lang in en ru; do
     if [[ $lang == en ]]; then plan=$PLAN_EN; session=$SESSION_EN; else plan=$PLAN_RU; session=$SESSION_RU; fi
@@ -87,6 +86,24 @@ if [[ $WHAT == all || $WHAT == ios ]]; then
   xcrun simctl terminate $SIM su.comrade.waitingpaws >/dev/null 2>&1 || true
   # Shut down, so that `simctl … booted` in other tools never lands in this simulator.
   xcrun simctl shutdown $SIM >/dev/null 2>&1 || true
+}
+
+ios() { # ios <lang> <name> [args…] on $SIM → $RAW/<prefix>-<lang>-<name>.png
+  local lang=$1 name=$2; shift 2
+  local -a L
+  if [[ $lang == ru ]]; then L=(-AppleLanguages "(ru)" -AppleLocale ru_RU -cameraTitle "Прихожая")
+  else L=(-AppleLanguages "(en)" -AppleLocale en_US -cameraTitle "Hallway"); fi
+  xcrun simctl terminate $SIM su.comrade.waitingpaws >/dev/null 2>&1 || true
+  xcrun simctl launch $SIM su.comrade.waitingpaws "${L[@]}" -streamName hall --ui-preview \
+    "--demo-camera=$DATA/tmp/demo-camera.jpg" "$@" >/dev/null
+  sleep ${WAIT:-7}
+  xcrun simctl io $SIM screenshot $RAW/$PREFIX-$lang-$name.png >/dev/null 2>&1
+  echo "$PREFIX-$lang-$name"
+}
+
+if [[ $WHAT == all || $WHAT == ios ]]; then
+  shoot_ios ios "$SIM_NAME" iPhone-17-Pro-Max      # 6.9": ios-<lang>-<name>.png (the showcase uses these)
+  shoot_ios ios-6.3 "$SIM_NAME 6.3" iPhone-17-Pro  # 6.3": ios-6.3-<lang>-<name>.png
 fi
 
 # MARK: Mac
@@ -146,11 +163,19 @@ if [[ $WHAT == showcase ]]; then
 fi
 
 jpeg() { magick "$1" -alpha off -quality 92 -sampling-factor 4:4:4 "${1%.png}.jpg" && rm "$1"; }
+# App Store Connect takes a set only at its own sizes («File dimensions are invalid» otherwise).
+check_size() { # check_size <png> <width>x<height>
+  local got=$(sips -g pixelWidth -g pixelHeight $1 | awk '/pixelWidth/ {w = $2} /pixelHeight/ {h = $2} END {print w "x" h}')
+  [[ $got == $2 ]] || { echo "${1:t} is $got, the set needs $2: check the simulator's device type" >&2; exit 1; }
+}
 rm -rf $OUT && mkdir -p $OUT
 for lang in en ru; do
-  mkdir -p $OUT/app-store/$lang/iphone-6.9 $OUT/app-store/$lang/mac
-  for name in 01-outside 02-plan 03-break 04-log 05-history 06-home 07-record 08-cameras; do
+  mkdir -p $OUT/app-store/$lang/iphone-6.3 $OUT/app-store/$lang/iphone-6.9 $OUT/app-store/$lang/mac
+  for name in $IOS_SHOTS; do
+    cp $RAW/ios-6.3-$lang-$name.png $OUT/app-store/$lang/iphone-6.3/$name.png
     cp $RAW/ios-$lang-$name.png $OUT/app-store/$lang/iphone-6.9/$name.png
+    check_size $OUT/app-store/$lang/iphone-6.3/$name.png 1206x2622
+    check_size $OUT/app-store/$lang/iphone-6.9/$name.png 1320x2868
   done
   for pair in 01-session:m01-session 02-plan:m02-plan 03-review:m03-review-2 04-break:m04-break \
               05-history:m05-history 06-settings:m06-settings 07-welcome:m07-welcome; do
