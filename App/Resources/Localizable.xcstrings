@@ -1176,6 +1176,16 @@
         }
       }
     },
+    "At launch and every 6 hours the app checks for a new version and shows “Update” in the toolbar. It downloads when you say so." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При запуске и каждые 6 часов приложение проверяет, есть ли новая версия, и показывает «Обновление» в панели. Загрузка — по вашей команде."
+          }
+        }
+      }
+    },
     "attempt %lld" : {
       "localizations" : {
         "ru" : {
@@ -5461,16 +5471,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "с четвёртой попытки"
-          }
-        }
-      }
-    },
-    "Once a day the app checks for a new version and shows “Update” in the toolbar. It downloads when you say so." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Раз в день приложение проверяет, есть ли новая версия, и показывает «Обновление» в панели. Загрузка — по вашей команде."
           }
         }
       }

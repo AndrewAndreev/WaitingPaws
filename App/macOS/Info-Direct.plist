@@ -54,6 +54,8 @@
 	<string>$(WP_UPDATE_FEED_URL)</string>
 	<key>SUPublicEDKey</key>
 	<string>$(WP_UPDATE_PUBLIC_KEY)</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>21600</integer>
 	<key>SUVerifyUpdateBeforeExtraction</key>
 	<true/>
 	<key>WPGitCommit</key>

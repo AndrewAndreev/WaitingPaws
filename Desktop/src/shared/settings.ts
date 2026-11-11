@@ -38,7 +38,7 @@ export interface Settings {
   /// Windows only: keep the computer awake while a training or a recording runs.
   keepAwake: boolean
   /// The app installed from GitHub (Settings → About «Обновления»): what happens with a new version. The Mac's
-  /// Sparkle defaults: checks daily, downloads and installs on quit.
+  /// defaults: checks in the background, downloads and installs on quit.
   updateMode: UpdateMode
   /// «Тестовые сборки (nightly)»: the rolling «nightly» pre-release too (the Mac's `WPUpdatesNightly`).
   updateNightly: boolean

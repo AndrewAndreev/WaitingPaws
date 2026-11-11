@@ -94,7 +94,8 @@ anyway).
 ## Updates
 
 An installed release updates itself from GitHub (electron-updater, `src/main/updater.ts`), like the Mac app from
-GitHub (Sparkle): once a day, never during a training or a recording, it reads `latest.yml` of the Latest release
+GitHub (Sparkle, which checks at launch and every 6 hours): once a day, never during a training or a recording, it
+reads `latest.yml` of the Latest release
 (and, with «Тестовые сборки», of the `nightly` pre-release — the newer one wins). A new version shows as «Обновление»
 in the title bar; Settings → About → «Обновления» has the mode (install automatically / notify only / don't check),
 test builds, the waiting version and «Проверить сейчас». It installs on quit or with «Перезапустить» (one UAC

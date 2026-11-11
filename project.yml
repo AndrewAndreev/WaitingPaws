@@ -149,9 +149,11 @@ targets:
         WPNightlyFeedURL: $(WP_UPDATE_NIGHTLY_FEED_URL)
         SUPublicEDKey: $(WP_UPDATE_PUBLIC_KEY)
         SUEnableInstallerLauncherService: true
-        # Daily checks without Sparkle's "check automatically?" question; new versions download in the background and
-        # install when the app quits (both can be turned off in Settings → About).
+        # Checks without Sparkle's "check automatically?" question, every 6 hours (AppUpdater adds one at each launch);
+        # new versions download in the background and install when the app quits (both can be turned off in
+        # Settings → About).
         SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 21600
         SUAutomaticallyUpdate: true
         SUVerifyUpdateBeforeExtraction: true
     settings:

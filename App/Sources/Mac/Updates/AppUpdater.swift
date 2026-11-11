@@ -6,9 +6,13 @@ import Sparkle
 /// Updates of the Mac app downloaded from GitHub (target WaitingPaws-macOS-Direct, Developer ID) through Sparkle.
 /// The App Store app has none: the App Store updates it.
 ///
+/// Background checks: a little after the launch, then every 6 hours (`SUScheduledCheckInterval`), never during a
+/// training or a recording (a check that falls on one runs when it has ended).
+///
 /// A new version found in the background never opens a window: it shows as «Обновление» in the toolbar
 /// (`UpdateGroup`), outside a training or a recording. «Проверить обновления…» and the toolbar's «Загрузить и
-/// установить» use Sparkle's own window. Settings → About has the mode, the nightly switch and «Проверить сейчас».
+/// установить» use Sparkle's own window; put off there («Напомнить позже», or the window closed), the version goes back
+/// to the toolbar. Settings → About has the mode, the nightly switch and «Проверить сейчас».
 @MainActor
 @Observable
 final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandardUserDriverDelegate {
@@ -39,7 +43,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandar
             case .automatic:
                 return String(localized: "They download in the background and install when you quit Waiting Paws. A training or a recording is never interrupted.")
             case .notify:
-                return String(localized: "Once a day the app checks for a new version and shows “Update” in the toolbar. It downloads when you say so.")
+                return String(localized: "At launch and every 6 hours the app checks for a new version and shows “Update” in the toolbar. It downloads when you say so.")
             case .manual:
                 return String(localized: "Only with “Check Now” or “Check for Updates…” in the menu.")
             }
@@ -69,6 +73,11 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandar
     @ObservationIgnored private var postponedRelaunch: Task<Void, Never>?
     /// From `willInstallUpdateOnQuit`: installs the downloaded version and relaunches, without Sparkle's window.
     @ObservationIgnored private var installNowHandler: (() -> Void)?
+    /// Put off in Sparkle's window: back to the toolbar when Sparkle's session ends
+    /// (`standardUserDriverWillFinishUpdateSession`).
+    @ObservationIgnored private var putOff: SUAppcastItem?
+    /// A background check skipped for a training or a recording, waiting for it to end.
+    @ObservationIgnored private var skippedCheck: Task<Void, Never>?
 
     private static let nightlyKey = "WPUpdatesNightly"
 
@@ -120,6 +129,36 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandar
                 Task { @MainActor in self?.lastCheck = value }
             },
         ]
+        guard AppInfo.release != nil else { return }
+        // At every launch, not only when 6 hours have passed (Sparkle's own schedule): a little later, so the camera
+        // connects first and Sparkle's start (a check of its own when one is overdue) is over.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(15))
+            self?.checkInBackground(unlessCheckedWithin: 60)
+        }
+    }
+
+    /// A background check now, as Sparkle's schedule makes them: none in «Не проверять» or while a check or a found
+    /// version is in progress; `unlessCheckedWithin` seconds after the last check, none either.
+    private func checkInBackground(unlessCheckedWithin recent: TimeInterval = 0) {
+        let updater = controller.updater
+        guard isAvailable, AppInfo.release != nil, updater.automaticallyChecksForUpdates, !updater.sessionInProgress
+        else { return }
+        if let last = updater.lastUpdateCheckDate, Date().timeIntervalSince(last) < recent { return }
+        updater.checkForUpdatesInBackground()
+    }
+
+    /// The background check `mayPerform` skipped, once the training or the recording has ended: Sparkle itself would
+    /// check again only 6 hours later, and a nightly recording could fall on its checks every time.
+    private func checkWhenFree() {
+        guard skippedCheck == nil else { return }
+        skippedCheck = Task { @MainActor [weak self] in
+            while let self, self.isBusy {
+                try? await Task.sleep(for: .seconds(30))
+            }
+            self?.skippedCheck = nil
+            self?.checkInBackground()
+        }
     }
 
     var mode: Mode {
@@ -146,9 +185,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandar
             UserDefaults.standard.set(nightly, forKey: Self.nightlyKey)
             pending = nil
             installNowHandler = nil
-            if isAvailable, controller.updater.automaticallyChecksForUpdates {
-                controller.updater.checkForUpdatesInBackground()
-            }
+            checkInBackground()
         }
     }
 
@@ -187,12 +224,20 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandar
         return Bundle.main.object(forInfoDictionaryKey: "WPNightlyFeedURL") as? String
     }
 
-    /// No background check during a training or a recording. The next daily check comes later; one the user asks for
-    /// («Проверить обновления…») always runs.
+    /// No background check during a training or a recording: it runs when they have ended (`checkWhenFree`). One the
+    /// user asks for («Проверить обновления…») always runs.
     func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
         guard updateCheck == .updatesInBackground, isBusy else { return }
+        checkWhenFree()
         throw NSError(domain: "WaitingPaws.AppUpdater", code: 1,
                       userInfo: [NSLocalizedDescriptionKey: "A training or a recording is running"])
+    }
+
+    /// The answer in Sparkle's window. «Напомнить позже» or the window closed: the version goes back to the toolbar
+    /// when the session ends (installing and skipping take it away).
+    func updater(_ updater: SPUUpdater, userDidMake choice: SPUUserUpdateChoice, forUpdate updateItem: SUAppcastItem,
+                 state: SPUUserUpdateState) {
+        putOff = choice == .dismiss && !updateItem.isInformationOnlyUpdate ? updateItem : nil
     }
 
     /// Downloaded in the background: «Обновление» in the toolbar; installed on quit, or at once by «Перезапустить».
@@ -234,13 +279,21 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandar
         remember(update, downloaded: state.stage != .notDownloaded)
     }
 
-    /// Sparkle's window took over (shown, installed, skipped): «Обновление» goes away.
+    /// Sparkle's window took over: «Обновление» goes away while it is up.
     func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
         if installNowHandler == nil { pending = nil }
     }
 
+    /// The session is over: installed or skipped, «Обновление» stays away; put off, it comes back («Загрузить и
+    /// установить» there checks again and opens Sparkle's window).
     func standardUserDriverWillFinishUpdateSession() {
-        if installNowHandler == nil { pending = nil }
+        defer { putOff = nil }
+        guard installNowHandler == nil else { return }
+        if let putOff {
+            remember(putOff, downloaded: false)
+        } else {
+            pending = nil
+        }
     }
 }
 
