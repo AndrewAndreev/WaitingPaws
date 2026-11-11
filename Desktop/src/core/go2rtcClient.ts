@@ -122,17 +122,17 @@ export const XiaomiRegion = {
   title(region: XiaomiRegion): string {
     switch (region) {
       case 'cn':
-        return tr('Китай (по умолчанию)', 'China (default)')
+        return tr('China (default)', 'Китай (по умолчанию)')
       case 'ru':
-        return tr('Россия', 'Russia')
+        return tr('Russia', 'Россия')
       case 'de':
-        return tr('Европа (de)', 'Europe (de)')
+        return tr('Europe (de)', 'Европа (de)')
       case 'us':
-        return tr('США', 'United States')
+        return tr('United States', 'США')
       case 'sg':
-        return tr('Сингапур', 'Singapore')
+        return tr('Singapore', 'Сингапур')
       case 'i2':
-        return tr('Индия', 'India')
+        return tr('India', 'Индия')
     }
   },
 
@@ -229,17 +229,17 @@ export class Go2RTCError extends Error {
   get errorDescription(): string {
     switch (this.kind) {
       case 'invalidURL':
-        return tr('Некорректный адрес сервера', 'Invalid server address')
+        return tr('Invalid server address', 'Некорректный адрес сервера')
       case 'http': {
         const text = trimWhitespacesAndNewlines(this.detail)
         return text === ''
-          ? tr(`Сервер ответил HTTP ${this.status}`, `The server answered HTTP ${this.status}`)
+          ? tr(`The server answered HTTP ${this.status}`, `Сервер ответил HTTP ${this.status}`)
           : `HTTP ${this.status}: ${text}`
       }
       case 'decoding':
-        return tr(`Не удалось разобрать ответ сервера (${this.detail})`, `Couldn't read the server's response (${this.detail})`)
+        return tr(`Couldn't read the server's response (${this.detail})`, `Не удалось разобрать ответ сервера (${this.detail})`)
       case 'noSources':
-        return tr('Камеры не найдены', 'No cameras found')
+        return tr('No cameras found', 'Камеры не найдены')
       case 'network':
         return this.detail
     }
@@ -574,7 +574,7 @@ export class Go2RTCClient {
     }
     throw Go2RTCError.http(
       status,
-      tr('Xiaomi отклонил вход: проверьте логин и пароль', 'Xiaomi rejected the sign-in: check the login and password'),
+      tr('Xiaomi rejected the sign-in: check the login and password', 'Xiaomi отклонил вход: проверьте логин и пароль'),
     )
   }
 

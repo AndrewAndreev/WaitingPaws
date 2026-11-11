@@ -513,16 +513,16 @@ private struct CameraSwitcherSegments: View {
 
     var body: some View {
         let names = CameraShortNames.make(
-            model.settings.cameraDisplayName.isEmpty ? String(localized: "Камера 1") : model.settings.cameraDisplayName,
+            model.settings.cameraDisplayName.isEmpty ? String(localized: "Camera 1") : model.settings.cameraDisplayName,
             model.activeSecondCameraName)
         HStack(spacing: 0) {
             segment(names.0, second: false)
             segment(names.1, second: true)
         }
         .animation(.smooth(duration: 0.25), value: model.isShowingSecondCamera)
-        .help("Какую камеру показывать · ⌘1 / ⌘2. Записывается та, что на экране")
+        .help("Which camera to show · ⌘1 / ⌘2. The one on screen is recorded")
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Камера")
+        .accessibilityLabel("Camera")
     }
 
     private func segment(_ name: String, second: Bool) -> some View {
@@ -556,24 +556,24 @@ private struct CameraMenuSegment: View {
 
     var body: some View {
         Menu {
-            Button("Выбрать камеру…", systemImage: "video.badge.plus") { ui.showCameraPicker = true }
-            Button(model.hasSecondCamera ? "Другая вторая камера…" : "Вторая камера…", systemImage: "rectangle.on.rectangle") {
+            Button("Choose Camera…", systemImage: "video.badge.plus") { ui.showCameraPicker = true }
+            Button(model.hasSecondCamera ? "Another Second Camera…" : "Second Camera…", systemImage: "rectangle.on.rectangle") {
                 ui.showSecondCameraPicker = true
             }
             if model.hasSecondCamera {
-                Button("Убрать вторую камеру", systemImage: "rectangle.badge.minus") { model.removeSecondCamera() }
+                Button("Remove Second Camera", systemImage: "rectangle.badge.minus") { model.removeSecondCamera() }
             }
             #if !WP_NO_XIAOMI
-            Button(model.settings.xiaomiAccountID.isEmpty ? "Войти в Xiaomi…" : "Войти в другой аккаунт Xiaomi…",
+            Button(model.settings.xiaomiAccountID.isEmpty ? "Sign In to Xiaomi…" : "Sign In to Another Xiaomi Account…",
                    systemImage: "person.crop.circle.badge.plus") { ui.showXiaomiSignIn = true }
             #endif
             Divider()
-            Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
+            Button("Reconnect", systemImage: "arrow.clockwise", action: onReconnect)
             // The quality of the camera on screen, the one recorded.
             if let quality = model.shownXiaomiQuality {
                 let second = model.isShowingSecondCamera
                 Divider()
-                Picker("Качество", selection: Binding(
+                Picker("Quality", selection: Binding(
                     get: { quality },
                     set: { newValue in
                         Task { await model.setXiaomiQuality(newValue, second: second) }
@@ -582,9 +582,9 @@ private struct CameraMenuSegment: View {
                         Text(model.qualityTitle($0, source: second ? model.secondXiaomiSource : nil)).tag($0)
                     }
                 }
-                Text("Записи — в этом же качестве")
+                Text("Recordings use this quality too")
                 if let size = second ? model.secondVideoSize : model.videoSize {
-                    Text("Сейчас \(Int(size.width))×\(Int(size.height))")
+                    Text("Current: \(Int(size.width))×\(Int(size.height))")
                 }
             }
             if model.cameraModes.hasOptions {
@@ -611,8 +611,8 @@ private struct CameraMenuSegment: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .onHover { hovering = $0 }
-        .help(model.cameraOnScreenIsOnline ? "Камера, качество и режим съёмки" : "Камера не на связи — выбрать или переподключить")
-        .accessibilityLabel("Камера")
+        .help(model.cameraOnScreenIsOnline ? "Camera, quality and shooting mode" : "Camera offline — choose or reconnect")
+        .accessibilityLabel("Camera")
     }
 }
 
@@ -625,12 +625,12 @@ private struct PanTiltSegment: View {
         Button {
             withAnimation(.smooth(duration: 0.25)) { active ? model.panTilt.stop() : model.panTilt.start() }
         } label: {
-            HeaderSegmentLabel(title: String(localized: "Повернуть"), systemImage: "arrow.up.and.down.and.arrow.left.and.right",
+            HeaderSegmentLabel(title: String(localized: "Turn"), systemImage: "arrow.up.and.down.and.arrow.left.and.right",
                                showsWord: true, tint: nil)
         }
         .buttonStyle(HeaderSegmentStyle(isOn: active))
         .accessibilityAddTraits(active ? .isSelected : [])
-        .help(active ? "Закончить поворот камеры · Esc" : "Повернуть камеру: стрелки на картинке или на клавиатуре")
+        .help(active ? "Stop turning the camera · Esc" : "Turn the camera with the arrows on the picture or on the keyboard")
     }
 }
 
@@ -691,11 +691,11 @@ struct PanelButtons: Equatable {
         return total
     }
 
-    static var recordWord: String { String(localized: "Запись") }
-    static var soundWord: String { String(localized: "Звук") }
-    static var historyWord: String { String(localized: "История") }
-    static var finishWord: String { String(localized: "Завершить") }
-    static var updateWord: String { String(localized: "Обновление") }
+    static var recordWord: String { String(localized: "Record") }
+    static var soundWord: String { String(localized: "Sound") }
+    static var historyWord: String { String(localized: "History") }
+    static var finishWord: String { String(localized: "Finish") }
+    static var updateWord: String { String(localized: "Update") }
 
     /// The groups in the toolbar: recording and sound and history always, a new version and the iPhone when there.
     var groupCount: Int { 2 + (devices == nil ? 0 : 1) + (update ? 1 : 0) }
@@ -726,7 +726,7 @@ struct UpdateGroup: View {
                     }
             }
             .buttonStyle(HeaderSegmentStyle(isOn: showsPopover))
-            .help(updater.pending.map { String(localized: "Waiting Paws \($0.version): что нового и установка") } ?? "")
+            .help(updater.pending.map { String(localized: "Waiting Paws \($0.version): what’s new and installing") } ?? "")
         }
         .task {
             guard AppUpdater.demoOpensPopover else { return }
@@ -757,7 +757,7 @@ private struct UpdatePopover: View {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 32, height: 32)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(verbatim: "Waiting Paws \(pending.version)").font(.headline)
-                    Text(pending.downloaded ? "Загружена и готова к установке" : "Доступна новая версия")
+                    Text(pending.downloaded ? "Downloaded and ready to install" : "A new version is available")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -772,13 +772,13 @@ private struct UpdatePopover: View {
                 }
                 .font(.callout)
             }
-            Button("Все изменения…") { openURL(pending.releasePage) }
+            Button("All Changes…") { openURL(pending.releasePage) }
                 .buttonStyle(.link)
                 .font(.callout)
             HStack(spacing: 8) {
                 Spacer()
-                Button(pending.downloaded ? "При выходе" : "Позже", action: later)
-                Button(pending.downloaded ? "Перезапустить" : "Загрузить и установить", action: install)
+                Button(pending.downloaded ? "On Quit" : "Later", action: later)
+                Button(pending.downloaded ? "Restart" : "Download and Install", action: install)
                     .buttonStyle(.borderedProminent)
                     .tint(MacPalette.pinkDeep)
                     .keyboardShortcut(.defaultAction)
@@ -813,9 +813,9 @@ struct RecordSoundGroup: View {
                                    alone: !(model.isRecordingNow || model.session != nil))
             }
             .buttonStyle(HeaderSegmentStyle(isOn: on))
-            .accessibilityValue(on ? Text("включено") : Text("выключено"))
-            .help(on ? "Выключить звук камеры в приложении (запись всегда со звуком)"
-                     : "Включить звук камеры в приложении (запись всегда со звуком)")
+            .accessibilityValue(on ? Text("on") : Text("off"))
+            .help(on ? "Turn off camera sound in the app (recordings always include sound)"
+                     : "Turn on camera sound in the app (recordings always include sound)")
         }
     }
 
@@ -830,7 +830,7 @@ struct RecordSoundGroup: View {
                     }
                     .frame(width: HeaderLook.recSegment, height: HeaderLook.height)
                     .contentShape(Rectangle())
-                    .accessibilityLabel("Остановить запись")
+                    .accessibilityLabel("Stop Recording")
                     .accessibilityValue(DurationText.clock(model.recordingDuration(at: context.date)))
                 } else {
                     HeaderSegmentLabel(title: PanelButtons.recordWord, systemImage: "record.circle",
@@ -839,8 +839,8 @@ struct RecordSoundGroup: View {
             }
             .buttonStyle(HeaderSegmentStyle())
             .help(model.isRecordingNow
-                  ? "REC \(DurationText.clock(model.recordingDuration(at: context.date))) — \(String(localized: "Остановить запись · ⌘R"))"
-                  : String(localized: "Записать видео · ⌘R"))
+                  ? "REC \(DurationText.clock(model.recordingDuration(at: context.date))) — \(String(localized: "Stop recording · ⌘R"))"
+                  : String(localized: "Record video · ⌘R"))
             .disabled(!model.isRecordingNow && !model.settings.isConfigured)
         }
     }
@@ -861,8 +861,8 @@ struct LinkedDeviceGroup: View {
                                    showsWord: !folded.contains(.device), tint: MacPalette.blue, alone: true)
             }
             .help(devices.count == 1
-                  ? String(localized: "\(first.modelTitle) «\(first.name)» видит камеру и ведёт эту тренировку")
-                  : String(localized: "Камеру видят и ведут тренировку: \(devices.map(\.name).joined(separator: ", "))"))
+                  ? String(localized: "\(first.modelTitle) “\(first.name)” sees the camera and runs this training")
+                  : String(localized: "Seeing the camera and running the training: \(devices.map(\.name).joined(separator: ", "))"))
         }
     }
 }
@@ -883,7 +883,7 @@ struct HistoryFinishGroup: View {
                                    showsWord: !folded.contains(.history), tint: nil, alone: model.session == nil)
             }
             .buttonStyle(HeaderSegmentStyle())
-            .help("История тренировок · ⌘Y")
+            .help("Training history · ⌘Y")
             if model.session != nil {
                 HeaderHairline()
                 Button { ui.confirmFinish = true } label: {
@@ -893,7 +893,7 @@ struct HistoryFinishGroup: View {
                                        showsWord: !folded.contains(.finish), tint: nil)
                 }
                 .buttonStyle(HeaderSegmentStyle())
-                .help("Завершить тренировку · ⌘.")
+                .help("Finish training · ⌘.")
             }
         }
     }
@@ -914,7 +914,7 @@ extension AppModel {
 
     /// The camera on screen by its short name: «C302» for «Xiaomi Smart Camera C302» (the switcher's names).
     var shownCameraShortName: String {
-        let first = settings.cameraDisplayName.isEmpty ? String(localized: "Камера 1") : settings.cameraDisplayName
+        let first = settings.cameraDisplayName.isEmpty ? String(localized: "Camera 1") : settings.cameraDisplayName
         if hasSecondCamera {
             let names = CameraShortNames.make(first, activeSecondCameraName)
             return isShowingSecondCamera ? names.1 : names.0

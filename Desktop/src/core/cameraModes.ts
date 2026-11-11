@@ -107,27 +107,27 @@ export const CameraSetting = {
   title(setting: CameraSetting): string {
     switch (setting) {
       case 'nightShot':
-        return tr('Режим съёмки', 'Night vision')
+        return tr('Night vision', 'Режим съёмки')
       case 'glimmerFullColor':
-        return tr('Цветная ночная съёмка', 'Full-color night vision')
+        return tr('Full-color night vision', 'Цветная ночная съёмка')
       case 'wdr':
-        return tr('WDR (широкий диапазон)', 'WDR (wide dynamic range)')
+        return tr('WDR (wide dynamic range)', 'WDR (широкий диапазон)')
       case 'distortionCorrection':
-        return tr('Коррекция искажений', 'Lens distortion correction')
+        return tr('Lens distortion correction', 'Коррекция искажений')
       case 'imageRollover':
-        return tr('Поворот изображения', 'Rotate image')
+        return tr('Rotate image', 'Поворот изображения')
       case 'timeWatermark':
-        return tr('Время на изображении', 'Time stamp on video')
+        return tr('Time stamp on video', 'Время на изображении')
       case 'powerFrequency':
-        return tr('Частота сети', 'Power line frequency')
+        return tr('Power line frequency', 'Частота сети')
       case 'motionTracking':
-        return tr('Следить за движением', 'Motion tracking')
+        return tr('Motion tracking', 'Следить за движением')
       case 'humanTracking':
-        return tr('Следить за человеком', 'Human tracking')
+        return tr('Human tracking', 'Следить за человеком')
       case 'petTracking':
-        return tr('Следить за питомцем', 'Pet tracking')
+        return tr('Pet tracking', 'Следить за питомцем')
       case 'indicatorLight':
-        return tr('Индикатор на камере', 'Status light')
+        return tr('Status light', 'Индикатор на камере')
     }
   },
 
@@ -135,15 +135,15 @@ export const CameraSetting = {
   hint(setting: CameraSetting): string | null {
     switch (setting) {
       case 'nightShot':
-        return tr('Ночной — ИК-подсветка, чёрно-белая картинка.', 'Night uses infrared light and a black-and-white picture.')
+        return tr('Night uses infrared light and a black-and-white picture.', 'Ночной — ИК-подсветка, чёрно-белая картинка.')
       case 'glimmerFullColor':
-        return tr('Цвет при слабом свете вместо ИК.', 'Color in low light instead of infrared.')
+        return tr('Color in low light instead of infrared.', 'Цвет при слабом свете вместо ИК.')
       case 'powerFrequency':
-        return tr('Убирает мерцание от ламп.', 'Removes flicker from lamps.')
+        return tr('Removes flicker from lamps.', 'Убирает мерцание от ламп.')
       case 'motionTracking':
       case 'humanTracking':
       case 'petTracking':
-        return tr('Поворотная камера сама ведёт объектив.', 'A pan-tilt camera follows on its own.')
+        return tr('A pan-tilt camera follows on its own.', 'Поворотная камера сама ведёт объектив.')
       default:
         return null
     }
@@ -237,7 +237,7 @@ export const CameraModeOption = {
   /** Title of the current value ("Авто", "Включено"). */
   text(option: CameraModeOption, value: MiotValue | null | undefined): string {
     if (value === null || value === undefined) return '—'
-    if (option.kind.type === 'toggle') return MiotValue.isOn(value) ? tr('Включено', 'On') : tr('Выключено', 'Off')
+    if (option.kind.type === 'toggle') return MiotValue.isOn(value) ? tr('On', 'Включено') : tr('Off', 'Выключено')
     const number = MiotValue.number(value)
     return option.kind.choices.find((choice) => choice.value === number)?.title ?? `${number}`
   },
@@ -248,7 +248,7 @@ export class MiotSpecError extends Error {
   readonly kind = 'unreadable' as const
 
   constructor(cause?: unknown) {
-    super(tr('Не удалось разобрать описание камеры (MIoT spec)', "Couldn't read the camera's description (MIoT spec)"), {
+    super(tr("Couldn't read the camera's description (MIoT spec)", 'Не удалось разобрать описание камеры (MIoT spec)'), {
       cause,
     })
     this.name = 'MiotSpecError'
@@ -316,14 +316,14 @@ function parseJSONInput(input: string | Uint8Array | unknown): unknown {
 /** Spec descriptions are English: "Auto", "On", "Off", sometimes "Open"/"Close". */
 function nightTitle(description: string): { order: number; title: string } | null {
   const text = trimWhitespaces(description.toLowerCase())
-  if (text.includes('auto')) return { order: 0, title: tr('Авто', 'Auto') }
-  if (text === 'on' || text.includes('open') || text.endsWith(' on')) return { order: 1, title: tr('Ночной', 'Night') }
-  if (text === 'off' || text.includes('close') || text.endsWith(' off')) return { order: 2, title: tr('Обычный', 'Day') }
+  if (text.includes('auto')) return { order: 0, title: tr('Auto', 'Авто') }
+  if (text === 'on' || text.includes('open') || text.endsWith(' on')) return { order: 1, title: tr('Night', 'Ночной') }
+  if (text === 'off' || text.includes('close') || text.endsWith(' off')) return { order: 2, title: tr('Day', 'Обычный') }
   return null
 }
 
 function rolloverTitle(degrees: number): string {
-  return degrees === 0 ? tr('Без поворота', 'Not rotated') : `${degrees}°`
+  return degrees === 0 ? tr('Not rotated', 'Без поворота') : `${degrees}°`
 }
 
 function kindFor(setting: CameraSetting, property: SpecProperty): CameraModeKind | null {
@@ -342,9 +342,9 @@ function kindFor(setting: CameraSetting, property: SpecProperty): CameraModeKind
     case 'powerFrequency':
       choices = (property.valueList ?? []).map((item) => {
         const text = trimWhitespaces(item.description)
-        if (text.toLowerCase().includes('auto')) return { value: item.value, title: tr('Авто', 'Auto') }
+        if (text.toLowerCase().includes('auto')) return { value: item.value, title: tr('Auto', 'Авто') }
         const digits = Array.from(text.matchAll(/\p{N}/gu), (match) => match[0]).join('')
-        return { value: item.value, title: digits === '' ? text : tr(`${digits} Гц`, `${digits} Hz`) }
+        return { value: item.value, title: digits === '' ? text : tr(`${digits} Hz`, `${digits} Гц`) }
       })
       break
     case 'imageRollover': {
@@ -470,10 +470,10 @@ export class XiaomiCameraError extends Error {
   get errorDescription(): string {
     return this.kind === 'offline'
       ? tr(
-          'Камера не ответила облаку Xiaomi — она выключена или без интернета',
           "The camera didn't answer the Xiaomi cloud: it is off or offline",
+          'Камера не ответила облаку Xiaomi — она выключена или без интернета',
         )
-      : tr(`Xiaomi не применил настройку (код ${this.code})`, `Xiaomi didn't apply the setting (code ${this.code})`)
+      : tr(`Xiaomi didn't apply the setting (code ${this.code})`, `Xiaomi не применил настройку (код ${this.code})`)
   }
 
   equals(other: unknown): boolean {

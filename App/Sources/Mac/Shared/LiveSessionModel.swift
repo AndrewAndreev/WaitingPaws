@@ -50,21 +50,21 @@ struct LiveSessionModel {
 
     var title: String {
         switch phase {
-        case .ready, .leaving, .away: return String(localized: "Выход \(session.currentExit?.number ?? 0)")
-        case .breakTime(_, _, _, let next): return next == nil ? String(localized: "Последний перерыв") : String(localized: "Перерыв")
-        case .finished: return String(localized: "Тренировка завершена")
+        case .ready, .leaving, .away: return String(localized: "Exit \(session.currentExit?.number ?? 0)")
+        case .breakTime(_, _, _, let next): return next == nil ? String(localized: "Last Break") : String(localized: "Break")
+        case .finished: return String(localized: "Training Complete")
         }
     }
 
     /// "За дверью", "сверх плана"…: what the timer is doing, next to the title.
     var phaseName: String {
-        if overdue { return String(localized: "сверх плана") }
+        if overdue { return String(localized: "over plan") }
         switch phase {
-        case .ready: return String(localized: "перед выходом")
-        case .leaving: return String(localized: "к двери")
-        case .away: return String(localized: "за дверью")
-        case .breakTime: return String(localized: "осталось")
-        case .finished: return String(localized: "готово")
+        case .ready: return String(localized: "before the exit")
+        case .leaving: return String(localized: "to the door")
+        case .away: return String(localized: "outside")
+        case .breakTime: return String(localized: "left")
+        case .finished: return String(localized: "done")
         }
     }
 
@@ -72,19 +72,19 @@ struct LiveSessionModel {
     var subtitle: String {
         switch phase {
         case .ready, .leaving, .away:
-            var parts = [String(localized: "План \(session.currentExit?.durationDescription ?? "")")]
-            if session.attempt > 1 { parts.append(String(localized: "попытка \(session.attempt)")) }
+            var parts = [String(localized: "Plan \(session.currentExit?.durationDescription ?? "")")]
+            if session.attempt > 1 { parts.append(String(localized: "attempt \(session.attempt)")) }
             return parts.joined(separator: " · ")
         case .breakTime(_, _, _, let next):
             if let next {
                 let exit = plan.exits[next]
                 return session.attempt > 1
-                    ? String(localized: "Следующий выход \(exit.number) — \(exit.durationDescription) · попытка \(session.attempt)")
-                    : String(localized: "Следующий выход \(exit.number) — \(exit.durationDescription)")
+                    ? String(localized: "Next: exit \(exit.number) — \(exit.durationDescription) · attempt \(session.attempt)")
+                    : String(localized: "Next: exit \(exit.number) — \(exit.durationDescription)")
             }
-            return String(localized: "Выходы закончились: «Ещё выход» или «Завершить»")
+            return String(localized: "No exits left: “Another Exit” or “Finish”")
         case .finished:
-            return String(localized: "выходов \(session.completedExitsCount) из \(plan.exits.count) · фальстартов \(session.falseStartsCount)")
+            return String(localized: "exits: \(session.completedExitsCount) of \(plan.exits.count) · false starts: \(session.falseStartsCount)")
         }
     }
 
@@ -141,9 +141,9 @@ struct LiveSessionModel {
     /// The next step (Space): «Вышли», «Вернулись», or «Завершить» in the last break.
     var primary: Action? {
         switch phase {
-        case .away: return Action(title: String(localized: "Вернулись"), icon: .backInside, tint: MacPalette.blue)
-        case .breakTime(_, _, _, nil): return Action(title: String(localized: "Завершить"), icon: .symbol("flag.checkered"))
-        case .ready, .leaving, .breakTime: return Action(title: String(localized: "Вышли"), icon: .outside)
+        case .away: return Action(title: String(localized: "Back Inside"), icon: .backInside, tint: MacPalette.blue)
+        case .breakTime(_, _, _, nil): return Action(title: String(localized: "Finish"), icon: .symbol("flag.checkered"))
+        case .ready, .leaving, .breakTime: return Action(title: String(localized: "Outside|step"), icon: .outside)
         case .finished: return nil
         }
     }
@@ -214,9 +214,9 @@ struct LiveSessionModel {
             var title = event.kind.title
             if let n = event.exitNumber, [.exitStarted, .behindDoor, .exitEnded, .falseStart].contains(event.kind) {
                 if let a = event.attempt, a > 1 {
-                    title = String(localized: "\(event.kind.title) · выход \(n), попытка \(a)")
+                    title = String(localized: "\(event.kind.title) · exit \(n), attempt \(a)")
                 } else {
-                    title = String(localized: "\(event.kind.title) · выход \(n)")
+                    title = String(localized: "\(event.kind.title) · exit \(n)")
                 }
             }
             return LogLine(id: event.id, time: MacFormat.timeSeconds.string(from: event.time), title: title,

@@ -11,16 +11,16 @@ public enum DurationText {
         let minutes = (total % 3600) / 60
         let secs = total % 60
         var parts: [String] = []
-        if hours > 0 { parts.append(tr("\(hours) ч", "\(hours) h")) }
-        if minutes > 0 { parts.append(tr("\(minutes) мин", "\(minutes) min")) }
-        if secs > 0 || parts.isEmpty { parts.append(tr("\(secs) с", "\(secs) s")) }
+        if hours > 0 { parts.append(tr("\(hours) h", ru: "\(hours) ч")) }
+        if minutes > 0 { parts.append(tr("\(minutes) min", ru: "\(minutes) мин")) }
+        if secs > 0 || parts.isEmpty { parts.append(tr("\(secs) s", ru: "\(secs) с")) }
         return parts.joined(separator: " ")
     }
 
     /// Very short form for chips: "5с", "30с", "1м", "1м30", "5м" / "5s", "1m", "1m30".
     public static func compact(_ seconds: TimeInterval) -> String {
         let total = whole(seconds, .toNearestOrAwayFromZero)
-        let s = tr("с", "s"), m = tr("м", "m")
+        let s = tr("s", ru: "с"), m = tr("m", ru: "м")
         if total < 60 { return "\(total)\(s)" }
         let minutes = total / 60
         let secs = total % 60

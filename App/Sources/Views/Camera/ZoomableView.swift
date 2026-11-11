@@ -439,12 +439,12 @@ struct ZoomableView<Content: View, Chrome: View>: View {
                         .buttonStyle(PressableButtonStyle())
                         .padding(10)
                         #if os(macOS)
-                        .help("Без увеличения · ⌘0")
+                        .help("Actual size · ⌘0")
                         #else
                         // The words of the training's corner button for the same thing (`CameraZoomButton`).
-                        .accessibilityLabel("Весь кадр")
+                        .accessibilityLabel("Whole frame")
                         .accessibilityShowsLargeContentViewer {
-                            Label("Весь кадр", systemImage: Self.wholePictureIcon)
+                            Label("Whole frame", systemImage: Self.wholePictureIcon)
                         }
                         #endif
                     }
@@ -598,7 +598,7 @@ struct CameraZoomButton: View {
     var body: some View {
         let zoomed = zoom.isZoomed
         CameraCornerButton(systemImage: zoomed ? Self.wholePictureIcon : Self.zoomInIcon,
-                           title: zoomed ? String(localized: "Весь кадр") : String(localized: "Приблизить"),
+                           title: zoomed ? String(localized: "Whole frame") : String(localized: "Zoom In|closer"),
                            note: zoomed ? String(format: "%.1f×", zoom.scale) : nil, showsTitle: showsTitle) {
             withAnimation(.spring(response: 0.3)) { zoom.toggleZoomIn() }
         }

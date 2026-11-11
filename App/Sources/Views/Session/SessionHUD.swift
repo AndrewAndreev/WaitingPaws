@@ -82,7 +82,7 @@ struct ModalVeil<S: Shape>: View {
             .contentShape(shape)
             .onTapGesture(perform: onClose)
             .transition(.opacity)
-            .accessibilityLabel("Закрыть")
+            .accessibilityLabel("Close")
             .accessibilityAddTraits(.isButton)
             .accessibilityHidden(!dims)
     }
@@ -110,9 +110,9 @@ struct ReadoutContent {
 
         var title: String {
             switch self {
-            case .outside: return String(localized: "Вышли")
-            case .backInside: return String(localized: "Вернулись")
-            case .finish: return String(localized: "Завершить")
+            case .outside: return String(localized: "Outside|step")
+            case .backInside: return String(localized: "Back Inside")
+            case .finish: return String(localized: "Finish")
             }
         }
 
@@ -198,12 +198,12 @@ struct ReadoutContent {
     var title: String {
         switch session.phase {
         case .ready, .leaving, .away:
-            if session.currentExit?.isOpen == true { return String(localized: "Ещё выход") }
-            return String(localized: "Выход \(session.currentExit?.number ?? 0)")
+            if session.currentExit?.isOpen == true { return String(localized: "Another Exit") }
+            return String(localized: "Exit \(session.currentExit?.number ?? 0)")
         case .breakTime(_, _, _, let next):
-            return next == nil ? String(localized: "Последний перерыв") : String(localized: "Перерыв")
+            return next == nil ? String(localized: "Last Break") : String(localized: "Break")
         case .finished:
-            return String(localized: "Готово")
+            return String(localized: "Done")
         }
     }
 
@@ -212,7 +212,7 @@ struct ReadoutContent {
         switch session.phase {
         case .ready, .leaving, .away:
             guard session.currentExit?.isOpen == false else { return nil }
-            return String(localized: "из \(session.plan.exits.count)")
+            return String(localized: "of \(session.plan.exits.count)")
         default:
             return nil
         }
@@ -220,7 +220,7 @@ struct ReadoutContent {
 
     /// "попытка 2" next to the title (outside; in a break it is part of the next exit's line).
     var attempt: String? {
-        session.attempt > 1 && !isBreak ? String(localized: "попытка \(session.attempt)") : nil
+        session.attempt > 1 && !isBreak ? String(localized: "attempt \(session.attempt)") : nil
     }
 
     var next: Next? {
@@ -229,20 +229,20 @@ struct ReadoutContent {
             guard let index = session.currentExitIndex, session.currentExit?.isOpen == false else { return nil }
             let pause = DurationText.short(session.plan.breakAfter(exitAt: index))
             guard session.plan.exits.indices.contains(index + 1) else {
-                return Next(label: String(localized: "Дальше"), title: String(localized: "последний перерыв \(pause)"))
+                return Next(label: String(localized: "Next"), title: String(localized: "last break \(pause)"))
             }
             let exit = session.plan.exits[index + 1]
-            return Next(label: String(localized: "Дальше"),
-                        title: String(localized: "перерыв \(pause) · выход \(exit.number) — \(DurationText.short(exit.duration))"))
+            return Next(label: String(localized: "Next"),
+                        title: String(localized: "break \(pause) · exit \(exit.number) — \(DurationText.short(exit.duration))"))
         case .breakTime(_, _, _, let next):
             guard let next, session.plan.exits.indices.contains(next) else {
-                return Next(label: String(localized: "Дальше"), title: String(localized: "«Ещё выход» или «Завершить»"))
+                return Next(label: String(localized: "Next"), title: String(localized: "“Another Exit” or “Finish”"))
             }
             let exit = session.plan.exits[next]
-            var title = String(localized: "выход \(exit.number) — \(DurationText.short(exit.duration))")
-            let attempt = session.attempt > 1 ? String(localized: "попытка \(session.attempt)") : nil
+            var title = String(localized: "exit \(exit.number) — \(DurationText.short(exit.duration))")
+            let attempt = session.attempt > 1 ? String(localized: "attempt \(session.attempt)") : nil
             if let attempt { title += " · " + attempt }
-            return Next(label: String(localized: "Дальше"), title: title, triggers: exit.triggers, attempt: attempt)
+            return Next(label: String(localized: "Next"), title: title, triggers: exit.triggers, attempt: attempt)
         case .finished:
             return nil
         }
@@ -264,15 +264,15 @@ struct ReadoutContent {
 
     /// What VoiceOver says for it: «Фальстарт выхода 4».
     var falseStartAccessibilityLabel: String {
-        falseStartExitNumber.map { String(localized: "Фальстарт выхода \($0)") } ?? String(localized: "Фальстарт")
+        falseStartExitNumber.map { String(localized: "False start of exit \($0)") } ?? String(localized: "False Start")
     }
 
     /// What a press does, for VoiceOver and the pointer's tip: in a break the break starts over (the dog went to the
     /// door before «Вышли»), outside the exit ends and is repeated after a break.
     var falseStartHint: String? {
         guard let number = falseStartExitNumber else { return nil }
-        return isBreak ? String(localized: "Перерыв начнётся заново, выход \(number) — после него")
-                       : String(localized: "Выход \(number) повторится после перерыва")
+        return isBreak ? String(localized: "The break starts over, exit \(number) after it")
+                       : String(localized: "Exit \(number) will be repeated after a break")
     }
 
     /// The trainer's rule against coming in: ⊖, red, as on its chip.
@@ -305,19 +305,19 @@ struct ReadoutContent {
         let tint: Color = overdue ? Theme.overtime : (isBreak ? Theme.info : Theme.accent)
         switch session.phase {
         case .ready:
-            return Timer(text: DurationText.clock(session.currentExit?.duration ?? 0), caption: String(localized: "план"),
+            return Timer(text: DurationText.clock(session.currentExit?.duration ?? 0), caption: String(localized: "plan"),
                          overdue: false, tint: tint, progress: nil)
         case .leaving:
-            return Timer(text: DurationText.clock(session.elapsed(at: now)), caption: String(localized: "к двери"),
+            return Timer(text: DurationText.clock(session.elapsed(at: now)), caption: String(localized: "to the door"),
                          overdue: false, tint: tint, progress: nil)
         case .away where session.currentExit?.isOpen == true:
             // An extra exit has no plan: its time counts up.
-            return Timer(text: DurationText.clock(session.elapsed(at: now)), caption: String(localized: "прошло"),
+            return Timer(text: DurationText.clock(session.elapsed(at: now)), caption: String(localized: "elapsed"),
                          overdue: false, tint: Theme.accent, progress: nil)
         case .away, .breakTime:
             let value = remaining ?? 0
             return Timer(text: overdue ? "+" + DurationText.clock(-value) : DurationText.clock(value),
-                         caption: overdue ? String(localized: "сверх плана") : String(localized: "осталось"),
+                         caption: overdue ? String(localized: "over plan") : String(localized: "left"),
                          overdue: overdue, tint: tint, progress: session.progress(at: now))
         case .finished:
             return Timer(text: "✓", caption: "", overdue: false, tint: Theme.accent, progress: nil)
@@ -330,38 +330,38 @@ struct ReadoutContent {
         let remaining = session.remaining(at: now) ?? 0
         switch session.phase {
         case .ready:
-            return Status(kind: .ready, label: String(localized: "План"),
+            return Status(kind: .ready, label: String(localized: "Plan"),
                           value: DurationText.clock(session.currentExit?.duration ?? 0), tint: Theme.accent)
         case .leaving(_, let since):
-            return Status(kind: .leaving, label: String(localized: "К двери"),
+            return Status(kind: .leaving, label: String(localized: "To the door"),
                           value: DurationText.clock(session.elapsed(at: now)), tint: Theme.accent, countsUpFrom: since)
         case .away(_, _, let leftAt):
             guard let exit = session.currentExit, !exit.isOpen else {
-                return Status(kind: .counting, label: String(localized: "Прошло"),
-                              value: DurationText.clock(session.elapsed(at: now)), detail: String(localized: "без плана"),
+                return Status(kind: .counting, label: String(localized: "Elapsed"),
+                              value: DurationText.clock(session.elapsed(at: now)), detail: String(localized: "no plan"),
                               tint: Theme.accent, countsUpFrom: leftAt)
             }
             let planEnd = now.addingTimeInterval(remaining)
-            let planLeft = remaining >= 0 ? String(localized: "по плану ещё \(DurationText.clock(remaining))")
-                                          : String(localized: "сверх плана +\(DurationText.clock(-remaining))")
+            let planLeft = remaining >= 0 ? String(localized: "\(DurationText.clock(remaining)) left by plan")
+                                          : String(localized: "over plan +\(DurationText.clock(-remaining))")
             let verdict = watch?.verdict(at: now, quietNeeded: session.plan.doNotEnterRule?.quietTime) ?? .plan
             switch verdict {
             case .comeBackIn(let left, let entry):
                 let delay = entry.delay ?? left
-                return Status(kind: .comeBackIn, label: String(localized: "\(entry.event) — входите через"),
+                return Status(kind: .comeBackIn, label: String(localized: "\(entry.event) — come back in"),
                               value: DurationText.clock(left), detail: planLeft, tint: entry.tone.color,
                               valueTint: entry.tone.color, progress: delay > 0 ? 1 - left / delay : 1,
                               endsAt: now.addingTimeInterval(left))
             case .comeBackAfter(let words, let elapsed, let entry):
                 return Status(kind: .comeBackAfter,
-                              label: String(localized: "\(entry.event) \(DurationText.clock(elapsed)) назад, входите"),
+                              label: String(localized: "\(entry.event) \(DurationText.clock(elapsed)) ago, come back"),
                               value: words, isWords: true, detail: planLeft, tint: entry.tone.color,
                               valueTint: entry.tone.color, countsUpFrom: now.addingTimeInterval(-elapsed))
             case .canComeIn(let entry):
                 return Status(kind: .canComeIn,
-                              label: entry.map { String(localized: "\($0.event) — время вышло") }
-                                  ?? String(localized: "Тишина выдержана"),
-                              value: String(localized: "Можно входить"), isWords: true, detail: planLeft,
+                              label: entry.map { String(localized: "\($0.event) — time's up") }
+                                  ?? String(localized: "Quiet long enough"),
+                              value: String(localized: "Come back now"), isWords: true, detail: planLeft,
                               tint: Theme.go, valueTint: Theme.go, progress: 1)
             case .barking(let needed):
                 // Barking: nothing counts until the owner taps «Замолчала»; the label says what the trainer wants.
@@ -369,11 +369,11 @@ struct ReadoutContent {
                 // залаяла» (design council, round 9: «Лает» beside «Залаяла, завыла» was a third form, and wrong
                 // for a dog that howls).
                 return Status(kind: .waitForQuiet,
-                              label: needed.map { String(localized: "Залаяла · нужно \(DurationText.clock($0)) тишины") }
-                                  ?? String(localized: "Залаяла"),
-                              value: String(localized: "Ждите тишины"), isWords: true, detail: planLeft,
+                              label: needed.map { String(localized: "Barked · needs \(DurationText.clock($0)) of quiet") }
+                                  ?? String(localized: "Barked"),
+                              value: String(localized: "Wait for quiet|instruction"), isWords: true, detail: planLeft,
                               tint: Theme.danger, valueTint: Theme.danger, progress: 0, symbol: Self.quietSymbol,
-                              shortLabel: needed.map { String(localized: "Залаяла · \(DurationText.clock($0)) тишины") })
+                              shortLabel: needed.map { String(localized: "Barked · \(DurationText.clock($0)) of quiet") })
             case .waitForQuiet(let quiet, let needed):
                 // The quiet counts from «Замолчала», said like a condition's countdown («Легла — входите через»):
                 // «Тихо — входите через 0:12», and beside it how much quiet there has been, «тишина 0:18 из 0:30».
@@ -382,16 +382,16 @@ struct ReadoutContent {
                 // Both in whole seconds of one rounding, so they add up to the quiet asked for (0:12 + 0:18 = 0:30).
                 let quietShown = quiet.rounded(.down)
                 guard let needed else {
-                    return Status(kind: .waitForQuiet, label: String(localized: "Тихо"),
+                    return Status(kind: .waitForQuiet, label: String(localized: "Quiet"),
                                   value: DurationText.clock(quiet), detail: planLeft, tint: Theme.danger,
                                   countsUpFrom: now.addingTimeInterval(-quiet), symbol: Self.quietSymbol,
                                   labelTint: Self.neutralLabel)
                 }
                 let neededShown = needed.rounded(.down)
                 return Status(kind: .waitForQuiet,
-                              label: String(localized: "Тихо — входите через"),
+                              label: String(localized: "Quiet — come back in"),
                               value: DurationText.clock(max(0, neededShown - quietShown)),
-                              detail: String(localized: "тишина \(DurationText.clock(quietShown)) из \(DurationText.clock(neededShown))"),
+                              detail: String(localized: "quiet \(DurationText.clock(quietShown)) of \(DurationText.clock(neededShown))"),
                               tint: Theme.danger, progress: quiet / needed,
                               endsAt: now.addingTimeInterval(needed - quiet), symbol: Self.quietSymbol,
                               labelTint: Self.neutralLabel, detailTint: Theme.danger)
@@ -399,24 +399,24 @@ struct ReadoutContent {
                 break
             }
             if remaining < 0 {
-                return Status(kind: .overdue, label: String(localized: "Сверх плана"),
+                return Status(kind: .overdue, label: String(localized: "Over Plan"),
                               value: "+" + DurationText.clock(-remaining),
-                              detail: String(localized: "план \(DurationText.short(exit.duration))"),
+                              detail: String(localized: "plan \(DurationText.short(exit.duration))"),
                               tint: Theme.overtime, valueTint: Theme.overtime, progress: 1, countsUpFrom: planEnd)
             }
-            return Status(kind: .plan, label: String(localized: "Осталось"), value: DurationText.clock(remaining),
-                          detail: String(localized: "план \(DurationText.short(exit.duration))"),
+            return Status(kind: .plan, label: String(localized: "Left"), value: DurationText.clock(remaining),
+                          detail: String(localized: "plan \(DurationText.short(exit.duration))"),
                           tint: Theme.accent, progress: session.progress(at: now), endsAt: planEnd)
         case .breakTime(_, _, let duration, _):
             if remaining < 0 {
-                return Status(kind: .breakOver, label: String(localized: "Перерыв дольше плана"),
+                return Status(kind: .breakOver, label: String(localized: "Break over plan"),
                               value: "+" + DurationText.clock(-remaining),
-                              detail: String(localized: "план \(DurationText.short(duration))"),
+                              detail: String(localized: "plan \(DurationText.short(duration))"),
                               tint: Theme.overtime, valueTint: Theme.overtime, progress: 1,
                               countsUpFrom: now.addingTimeInterval(remaining))
             }
-            return Status(kind: .breakTime, label: String(localized: "Осталось"), value: DurationText.clock(remaining),
-                          detail: String(localized: "перерыв \(DurationText.short(duration))"), tint: Theme.info,
+            return Status(kind: .breakTime, label: String(localized: "Left"), value: DurationText.clock(remaining),
+                          detail: String(localized: "break \(DurationText.short(duration))"), tint: Theme.info,
                           progress: session.progress(at: now), endsAt: now.addingTimeInterval(remaining))
         case .finished:
             return Status(kind: .done, label: "", value: "✓", tint: Theme.accent)
@@ -430,7 +430,7 @@ extension ReadoutContent {
     /// the schedule's last exit no exit is ahead to count down to: the break's own time counts up there, without a line.
     func phoneStatus(at now: Date) -> Status {
         if case .breakTime(_, let since, _, nil) = session.phase {
-            return Status(kind: .breakTime, label: String(localized: "Прошло"),
+            return Status(kind: .breakTime, label: String(localized: "Elapsed"),
                           value: DurationText.clock(max(0, now.timeIntervalSince(since))),
                           tint: Theme.info, countsUpFrom: since)
         }
@@ -451,7 +451,7 @@ extension ReadoutContent {
 
     /// «Выход 3» / «Перерыв» — the last break too: «Завершить» and «Ещё выход» under it say it is the last.
     var phoneTitle: String {
-        if case .breakTime = session.phase { return String(localized: "Перерыв") }
+        if case .breakTime = session.phase { return String(localized: "Break") }
         return title
     }
 }
@@ -544,7 +544,7 @@ struct SessionReadout: View {
             // for it on the card.
             .contentShape(Rectangle())
             .onTapGesture { if outside { toggleStopwatch() } }
-            .accessibilityAction(named: Text("Секундомер")) { if outside { toggleStopwatch() } }
+            .accessibilityAction(named: Text("Stopwatch")) { if outside { toggleStopwatch() } }
         }
     }
 
@@ -747,7 +747,7 @@ private struct BigNumber: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: [status.label, status.value,
-                                            stopwatch.map { String(localized: "Секундомер") + " " + DurationText.clock($0) }]
+                                            stopwatch.map { String(localized: "Stopwatch") + " " + DurationText.clock($0) }]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")))
     }
 }
@@ -771,7 +771,7 @@ private struct UndoFalseStartButton: View {
                         Button {
                             withAnimation(.smooth(duration: 0.25)) { model.undoFalseStart() }
                         } label: {
-                            Text("Отменить")
+                            Text("Cancel|verb")
                                 .font(.system(size: size, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.85))
                                 .lineLimit(1)
@@ -781,7 +781,7 @@ private struct UndoFalseStartButton: View {
                                 .contentShape(Rectangle().inset(by: -7))
                         }
                         .buttonStyle(PressableButtonStyle())
-                        .accessibilityLabel(String(localized: "Отменить фальстарт выхода \(undo.exitNumber)"))
+                        .accessibilityLabel(String(localized: "Undo the false start of exit \(undo.exitNumber)"))
                         .transition(.opacity)
                     }
                 }
@@ -979,7 +979,7 @@ struct ReadoutActions: View {
                 }
                 // After the last exit «Завершить» keeps the main button's place, «Ещё выход» beside it.
                 if content.canStartOpenExit {
-                    BigButton(title: String(localized: "Ещё выход"), icon: .outside, style: .secondary, height: height,
+                    BigButton(title: String(localized: "Another Exit"), icon: .outside, style: .secondary, height: height,
                               growsWithText: stacked) {
                         session.startOpenExit()
                     }
@@ -991,7 +991,7 @@ struct ReadoutActions: View {
 
     /// «Фальстарт» — the exit it is about is the one the card shows (the pink chip); VoiceOver hears its number.
     private func falseStartButton(_ content: ReadoutContent, stacked: Bool) -> some View {
-        BigButton(title: String(localized: "Фальстарт"), systemImage: "arrow.uturn.backward", style: .caution,
+        BigButton(title: String(localized: "False Start"), systemImage: "arrow.uturn.backward", style: .caution,
                   height: height, growsWithText: stacked) {
             model.falseStart()
         }
@@ -1090,7 +1090,7 @@ struct ExitStrip: View {
                 Image(systemName: "arrow.uturn.backward")
                     .font(.system(size: font * 0.82, weight: .bold))
             }
-            Text(exit.isOpen ? String(localized: "доп.") : DurationText.compact(exit.duration))
+            Text(exit.isOpen ? String(localized: "extra") : DurationText.compact(exit.duration))
         }
             .font(.system(size: font, weight: .semibold, design: .rounded).monospacedDigit())
             .padding(.horizontal, (large ? 10 : 8) * scale)
@@ -1130,11 +1130,11 @@ struct ExitStrip: View {
     }
 
     private func chipLabel(_ exit: PlannedExit, triggers: Bool, early: Bool, retry: Bool) -> String {
-        var parts = [String(localized: "Выход \(exit.number)"),
-                     exit.isOpen ? String(localized: "без времени") : DurationText.short(exit.duration)]
-        if retry { parts.append(String(localized: "попытка \(session.attempt)")) }
-        if triggers { parts.append(String(localized: "триггеры")) }
-        if early { parts.append(String(localized: "можно вернуться раньше")) }
+        var parts = [String(localized: "Exit \(exit.number)"),
+                     exit.isOpen ? String(localized: "no set time") : DurationText.short(exit.duration)]
+        if retry { parts.append(String(localized: "attempt \(session.attempt)")) }
+        if triggers { parts.append(String(localized: "triggers")) }
+        if early { parts.append(String(localized: "may come back early")) }
         return parts.joined(separator: ", ")
     }
 
@@ -1192,20 +1192,20 @@ struct SummaryCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Тренировка завершена")
+                        Text("Training Complete")
                             .font(Theme.display(22, weight: .bold))
                         Text(verbatim: Self.when(record))
                             .font(.system(.subheadline, design: .rounded).monospacedDigit())
                             .foregroundStyle(.white.opacity(0.6))
                     }
                     Spacer()
-                    IconButton(systemImage: "xmark", label: String(localized: "Закрыть"), action: onClose)
+                    IconButton(systemImage: "xmark", label: String(localized: "Close"), action: onClose)
                 }
 
                 HStack(alignment: .top, spacing: 22) {
-                    stat(String(localized: "\(record.completedExits) из \(record.plan.exits.count)"), String(localized: "выходов"))
+                    stat(String(localized: "\(record.completedExits) of \(record.plan.exits.count)"), String(localized: "exits"))
                     if let longest = record.longestResult, longest.awayDuration > 0 {
-                        stat(DurationText.clock(longest.awayDuration), String(localized: "дольше всего"))
+                        stat(DurationText.clock(longest.awayDuration), String(localized: "longest"))
                     }
                     if record.falseStarts > 0 {
                         stat("\(record.falseStarts)", CountText.falseStartWord(record.falseStarts), tint: Theme.warning)
@@ -1227,7 +1227,7 @@ struct SummaryCard: View {
                 }
 
                 ShareLink(item: log, preview: SharePreview(record.plan.displayTitle)) {
-                    Label("Отправить тренеру", systemImage: "square.and.arrow.up")
+                    Label("Send to Trainer", systemImage: "square.and.arrow.up")
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)
@@ -1250,21 +1250,21 @@ struct SummaryCard: View {
             let shown = Array(record.results.prefix(limit))
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 5) {
                 GridRow {
-                    Text("Выходы").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("План").gridColumnAlignment(.trailing)
-                    Text("Факт").gridColumnAlignment(.trailing)
+                    Text("Exits").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Plan").gridColumnAlignment(.trailing)
+                    Text("Actual").gridColumnAlignment(.trailing)
                 }
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.45))
                 ForEach(shown) { result in
                     GridRow {
                         HStack(spacing: 5) {
-                            Text("Выход \(result.number)")
+                            Text("Exit \(result.number)")
                             if result.attempt > 1 {
-                                Text("· попытка \(result.attempt)").foregroundStyle(Theme.warning)
+                                Text("· attempt \(result.attempt)").foregroundStyle(Theme.warning)
                             }
                             if result.falseStart {
-                                Text("фальстарт").foregroundStyle(Theme.warning)
+                                Text("false start").foregroundStyle(Theme.warning)
                             }
                         }
                         .lineLimit(1)
@@ -1299,7 +1299,7 @@ struct SummaryCard: View {
                 }
                 if record.results.count > shown.count {
                     GridRow {
-                        Text("ещё \(record.results.count - shown.count)")
+                        Text("\(record.results.count - shown.count) more")
                             .font(.system(size: 13, design: .rounded))
                             .foregroundStyle(.white.opacity(0.45))
                             .gridCellColumns(3)
@@ -1308,7 +1308,7 @@ struct SummaryCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(String(localized: "Лог для тренера"))
+            .accessibilityLabel(String(localized: "Log for the Trainer"))
         }
     }
 
@@ -1325,14 +1325,14 @@ struct SummaryCard: View {
         let text: String
         var detail: String?
         if preparing {
-            text = String(localized: "Готовим видео…")
+            text = String(localized: "Preparing video…")
         } else {
             switch report.kind {
             case .whole:
-                text = inPhotos ? String(localized: "Видео сохранено в Фото") : String(localized: "Видео сохранено")
+                text = inPhotos ? String(localized: "Video saved to Photos") : String(localized: "Video saved")
             case .partial:
                 let how = report.text.prefix(1).lowercased() + String(report.text.dropFirst())
-                text = String(localized: "Видео сохранено · \(how)")
+                text = String(localized: "Video saved · \(how)")
                 detail = report.detail
             default:
                 text = report.text
@@ -1391,24 +1391,24 @@ struct SummaryCard: View {
                let attempt = HistoryText.fromAttempt(retry.attempt) {
                 // Where it wraps, «со второй попытки — 2:32» goes to the next line whole.
                 let whole = attempt.replacingOccurrences(of: " ", with: "\u{00A0}")
-                return String(localized: "Фальстарт на выходе \(numbers), \(whole) — \(DurationText.clock(retry.awayDuration))")
+                return String(localized: "False start on exit \(numbers), \(whole) — \(DurationText.clock(retry.awayDuration))")
                     .replacingOccurrences(of: " — ", with: "\u{00A0}—\u{00A0}")
             }
-            return falseStarts.count == 1 ? String(localized: "Фальстарт на выходе \(numbers)")
-                                          : String(localized: "Фальстарты на выходах \(numbers)")
+            return falseStarts.count == 1 ? String(localized: "False start on exit \(numbers)")
+                                          : String(localized: "False starts on exits \(numbers)")
         }
         let planned = record.results.filter { !$0.isOpen && !$0.falseStart && $0.leftAt != nil && $0.plannedDuration > 0 }
         let short = planned.filter { $0.awayDuration < $0.plannedDuration - 1 }
         if short.count == 1, let exit = short.first {
-            return String(localized: "Выход \(exit.number) короче плана: \(DurationText.clock(exit.awayDuration)) из \(DurationText.clock(exit.plannedDuration))")
+            return String(localized: "Exit \(exit.number) shorter than planned: \(DurationText.clock(exit.awayDuration)) of \(DurationText.clock(exit.plannedDuration))")
         }
         if short.count > 1 {
-            return String(localized: "Короче плана: выходы \(short.map { String($0.number) }.joined(separator: ", "))")
+            return String(localized: "Shorter than planned: exits \(short.map { String($0.number) }.joined(separator: ", "))")
         }
         guard !planned.isEmpty, record.completedExits >= record.plan.exits.count else { return nil }
         let over = planned.map { $0.awayDuration - $0.plannedDuration }.reduce(0, +) / Double(planned.count)
-        return over >= 1 ? String(localized: "Все выходы — до конца плана, в среднем +\(DurationText.clock(over))")
-                         : String(localized: "Все выходы — до конца плана")
+        return over >= 1 ? String(localized: "Every exit ran its full plan, +\(DurationText.clock(over)) on average")
+                         : String(localized: "Every exit ran its full plan")
     }
 
     /// The exit lines of the log, without its title and date lines (the card says those).

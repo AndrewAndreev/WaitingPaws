@@ -145,7 +145,7 @@ function message(error: unknown): string {
   if (error instanceof XiaomiCameraError) return error.message
   if (error instanceof Go2RTCError && error.status === 502) {
     // go2rtc could not reach Mi Cloud or the account token expired.
-    return error.message.includes('401') ? tr('вход в Xiaomi истёк — войдите заново', 'the Xiaomi sign-in expired — sign in again') : tr('облако Xiaomi недоступно', 'the Xiaomi cloud is unavailable')
+    return error.message.includes('401') ? tr('the Xiaomi sign-in expired — sign in again', 'вход в Xiaomi истёк — войдите заново') : tr('the Xiaomi cloud is unavailable', 'облако Xiaomi недоступно')
   }
   return error instanceof Error ? error.message : String(error)
 }

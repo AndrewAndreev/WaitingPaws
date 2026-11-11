@@ -82,16 +82,16 @@ export function coreLocale(language: CoreLanguage = current): string {
   }
 }
 
-/** The Russian or the English text, for the current language. */
-export function tr(ru: string, en: string): string {
+/** The English or the Russian text, for the current language: `tr('Break', 'Перерыв')`. */
+export function tr(en: string, ru: string): string {
   return current === 'ru' ? ru : en
 }
 
-/** "1 выход", "3 выхода", "5 выходов" / "1 exit", "2 exits". */
+/** "1 exit", "2 exits" / "1 выход", "3 выхода", "5 выходов". */
 export function pluralText(
   count: number,
-  ru: { one: string; few: string; many: string },
   en: { one: string; other: string },
+  ru: { one: string; few: string; many: string },
 ): string {
   if (current === 'ru') {
     const mod10 = count % 10

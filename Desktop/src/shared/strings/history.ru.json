@@ -1,0 +1,18 @@
+{
+  "“%@”, %@, %@.": "«%@», %@, %@.",
+  "Paste the trainer’s schedule (Ctrl+Shift+V) and run a training — its log, video and a chart of how long the dog calmly waits outside will appear here.": "Вставьте расписание тренера (Ctrl+Shift+V) и проведите тренировку — здесь появятся её лог, видео и график: сколько собака спокойно ждёт за дверью.",
+  "Logs and videos will be deleted from this computer.": "Логи и видео будут удалены с этого компьютера.",
+  "Couldn’t open the video": "Не удалось открыть видео",
+  "No Results for “%@”": "Нет результатов для «%@»",
+  "Clear search": "Очистить поиск",
+  "Show the video in Explorer": "Показать видео в проводнике",
+  "Show inspector": "Показать инспектор",
+  "Show Log in Explorer": "Показать лог в проводнике",
+  "Show the history folder in Explorer": "Показать папку истории в проводнике",
+  "Check the spelling or try a new search.": "Проверьте написание или попробуйте другой запрос.",
+  "Copy the log for the trainer": "Скопировать лог для тренера",
+  "Hide inspector": "Скрыть инспектор",
+  "Delete selected|items": "Удалить выбранное",
+  "The file goes to the clipboard — paste it into a messenger or a folder": "Файл попадёт в буфер обмена — вставьте его в мессенджер или папку",
+  "Inspector width": "Ширина инспектора"
+}

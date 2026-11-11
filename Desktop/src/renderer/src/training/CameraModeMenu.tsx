@@ -41,7 +41,7 @@ export function CameraModeMenuItems() {
     <>
       {night && <ModeItems option={night} />}
       {others.length > 0 && (
-        <SubMenu icon={<CameraIcon />} label={t('Настройки камеры')}>
+        <SubMenu icon={<CameraIcon />} label={t('Camera Settings')}>
           {others
             .filter((option) => option.isPicture)
             .map((option) => (

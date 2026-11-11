@@ -62,9 +62,9 @@ function CameraArea() {
   const [delay, setDelay] = useState<{ buffer: number; network: number | null } | null>(null)
   if (!isConfigured(app.settings) || !app.server) {
     return (
-      <CameraPlaceholder text={t('Без камеры: таймер, расписание и лог')}>
+      <CameraPlaceholder text={t('Without a camera: timer, schedule and log')}>
         <Button icon={<CameraAddIcon />} onClick={() => ui.set({ showCameraPicker: true })}>
-          {t('Подключить камеру…')}
+          {t('Connect a Camera…')}
         </Button>
       </CameraPlaceholder>
     )
@@ -72,8 +72,8 @@ function CameraArea() {
   if (app.settings.connectionMode === 'embedded' && app.go2rtc.status !== 'running') {
     const failed = app.go2rtc.status === 'failed' || app.go2rtc.status === 'unavailable'
     return (
-      <CameraPlaceholder text={failed ? app.go2rtc.message ?? t('go2rtc не запустился') : t('Запускаем go2rtc…')}>
-        {failed && <Button onClick={() => void call('go2rtc.restart')}>{t('Перезапустить')}</Button>}
+      <CameraPlaceholder text={failed ? app.go2rtc.message ?? t('go2rtc didn’t start') : t('Starting go2rtc…')}>
+        {failed && <Button onClick={() => void call('go2rtc.restart')}>{t('Restart')}</Button>}
       </CameraPlaceholder>
     )
   }

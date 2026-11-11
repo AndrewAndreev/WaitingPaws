@@ -11,11 +11,11 @@ export function NavRail() {
   const recording = useStore((store) => store.app?.recording.since !== null || store.app?.recording.resuming)
   const sessionRunning = useStore((store) => store.app?.session !== null)
   return (
-    <nav className="rail" aria-label={t('Навигация')}>
-      <RailItem route="training" current={route} label={t('Тренировка')} shortcut="Ctrl+1" icon={<TimerIcon />} activeIcon={<TimerFilledIcon />} badge={route !== 'training' && (recording || sessionRunning)} />
-      <RailItem route="history" current={route} label={t('История')} shortcut="Ctrl+H" icon={<HistoryIcon />} activeIcon={<HistoryFilledIcon />} />
+    <nav className="rail" aria-label={t('Navigation')}>
+      <RailItem route="training" current={route} label={t('Training')} shortcut="Ctrl+1" icon={<TimerIcon />} activeIcon={<TimerFilledIcon />} badge={route !== 'training' && (recording || sessionRunning)} />
+      <RailItem route="history" current={route} label={t('History')} shortcut="Ctrl+H" icon={<HistoryIcon />} activeIcon={<HistoryFilledIcon />} />
       <div className="rail__spacer" />
-      <RailItem route="settings" current={route} label={t('Настройки')} shortcut="Ctrl+," icon={<SettingsIcon />} activeIcon={<SettingsFilledIcon />} />
+      <RailItem route="settings" current={route} label={t('Settings')} shortcut="Ctrl+," icon={<SettingsIcon />} activeIcon={<SettingsFilledIcon />} />
     </nav>
   )
 }
@@ -27,7 +27,7 @@ function RailItem({ route, current, label, shortcut, icon, activeIcon, badge }: 
       <button className="rail__item" aria-current={active ? 'page' : undefined} onClick={() => ui.set({ route })}>
         {active ? activeIcon : icon}
         <span>{label}</span>
-        {badge && <span className="rail__badge" aria-label={t('Идёт тренировка или запись')} />}
+        {badge && <span className="rail__badge" aria-label={t('A training or a recording is running')} />}
       </button>
     </Tooltip>
   )

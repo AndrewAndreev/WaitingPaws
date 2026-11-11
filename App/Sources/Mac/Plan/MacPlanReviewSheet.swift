@@ -133,15 +133,15 @@ struct MacPlanReviewSheet: View {
                         .frame(width: 28, height: 24)
                 }
                 .buttonStyle(MacIconButtonStyle(isOn: showsSource))
-                .help(showsSource ? "Скрыть текст тренера" : "Показать текст тренера")
+                .help(showsSource ? "Hide Trainer’s Text" : "Show Trainer’s Text")
             }
             if !plan.isValid {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 20))
                     .foregroundStyle(MacPalette.orange)
-                    .help("В расписании нет выходов")
+                    .help("No Exits in the Schedule")
             }
-            TextField("Название", text: $plan.title, prompt: Text("Тренировка"))
+            TextField("Name", text: $plan.title, prompt: Text("Training"))
                 .textFieldStyle(.plain)
                 .font(.title3.weight(.semibold))
                 .labelsHidden()
@@ -153,7 +153,7 @@ struct MacPlanReviewSheet: View {
                 }
                 .buttonStyle(MacIconButtonStyle(isOn: true, circle: true))
                 // Esc is «Готово»'s, in the bottom bar.
-                .help("Закрыть")
+                .help("Close")
             }
         }
         .padding(.horizontal, 18)
@@ -176,23 +176,23 @@ struct MacPlanReviewSheet: View {
                 // The numbers are the rows' and the card's «≈ 25 мин» on the panel.
                 Spacer(minLength: 12)
                 if isRunning {
-                    Button("Отменить", action: onDone)
+                    Button("Cancel|verb", action: onDone)
                         .keyboardShortcut(.cancelAction)
                         .controlSize(.large)
-                        .help("Закрыть без изменений · Esc")
+                        .help("Close without changes · Esc")
                 } else {
                     // Whether the training is recorded is this box's; the button only starts it, as on the iPhone.
-                    Toggle("Записывать видео", isOn: $settings.autoRecord)
+                    Toggle("Record video", isOn: $settings.autoRecord)
                         .toggleStyle(.checkbox)
-                        .help("Включить запись с камеры вместе с тренировкой")
+                        .help("Record the camera during the training")
                     // Back from before 1.7 (the owners of earlier versions reach for it): the same as ✕, said in words.
-                    Button("Готово", action: onDone)
+                    Button("Done", action: onDone)
                         .keyboardShortcut(.cancelAction)
                         .controlSize(.large)
-                        .help("Оставить расписание на пульте и поправить его на таймлайне · Esc")
+                        .help("Keep the schedule in the main window and adjust it on the timeline · Esc")
                 }
                 Button(action: onStart) {
-                    ShortcutLabel(title: isRunning ? String(localized: "Сохранить") : String(localized: "Начать тренировку"),
+                    ShortcutLabel(title: isRunning ? String(localized: "Save") : String(localized: "Start Training"),
                                   symbol: isRunning ? "checkmark" : "play.fill", key: "⌘↩", prominent: true)
                 }
                 // Pink in any window, the sheet's screenshots included.
@@ -319,7 +319,7 @@ private struct PlanTablePane: View {
     /// common break, then the trainer's rules for the whole training as chips. The own breaks are blue in the table.
     private var planForm: some View {
         HStack(spacing: 10) {
-            TextField("Тренеры", text: $plan.trainers, prompt: Text("Тренеры"))
+            TextField("Trainers", text: $plan.trainers, prompt: Text("Trainers"))
                 .labelsHidden()
                 .frame(maxWidth: 260)
             PlanDateField(date: $plan.date)
@@ -353,13 +353,13 @@ private struct PlanTablePane: View {
 
     /// «после 3-го — 5 мин, после 5-го — 1 мин».
     private func breaksList(_ breaks: [(number: Int, value: TimeInterval)]) -> String {
-        breaks.map { String(localized: "после \($0.number)-го — \(DurationText.short($0.value))") }.joined(separator: ", ")
+        breaks.map { String(localized: "after #\($0.number) — \(DurationText.short($0.value))") }.joined(separator: ", ")
     }
 
     /// «Свой перерыв: после 6-го — 5 мин».
     private var ownBreaksTitle: String {
         let list = breaksList(ownBreaks.map { ($0.number, $0.breakAfter ?? 0) })
-        return ownBreaks.count == 1 ? String(localized: "Свой перерыв: \(list)") : String(localized: "Свои перерывы: \(list)")
+        return ownBreaks.count == 1 ? String(localized: "Custom breaks: \(list)|one") : String(localized: "Custom breaks: \(list)")
     }
 
     /// The own breaks «Сделать все по …» took away that are still common now.
@@ -385,17 +385,17 @@ private struct PlanTablePane: View {
                     get: { plan.defaultBreak == value }, set: { if $0 { setDefaultBreak(value) } }))
             }
             Divider()
-            Button("Другой…") { customDefaultBreak = true }
+            Button("Custom…") { customDefaultBreak = true }
             if !ownBreaks.isEmpty {
                 Divider()
                 Section(ownBreaksTitle) {
-                    Button("Сделать все по \(DurationText.short(plan.defaultBreak))") {
+                    Button("Set All to \(DurationText.short(plan.defaultBreak))") {
                         withAnimation(.snappy) { takenBreaks = plan.makeBreaksCommon() }
                     }
                 }
             } else if !restorableBreaks.isEmpty {
                 Divider()
-                Button("Вернуть: \(breaksList(restorableBreaks))") {
+                Button("Restore: \(breaksList(restorableBreaks))") {
                     withAnimation(.snappy) { restoreBreaks() }
                 }
             }
@@ -405,10 +405,10 @@ private struct PlanTablePane: View {
             }
         }
         .fixedSize()
-        .help("Перерыв между выходами — у всех, кроме выходов со своим перерывом")
+        .help("Break between exits — for every exit except those with their own break")
         .popover(isPresented: $customDefaultBreak, arrowEdge: .bottom) {
             MacDurationEditor(value: Binding(get: { plan.defaultBreak }, set: { setDefaultBreak($0 ?? plan.defaultBreak) }),
-                              title: String(localized: "Перерыв между выходами"), presets: MacPlanFormat.breakPresets,
+                              title: String(localized: "Break Between Exits"), presets: MacPlanFormat.breakPresets,
                               tint: MacPalette.blue) { customDefaultBreak = false }
         }
     }
@@ -447,21 +447,21 @@ private struct PlanTablePane: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .contentShape(Rectangle())
                 .onHover { point(.exit(exit.id), $0) }
-                .help(isFixed(exit.id) ? String(localized: "Выход уже прошёл или идёт сейчас: его можно поправить, но не удалить и не переставить") : "")
+                .help(isFixed(exit.id) ? String(localized: "This exit is done or running: it can be changed, but not removed or moved") : "")
             }
             .width(fixedCount > 0 ? 42 : 30)
-            TableColumn("За дверью") { exit in
+            TableColumn("Outside") { exit in
                 ExitDurationCell(exit: binding(exit), trainerValue: link.trainerDuration(of: exit)) { point(.exit(exit.id), $0) }
             }
             .width(min: 70, ideal: 90, max: 130)
-            TableColumn("Перерыв после") { exit in
+            TableColumn("Break After") { exit in
                 BreakAfterCell(exit: binding(exit), defaultBreak: plan.defaultBreak,
                                isLast: exit.id == plan.exits.last?.id,
                                trainerValue: link.trainerBreak(after: exit)) { point(.breakAfter(exit.id), $0) }
             }
             .width(min: 104, ideal: 130, max: 170)
             // ⚡ 🏃 💬 in the cells say which is which.
-            TableColumn("Условия") { exit in
+            TableColumn("Conditions") { exit in
                 ExitSummaryText(plan: plan, exit: exit, size: 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -487,12 +487,12 @@ private struct PlanTablePane: View {
         .onDeleteCommand(perform: deleteSelected)
         .contextMenu(forSelectionType: PlannedExit.ID.self) { ids in
             if !ids.isEmpty {
-                Button("Дублировать") { duplicate(ids) }
-                Button("Добавить выход ниже") { add(after: ids) }
+                Button("Duplicate") { duplicate(ids) }
+                Button("Add Exit Below") { add(after: ids) }
                 Divider()
-                Button("Удалить", role: .destructive) { delete(ids) }
+                Button("Delete", role: .destructive) { delete(ids) }
             } else {
-                Button("Добавить выход") { add(after: []) }
+                Button("Add Exit") { add(after: []) }
             }
         }
     }
@@ -501,18 +501,18 @@ private struct PlanTablePane: View {
     private var tableFooter: some View {
         let hasSelection = !selection.isEmpty
         return HStack(spacing: 2) {
-            footerButton("plus", String(localized: "Добавить выход · ⌘N")) { add(after: selection) }
+            footerButton("plus", String(localized: "Add exit · ⌘N")) { add(after: selection) }
                 .keyboardShortcut("n", modifiers: .command)
-            footerButton("minus", String(localized: "Удалить выбранные · ⌫")) { deleteSelected() }
+            footerButton("minus", String(localized: "Delete selected · ⌫")) { deleteSelected() }
                 .disabled(!hasSelection || plan.exits.count <= selection.count)
             Divider().frame(height: 14).padding(.horizontal, 6)
-            footerButton("plus.square.on.square", String(localized: "Дублировать · ⌘D")) { duplicate(selection) }
+            footerButton("plus.square.on.square", String(localized: "Duplicate · ⌘D")) { duplicate(selection) }
                 .keyboardShortcut("d", modifiers: .command)
                 .disabled(!hasSelection)
-            footerButton("arrow.up", String(localized: "Выше · ⌥⌘↑")) { shiftSelection(by: -1) }
+            footerButton("arrow.up", String(localized: "Move up · ⌥⌘↑")) { shiftSelection(by: -1) }
                 .keyboardShortcut(.upArrow, modifiers: [.command, .option])
                 .disabled(selectedIndices.first.map { $0 == 0 } ?? true)
-            footerButton("arrow.down", String(localized: "Ниже · ⌥⌘↓")) { shiftSelection(by: 1) }
+            footerButton("arrow.down", String(localized: "Move down · ⌥⌘↓")) { shiftSelection(by: 1) }
                 .keyboardShortcut(.downArrow, modifiers: [.command, .option])
                 .disabled(selectedIndices.last.map { $0 == plan.exits.count - 1 } ?? true)
             Spacer(minLength: 0)
@@ -540,7 +540,7 @@ private struct PlanTablePane: View {
             Text(verbatim: plan.commonEarlyEntries.map(Self.words).joined(separator: " · "))
                 .lineLimit(1)
             Spacer(minLength: 8)
-            Picker("К каким выходам", selection: Binding(
+            Picker("Which exits", selection: Binding(
                 get: { plan.commonEntriesScope.map { $0 == .all ? 0 : 1 } ?? 2 },
                 set: { choice in
                     withAnimation(.snappy) {
@@ -548,14 +548,14 @@ private struct PlanTablePane: View {
                         if choice == 1 { plan.applyCommonEarlyEntries(to: .long) }
                     }
                 })) {
-                Text("Ко всем").tag(0)
-                Text("К длинным ≥ 1 мин").tag(1)
-                Text("Выбрать").tag(2)
+                Text("All exits").tag(0)
+                Text("Long ones ≥ 1 min").tag(1)
+                Text("Choose").tag(2)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
             .fixedSize()
-            .help("«Выбрать»: отметьте «Общие условия» у нужных выходов внизу")
+            .help("“Pick”: tick “Common conditions” on the exits you want below")
         }
         .font(.system(size: 12))
         .padding(.horizontal, 10)
@@ -571,7 +571,7 @@ private struct PlanTablePane: View {
     static func words(_ entry: EarlyEntry) -> String {
         let name = entry.event.prefix(1).lowercased() + entry.event.dropFirst()
         let time = entry.delay.flatMap { $0 > 0 ? DurationText.clock($0) : nil } ?? entry.unreadDelay
-            ?? String(localized: "сразу")
+            ?? String(localized: "right away")
         return "\(name) \(time)"
     }
 
@@ -593,7 +593,7 @@ private struct PlanTablePane: View {
                                 tint: MacPalette.red, help: PlanParser.stripDecorations(note), pointer: .quietRule)
             }
             if PlanParser.isFalseStartRule(note.lowercased()) {
-                return RuleChip(title: String(localized: "фальстарт"), symbol: "bookmark.fill", tint: MacPlanTint.rule(scheme),
+                return RuleChip(title: String(localized: "false start"), symbol: "bookmark.fill", tint: MacPlanTint.rule(scheme),
                                 help: note)
             }
             return nil
@@ -607,7 +607,7 @@ private struct PlanTablePane: View {
         let entries = plan.earlyEntries(of: exit)
         if !entries.isEmpty { parts.append("🏃 " + entries.map(\.summary).joined(separator: " · ")) }
         if let note = exit.noteText { parts.append("📝 " + note) }
-        return parts.isEmpty ? String(localized: "Выберите строку, чтобы добавить триггеры, условия и заметку") : parts.joined(separator: "\n")
+        return parts.isEmpty ? String(localized: "Select the row to add triggers, conditions and a note") : parts.joined(separator: "\n")
     }
 
     // MARK: Editing
@@ -702,7 +702,7 @@ private struct PlanDateField: View {
         .fixedSize()
         .popover(isPresented: $picking, arrowEdge: .bottom) {
             // A day picked is the answer: the calendar closes (the arrows between months keep it open).
-            DatePicker("Дата", selection: Binding(get: { date ?? Date() }, set: { date = $0; picking = false }),
+            DatePicker("Date", selection: Binding(get: { date ?? Date() }, set: { date = $0; picking = false }),
                        displayedComponents: .date)
                 .labelsHidden()
                 .datePickerStyle(.graphical)
@@ -724,9 +724,9 @@ private struct ExitDurationCell: View {
     private var edited: Bool { trainerValue.map { $0 != exit.duration } ?? false }
 
     private var help: String {
-        let value = String(localized: "Выход \(exit.number) · \(exit.durationDescription)")
+        let value = String(localized: "Exit \(exit.number) · \(exit.durationDescription)")
         guard edited, let trainerValue else { return value }
-        return String(localized: "\(value) · у тренера \(DurationText.short(trainerValue))")
+        return String(localized: "\(value) · trainer wrote \(DurationText.short(trainerValue))")
     }
 
     var body: some View {
@@ -762,7 +762,7 @@ private struct ExitDurationCell: View {
         .help(help)
         .popover(isPresented: $editing, arrowEdge: .bottom) {
             MacDurationEditor(value: Binding(get: { exit.duration }, set: { exit.duration = max(0, $0 ?? exit.duration) }),
-                              title: String(localized: "Выход \(exit.number) — за дверью"), presets: MacPlanFormat.exitPresets,
+                              title: String(localized: "Exit \(exit.number) — Outside"), presets: MacPlanFormat.exitPresets,
                               tint: MacPalette.pink) { editing = false }
         }
     }
@@ -785,10 +785,10 @@ private struct BreakAfterCell: View {
 
     private var help: String {
         let base = exit.breakAfter == nil
-            ? String(localized: "Перерыв после выхода \(exit.number) — как у всех. Выберите, чтобы задать свой")
-            : String(localized: "Свой перерыв после выхода \(exit.number)")
+            ? String(localized: "Break after exit \(exit.number) — default. Choose a value to give it its own break")
+            : String(localized: "Own break after exit \(exit.number)")
         guard edited, let trainerValue else { return base }
-        return String(localized: "\(base) · у тренера \(DurationText.short(trainerValue))")
+        return String(localized: "\(base) · trainer wrote \(DurationText.short(trainerValue))")
     }
 
     var body: some View {
@@ -797,7 +797,7 @@ private struct BreakAfterCell: View {
             Color.clear.frame(width: 1, height: 1)
         } else {
             Menu {
-                Toggle("Как у всех — \(DurationText.short(defaultBreak))", isOn: Binding(
+                Toggle("Default — \(DurationText.short(defaultBreak))", isOn: Binding(
                     get: { exit.breakAfter == nil }, set: { if $0 { exit.breakAfter = nil } }))
                 Divider()
                 ForEach(MacPlanFormat.breakPresets.filter { $0 != defaultBreak }, id: \.self) { preset in
@@ -805,7 +805,7 @@ private struct BreakAfterCell: View {
                         get: { exit.breakAfter == preset }, set: { if $0 { exit.breakAfter = preset } }))
                 }
                 Divider()
-                Button("Другой…") { custom = true }
+                Button("Custom…") { custom = true }
             } label: {
                 if let own = exit.breakAfter {
                     // Blue says it is the exit's own; white, that the owner set it, not the trainer.
@@ -827,7 +827,7 @@ private struct BreakAfterCell: View {
             .popover(isPresented: $custom, arrowEdge: .bottom) {
                 MacDurationEditor(value: Binding(get: { exit.breakAfter },
                                                  set: { exit.breakAfter = $0 == defaultBreak ? nil : $0 }),
-                                  title: String(localized: "Перерыв после выхода \(exit.number)"), presets: MacPlanFormat.breakPresets,
+                                  title: String(localized: "Break After Exit \(exit.number)"), presets: MacPlanFormat.breakPresets,
                                   defaultValue: defaultBreak, tint: MacPalette.blue) { custom = false }
             }
         }

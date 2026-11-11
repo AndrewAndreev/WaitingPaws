@@ -292,7 +292,7 @@ export class SyncHost {
         return
       }
       this.log(`[sync] cannot listen: ${error.message}`)
-      this.listenError = tr(`Не удалось открыть порт для iPhone: ${error.message}`, `Can't open a port for the iPhone: ${error.message}`)
+      this.listenError = tr(`Can't open a port for the iPhone: ${error.message}`, `Не удалось открыть порт для iPhone: ${error.message}`)
       this.deps.onChange()
       this.retryTimer = setTimeout(() => {
         this.retryTimer = null
@@ -321,7 +321,7 @@ export class SyncHost {
       txt: SyncHostInfo.txt(this.hostInfo(this.currentState())),
       log: this.log,
       onError: (message) => {
-        const text = message === null ? null : tr(`Bonjour не работает: ${message}`, `Bonjour is not working: ${message}`)
+        const text = message === null ? null : tr(`Bonjour is not working: ${message}`, `Bonjour не работает: ${message}`)
         if (text === this.bonjourError) return
         this.bonjourError = text
         this.deps.onChange()
@@ -343,7 +343,7 @@ export class SyncHost {
       this.log(`[sync] ${request.hello.deviceName} was declined`)
       this.clients.get(request.id)?.channel.send({
         kind: 'rejected',
-        reason: tr('На компьютере подключение отклонили', 'The connection was declined on the computer'),
+        reason: tr('The connection was declined on the computer', 'На компьютере подключение отклонили'),
       })
       setTimeout(() => this.drop(request.id), 300)
     }
@@ -436,7 +436,7 @@ export class SyncHost {
         if (hello.protocolVersion !== SyncProtocol.version) {
           client.channel.send({
             kind: 'rejected',
-            reason: tr('Обновите Waiting Paws на iPhone и на компьютере', 'Update Waiting Paws on the iPhone and on the computer'),
+            reason: tr('Update Waiting Paws on the iPhone and on the computer', 'Обновите Waiting Paws на iPhone и на компьютере'),
           })
           return
         }
@@ -500,7 +500,7 @@ export class SyncHost {
     if (this.requests.length >= maxPairingRequests) {
       client.channel.send({
         kind: 'rejected',
-        reason: tr('Сначала ответьте на другие запросы на компьютере', 'Answer the other requests on the computer first'),
+        reason: tr('Answer the other requests on the computer first', 'Сначала ответьте на другие запросы на компьютере'),
       })
       setTimeout(() => this.drop(client.id), 300)
       return

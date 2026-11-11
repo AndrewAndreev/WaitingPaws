@@ -79,12 +79,12 @@ public enum XiaomiRegion: String, CaseIterable, Codable, Identifiable {
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .cn: return tr("Китай (по умолчанию)", "China (default)")
-        case .ru: return tr("Россия", "Russia")
-        case .de: return tr("Европа (de)", "Europe (de)")
-        case .us: return tr("США", "United States")
-        case .sg: return tr("Сингапур", "Singapore")
-        case .i2: return tr("Индия", "India")
+        case .cn: return tr("China (default)", ru: "Китай (по умолчанию)")
+        case .ru: return tr("Russia", ru: "Россия")
+        case .de: return tr("Europe (de)", ru: "Европа (de)")
+        case .us: return tr("United States", ru: "США")
+        case .sg: return tr("Singapore", ru: "Сингапур")
+        case .i2: return tr("India", ru: "Индия")
         }
     }
 
@@ -110,12 +110,12 @@ public enum Go2RTCError: LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidURL: return tr("Некорректный адрес сервера", "Invalid server address")
+        case .invalidURL: return tr("Invalid server address", ru: "Некорректный адрес сервера")
         case .http(let status, let message):
             let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
-            return text.isEmpty ? tr("Сервер ответил HTTP \(status)", "The server answered HTTP \(status)") : "HTTP \(status): \(text)"
-        case .decoding(let what): return tr("Не удалось разобрать ответ сервера (\(what))", "Couldn't read the server's response (\(what))")
-        case .noSources: return tr("Камеры не найдены", "No cameras found")
+            return text.isEmpty ? tr("The server answered HTTP \(status)", ru: "Сервер ответил HTTP \(status)") : "HTTP \(status): \(text)"
+        case .decoding(let what): return tr("Couldn't read the server's response (\(what))", ru: "Не удалось разобрать ответ сервера (\(what))")
+        case .noSources: return tr("No cameras found", ru: "Камеры не найдены")
         }
     }
 }
@@ -468,8 +468,8 @@ public final class Go2RTCClient: Sendable {
             if phone != nil || email != nil {
                 return .verify(phone: phone?.isEmpty == false ? phone : nil, email: email?.isEmpty == false ? email : nil)
             }
-            throw Go2RTCError.http(status: status, message: tr("Xiaomi отклонил вход: проверьте логин и пароль",
-                                                               "Xiaomi rejected the sign-in: check the login and password"))
+            throw Go2RTCError.http(status: status, message: tr("Xiaomi rejected the sign-in: check the login and password",
+                                                               ru: "Xiaomi отклонил вход: проверьте логин и пароль"))
         default:
             throw Go2RTCError.http(status: status, message: String(decoding: data, as: UTF8.self))
         }

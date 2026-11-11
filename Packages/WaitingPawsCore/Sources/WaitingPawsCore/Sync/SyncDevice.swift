@@ -11,7 +11,7 @@ public enum SyncPlatform: String, CaseIterable, Sendable {
         case .mac: return "Mac"
         case .iphone: return "iPhone"
         case .ipad: return "iPad"
-        case .windows: return tr("ПК", "PC")
+        case .windows: return tr("PC", ru: "ПК")
         }
     }
 
@@ -50,7 +50,7 @@ public struct SyncDevice: Equatable, Hashable, Identifiable, Sendable {
     }
 
     /// "Mac", "ПК"; "устройство" for an unknown kind.
-    public var kindTitle: String { kind?.title ?? tr("устройство", "device") }
+    public var kindTitle: String { kind?.title ?? tr("device", ru: "устройство") }
 
     /// The model, or the kind when the model is unknown.
     public var modelTitle: String { model.isEmpty ? kindTitle : model }

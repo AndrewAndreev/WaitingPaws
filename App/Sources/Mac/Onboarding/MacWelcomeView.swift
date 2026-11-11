@@ -108,15 +108,15 @@ struct MacWelcomeView: View {
 
             VStack(spacing: 6) {
                 #if !WP_NO_XIAOMI
-                WelcomeActionRow(symbol: "person.badge.key", title: String(localized: "Войти в Xiaomi…"),
-                                 subtitle: String(localized: "Камеры из приложения Mi Home")) { sheet = .signIn }
+                WelcomeActionRow(symbol: "person.badge.key", title: String(localized: "Sign In to Xiaomi…"),
+                                 subtitle: String(localized: "Cameras from the Mi Home app")) { sheet = .signIn }
                 #endif
-                WelcomeActionRow(symbol: "antenna.radiowaves.left.and.right", title: String(localized: "Выбрать поток go2rtc…"),
-                                 subtitle: String(localized: "RTSP, HTTP и другие источники")) { sheet = .streams }
-                WelcomeActionRow(symbol: "server.rack", title: String(localized: "Свой сервер go2rtc…"),
+                WelcomeActionRow(symbol: "antenna.radiowaves.left.and.right", title: String(localized: "Choose go2rtc Stream…"),
+                                 subtitle: String(localized: "RTSP, HTTP and other sources")) { sheet = .streams }
+                WelcomeActionRow(symbol: "server.rack", title: String(localized: "Own go2rtc Server…"),
                                  subtitle: serverSubtitle) { sheet = .server }
-                WelcomeActionRow(symbol: "timer", title: String(localized: "Продолжить без камеры"),
-                                 subtitle: String(localized: "Таймер, расписание и лог")) {
+                WelcomeActionRow(symbol: "timer", title: String(localized: "Continue Without Camera"),
+                                 subtitle: String(localized: "Timer, schedule and log")) {
                     model.settings.withoutCamera = true
                     finish()
                 }
@@ -125,7 +125,7 @@ struct MacWelcomeView: View {
             .padding(.top, 26)
 
             Spacer(minLength: 16)
-            Label("Камера и Mac должны быть в одной сети Wi‑Fi", systemImage: "wifi")
+            Label("The camera and the Mac must be on the same Wi‑Fi network", systemImage: "wifi")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
                 .padding(.bottom, 16)
@@ -140,16 +140,16 @@ struct MacWelcomeView: View {
 
     private var serverSubtitle: String {
         if model.settings.connectionMode == .external, let server = model.settings.server {
-            return String(localized: "Сейчас: \(SetupServerState.hostText(server.baseURL))")
+            return String(localized: "Current: \(SetupServerState.hostText(server.baseURL))")
         }
-        return String(localized: "Например, http://192.168.1.10:1984")
+        return String(localized: "For example, http://192.168.1.10:1984")
     }
 
     // MARK: Right: what go2rtc already has
 
     private var found: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(catalog.accounts.isEmpty ? "Уже есть в go2rtc" : "Уже авторизованы на сервере")
+            Text(catalog.accounts.isEmpty ? "Already in go2rtc" : "Already Signed In on the Server")
                 .font(.system(size: 13, weight: .semibold))
                 .padding(.horizontal, 16)
                 .padding(.top, 40)
@@ -157,22 +157,22 @@ struct MacWelcomeView: View {
             Group {
                 switch catalog.phase {
                 case .idle, .loading:
-                    ProgressView("Ищем камеры…")
+                    ProgressView("Looking for cameras…")
                         .controlSize(.small)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .waiting:
                     switch SetupServerState.of(model) {
                     case .failed, .unavailable:
-                        empty(title: String(localized: "Камер пока нет"), symbol: "video.slash", text: waitingText)
+                        empty(title: String(localized: "No Cameras Yet"), symbol: "video.slash", text: waitingText)
                     case .external:
-                        empty(title: String(localized: "Сервер не указан"), symbol: "server.rack",
-                              text: String(localized: "Укажите адрес своего go2rtc: «Свой сервер go2rtc…» слева."))
+                        empty(title: String(localized: "No Server Set"), symbol: "server.rack",
+                              text: String(localized: "Enter the address of your go2rtc: “Own go2rtc Server…” on the left."))
                     default:
                         // go2rtc is on its way: the sign-in sheet waits for it.
                         signInEmpty
                     }
                 case .failed(let message):
-                    empty(title: String(localized: "Нет связи с go2rtc"), symbol: "exclamationmark.triangle", text: message)
+                    empty(title: String(localized: "No Connection to go2rtc"), symbol: "exclamationmark.triangle", text: message)
                 case .ready:
                     if catalog.isEmpty {
                         signInEmpty
@@ -188,9 +188,9 @@ struct MacWelcomeView: View {
 
     private var waitingText: String {
         switch SetupServerState.of(model) {
-        case .failed: return String(localized: "go2rtc не запустился. Нажмите «Попробовать снова» слева.")
-        case .unavailable: return String(localized: "В этой сборке нет встроенного go2rtc. Укажите свой сервер.")
-        default: return String(localized: "Список появится, когда go2rtc запустится.")
+        case .failed: return String(localized: "go2rtc didn’t start. Click “Try Again” on the left.")
+        case .unavailable: return String(localized: "This build has no built-in go2rtc. Enter your own server.")
+        default: return String(localized: "The list will appear once go2rtc starts.")
         }
     }
 
@@ -220,7 +220,7 @@ struct MacWelcomeView: View {
                 .font(.system(size: 34, weight: .light))
                 .foregroundStyle(.tertiary)
                 .padding(.bottom, 4)
-            Text("Камер пока нет")
+            Text("No Cameras Yet")
                 .font(.headline)
             #if WP_NO_XIAOMI
             // A build without Xiaomi: the stream is the way.
@@ -229,21 +229,21 @@ struct MacWelcomeView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Добавить поток RTSP") { sheet = .streams }
+            Button("Add an RTSP Stream") { sheet = .streams }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .padding(.top, 10)
             #else
-            Text("Войдите в аккаунт Xiaomi — камеры из приложения Mi Home появятся здесь.")
+            Text("Sign in to your Xiaomi account — cameras from the Mi Home app will appear here.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Войти в Xiaomi…") { sheet = .signIn }
+            Button("Sign In to Xiaomi…") { sheet = .signIn }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .padding(.top, 10)
-            Button("Или добавьте поток RTSP…") { sheet = .streams }
+            Button("Or Add an RTSP Stream…") { sheet = .streams }
                 .buttonStyle(.borderless)
                 .font(.callout)
                 .padding(.top, 2)
@@ -269,7 +269,7 @@ struct MacWelcomeView: View {
             ForEach(catalog.accounts) { account in
                 Section {
                     if let error = account.error {
-                        Label("Камеры не загрузились: \(error)", systemImage: "exclamationmark.triangle.fill")
+                        Label("Couldn’t load cameras: \(error)", systemImage: "exclamationmark.triangle.fill")
                             .font(.system(size: 11))
                             .foregroundStyle(MacPalette.orange)
                             .lineLimit(3)
@@ -282,20 +282,20 @@ struct MacWelcomeView: View {
                     }
                 } header: {
                     WelcomeSectionHeader(title: "Mi Home · ID \(account.id)",
-                                         detail: pluralText(account.cameras.count, ru: ("камера", "камеры", "камер"),
-                                                            en: ("camera", "cameras")))
+                                         detail: pluralText(account.cameras.count, en: ("camera", "cameras"),
+                                                            ru: ("камера", "камеры", "камер")))
                 }
             }
             if !catalog.otherStreams.isEmpty {
                 Section {
                     ForEach(catalog.otherStreams) { stream in
-                        let detail = stream.sources.first.map(SettingsText.redacted) ?? String(localized: "Источник не указан")
+                        let detail = stream.sources.first.map(SettingsText.redacted) ?? String(localized: "No source specified")
                         WelcomeSourceRow(title: stream.name, detail: detail, tooltip: detail,
                                          source: .stream(stream.name), isCamera: false)
                             .tag(SetupCameraCatalog.streamID(stream.name))
                     }
                 } header: {
-                    WelcomeSectionHeader(title: String(localized: "Потоки go2rtc"), detail: nil)
+                    WelcomeSectionHeader(title: String(localized: "go2rtc Streams"), detail: nil)
                 }
             }
         }
@@ -303,7 +303,7 @@ struct MacWelcomeView: View {
         .scrollContentBackground(.hidden)
         .alternatingRowBackgrounds(.disabled)
         .contextMenu(forSelectionType: String.self) { ids in
-            Button("Открыть") { open(ids.first) }
+            Button("Open") { open(ids.first) }
         } primaryAction: { ids in
             open(ids.first)
         }
@@ -317,11 +317,11 @@ struct MacWelcomeView: View {
                 if catalog.refreshing {
                     ProgressView().controlSize(.small).frame(width: 16, height: 16)
                 } else {
-                    Label("Обновить", systemImage: "arrow.clockwise").labelStyle(.iconOnly)
+                    Label("Refresh", systemImage: "arrow.clockwise").labelStyle(.iconOnly)
                 }
             }
             .buttonStyle(.borderless)
-            .help("Обновить список")
+            .help("Refresh the list")
             .disabled(!model.setupServerReadyOrDemo || catalog.refreshing)
             if let openError {
                 Text(openError)
@@ -331,10 +331,10 @@ struct MacWelcomeView: View {
                     .help(openError)
             } else if opening {
                 ProgressView().controlSize(.small)
-                Text("Добавляем камеру…").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text("Adding the camera…").font(.system(size: 11)).foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Открыть") { open(selection) }
+            Button("Open") { open(selection) }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(catalog.choice(for: selection) == nil || opening)
@@ -373,7 +373,7 @@ struct MacWelcomeView: View {
                 try await catalog.choose(choice, model: model)
                 finish()
             } catch {
-                openError = String(localized: "Не удалось добавить камеру: \(error.localizedDescription)")
+                openError = String(localized: "Couldn’t add the camera: \(error.localizedDescription)")
             }
         }
     }
@@ -496,8 +496,8 @@ private struct WelcomeSourceRow: View {
             }
             Spacer(minLength: 4)
             switch still {
-            case .loaded: StatusDot(color: MacPalette.green, size: 6).help("Камера отвечает")
-            case .failed: StatusDot(color: .secondary.opacity(0.5), size: 6).help("Нет картинки с камеры")
+            case .loaded: StatusDot(color: MacPalette.green, size: 6).help("The camera is responding")
+            case .failed: StatusDot(color: .secondary.opacity(0.5), size: 6).help("No picture from the camera")
             case .loading: ProgressView().controlSize(.mini)
             case nil: EmptyView()
             }
@@ -508,7 +508,7 @@ private struct WelcomeSourceRow: View {
     }
 
     private func detailText(_ still: SetupStillStore.State?) -> String {
-        if case .failed = still, isCamera { return String(localized: "Не в сети") }
+        if case .failed = still, isCamera { return String(localized: "Offline") }
         if case .loaded(_, let size) = still, isCamera { return "\(SetupText.pixels(size)) · \(detail)" }
         return detail
     }

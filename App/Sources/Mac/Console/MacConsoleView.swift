@@ -261,25 +261,25 @@ struct MacConsoleView: View {
                               onClose: { model.lastClip = nil })
                 .environment(model)
         }
-        .alert("Завершить тренировку?", isPresented: $ui.confirmFinish) {
-            Button("Завершить и сохранить") { model.finishSession() }
-            Button("Отменить без сохранения", role: .destructive) { model.abandonSession() }
-            Button("Продолжить", role: .cancel) {}
+        .alert("Finish Training?", isPresented: $ui.confirmFinish) {
+            Button("Finish and Save") { model.finishSession() }
+            Button("Cancel Without Saving", role: .destructive) { model.abandonSession() }
+            Button("Continue", role: .cancel) {}
         } message: {
-            Text("Запись остановится, лог и видео сохранятся в истории.")
+            Text("Recording will stop; the log and video will be saved to History.")
         }
         // Return keeps the recording going: a stop needs its own click.
-        .alert("Остановить запись?", isPresented: $ui.confirmStopRecording) {
-            Button("Продолжить запись", role: .cancel) {}
+        .alert("Stop recording?", isPresented: $ui.confirmStopRecording) {
+            Button("Keep Recording", role: .cancel) {}
                 .keyboardShortcut(.defaultAction)
-            Button("Остановить запись", role: .destructive) { model.stopRecording(deleteFile: false) }
+            Button("Stop Recording", role: .destructive) { model.stopRecording(deleteFile: false) }
         } message: {
-            Text(model.session != nil ? "Тренировка продолжится без видео. То, что уже записано, сохранится." : "Видео сохранится в истории.")
+            Text(model.session != nil ? "The training goes on without video. What has been recorded so far will be kept." : "The video will be saved to History.")
         }
         // Stopped elsewhere (from the iPhone, by «Завершить»): nothing left to stop.
         .onChange(of: model.isRecordingNow) { _, recording in if !recording { ui.confirmStopRecording = false } }
-        .alert("Ошибка", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
-            Button("Ок", role: .cancel) {}
+        .alert("Error", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
+            Button("OK", role: .cancel) {}
         } message: {
             Text(model.errorMessage ?? "")
         }
@@ -343,14 +343,14 @@ struct MacConsoleView: View {
     private var subtitle: String {
         if let session = model.session {
             let trainers = session.plan.trainers.isEmpty ? "" : "\(session.plan.trainers) · "
-            return trainers + String(localized: "с \(MacFormat.time.string(from: session.startedAt))")
+            return trainers + String(localized: "since \(MacFormat.time.string(from: session.startedAt))")
         }
         if let plan = model.pendingPlan {
             // The trainers alone: that it hasn't started, the panel's «Начать тренировку» says.
             return plan.trainers
         }
-        if model.isRecordingClip { return String(localized: "запись без тренировки") }
-        return ui.cameraOnly ? String(localized: "только камера") : String(localized: "новая тренировка")
+        if model.isRecordingClip { return String(localized: "recording without training") }
+        return ui.cameraOnly ? String(localized: "camera only") : String(localized: "new training")
     }
 
     // MARK: - Header
@@ -366,17 +366,17 @@ struct MacConsoleView: View {
             return SessionIdentity(avatar: .training, title: title, subtitle: subtitle)
         }
         if let plan = model.pendingPlan {
-            let notStarted = String(localized: "не начата")
+            let notStarted = String(localized: "not started")
             return SessionIdentity(avatar: .plan, title: plan.title,
                                    subtitle: plan.trainers.isEmpty ? notStarted : "\(plan.trainers) · \(notStarted)")
         }
         let camera = model.shownCameraShortName
         if model.isRecordingClip {
-            return SessionIdentity(avatar: .recording, title: camera, subtitle: String(localized: "запись"),
+            return SessionIdentity(avatar: .recording, title: camera, subtitle: String(localized: "recording"),
                                    recordingSince: model.recordingStartedAt ?? .now)
         }
         let online = model.cameraOnScreenIsOnline
-        var line = online ? String(localized: "на связи") : String(localized: "не на связи")
+        var line = online ? String(localized: "online") : String(localized: "offline")
         if online, let quality = model.shownXiaomiQuality, quality != .auto { line += " · \(quality.title)" }
         return SessionIdentity(avatar: .camera(online: online), title: camera, subtitle: line)
     }

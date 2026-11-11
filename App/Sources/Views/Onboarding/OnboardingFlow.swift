@@ -48,7 +48,7 @@ struct OnboardingFlow: View {
                     if let onClose {
                         ToolbarItem(placement: .cancellationAction) {
                             Button(action: onClose) { Image(systemName: "xmark") }
-                                .accessibilityLabel("Закрыть")
+                                .accessibilityLabel("Close")
                         }
                     }
                 }
@@ -190,9 +190,9 @@ struct ServerSetupView: View {
                         .foregroundStyle(.white)
                         .frame(width: 64, height: 64)
                         .background(Color.gray.gradient, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                    Text("Свой сервер go2rtc")
+                    Text("Own go2rtc Server")
                         .font(.system(size: 26, weight: .bold))
-                    Text("Укажите адрес сервера go2rtc, через который идёт видео.")
+                    Text("Enter the address of the go2rtc server that streams the video.")
                         .font(.system(size: 16))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -201,25 +201,25 @@ struct ServerSetupView: View {
                 .listRowBackground(Color.clear)
             }
             Section {
-                SignInFieldRow(label: String(localized: "Адрес")) {
-                    TextField("Адрес", text: $urlText, prompt: Text(verbatim: "http://192.168.1.10:1984"))
+                SignInFieldRow(label: String(localized: "Address")) {
+                    TextField("Address", text: $urlText, prompt: Text(verbatim: "http://192.168.1.10:1984"))
                         .plainInput()
                         #if os(iOS)
                         .keyboardType(.URL)
                         #endif
                 }
-                SignInFieldRow(label: String(localized: "Логин")) {
-                    TextField("Логин", text: $username, prompt: Text("Если нужен"))
+                SignInFieldRow(label: String(localized: "Username")) {
+                    TextField("Username", text: $username, prompt: Text("If needed"))
                         .plainInput()
                 }
-                SignInFieldRow(label: String(localized: "Пароль")) {
-                    SecureField("Пароль", text: $password, prompt: Text("Если нужен"))
+                SignInFieldRow(label: String(localized: "Password")) {
+                    SecureField("Password", text: $password, prompt: Text("If needed"))
                 }
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
                     statusView
                     #if !WP_NO_XIAOMI // any go2rtc plays RTSP
-                    Text("go2rtc должен быть собран с поддержкой xiaomi (версия 1.9.11 и новее). Если камера уже добавлена в go2rtc, вход в Xiaomi не нужен.")
+                    Text("go2rtc must be built with the xiaomi module (version 1.9.11 or later). If the camera is already in go2rtc, you don’t need to sign in to Xiaomi.")
                     #endif
                 }
                 .padding(.top, 4)
@@ -229,7 +229,7 @@ struct ServerSetupView: View {
                     Task { await check() }
                 } label: {
                     HStack {
-                        Label(status == .checking ? "Проверяем…" : "Проверить подключение",
+                        Label(status == .checking ? "Checking…" : "Check Connection",
                               systemImage: "antenna.radiowaves.left.and.right")
                         Spacer()
                         if status == .checking { ProgressView() }
@@ -239,7 +239,7 @@ struct ServerSetupView: View {
             }
             if EmbeddedGo2RTC.isAvailable, model.settings.connectionMode == .external {
                 Section {
-                    Button("Вернуться к встроенному go2rtc") {
+                    Button("Back to Built-in go2rtc") {
                         model.settings.connectionMode = .embedded
                         model.startEmbeddedIfNeeded()
                         dismiss()
@@ -250,7 +250,7 @@ struct ServerSetupView: View {
         .scrollContentBackground(.hidden)
         .background(NightBackground())
         .safeAreaInset(edge: .bottom) {
-            WideGlassButton(title: String(localized: "Готово")) {
+            WideGlassButton(title: String(localized: "Done")) {
                 save()
                 onDone()
             }
@@ -277,7 +277,7 @@ struct ServerSetupView: View {
         case .idle, .checking:
             EmptyView()
         case .ok(let version):
-            Label(version.isEmpty ? "Сервер отвечает" : "go2rtc \(version)", systemImage: "checkmark.circle.fill")
+            Label(version.isEmpty ? "Server is responding" : "go2rtc \(version)", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(Color(red: 0.36, green: 0.85, blue: 0.56))
         case .failed(let message):
             Label(message, systemImage: "xmark.octagon.fill")

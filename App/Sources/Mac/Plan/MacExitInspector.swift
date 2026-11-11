@@ -47,8 +47,8 @@ struct MacExitInspector: View {
 
     private func triggers(_ index: Int) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            title(String(localized: "Триггеры"), symbol: "bolt.fill", tint: MacPalette.orange)
-                .help(String(localized: "Что взять или сделать, выходя: куртка, обувь, звякнуть ключами"))
+            title(String(localized: "Triggers"), symbol: "bolt.fill", tint: MacPalette.orange)
+                .help(String(localized: "What to take or do on the way out: jacket, shoes, jingle the keys"))
             FlowLayout(spacing: 5) {
                 ForEach(Array(plan.exits[index].triggers.enumerated()), id: \.offset) { offset, trigger in
                     HStack(spacing: 4) {
@@ -59,7 +59,7 @@ struct MacExitInspector: View {
                             Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
                         }
                         .buttonStyle(.borderless)
-                        .help("Убрать «\(trigger)»")
+                        .help("Remove “\(trigger)”")
                     }
                     .padding(.leading, 8)
                     .padding(.trailing, 6)
@@ -67,7 +67,7 @@ struct MacExitInspector: View {
                     .background(Theme.warning.opacity(0.12), in: Capsule())
                 }
             }
-            TextField("Добавить…", text: $newTrigger)
+            TextField("Add…", text: $newTrigger)
                 .textFieldStyle(.roundedBorder)
                 .focused($triggerFocused)
                 .onSubmit {
@@ -87,8 +87,8 @@ struct MacExitInspector: View {
         let common = plan.usesCommonEarlyEntries(exit)
         let entries = plan.editableEarlyEntries(ofExitAt: index)
         return VStack(alignment: .leading, spacing: 6) {
-            title(String(localized: "Ранний вход"), symbol: "figure.run", tint: MacPalette.blue,
-                  trailing: common ? String(localized: "общие") : nil)
+            title(String(localized: "Coming back early"), symbol: "figure.run", tint: MacPalette.blue,
+                  trailing: common ? String(localized: "common|plural") : nil)
             ForEach(entries.indices, id: \.self) { offset in
                 MacEntryRow(entry: Binding(
                     get: {
@@ -98,15 +98,15 @@ struct MacExitInspector: View {
                     set: { plan.setEarlyEntry($0, at: offset, ofExitAt: index) }),
                             onRemove: { plan.removeEarlyEntries(at: [offset], ofExitAt: index) })
             }
-            Button("Своё условие", systemImage: "plus") { plan.addEarlyEntry(toExitAt: index) }
+            Button("Own condition", systemImage: "plus") { plan.addEarlyEntry(toExitAt: index) }
                 .buttonStyle(.borderless)
             if !plan.commonEarlyEntries.isEmpty {
                 if exit.earlyEntries.isEmpty {
-                    Toggle("Общие условия", isOn: $plan.exits[index].usesCommonEarlyEntries)
+                    Toggle("Common conditions", isOn: $plan.exits[index].usesCommonEarlyEntries)
                         .toggleStyle(.checkbox)
-                        .help("Условия, которые тренер написал для всей тренировки")
+                        .help("Conditions the trainer wrote for the whole training")
                 } else {
-                    Button("Вернуть общие") { plan.restoreCommonEarlyEntries(ofExitAt: index) }
+                    Button("Use common") { plan.restoreCommonEarlyEntries(ofExitAt: index) }
                         .buttonStyle(.borderless)
                 }
             }
@@ -117,8 +117,8 @@ struct MacExitInspector: View {
 
     private func note(_ index: Int) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            title(String(localized: "Заметка"), symbol: "text.bubble", tint: .secondary)
-            TextField(String(localized: "Заметка"), text: Binding(
+            title(String(localized: "Note"), symbol: "text.bubble", tint: .secondary)
+            TextField(String(localized: "Note"), text: Binding(
                 get: { plan.exits[index].note ?? "" },
                 set: { plan.exits[index].note = $0.isEmpty ? nil : $0 }), prompt: Text(verbatim: ""), axis: .vertical)
                 .textFieldStyle(.roundedBorder)
@@ -138,10 +138,10 @@ private struct MacEntryRow: View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
                 Menu {
-                    Picker("Цвет", selection: $entry.tone) {
-                        Text("🟡 Жёлтый").tag(EarlyEntry.Tone.yellow)
-                        Text("🟢 Зелёный").tag(EarlyEntry.Tone.green)
-                        Text("Без цвета").tag(EarlyEntry.Tone.plain)
+                    Picker("Color", selection: $entry.tone) {
+                        Text("🟡 Yellow").tag(EarlyEntry.Tone.yellow)
+                        Text("🟢 Green").tag(EarlyEntry.Tone.green)
+                        Text("No color").tag(EarlyEntry.Tone.plain)
                     }
                     .pickerStyle(.inline)
                 } label: {
@@ -150,8 +150,8 @@ private struct MacEntryRow: View {
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .fixedSize()
-                .help("Цвет условия, как у тренера")
-                TextField("Встала и пошла", text: $entry.event)
+                .help("The condition’s color, as the trainer marked it")
+                TextField("Stood up and walked", text: $entry.event)
                     .textFieldStyle(.roundedBorder)
                 Button {
                     editingDelay = true
@@ -159,10 +159,10 @@ private struct MacEntryRow: View {
                     // Blue, as the time in her words.
                     Text(entry.delayDescription).monospacedDigit().fontWeight(.semibold).foregroundStyle(MacPalette.blue)
                 }
-                .help("Через сколько входить")
+                .help("Come in after")
                 .popover(isPresented: $editingDelay, arrowEdge: .bottom) {
                     MacDurationEditor(value: Binding(get: { entry.delay ?? 0 }, set: { entry.delay = ($0 ?? 0) > 0 ? $0 : nil }),
-                                      title: String(localized: "Через сколько входить"),
+                                      title: String(localized: "Come in after"),
                                       presets: DurationPresets.entryDelays.filter { $0 > 0 },
                                       tint: MacPalette.blue) { editingDelay = false }
                 }
@@ -170,11 +170,11 @@ private struct MacEntryRow: View {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.borderless)
-                .help("Убрать условие")
+                .help("Remove condition")
             }
             // The trainer's words after the time («от начала движения…»), only where she wrote some.
             if let detail = entry.detail, !detail.isEmpty {
-                TextField(String(localized: "Заметка"), text: Binding(
+                TextField(String(localized: "Note"), text: Binding(
                     get: { entry.detail ?? "" },
                     set: { entry.detail = $0.isEmpty ? nil : $0 }), prompt: Text(verbatim: ""))
                     .textFieldStyle(.plain)

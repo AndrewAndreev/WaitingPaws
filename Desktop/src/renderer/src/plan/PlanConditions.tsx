@@ -33,14 +33,14 @@ export function PlanRuleChips({ plan, lines, focused, onFocus }: { plan: Trainin
   )
   const ids = (kind: PlanTextLine['kind']['kind']) => lines.filter((line) => line.kind.kind === kind).map((line) => line.id)
   const chips = [
-    stop && { key: 'stop', tone: 'stop', icon: <DoNotEnterIcon />, text: t('%@ — ждать тишины', stop.title), help: stop.text, lines: ids('doNotEnter') },
-    falseStart && { key: 'rule', tone: 'rule', icon: <RuleIcon />, text: t('Фальстарт'), help: falseStart, lines: ids('rule') },
-    prep.length > 0 && { key: 'prep', tone: 'prep', icon: <PrepIcon />, text: t('Подготовка · %lld', prep.length), help: prep.join('\n'), lines: ids('note') },
+    stop && { key: 'stop', tone: 'stop', icon: <DoNotEnterIcon />, text: t('%@ — wait for quiet', stop.title), help: stop.text, lines: ids('doNotEnter') },
+    falseStart && { key: 'rule', tone: 'rule', icon: <RuleIcon />, text: t('False Start'), help: falseStart, lines: ids('rule') },
+    prep.length > 0 && { key: 'prep', tone: 'prep', icon: <PrepIcon />, text: t('Preparation · %lld', prep.length), help: prep.join('\n'), lines: ids('note') },
   ].filter((chip) => !!chip)
   if (!chips.length) return null
   return (
     <div className="plan-rules">
-      <span className="plan-rules__label">{t('Правила тренировки:')}</span>
+      <span className="plan-rules__label">{t('Training rules:')}</span>
       {chips.map((chip) => (
         <Tooltip key={chip.key} content={<span className="plan-rules__tip">{chip.help}</span>}>
           <button
@@ -73,17 +73,17 @@ export function CommonEntriesBar({ plan, setPlan, lines, picking, setPicking }: 
   const entryLines = lines.filter((line) => line.kind.kind === 'earlyEntry' && line.kind.afterLine === null).map((line) => line.id)
   const where =
     !exitLines.length || !entryLines.length
-      ? t('для всей тренировки')
+      ? t('for the whole training')
       : entryLines[0] > exitLines[exitLines.length - 1]
-        ? t('после всех выходов')
+        ? t('after all exits')
         : entryLines[entryLines.length - 1] < exitLines[0]
-          ? t('перед выходами')
-          : t('для всей тренировки')
+          ? t('before the exits')
+          : t('for the whole training')
   return (
     <div className="plan-common">
       <EarlyEntryIcon className="plan-common__icon" />
       <div className="plan-common__text">
-        <div className="plan-common__title">{t('Условия раннего входа — %@', where)}</div>
+        <div className="plan-common__title">{t('Coming back early — %@', where)}</div>
         <div className="plan-common__entries">
           {plan.commonEarlyEntries.map((entry, index) => (
             <span key={entry.id} className="plan-common__entry">
@@ -92,15 +92,15 @@ export function CommonEntriesBar({ plan, setPlan, lines, picking, setPicking }: 
               {PlanFormat.entryLine(entry)}
             </span>
           ))}
-          <span className="plan-common__ask">{value === 'custom' ? t('Отметьте «Общие условия» у нужных выходов ниже.') : t('К каким выходам применить?')}</span>
+          <span className="plan-common__ask">{value === 'custom' ? t('Tick “Common conditions” on the exits below.') : t('Which exits do they apply to?')}</span>
         </div>
       </div>
       <Segmented<ScopeChoice>
         value={value}
         options={[
-          { value: 'all', label: t('Ко всем') },
-          { value: 'long', label: t('К длинным ≥ 1 мин') },
-          { value: 'custom', label: t('Выбрать') },
+          { value: 'all', label: t('All exits') },
+          { value: 'long', label: t('Long ones ≥ 1 min') },
+          { value: 'custom', label: t('Choose') },
         ]}
         onChange={(choice) => {
           setPicking(choice === 'custom')
@@ -135,17 +135,17 @@ export function ExitInspector({
     return (
       <div className="plan-inspector plan-inspector--empty">
         {selection.length > 1
-          ? t('Выбрано выходов: %lld. Выберите один, чтобы изменить его триггеры, ранний вход и заметку.', selection.length)
-          : t('Выберите выход в таблице, чтобы изменить его триггеры, ранний вход и заметку.')}
+          ? t('%lld exits selected. Select one to edit its triggers, coming back early and note.', selection.length)
+          : t('Select an exit in the table to edit its triggers, coming back early and note.')}
       </div>
     )
   }
   const own = lineOfExit && lines.length ? [...linkedLines(lines, lineOfExit, [exit.id])].sort((a, b) => a - b) : []
-  const where = own.length === 0 ? null : own.length === 1 ? t('строка %lld', own[0]) : t('строки %lld–%lld', own[0], own[own.length - 1])
+  const where = own.length === 0 ? null : own.length === 1 ? t('line %lld', own[0]) : t('lines %lld–%lld', own[0], own[own.length - 1])
   return (
     <div className="plan-inspector">
       <div className="plan-inspector__head">
-        <span className="plan-inspector__title">{t('Выход %lld · %@', exit.number, DurationText.short(exit.duration))}</span>
+        <span className="plan-inspector__title">{t('Exit %lld · %@', exit.number, DurationText.short(exit.duration))}</span>
         {where && <span className="faint">{where}</span>}
       </div>
       <div className="plan-inspector__columns">
@@ -173,14 +173,14 @@ function TriggersEditor({ plan, exit, setPlan }: { plan: TrainingPlan; exit: Pla
     <section className="plan-inspector__column">
       <h4 className="plan-inspector__label">
         <TriggerIcon />
-        {t('Триггеры')}
+        {t('Triggers')}
       </h4>
       <div className="plan-chips">
         {exit.triggers.map((trigger, index) => (
           <span key={`${index}-${trigger}`} className="plan-chip">
             <TriggerIcon className="plan-chip__icon" />
             <span className="ellipsis">{trigger}</span>
-            <button type="button" className="plan-chip__remove" aria-label={t('Убрать «%@»', trigger)} onClick={() => setPlan((current) => removeTrigger(current, exit.id, index))}>
+            <button type="button" className="plan-chip__remove" aria-label={t('Remove “%@”', trigger)} onClick={() => setPlan((current) => removeTrigger(current, exit.id, index))}>
               <CloseIcon />
             </button>
           </span>
@@ -190,8 +190,8 @@ function TriggersEditor({ plan, exit, setPlan }: { plan: TrainingPlan; exit: Pla
             className="plan-chip plan-chip--input"
             autoFocus
             value={text}
-            placeholder={t('куртка, обувь, ключи…')}
-            aria-label={t('Новый триггер')}
+            placeholder={t('jacket, shoes, keys…')}
+            aria-label={t('New Trigger')}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
@@ -213,11 +213,11 @@ function TriggersEditor({ plan, exit, setPlan }: { plan: TrainingPlan; exit: Pla
         ) : (
           <button type="button" className="plan-chip plan-chip--add" onClick={() => setAdding(true)}>
             <AddIcon className="plan-chip__icon" />
-            {t('Добавить')}
+            {t('Add')}
           </button>
         )}
         {suggestions.map((trigger) => (
-          <Tooltip key={trigger} content={t('Добавить «%@»', trigger)}>
+          <Tooltip key={trigger} content={t('Add “%@”', trigger)}>
             <button type="button" className="plan-chip plan-chip--suggestion" onClick={() => setPlan((current) => addTrigger(current, exit.id, trigger))}>
               {trigger}
             </button>
@@ -241,13 +241,13 @@ function EntriesEditor({ plan, exit, setPlan }: { plan: TrainingPlan; exit: Plan
     <section className="plan-inspector__column plan-inspector__column--wide">
       <h4 className="plan-inspector__label">
         <EarlyEntryIcon />
-        {t('Ранний вход')}
+        {t('Coming back early')}
         <span className="spacer" />
         {plan.commonEarlyEntries.length > 0 && (
-          <Tooltip content={t('Условия, которые тренер написал для всей тренировки, действуют и на этом выходе')}>
+          <Tooltip content={t('The conditions the trainer wrote for the whole training apply to this exit too')}>
             <span className="plan-inspector__common">
               <Checkbox checked={common} onChange={(value) => setPlan((current) => setUsesCommonEntries(current, exit.id, value))}>
-                {t('Общие условия')}
+                {t('Common conditions')}
               </Checkbox>
             </span>
           </Tooltip>
@@ -257,15 +257,15 @@ function EntriesEditor({ plan, exit, setPlan }: { plan: TrainingPlan; exit: Plan
         {entries.map((entry, index) => (
           // By position: a common condition's own copy has a new id, its field keeps the focus.
           <div key={index} className="plan-entry">
-            <Tooltip content={t('Цвет условия — щёлкните, чтобы сменить')}>
-              <button type="button" className={`tone-dot tone-dot--${entry.tone} plan-entry__dot`} aria-label={t('Цвет условия')} onClick={() => edit(index, { tone: nextTone(entry.tone) })} />
+            <Tooltip content={t('The condition’s color — click to change it')}>
+              <button type="button" className={`tone-dot tone-dot--${entry.tone} plan-entry__dot`} aria-label={t('Condition color')} onClick={() => edit(index, { tone: nextTone(entry.tone) })} />
             </Tooltip>
             <input
               className="plan-entry__event"
               value={entry.event}
               autoFocus={fresh === index}
-              placeholder={t('Что сделала собака')}
-              aria-label={t('Что сделала собака')}
+              placeholder={t('What the dog did')}
+              aria-label={t('What the dog did')}
               title={entry.detail ?? undefined}
               onChange={(event) => edit(index, { event: event.target.value })}
               onBlur={(event) => {
@@ -273,21 +273,21 @@ function EntriesEditor({ plan, exit, setPlan }: { plan: TrainingPlan; exit: Plan
                 setFresh(null)
               }}
             />
-            {common && <span className="plan-entry__common">{t('общее')}</span>}
+            {common && <span className="plan-entry__common">{t('common')}</span>}
             <DurationPopover
               value={entry.delay ?? 0}
               onChange={(value) => edit(index, { delay: value !== null && value > 0 ? value : null })}
-              title={t('Через сколько входить')}
+              title={t('Come in after')}
               presets={PlanFormat.entryPresets}
-              zeroLabel={t('сразу')}
+              zeroLabel={t('right away')}
               tint="exit"
             >
               <button type="button" className="plan-value plan-entry__delay tabular">
                 {PlanFormat.entryDelay(entry)}
               </button>
             </DurationPopover>
-            <Tooltip content={t('Убрать условие')}>
-              <button type="button" className="plan-entry__remove" aria-label={t('Убрать условие')} onClick={() => remove(index)}>
+            <Tooltip content={t('Remove condition')}>
+              <button type="button" className="plan-entry__remove" aria-label={t('Remove condition')} onClick={() => remove(index)}>
                 <CloseIcon />
               </button>
             </Tooltip>
@@ -302,7 +302,7 @@ function EntriesEditor({ plan, exit, setPlan }: { plan: TrainingPlan; exit: Plan
           }}
         >
           <AddIcon />
-          {t('Своё условие')}
+          {t('Own condition')}
         </button>
       </div>
     </section>
@@ -314,13 +314,13 @@ function NoteEditor({ exit, setPlan }: { exit: PlannedExit; setPlan: SetPlan }) 
     <section className="plan-inspector__column">
       <h4 className="plan-inspector__label">
         <ExitNoteIcon />
-        {t('Заметка')}
+        {t('Note')}
       </h4>
       <textarea
         className="plan-inspector__note"
         value={exit.note ?? ''}
-        placeholder={t('Что помнить на этом выходе')}
-        aria-label={t('Заметка')}
+        placeholder={t('What to remember on this exit')}
+        aria-label={t('Note')}
         onChange={(event) => {
           const note = event.target.value
           setPlan((current) => updateExit(current, exit.id, { note: note === '' ? null : note }))

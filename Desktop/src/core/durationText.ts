@@ -59,17 +59,17 @@ export const DurationText = {
     const minutes = Math.floor((total % 3600) / 60)
     const secs = total % 60
     const parts: string[] = []
-    if (hours > 0) parts.push(tr(`${hours} ч`, `${hours} h`))
-    if (minutes > 0) parts.push(tr(`${minutes} мин`, `${minutes} min`))
-    if (secs > 0 || parts.length === 0) parts.push(tr(`${secs} с`, `${secs} s`))
+    if (hours > 0) parts.push(tr(`${hours} h`, `${hours} ч`))
+    if (minutes > 0) parts.push(tr(`${minutes} min`, `${minutes} мин`))
+    if (secs > 0 || parts.length === 0) parts.push(tr(`${secs} s`, `${secs} с`))
     return parts.join(' ')
   },
 
   /** Very short form for chips: "5с", "30с", "1м", "1м30", "5м" / "5s", "1m", "1m30". */
   compact(seconds: number): string {
     const total = whole(seconds, roundHalfAwayFromZero)
-    const s = tr('с', 's')
-    const m = tr('м', 'm')
+    const s = tr('s', 'с')
+    const m = tr('m', 'м')
     if (total < 60) return `${total}${s}`
     const minutes = Math.trunc(total / 60)
     const secs = total % 60

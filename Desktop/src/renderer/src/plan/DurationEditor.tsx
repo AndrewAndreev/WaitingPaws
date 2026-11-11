@@ -68,14 +68,14 @@ export function DurationEditor({ value, onChange, title, presets, defaultValue, 
     <div className="col" style={{ gap: 12 }}>
       <div className="h3">{title}</div>
       <div className="row duration-editor__fields">
-        <NumberField label={t('Минуты')} value={Math.floor(total / 60)} max={120} autoFocus onValue={(minutes) => set(withMinutes(total, minutes))} onSubmit={onClose} />
-        <span className="muted">{t('мин')}</span>
-        <NumberField label={t('Секунды')} value={total % 60} max={59} onValue={(seconds) => set(withSeconds(total, seconds))} onSubmit={onClose} />
-        <span className="muted">{t('с')}</span>
+        <NumberField label={t('Minutes')} value={Math.floor(total / 60)} max={120} autoFocus onValue={(minutes) => set(withMinutes(total, minutes))} onSubmit={onClose} />
+        <span className="muted">{t('min')}</span>
+        <NumberField label={t('Seconds')} value={total % 60} max={59} onValue={(seconds) => set(withSeconds(total, seconds))} onSubmit={onClose} />
+        <span className="muted">{t('s')}</span>
         <span className="spacer" />
-        <div className="duration-editor__stepper" role="group" aria-label={t('Изменить')}>
-          <Button size="sm" iconOnly icon={<SubtractIcon />} aria-label={t('Меньше')} disabled={total <= 0} onClick={() => set(stepDuration(total, -1, step))} />
-          <Button size="sm" iconOnly icon={<AddIcon />} aria-label={t('Больше')} onClick={() => set(stepDuration(total, 1, step))} />
+        <div className="duration-editor__stepper" role="group" aria-label={t('Edit')}>
+          <Button size="sm" iconOnly icon={<SubtractIcon />} aria-label={t('Less')} disabled={total <= 0} onClick={() => set(stepDuration(total, -1, step))} />
+          <Button size="sm" iconOnly icon={<AddIcon />} aria-label={t('More|increase')} onClick={() => set(stepDuration(total, 1, step))} />
         </div>
       </div>
       <div className="duration-editor__presets">
@@ -111,7 +111,7 @@ export function DurationEditor({ value, onChange, title, presets, defaultValue, 
               }
             }}
           >
-            {t('Как у всех — %@', DurationText.short(defaultValue))}
+            {t('Default — %@', DurationText.short(defaultValue))}
           </Checkbox>
         </>
       )}

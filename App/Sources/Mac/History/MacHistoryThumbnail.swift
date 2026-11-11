@@ -42,7 +42,7 @@ struct MacHistoryThumbnail: View {
         .frame(width: Self.size.width, height: Self.size.height)
         .clipShape(shape)
         .overlay(shape.strokeBorder(selected ? Color.white.opacity(0.3) : Color.primary.opacity(0.13), lineWidth: 0.5))
-        .help(isClip ? "Запись без тренировки" : "Тренировка")
+        .help(isClip ? "Recording without training" : "Training")
         .accessibilityHidden(true)
         // An unfinished file gets no frame until it is prepared (its key then changes with its modification date).
         .task(id: preparing || video?.unfinished == true ? nil : key) {

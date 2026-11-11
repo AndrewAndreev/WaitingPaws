@@ -70,11 +70,11 @@ export function blockHelp(block: PlanBlock): string {
   const length = DurationText.short(block.duration)
   let text: string
   if (block.edge.kind === 'exit') {
-    text = block.untilStanding ? t('Выход %lld · %@ или до вставания', block.number, length) : t('Выход %lld · %@', block.number, length)
+    text = block.untilStanding ? t('Exit %lld · %@ or until the dog stands', block.number, length) : t('Exit %lld · %@', block.number, length)
   } else {
-    text = block.own ? t('Перерыв после выхода %lld · %@, свой', block.number, length) : t('Перерыв после выхода %lld · %@', block.number, length)
+    text = block.own ? t('Break after exit %lld · %@, own', block.number, length) : t('Break after exit %lld · %@', block.number, length)
   }
-  if (blockChanged(block) && block.original !== null) text = t('%@ · у тренера %@', text, DurationText.short(block.original))
+  if (blockChanged(block) && block.original !== null) text = t('%@ · trainer wrote %@', text, DurationText.short(block.original))
   return text
 }
 

@@ -355,11 +355,11 @@ function parsePhase(state: string): PlayerPhase | null {
   if (!state.startsWith('error')) return null
   const raw = state.slice(5).trim()
   const error = raw.toLowerCase()
-  if (error.includes('timeout')) return { kind: 'failed', reason: 'нет ответа', raw }
-  if (error.includes('refused')) return { kind: 'failed', reason: 'соединение отклонено', raw }
-  if (error.includes('unreachable') || error.includes('no route')) return { kind: 'failed', reason: 'камера недоступна по сети', raw }
+  if (error.includes('timeout')) return { kind: 'failed', reason: 'no response', raw }
+  if (error.includes('refused')) return { kind: 'failed', reason: 'connection refused', raw }
+  if (error.includes('unreachable') || error.includes('no route')) return { kind: 'failed', reason: 'the camera can’t be reached on the network', raw }
   const reason = raw.split(':').pop()?.trim()
-  return { kind: 'failed', reason: reason || 'нет ответа', raw }
+  return { kind: 'failed', reason: reason || 'no response', raw }
 }
 
 const TAG = 'wp-video-rtc'

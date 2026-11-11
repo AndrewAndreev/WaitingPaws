@@ -135,12 +135,12 @@ export function PlanExitTable({
         <span className="plan-cell--num" role="columnheader">
           {t('№')}
         </span>
-        <span role="columnheader">{t('Начало')}</span>
-        <span role="columnheader">{t('За дверью')}</span>
-        <span role="columnheader">{t('Перерыв после')}</span>
+        <span role="columnheader">{t('Start|column')}</span>
+        <span role="columnheader">{t('Outside')}</span>
+        <span role="columnheader">{t('Break After')}</span>
         {lineOfExit && (
           <span className="plan-cell--line" role="columnheader">
-            {t('Строка')}
+            {t('Line')}
           </span>
         )}
       </div>
@@ -170,25 +170,25 @@ export function PlanExitTable({
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem icon={<AddIcon />} onSelect={() => commands.add([])}>
-            {t('Добавить выход')}
+            {t('Add Exit')}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       <div className="plan-toolbar">
-        <ToolButton icon={<AddIcon />} label={t('Добавить выход') + ' (Ctrl+N)'} onClick={() => commands.add()} />
-        <ToolButton icon={<SubtractIcon />} label={t('Удалить выбранные') + ' (Del)'} disabled={!canDelete(plan, selection)} onClick={() => commands.remove()} />
+        <ToolButton icon={<AddIcon />} label={t('Add Exit') + ' (Ctrl+N)'} onClick={() => commands.add()} />
+        <ToolButton icon={<SubtractIcon />} label={t('Delete selected') + ' (Del)'} disabled={!canDelete(plan, selection)} onClick={() => commands.remove()} />
         <span className="plan-toolbar__sep" />
-        <ToolButton icon={<DuplicateIcon />} label={t('Дублировать') + ' (Ctrl+D)'} disabled={!hasSelection} onClick={() => commands.duplicate()} />
-        <ToolButton icon={<MoveUpIcon />} label={t('Выше') + ' (Alt+↑)'} disabled={!canShift(plan, selection, -1)} onClick={() => commands.shift(-1)} />
-        <ToolButton icon={<MoveDownIcon />} label={t('Ниже') + ' (Alt+↓)'} disabled={!canShift(plan, selection, 1)} onClick={() => commands.shift(1)} />
+        <ToolButton icon={<DuplicateIcon />} label={t('Duplicate') + ' (Ctrl+D)'} disabled={!hasSelection} onClick={() => commands.duplicate()} />
+        <ToolButton icon={<MoveUpIcon />} label={t('Move up') + ' (Alt+↑)'} disabled={!canShift(plan, selection, -1)} onClick={() => commands.shift(-1)} />
+        <ToolButton icon={<MoveDownIcon />} label={t('Move down') + ' (Alt+↓)'} disabled={!canShift(plan, selection, 1)} onClick={() => commands.shift(1)} />
         <span className="spacer" />
-        <span className="plan-toolbar__hint plan-toolbar__hint--long">{t('Перетащите строку, чтобы изменить порядок')}</span>
-        <span className="plan-toolbar__hint plan-toolbar__hint--short">{t('Строки можно перетаскивать')}</span>
+        <span className="plan-toolbar__hint plan-toolbar__hint--long">{t('Drag a row to change the order')}</span>
+        <span className="plan-toolbar__hint plan-toolbar__hint--short">{t('Rows can be dragged')}</span>
         <span className="plan-toolbar__keys">
           <Kbd keys="Ctrl+D" />
-          {t('дублировать')}
+          {t('duplicate')}
           <Kbd keys="Del" />
-          {t('удалить')}
+          {t('delete')}
         </span>
       </div>
     </div>
@@ -274,10 +274,10 @@ function ExitRow({
               <DurationPopover
                 value={exit.duration}
                 onChange={(value) => update({ duration: Math.max(0, value ?? exit.duration) })}
-                title={t('Выход %lld — за дверью', exit.number)}
+                title={t('Exit %lld — Outside', exit.number)}
                 presets={PlanFormat.exitPresets}
                 tint="exit"
-                tooltip={t('Выход %lld: %@ — изменить', exit.number, PlannedExit.durationDescription(exit))}
+                tooltip={t('Exit %lld: %@ — click to change', exit.number, PlannedExit.durationDescription(exit))}
               >
                 <button type="button" className="plan-value plan-value--exit tabular">
                   {PlanFormat.cell(exit.duration)}
@@ -287,37 +287,37 @@ function ExitRow({
             </span>
             <span>
               {isLast ? (
-                <Tooltip content={t('После последнего выхода тренировка заканчивается')}>
-                  <span className="faint plan-end">{t('конец')}</span>
+                <Tooltip content={t('The training ends after the last exit')}>
+                  <span className="faint plan-end">{t('end')}</span>
                 </Tooltip>
               ) : (
                 <DurationPopover
                   value={exit.breakAfter}
                   onChange={(value) => setPlan((current) => setBreakAfter(current, exit.id, value))}
-                  title={t('Перерыв после выхода %lld', exit.number)}
+                  title={t('Break After Exit %lld', exit.number)}
                   presets={PlanFormat.breakPresets}
                   defaultValue={plan.defaultBreak}
                   tint="break"
                   tooltip={
                     exit.breakAfter === null
-                      ? t('Перерыв после выхода %lld — как у всех. Выберите, чтобы задать свой', exit.number)
-                      : t('Свой перерыв после выхода %lld', exit.number)
+                      ? t('Break after exit %lld — default. Choose a value to give it its own break', exit.number)
+                      : t('Own break after exit %lld', exit.number)
                   }
                 >
                   <button type="button" className={'plan-value tabular' + (exit.breakAfter !== null ? ' plan-value--own' : ' plan-value--common')}>
-                    {exit.breakAfter !== null ? t('%@ · свой', PlanFormat.cell(exit.breakAfter)) : PlanFormat.cell(plan.defaultBreak)}
+                    {exit.breakAfter !== null ? t('%@ · own', PlanFormat.cell(exit.breakAfter)) : PlanFormat.cell(plan.defaultBreak)}
                     <ChevronUpDownIcon className="plan-value__chevron" />
                   </button>
                 </DurationPopover>
               )}
             </span>
             {line === undefined ? null : line !== null ? (
-              <Tooltip content={t('Строка %lld в тексте тренера', line)}>
+              <Tooltip content={t('Line %lld of the trainer’s text', line)}>
                 <span className="plan-cell--line tabular">{line}</span>
               </Tooltip>
             ) : (
-              <Tooltip content={t('Выхода нет в тексте тренера — добавлен здесь')}>
-                <span className="plan-cell--line">{t('вручную')}</span>
+              <Tooltip content={t('Not in the trainer’s text — added here')}>
+                <span className="plan-cell--line">{t('manual')}</span>
               </Tooltip>
             )}
           </div>
@@ -326,14 +326,14 @@ function ExitRow({
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem icon={<DuplicateIcon />} onSelect={() => commands.duplicate()}>
-          {t('Дублировать')}
+          {t('Duplicate')}
         </ContextMenuItem>
         <ContextMenuItem icon={<AddIcon />} onSelect={() => commands.add()}>
-          {t('Добавить выход ниже')}
+          {t('Add Exit Below')}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem icon={<DeleteIcon />} danger disabled={!canDelete} onSelect={() => commands.remove()}>
-          {t('Удалить')}
+          {t('Delete')}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -357,7 +357,7 @@ function ExitSummary({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit }) 
       </span>
       {note ? (
         <Tooltip content={<span className="plan-sum__tip">{note}</span>}>
-          <span className="plan-sum__item plan-sum__item--note" aria-label={t('Заметка')}>
+          <span className="plan-sum__item plan-sum__item--note" aria-label={t('Note')}>
             <ExitNoteIcon />
           </span>
         </Tooltip>

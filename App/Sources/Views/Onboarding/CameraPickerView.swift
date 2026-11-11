@@ -38,17 +38,17 @@ struct CameraPickerView: View {
         Group {
             switch catalog.phase {
             case .idle, .loading, .waiting:
-                ProgressView("Ищем камеры…")
+                ProgressView("Looking for cameras…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .failed(let message):
-                unavailable(title: String(localized: "Камеры не загрузились"), symbol: "exclamationmark.triangle", text: message)
+                unavailable(title: String(localized: "Couldn't Load Cameras"), symbol: "exclamationmark.triangle", text: message)
             case .ready:
                 if groups.isEmpty {
                     #if WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`)
-                    unavailable(title: String(localized: "Камер не найдено"), symbol: "video.slash", text: NoXiaomiText.addCamera)
+                    unavailable(title: String(localized: "No Cameras Found"), symbol: "video.slash", text: NoXiaomiText.addCamera)
                     #else
-                    unavailable(title: String(localized: "Камер не найдено"), symbol: "video.slash",
-                                text: String(localized: "В аккаунте Mi Home нет камер, а других камер не добавлено."))
+                    unavailable(title: String(localized: "No Cameras Found"), symbol: "video.slash",
+                                text: String(localized: "There are no cameras in the Mi Home account, and no other cameras have been added."))
                     #endif
                 } else {
                     tiles
@@ -68,7 +68,7 @@ struct CameraPickerView: View {
             ToolbarItem(placement: .cancellationAction) {
                 if showsClose {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Закрыть")
+                        .accessibilityLabel("Close")
                 }
             }
         }
@@ -135,7 +135,7 @@ struct CameraPickerView: View {
         var result: [TileGroup] = accounts.map { account in
             TileGroup(id: account.id,
                       title: accounts.count > 1 ? "Mi Home · ID \(account.id)" : "Mi Home",
-                      detail: pluralText(account.cameras.count, ru: ("камера", "камеры", "камер"), en: ("camera", "cameras")),
+                      detail: pluralText(account.cameras.count, en: ("camera", "cameras"), ru: ("камера", "камеры", "камер")),
                       error: account.error, items: account.cameras.map { .camera($0) })
         }
         let own: [Item] = streams.map { .stream($0) } + [.add]
@@ -152,11 +152,11 @@ struct CameraPickerView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if signedInAccount != nil {
-                        Label("Вход в Mi Home выполнен", systemImage: "checkmark.circle.fill")
+                        Label("Signed in to Mi Home", systemImage: "checkmark.circle.fill")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Color(red: 0.36, green: 0.85, blue: 0.56))
                     }
-                    Text(target == .second ? "Вторая камера" : "Камера")
+                    Text(target == .second ? "Second Camera" : "Camera")
                         .font(.system(size: 28, weight: .bold))
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, signedInAccount == nil ? 0 : 8)
@@ -175,7 +175,7 @@ struct CameraPickerView: View {
                             .padding(.top, 26)
                         }
                         if let error = group.error {
-                            Label("Камеры не загрузились: \(error)", systemImage: "exclamationmark.triangle.fill")
+                            Label("Couldn’t load cameras: \(error)", systemImage: "exclamationmark.triangle.fill")
                                 .font(.footnote)
                                 .foregroundStyle(Theme.warning)
                                 .padding(.top, 12)
@@ -240,10 +240,10 @@ struct CameraPickerView: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 10) {
-                WideGlassButton(title: String(localized: "Обновить"), prominent: false) { Task { await reload(force: true) } }
-                WideGlassButton(title: String(localized: "Добавить поток RTSP"), prominent: false) { addingStream = true }
+                WideGlassButton(title: String(localized: "Refresh"), prominent: false) { Task { await reload(force: true) } }
+                WideGlassButton(title: String(localized: "Add an RTSP Stream"), prominent: false) { addingStream = true }
                 if let onContinueWithoutCamera {
-                    WideGlassButton(title: String(localized: "Продолжить без камеры"), action: onContinueWithoutCamera)
+                    WideGlassButton(title: String(localized: "Continue Without Camera"), action: onContinueWithoutCamera)
                 }
             }
             .padding(.top, 14)
@@ -282,7 +282,7 @@ struct CameraPickerView: View {
                 onDone(target == .main ? model.settings.streamName : model.settings.secondStreamName)
             } catch {
                 selection = catalog.currentID(model, target: target)
-                openError = String(localized: "Не удалось добавить камеру: \(error.localizedDescription)")
+                openError = String(localized: "Couldn’t add the camera: \(error.localizedDescription)")
             }
         }
     }
@@ -402,7 +402,7 @@ private struct CameraChoiceTile: View {
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityAddTraits(selected ? .isSelected : [])
-        .accessibilityValue(offline ? (isCamera ? String(localized: "Не в сети") : String(localized: "Нет связи")) : "")
+        .accessibilityValue(offline ? (isCamera ? String(localized: "Offline") : String(localized: "No connection")) : "")
     }
 }
 
@@ -499,7 +499,7 @@ private struct StillAge: View {
         let whole = max(0, seconds.rounded(.down))
         if whole < 10 { return nil }
         let age = whole < 60 ? whole : whole < 3600 ? (whole / 60).rounded(.down) * 60 : (whole / 3600).rounded(.down) * 3600
-        return String(localized: "\(DurationText.short(age)) назад")
+        return String(localized: "\(DurationText.short(age)) ago")
     }
 }
 
@@ -522,7 +522,7 @@ private struct AddStreamTile: View {
                             .foregroundStyle(Theme.accent)
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                Text("Своя камера")
+                Text("Custom camera")
                     .font(.system(size: 16, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -535,7 +535,7 @@ private struct AddStreamTile: View {
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Добавить свою камеру"))
+        .accessibilityLabel(String(localized: "Add a custom camera"))
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -562,9 +562,9 @@ private struct AddStreamSheet: View {
                             .foregroundStyle(.white)
                             .frame(width: 60, height: 60)
                             .background(Theme.info.gradient, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                        Text("Поток RTSP")
+                        Text("RTSP Stream")
                             .font(.system(size: 24, weight: .bold))
-                        Text("Адрес из настроек камеры или видеорегистратора.")
+                        Text("The address from the camera’s or recorder’s settings.")
                             .font(.system(size: 15))
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -574,11 +574,11 @@ private struct AddStreamSheet: View {
                     .listRowBackground(Color.clear)
                 }
                 Section {
-                    SignInFieldRow(label: String(localized: "Название")) {
-                        TextField("Название", text: $name, prompt: Text("Прихожая"))
+                    SignInFieldRow(label: String(localized: "Name")) {
+                        TextField("Name", text: $name, prompt: Text("Hallway"))
                     }
-                    SignInFieldRow(label: String(localized: "Адрес")) {
-                        TextField("Адрес", text: $source, prompt: Text(verbatim: "rtsp://192.168.1.20:554/live"))
+                    SignInFieldRow(label: String(localized: "Address")) {
+                        TextField("Address", text: $source, prompt: Text(verbatim: "rtsp://192.168.1.20:554/live"))
                             .plainInput()
                             #if os(iOS)
                             .keyboardType(.URL)
@@ -589,7 +589,7 @@ private struct AddStreamSheet: View {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(Theme.danger)
                     } else {
-                        Text("Подходят rtsp:// и http://; камеру ONVIF добавьте по её адресу rtsp://. Камера должна быть в той же сети Wi‑Fi.")
+                        Text("rtsp:// and http:// work; add an ONVIF camera by its rtsp:// address. The camera must be on the same Wi‑Fi.")
                     }
                 }
             }
@@ -598,11 +598,11 @@ private struct AddStreamSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Отменить")
+                        .accessibilityLabel("Cancel|verb")
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                WideGlassButton(title: String(localized: "Добавить"), busy: busy) { Task { await add() } }
+                WideGlassButton(title: String(localized: "Add"), busy: busy) { Task { await add() } }
                     .disabled(!isValid || busy)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 4)

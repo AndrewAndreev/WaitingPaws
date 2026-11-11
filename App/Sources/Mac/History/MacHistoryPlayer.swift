@@ -126,8 +126,8 @@ struct MacHistoryExitStrip: View {
                     && !($0.detail ?? "").isEmpty
             }
             let words = SessionLogFormatter.observations(of: result, in: record)
-            let exit = result.attempt > 1 ? String(localized: "Выход \(result.number), попытка \(result.attempt)")
-                                          : String(localized: "Выход \(result.number)")
+            let exit = result.attempt > 1 ? String(localized: "Exit \(result.number), attempt \(result.attempt)")
+                                          : String(localized: "Exit \(result.number)")
             return events.enumerated().map { index, event in
                 let said = words.indices.contains(index) ? words[index] : event.detail ?? ""
                 return Mark(id: event.id, offset: event.time.timeIntervalSince(base),
@@ -209,7 +209,7 @@ struct MacHistoryExitStrip: View {
             .frame(height: 12)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Выходы по времени")
+        .accessibilityLabel("Exits over time")
     }
 
     @ViewBuilder
@@ -220,12 +220,12 @@ struct MacHistoryExitStrip: View {
                 .foregroundStyle(.black.opacity(0.8))
                 .frame(width: 13, height: 13)
                 .background(Circle().fill(MacPalette.orange))
-                .help("Выход \(segment.exit): фальстарт")
+                .help("Exit \(segment.exit): false start")
         } else {
             Text("\(segment.exit)")
                 .font(.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit())
                 .foregroundStyle(.secondary)
-                .help("Выход \(segment.exit)")
+                .help("Exit \(segment.exit)")
         }
     }
 

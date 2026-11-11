@@ -10,14 +10,14 @@ export function TrainingPane() {
   const settings = app.settings
   return (
     <>
-      <PaneHeader title={t('Тренировка')} description={t('Что происходит в начале тренировки. Заканчивается она только кнопкой «Завершить».')} />
+      <PaneHeader title={t('Training')} description={t('What happens when a training starts. It ends only with the Finish button.')} />
       <Group>
-        <Row icon={<ClipIcon />} title={t('Включать запись вместе с тренировкой')} description={t('Видео с камеры пишется от начала тренировки до конца.')}>
-          <Switch checked={settings.autoRecord} label={t('Включать запись вместе с тренировкой')} onChange={(value) => void call('settings.update', { autoRecord: value })} />
+        <Row icon={<ClipIcon />} title={t('Start recording with the training')} description={t('Camera video is recorded from the start of the training to the end.')}>
+          <Switch checked={settings.autoRecord} label={t('Start recording with the training')} onChange={(value) => void call('settings.update', { autoRecord: value })} />
         </Row>
         {app.platform !== 'web' && (
-          <Row icon={<KeepAwakeIcon />} title={t('Не давать компьютеру засыпать')} description={t('Пока идёт тренировка или запись, экран не гаснет и компьютер не уходит в сон — запись не оборвётся.')}>
-            <Switch checked={settings.keepAwake} label={t('Не давать компьютеру засыпать')} onChange={(value) => void call('settings.update', { keepAwake: value })} />
+          <Row icon={<KeepAwakeIcon />} title={t('Keep the computer awake')} description={t('While a training or a recording runs, the screen stays on and the computer doesn’t go to sleep, so the recording isn’t cut off.')}>
+            <Switch checked={settings.keepAwake} label={t('Keep the computer awake')} onChange={(value) => void call('settings.update', { keepAwake: value })} />
           </Row>
         )}
       </Group>

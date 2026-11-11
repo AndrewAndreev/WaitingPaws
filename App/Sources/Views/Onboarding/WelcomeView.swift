@@ -38,12 +38,12 @@ struct WelcomeView: View {
         VStack(spacing: 0) {
             Spacer(minLength: compact ? 8 : 20)
             AppIconImage(size: compact ? 68 : addingCamera ? 84 : 100)
-            Text(addingCamera ? "Подключить камеру" : "Waiting Paws")
+            Text(addingCamera ? "Connect a Camera" : "Waiting Paws")
                 .font(Theme.display(compact ? 30 : addingCamera ? 32 : 36, weight: .bold))
                 .multilineTextAlignment(.center)
                 .padding(.top, compact ? 14 : 22)
-            Text(addingCamera ? "Камера покажет собаку, пока вы за дверью, и запишет тренировку для тренера."
-                              : "Спокойные выходы из дома: по расписанию тренера и с собакой на экране")
+            Text(addingCamera ? "A camera shows your dog while you’re outside and records the training for the trainer."
+                              : "Calm exits from home: on the trainer’s schedule, with your dog on screen")
                 .font(.system(.body, design: .rounded))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -52,17 +52,17 @@ struct WelcomeView: View {
                 .padding(.horizontal, 12)
             if !addingCamera {
                 VStack(alignment: .leading, spacing: compact ? 14 : 22) {
-                    WelcomeFeatureRow(symbol: "list.bullet.clipboard.fill", title: String(localized: "Расписание тренера"),
-                                      text: String(localized: "Вставьте сообщение: выходы и перерывы пойдут по таймеру"))
+                    WelcomeFeatureRow(symbol: "list.bullet.clipboard.fill", title: String(localized: "Trainer’s Schedule"),
+                                      text: String(localized: "Paste the message: exits and breaks run on timers"))
                     #if WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`)
-                    WelcomeFeatureRow(symbol: "video.fill", title: String(localized: "Камера"),
-                                      text: String(localized: "Собака видна, пока вы за дверью"))
+                    WelcomeFeatureRow(symbol: "video.fill", title: String(localized: "Camera"),
+                                      text: String(localized: "See your dog while you’re outside"))
                     #else
-                    WelcomeFeatureRow(symbol: "video.fill", title: String(localized: "Камера Mi Home"),
-                                      text: String(localized: "Собака видна, пока вы за дверью"))
+                    WelcomeFeatureRow(symbol: "video.fill", title: String(localized: "Mi Home Camera"),
+                                      text: String(localized: "See your dog while you’re outside"))
                     #endif
-                    WelcomeFeatureRow(symbol: "doc.text.fill", title: String(localized: "Лог для тренера"),
-                                      text: String(localized: "Выходы, фальстарты и видео одной кнопкой"))
+                    WelcomeFeatureRow(symbol: "doc.text.fill", title: String(localized: "Log for the Trainer"),
+                                      text: String(localized: "Exits, false starts and video in one tap"))
                 }
                 .padding(.top, compact ? 22 : 40)
                 .padding(.horizontal, 8)
@@ -76,13 +76,13 @@ struct WelcomeView: View {
             serverProblem
             #if WP_NO_XIAOMI
             // A build without Xiaomi: the first button opens the camera list, where a stream is added by its address.
-            WideGlassButton(title: String(localized: "Подключить камеру"), systemImage: "video.badge.plus", action: onSignIn)
+            WideGlassButton(title: String(localized: "Connect a Camera"), systemImage: "video.badge.plus", action: onSignIn)
             #else
-            WideGlassButton(title: String(localized: "Войти в Xiaomi"), systemImage: "person.crop.circle.fill", action: onSignIn)
+            WideGlassButton(title: String(localized: "Sign In to Xiaomi"), systemImage: "person.crop.circle.fill", action: onSignIn)
             #endif
-            WideGlassButton(title: String(localized: "Другие способы"), prominent: false, action: onOtherWays)
+            WideGlassButton(title: String(localized: "Other Options"), prominent: false, action: onOtherWays)
             if let onContinueWithoutCamera {
-                Button("Продолжить без камеры", action: onContinueWithoutCamera)
+                Button("Continue Without Camera", action: onContinueWithoutCamera)
                     .font(.system(size: 15, weight: .semibold))
                     .padding(.top, 6)
             }
@@ -99,12 +99,12 @@ struct WelcomeView: View {
                     Label(message, systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(Theme.warning)
                         .lineLimit(2)
-                    Button("Попробовать снова") { model.startEmbeddedIfNeeded() }
+                    Button("Try Again") { model.startEmbeddedIfNeeded() }
                 }
                 .font(.footnote)
                 .multilineTextAlignment(.center)
             case .unavailable:
-                Label("Сборка без встроенного go2rtc: выполните GoMobile/build.sh или укажите свой сервер",
+                Label("This build has no built-in go2rtc: run GoMobile/build.sh or set up your own server",
                       systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote)
                     .foregroundStyle(Theme.warning)
@@ -156,10 +156,10 @@ struct OtherWaysSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Другие способы").font(.system(size: 20, weight: .bold))
+                Text("Other Options").font(.system(size: 20, weight: .bold))
                 Spacer()
                 GlassCircleButton { dismiss() }
-                    .accessibilityLabel("Закрыть")
+                    .accessibilityLabel("Close")
             }
             .padding(.top, 22)
             .padding(.horizontal, 24)
@@ -169,15 +169,15 @@ struct OtherWaysSheet: View {
                     computers
                     if model.settings.connectionMode == .external {
                         OtherWayRow(symbol: "antenna.radiowaves.left.and.right", color: Theme.info,
-                                    title: String(localized: "Поток go2rtc"),
-                                    subtitle: String(localized: "Камера, которая уже есть на вашем сервере"),
+                                    title: String(localized: "go2rtc stream"),
+                                    subtitle: String(localized: "A camera that’s already on your server"),
                                     action: onStream)
                     }
-                    OtherWayRow(symbol: "server.rack", color: .gray, title: String(localized: "Свой сервер go2rtc"),
+                    OtherWayRow(symbol: "server.rack", color: .gray, title: String(localized: "Own go2rtc Server"),
                                 subtitle: serverSubtitle, action: onServer)
                     if let onContinueWithoutCamera {
-                        OtherWayRow(symbol: "timer", color: Theme.warning, title: String(localized: "Без камеры"),
-                                    subtitle: String(localized: "Таймер, расписание и лог. Камеру можно добавить позже"),
+                        OtherWayRow(symbol: "timer", color: Theme.warning, title: String(localized: "No Camera"),
+                                    subtitle: String(localized: "Timer, schedule and log. You can add a camera later"),
                                     action: onContinueWithoutCamera)
                     }
                 }
@@ -196,14 +196,14 @@ struct OtherWaysSheet: View {
         let hosts = client.compatibleHosts
         if hosts.isEmpty {
             OtherWayRow(symbol: "laptopcomputer", color: Color(red: 0.42, green: 0.45, blue: 0.95),
-                        title: String(localized: "Камера с Mac"),
-                        subtitle: String(localized: "Откройте Waiting Paws на Mac в этой же сети Wi‑Fi — он появится здесь"),
+                        title: String(localized: "Camera from a Mac"),
+                        subtitle: String(localized: "Open Waiting Paws on a Mac on the same Wi‑Fi — it will show up here"),
                         action: nil)
         } else {
             ForEach(hosts) { host in
                 OtherWayRow(symbol: host.device.symbolName, color: Color(red: 0.42, green: 0.45, blue: 0.95),
                             title: host.device.name, subtitle: HostText.detail(host, paired: client.isPaired(host.device)),
-                            badge: String(localized: "Рядом")) { onJoin(host) }
+                            badge: String(localized: "Nearby")) { onJoin(host) }
             }
         }
     }
@@ -212,9 +212,9 @@ struct OtherWaysSheet: View {
         if model.settings.connectionMode == .external, let server = model.settings.server {
             let url = server.baseURL
             let host = url.host().map { host in url.port.map { "\(host):\($0)" } ?? host } ?? url.absoluteString
-            return String(localized: "Сейчас: \(host)")
+            return String(localized: "Current: \(host)")
         }
-        return String(localized: "RTSP и ONVIF — через ваш go2rtc")
+        return String(localized: "RTSP and ONVIF — through your go2rtc")
     }
 }
 
@@ -309,12 +309,12 @@ struct NearbyComputerCard: View {
         return VStack(spacing: 0) {
             HStack {
                 Spacer()
-                GlassCircleButton(action: onDismiss).accessibilityLabel("Закрыть")
+                GlassCircleButton(action: onDismiss).accessibilityLabel("Close")
             }
             ComputerIllustration(host: host)
                 .frame(width: 210, height: 132)
                 .padding(.top, -14)
-            Text(host.info.sessionRunning ? "На «\(host.device.name)» идёт тренировка" : "«\(host.device.name)» рядом")
+            Text(host.info.sessionRunning ? "A Training Is Running on “\(host.device.name)”" : "“\(host.device.name)” Is Nearby")
                 .font(.system(size: 24, weight: .bold))
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -327,15 +327,15 @@ struct NearbyComputerCard: View {
                 .padding(.top, 8)
                 .padding(.horizontal, 8)
             failure.padding(.top, 10)
-            WideGlassButton(title: String(localized: "Подключиться к \(kind)")) { model.syncClient.connect(to: host) }
+            WideGlassButton(title: String(localized: "Connect to \(kind)")) { model.syncClient.connect(to: host) }
                 .padding(.top, 22)
             #if !WP_NO_XIAOMI
-            Button("Нет, войти в Xiaomi на iPhone", action: onSignIn)
+            Button("No, Sign In to Xiaomi on iPhone", action: onSignIn)
                 .font(.system(size: 15, weight: .semibold))
                 .padding(.top, 14)
             #endif
             if !model.syncClient.isPaired(host.device) {
-                Text("На \(kind) один раз появится запрос «Разрешить»")
+                Text("The \(kind) will ask you to Allow once")
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
@@ -351,24 +351,24 @@ struct NearbyComputerCard: View {
         if !host.info.cameraTitle.isEmpty { return NoXiaomiText.joinCamera(host.info.cameraTitle, from: kind) }
         #else
         if host.info.sessionRunning {
-            return String(localized: "iPhone покажет камеру и станет пультом для этой тренировки, входить в Xiaomi не нужно.")
+            return String(localized: "iPhone will show the camera and become a remote for this training. No need to sign in to Xiaomi.")
         }
         if !host.info.cameraTitle.isEmpty {
-            return String(localized: "На нём уже подключена камера «\(host.info.cameraTitle)». iPhone покажет её и тренировку с \(kind), входить в Xiaomi не нужно.")
+            return String(localized: "It already has the camera “\(host.info.cameraTitle)”. iPhone will show it and the training from the \(kind). No need to sign in to Xiaomi.")
         }
         #endif
-        return String(localized: "iPhone будет показывать тренировку и камеру с \(kind), когда она там появится.")
+        return String(localized: "iPhone will show the training and the camera from this \(kind) once a camera is set up there.")
     }
 
     /// Several computers: which one (the likely one first).
     private var choice: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Рядом Waiting Paws на компьютерах")
+                Text("Waiting Paws on Computers Nearby")
                     .font(.system(size: 22, weight: .bold))
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                GlassCircleButton(action: onDismiss).accessibilityLabel("Закрыть")
+                GlassCircleButton(action: onDismiss).accessibilityLabel("Close")
             }
             #if WP_NO_XIAOMI
             Text(NoXiaomiText.joinSeveral)
@@ -377,7 +377,7 @@ struct NearbyComputerCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
             #else
-            Text("На них уже подключена камера: iPhone покажет её и тренировку, входить в Xiaomi не нужно.")
+            Text("They already have the camera: iPhone will show it and the training. No need to sign in to Xiaomi.")
                 .font(.system(size: 15))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -393,7 +393,7 @@ struct NearbyComputerCard: View {
             }
             .padding(.top, 16)
             #if !WP_NO_XIAOMI
-            Button("Нет, войти в Xiaomi на iPhone", action: onSignIn)
+            Button("No, Sign In to Xiaomi on iPhone", action: onSignIn)
                 .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.top, 16)
@@ -411,18 +411,18 @@ struct NearbyComputerCard: View {
                 .controlSize(.large)
                 .tint(Theme.accent)
                 .padding(.top, 8)
-            Text(waiting ? "Подтвердите на \(host.kindTitle)" : "Подключаемся к «\(host.name)»")
+            Text(waiting ? "Confirm on the \(host.kindTitle)" : "Connecting to “\(host.name)”")
                 .font(.system(size: 22, weight: .bold))
                 .multilineTextAlignment(.center)
             if waiting {
                 // Names both ends: the prompt on the computer shows this iPhone under the same name.
-                Text("На «\(host.name)» появился запрос от «\(model.settings.linkName)» — нажмите «Разрешить». Это нужно один раз для этого iPhone.")
+                Text("“\(host.name)” is showing a request from “\(model.settings.linkName)” — click Allow. This is needed once for this iPhone.")
                     .font(.system(size: 15))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            WideGlassButton(title: String(localized: "Отменить"), prominent: false) { model.syncClient.disconnect() }
+            WideGlassButton(title: String(localized: "Cancel|verb"), prominent: false) { model.syncClient.disconnect() }
                 .padding(.top, 8)
         }
     }

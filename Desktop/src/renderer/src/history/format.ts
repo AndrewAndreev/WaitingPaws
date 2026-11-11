@@ -33,15 +33,15 @@ export function longDay(row: HistoryRow): string {
 
 /// "1 тренировка", "11 тренировок" / "1 training", "11 trainings".
 export function trainingsText(n: number): string {
-  return plural(n, ['%d тренировка', '%d тренировки', '%d тренировок'], ['%d training', '%d trainings'])
+  return plural(n, ['%d training', '%d trainings'], ['%d тренировка', '%d тренировки', '%d тренировок'])
 }
 
 /// Accusative for «Удалить 1 тренировку».
 export function trainingsAccusative(n: number): string {
-  return plural(n, ['%d тренировку', '%d тренировки', '%d тренировок'], ['%d training', '%d trainings'])
+  return plural(n, ['%d training', '%d trainings'], ['%d тренировку', '%d тренировки', '%d тренировок'])
 }
 
 /// "1 запись", "3 записи" / "1 recording", "3 recordings".
 export function recordingsText(n: number): string {
-  return plural(n, ['%d запись', '%d записи', '%d записей'], ['%d recording', '%d recordings'])
+  return plural(n, ['%d recording', '%d recordings'], ['%d запись', '%d записи', '%d записей'])
 }

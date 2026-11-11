@@ -243,7 +243,7 @@ struct SessionScreen: View {
                     editingPending = nil
                 }
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { editingPending = nil } }
+                    ToolbarItem(placement: .cancellationAction) { Button("Close") { editingPending = nil } }
                 }
             }
             .environment(model)
@@ -255,15 +255,15 @@ struct SessionScreen: View {
                     if model.isReconnecting {
                         // The edit would not reach the Mac, and its next state would undo it here: it stays in the
                         // editor until the link is back.
-                        model.errorMessage = String(localized: "Нет связи с \(model.linkedHostKind) — переподключаемся…")
+                        model.errorMessage = String(localized: "No connection to the \(model.linkedHostKind) — reconnecting…")
                     } else if model.session?.updatePlan(final) == true {
                         editingSessionPlan = nil
                     } else {
-                        model.errorMessage = String(localized: "Прошедшие выходы и текущий нельзя удалить или переставить.")
+                        model.errorMessage = String(localized: "Exits already done and the current one can't be removed or moved.")
                     }
                 }
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { editingSessionPlan = nil } }
+                    ToolbarItem(placement: .cancellationAction) { Button("Close") { editingSessionPlan = nil } }
                 }
             }
             .environment(model)
@@ -299,31 +299,31 @@ struct SessionScreen: View {
             .environment(model)
             .sheetFrame(width: 520, height: 560)
         }
-        .alert("Ошибка", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
-            Button("Ок", role: .cancel) {}
+        .alert("Error", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
+            Button("OK", role: .cancel) {}
         } message: {
             Text(model.errorMessage ?? "")
         }
-        .confirmationDialog("Завершить тренировку?", isPresented: $confirmFinish, titleVisibility: .visible) {
-            Button("Завершить и сохранить") { model.finishSession() }
-            Button("Отмена", role: .cancel) {}
+        .confirmationDialog("Finish Training?", isPresented: $confirmFinish, titleVisibility: .visible) {
+            Button("Finish and Save") { model.finishSession() }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Запись остановится, лог и видео будут сохранены.")
+            Text("Recording will stop; the log and video will be saved.")
         }
-        .confirmationDialog("Отменить тренировку?", isPresented: $confirmAbandon, titleVisibility: .visible) {
-            Button("Отменить без сохранения", role: .destructive) { model.abandonSession() }
-            Button("Продолжить", role: .cancel) {}
+        .confirmationDialog("Cancel Training?", isPresented: $confirmAbandon, titleVisibility: .visible) {
+            Button("Cancel Without Saving", role: .destructive) { model.abandonSession() }
+            Button("Continue", role: .cancel) {}
         }
-        .confirmationDialog("Остановить запись?", isPresented: $confirmStopRecording, titleVisibility: .visible) {
-            Button("Остановить запись", role: .destructive) { model.stopRecording(deleteFile: false) }
-            Button("Продолжить запись", role: .cancel) {}
+        .confirmationDialog("Stop recording?", isPresented: $confirmStopRecording, titleVisibility: .visible) {
+            Button("Stop Recording", role: .destructive) { model.stopRecording(deleteFile: false) }
+            Button("Keep Recording", role: .cancel) {}
         } message: {
             if model.session != nil {
-                Text("Тренировка продолжится без видео. То, что уже записано, сохранится.")
+                Text("The training goes on without video. What has been recorded so far will be kept.")
             } else if model.isLinkedToMac {
-                Text("Видео сохранится на \(model.linkedHostKind).")
+                Text("The video will be saved on the \(model.linkedHostKind).")
             } else {
-                Text("Видео сохранится в истории.")
+                Text("The video will be saved to History.")
             }
         }
         // Stopped elsewhere (on the linked Mac, by «Завершить»): nothing left to stop.
@@ -351,7 +351,7 @@ struct SessionScreen: View {
         switch argument("--demo-stream=") {
         case "stalled": status.demo(.stalled, age: 12)
         case "reconnecting": status.demo(.connecting, age: 12)
-        case "failed": status.demo(.failed(String(localized: "нет ответа")), age: 12)
+        case "failed": status.demo(.failed(String(localized: "no response")), age: 12)
         case "connecting": status.demo(.connecting, age: nil)
         default: break
         }
@@ -468,13 +468,13 @@ struct SessionScreen: View {
                 HStack(spacing: 4) {
                     if model.canPanTilt {
                         CameraCornerButton(systemImage: "arrow.up.and.down.and.arrow.left.and.right",
-                                           title: String(localized: "Повернуть камеру"), showsTitle: false) {
+                                           title: String(localized: "Turn Camera"), showsTitle: false) {
                             withAnimation(.smooth(duration: 0.25)) { model.panTilt.start() }
                         }
                     }
                     if canExpand {
                         CameraCornerButton(systemImage: "arrow.up.left.and.arrow.down.right",
-                                           title: String(localized: "Только камера"), showsTitle: false) {
+                                           title: String(localized: "Camera Only"), showsTitle: false) {
                             cameraOnly = true
                         }
                     }
@@ -589,9 +589,9 @@ struct SessionScreen: View {
             // The player as large as the picture: no black of its own round it to cover what is past the area.
             .modifier(PictureFrame(aspect: cameraAspect, frozen: shownFrameIsFrozen))
         } else if model.isLinkedCameraNotShared {
-            CameraPlaceholder(text: String(localized: "Видео с камеры показывается только на \(model.linkedHostKind)"))
+            CameraPlaceholder(text: String(localized: "The camera’s video is only shown on the \(model.linkedHostKind)"))
         } else {
-            CameraPlaceholder(text: model.isLinkedToMac ? String(localized: "На \(model.linkedHostKind) не выбрана камера") : String(localized: "Камера не выбрана"))
+            CameraPlaceholder(text: model.isLinkedToMac ? String(localized: "No camera selected on the \(model.linkedHostKind)") : String(localized: "No camera selected"))
         }
     }
 
@@ -607,7 +607,7 @@ struct SessionScreen: View {
         HStack(spacing: 8) {
             if hasNoCamera {
                 Button { showCameraSetup = true } label: {
-                    Pill(text: String(localized: "Без камеры"), systemImage: "video.slash", tint: .white.opacity(0.85))
+                    Pill(text: String(localized: "No Camera"), systemImage: "video.slash", tint: .white.opacity(0.85))
                 }
                 .buttonStyle(PressableButtonStyle())
             } else {
@@ -646,9 +646,9 @@ struct SessionScreen: View {
                            tint: showTrainerText ? Theme.accent : .white) {
                     withAnimation(.smooth(duration: 0.3)) { showTrainerText.toggle() }
                 }
-                .accessibilityLabel("Текст тренера")
+                .accessibilityLabel("Trainer’s Text")
                 .accessibilityShowsLargeContentViewer {
-                    Label("Текст тренера", systemImage: "doc.text")
+                    Label("Trainer’s Text", systemImage: "doc.text")
                 }
             }
             if model.session != nil {
@@ -662,13 +662,13 @@ struct SessionScreen: View {
                             onAbandon: { confirmAbandon = true })
                 .disabled(model.isReconnecting)
             } else {
-                IconButton(systemImage: "clock.arrow.circlepath", label: String(localized: "История")) { showHistory = true }
+                IconButton(systemImage: "clock.arrow.circlepath", label: String(localized: "History")) { showHistory = true }
                     .accessibilityShowsLargeContentViewer {
-                        Label("История", systemImage: "clock.arrow.circlepath")
+                        Label("History", systemImage: "clock.arrow.circlepath")
                     }
-                IconButton(systemImage: "gearshape", label: String(localized: "Настройки")) { showSettings = true }
+                IconButton(systemImage: "gearshape", label: String(localized: "Settings")) { showSettings = true }
                     .accessibilityShowsLargeContentViewer {
-                        Label("Настройки", systemImage: "gearshape")
+                        Label("Settings", systemImage: "gearshape")
                     }
             }
         }
@@ -693,9 +693,9 @@ struct SessionScreen: View {
 
     private var embeddedStatusText: String {
         switch model.embedded.status {
-        case .idle, .starting: return String(localized: "Запускаем go2rtc…")
+        case .idle, .starting: return String(localized: "Starting go2rtc…")
         case .failed(let message): return message
-        case .unavailable: return String(localized: "Встроенный go2rtc не собран")
+        case .unavailable: return String(localized: "Built-in go2rtc isn’t included in this build")
         case .running: return ""
         }
     }
@@ -749,11 +749,11 @@ struct PlanEntryCard: View {
     var body: some View {
         GlassCard(padding: 18) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Новая тренировка")
+                Text("New Training")
                     .font(Theme.display(22, weight: .bold))
-                BigButton(title: String(localized: "Вставить расписание"), systemImage: "doc.on.clipboard", action: onPaste)
+                BigButton(title: String(localized: "Paste Schedule"), systemImage: "doc.on.clipboard", action: onPaste)
                 if canRecord {
-                    BigButton(title: String(localized: "Записать без тренировки"), systemImage: "record.circle",
+                    BigButton(title: String(localized: "Record without a training"), systemImage: "record.circle",
                               style: .secondary, height: 44, action: onRecordOnly)
                 }
             }
@@ -780,13 +780,13 @@ private struct CameraMenu: View {
     var body: some View {
         Menu {
             if model.isLinkedToMac {
-                Text("Камеру и качество выбирают на \(model.linkedHostKind)")
+                Text("Camera and quality are chosen on the \(model.linkedHostKind)")
             } else {
-                Button("Выбрать камеру…", systemImage: "video.badge.plus", action: onPickCamera)
-                Button(model.hasSecondCamera ? "Другая вторая камера…" : "Вторая камера…", systemImage: "rectangle.on.rectangle",
+                Button("Choose Camera…", systemImage: "video.badge.plus", action: onPickCamera)
+                Button(model.hasSecondCamera ? "Another Second Camera…" : "Second Camera…", systemImage: "rectangle.on.rectangle",
                        action: onPickSecondCamera)
                 if model.hasSecondCamera {
-                    Button("Убрать вторую камеру", systemImage: "rectangle.badge.minus", role: .destructive) {
+                    Button("Remove Second Camera", systemImage: "rectangle.badge.minus", role: .destructive) {
                         model.removeSecondCamera()
                     }
                 }
@@ -797,12 +797,12 @@ private struct CameraMenu: View {
                 }
                 #endif
             }
-            Button("Переподключить", systemImage: "arrow.clockwise", action: onReconnect)
+            Button("Reconnect", systemImage: "arrow.clockwise", action: onReconnect)
             // The quality of the camera on screen, the one recorded.
             let second = model.isShowingSecondCamera
             if !model.isLinkedToMac, let quality = second ? model.secondXiaomiQuality : model.xiaomiQuality {
                 Menu {
-                    Picker("Качество", selection: Binding(
+                    Picker("Quality", selection: Binding(
                         get: { quality },
                         set: { newValue in
                             Task { await model.setXiaomiQuality(newValue, second: second) }
@@ -811,18 +811,18 @@ private struct CameraMenu: View {
                             Text(model.qualityTitle(q, source: second ? model.secondXiaomiSource : nil)).tag(q)
                         }
                     }
-                    Text("Записи — в этом же качестве")
+                    Text("Recordings use this quality too")
                     if let size = second ? model.secondVideoSize : model.videoSize {
                         Divider()
-                        Button("Сейчас \(Int(size.width))×\(Int(size.height))", systemImage: "info.circle") {}
+                        Button("Current: \(Int(size.width))×\(Int(size.height))", systemImage: "info.circle") {}
                             .disabled(true)
                     }
                 } label: {
-                    Label("Качество · \(quality.title)", systemImage: "sparkles.tv")
+                    Label("Quality · \(quality.title)", systemImage: "sparkles.tv")
                 }
             }
             CameraModeMenuItems()
-            Toggle("Звук", systemImage: "speaker.wave.2", isOn: Binding(
+            Toggle("Sound", systemImage: "speaker.wave.2", isOn: Binding(
                 get: { model.settings.audioEnabled },
                 set: { model.settings.audioEnabled = $0 }))
         } label: {
@@ -937,7 +937,7 @@ private struct CameraSwitcher: View {
             // The Mac's link is being restored: the switch could not reach it, and the Mac would go on recording the
             // other camera.
             .disabled(model.isReconnecting)
-            .accessibilityLabel(String(localized: "Показать камеру «\(title)»"))
+            .accessibilityLabel(String(localized: "Show camera “\(title)”"))
             .accessibilityShowsLargeContentViewer {
                 Label(title, systemImage: "arrow.triangle.2.circlepath.camera")
             }
@@ -998,11 +998,11 @@ private struct SessionMenu: View {
     var body: some View {
         Menu {
             if let onTrainerText {
-                Button("Текст тренера", systemImage: "doc.text", action: onTrainerText)
+                Button("Trainer’s Text", systemImage: "doc.text", action: onTrainerText)
             }
-            Button("Изменить расписание", systemImage: "slider.horizontal.3", action: onEditPlan)
+            Button("Edit Schedule", systemImage: "slider.horizontal.3", action: onEditPlan)
             Button(model.finishTitle, systemImage: "flag.checkered", action: onFinish)
-            Button("Отменить без сохранения", systemImage: "xmark.circle", role: .destructive, action: onAbandon)
+            Button("Cancel Without Saving", systemImage: "xmark.circle", role: .destructive, action: onAbandon)
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 16, weight: .semibold))
@@ -1012,9 +1012,9 @@ private struct SessionMenu: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
-        .accessibilityLabel("Тренировка")
+        .accessibilityLabel("Training")
         .accessibilityShowsLargeContentViewer {
-            Label("Тренировка", systemImage: "ellipsis")
+            Label("Training", systemImage: "ellipsis")
         }
     }
 }
@@ -1050,9 +1050,9 @@ private struct RecordingPill: View {
                 Image(systemName: "record.circle.fill")
             }
         } else if !model.isLinkedToMac, model.recorder.lastError != nil {
-            return Label("Запись не идёт", systemImage: "exclamationmark.triangle.fill")
+            return Label("Not Recording", systemImage: "exclamationmark.triangle.fill")
         }
-        return Label("Запись", systemImage: "record.circle")
+        return Label("Record", systemImage: "record.circle")
     }
 
     @ViewBuilder
@@ -1063,10 +1063,10 @@ private struct RecordingPill: View {
             Pill(text: "REC", systemImage: "record.circle.fill", tint: Theme.danger, iconOnly: short)
                 .accessibilityLabel(Text(verbatim: "REC " + DurationText.clock(model.recordingDuration(at: date))))
         } else if !model.isLinkedToMac, model.recorder.lastError != nil {
-            Pill(text: String(localized: "Запись не идёт"), systemImage: "exclamationmark.triangle.fill", tint: Theme.warning,
+            Pill(text: String(localized: "Not Recording"), systemImage: "exclamationmark.triangle.fill", tint: Theme.warning,
                  iconOnly: short)
         } else {
-            Pill(text: String(localized: "Запись"), systemImage: "record.circle", tint: .white.opacity(0.85), iconOnly: short)
+            Pill(text: String(localized: "Record"), systemImage: "record.circle", tint: .white.opacity(0.85), iconOnly: short)
         }
     }
 }
@@ -1088,10 +1088,10 @@ struct PerformanceBar: View {
             }
             HStack(spacing: 10) {
                 Text(String(format: "CPU %.0f%% · main %.0f%%", s.cpuTotal, s.cpuMain))
-                Text("\(s.memoryMB, specifier: "%.0f") МБ")
-                Text("UI +\(s.maxHangMs, specifier: "%.0f") мс")
+                Text("\(s.memoryMB, specifier: "%.0f") MB")
+                Text("UI +\(s.maxHangMs, specifier: "%.0f") ms")
                     .foregroundStyle(s.maxHangMs > 250 ? Theme.danger : (s.maxHangMs > 80 ? Theme.warning : .white))
-                Text(pluralText(s.threads, ru: ("поток", "потока", "потоков"), en: ("thread", "threads")))
+                Text(pluralText(s.threads, en: ("thread", "threads"), ru: ("поток", "потока", "потоков")))
             }
             .opacity(0.8)
         }
@@ -1117,15 +1117,15 @@ struct NoCameraView: View {
                 Image(systemName: "pawprint.fill")
                     .font(.system(size: 34, weight: .light))
                     .foregroundStyle(Theme.accent.opacity(0.8))
-                Text("Без камеры")
+                Text("No Camera")
                     .font(Theme.display(20, weight: .bold))
-                Text("Таймеры, расписание и лог работают. С камерой вы увидите собаку, пока вы за дверью, и сможете записывать видео.")
+                Text("Timers, the schedule, and the log still work. With a camera you’ll see your dog while you’re outside and can record video.")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(.white.opacity(0.55))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 360)
                 Button(action: onConnect) {
-                    Label("Подключить камеру…", systemImage: "video.badge.plus")
+                    Label("Connect a Camera…", systemImage: "video.badge.plus")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(.black)
                 }
@@ -1150,9 +1150,9 @@ struct CameraOnlyOverlay: View {
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(.white.opacity(0.7))
             VStack(alignment: .leading, spacing: 1) {
-                Text("Только камера")
+                Text("Camera Only")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                Text("Без записи и тренировки")
+                Text("Not recording, no training")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
             }
@@ -1167,7 +1167,7 @@ struct CameraOnlyOverlay: View {
                     .background(Theme.control, in: Circle())
             }
             .buttonStyle(PressableButtonStyle())
-            .accessibilityLabel("Начать запись")
+            .accessibilityLabel("Start Recording")
             Button(action: onClose) {
                 Image(systemName: "arrow.down.right.and.arrow.up.left")
                     .font(.system(size: 17, weight: .semibold))
@@ -1176,7 +1176,7 @@ struct CameraOnlyOverlay: View {
                     .background(Theme.control, in: Circle())
             }
             .buttonStyle(PressableButtonStyle())
-            .accessibilityLabel("Вернуть карточки")
+            .accessibilityLabel("Show the Cards Again")
         }
         .padding(.leading, 20)
         .padding(.trailing, 8)

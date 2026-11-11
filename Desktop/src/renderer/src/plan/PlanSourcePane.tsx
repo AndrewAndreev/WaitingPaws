@@ -59,12 +59,12 @@ export function PlanSourcePane({
   }, [first, last])
 
   return (
-    <section className="plan-source" style={width !== null ? { width } : undefined} aria-label={t('Текст тренера')}>
+    <section className="plan-source" style={width !== null ? { width } : undefined} aria-label={t('Trainer’s Text')}>
       <div className="plan-source__bar">
         <SourceTextIcon className="plan-source__bar-icon" />
-        <span>{t('Текст тренера')}</span>
+        <span>{t('Trainer’s Text')}</span>
         <span className="spacer" />
-        <span className="faint ellipsis">{t('разобран автоматически')}</span>
+        <span className="faint ellipsis">{t('recognized automatically')}</span>
         <SuccessFilledIcon className="plan-source__ok" />
       </div>
       <div className="plan-source__lines selectable" ref={scrollRef}>
@@ -90,7 +90,7 @@ export function PlanSourcePane({
 function lineTag(line: PlanTextLine, numberOfLine: Map<number, number>): { text: string; tone: string } | null {
   if (line.kind.kind !== 'earlyEntry') return null
   const owner = line.kind.afterLine === null ? undefined : numberOfLine.get(line.kind.afterLine)
-  return { text: owner === undefined ? t('общее') : t('→ выход %lld', owner), tone: line.kind.tone }
+  return { text: owner === undefined ? t('common') : t('→ exit %lld', owner), tone: line.kind.tone }
 }
 
 function SourceLine({ line, linked, tag, onClick }: { line: PlanTextLine; linked: boolean; tag: { text: string; tone: string } | null; onClick: () => void }) {
@@ -133,23 +133,23 @@ function SourceLine({ line, linked, tag, onClick }: { line: PlanTextLine; linked
 function lineHelp(line: PlanTextLine): string {
   switch (line.kind.kind) {
     case 'header':
-      return t('Заголовок: название, тренеры и дата')
+      return t('Header: title, trainers and date')
     case 'exit':
-      return t('Выход %lld — щёлкните, чтобы выбрать его в таблице', line.kind.number)
+      return t('Exit %lld — click to select it in the table', line.kind.number)
     case 'ownBreak':
-      return t('Свой перерыв после выхода выше')
+      return t('Own break after the exit above')
     case 'defaultBreak':
-      return t('Перерыв между выходами')
+      return t('Break Between Exits')
     case 'rule':
-      return t('Правило фальстарта')
+      return t('False start rule')
     case 'earlyEntry':
       return line.kind.afterLine === null
-        ? t('Условие раннего входа для всей тренировки')
-        : t('Условие раннего входа выхода выше — щёлкните, чтобы выбрать выход')
+        ? t('Condition for coming back early for the whole training')
+        : t('Coming back early on the exit above — click to select the exit')
     case 'doNotEnter':
-      return t('Когда не входить — для всей тренировки')
+      return t('When not to come in — for the whole training')
     case 'note':
-      return t('Заметка тренера')
+      return t('Trainer’s note')
     case 'blank':
       return ''
   }
@@ -167,8 +167,8 @@ function Legend({ lines }: { lines: PlanTextLine[] }) {
       <LegendItem kind="exit" text={PlanFormat.exits(exits)} />
       {breaks > 0 && <LegendItem kind="break" text={PlanFormat.breaks(breaks)} />}
       {conditions > 0 && <LegendItem kind="entry" text={PlanFormat.conditions(conditions)} />}
-      {stop && <LegendItem kind="stop" text={t('не входить')} />}
-      {rule && <LegendItem kind="rule" text={t('фальстарт')} />}
+      {stop && <LegendItem kind="stop" text={t('don’t come in')} />}
+      {rule && <LegendItem kind="rule" text={t('false start')} />}
       {notes > 0 && <LegendItem kind="note" text={PlanFormat.notes(notes)} />}
       <span className="spacer" />
       <span className="faint plan-source__count">{PlanFormat.lines(lines.length)}</span>

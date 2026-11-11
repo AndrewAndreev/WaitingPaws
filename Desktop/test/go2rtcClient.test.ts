@@ -302,12 +302,12 @@ describe('localization', () => {
     setCoreLanguage('ru')
     const ru = { one: 'выход', few: 'выхода', many: 'выходов' }
     const en = { one: 'exit', other: 'exits' }
-    expect([1, 2, 5, 11, 12, 21, 22, 25, 111, 0].map((n) => pluralText(n, ru, en))).toEqual([
+    expect([1, 2, 5, 11, 12, 21, 22, 25, 111, 0].map((n) => pluralText(n, en, ru))).toEqual([
       '1 выход', '2 выхода', '5 выходов', '11 выходов', '12 выходов', '21 выход', '22 выхода', '25 выходов',
       '111 выходов', '0 выходов',
     ])
     setCoreLanguage('en')
-    expect([1, 2, 0].map((n) => pluralText(n, ru, en))).toEqual(['1 exit', '2 exits', '0 exits'])
+    expect([1, 2, 0].map((n) => pluralText(n, en, ru))).toEqual(['1 exit', '2 exits', '0 exits'])
   })
 
   it('detects the app language like Bundle.preferredLocalizations', () => {

@@ -21,12 +21,12 @@ export async function pasteSchedule(text?: string): Promise<void> {
   if (!app || app.session) return
   const source = text ?? (await call('clipboard.readText')) ?? ''
   if (!source.trim()) {
-    toast({ title: t('В буфере обмена нет текста. Скопируйте сообщение тренера и попробуйте снова.'), kind: 'warning' })
+    toast({ title: t('There’s no text on the clipboard. Copy the trainer’s message and try again.'), kind: 'warning' })
     return
   }
   const plan = PlanParser.parse(source)
   if (!TrainingPlan.isValid(plan)) {
-    toast({ title: t('В скопированном тексте не нашлось ни одного выхода («1 выход - 30 секунд»).'), kind: 'warning' })
+    toast({ title: t('No exits found in the copied text (“Exit 1 - 30 seconds”).'), kind: 'warning' })
     return
   }
   await call('pending.set', plan)
@@ -35,12 +35,12 @@ export async function pasteSchedule(text?: string): Promise<void> {
 
 /// «Начать тренировку и запись» when the start starts the recording too (the setting is on and there is a camera).
 export function startTitle(app: AppState): string {
-  return app.settings.autoRecord && isConfigured(app.settings) ? t('Начать тренировку и запись') : t('Начать тренировку')
+  return app.settings.autoRecord && isConfigured(app.settings) ? t('Start Training & Recording') : t('Start Training')
 }
 
 /// «Завершить тренировку и запись» while a recording runs: finishing stops it.
 export function finishTitle(app: AppState): string {
-  return isRecording(app) ? t('Завершить тренировку и запись') : t('Завершить')
+  return isRecording(app) ? t('Finish Training & Recording') : t('Finish')
 }
 
 /// Ctrl+Enter
@@ -74,9 +74,9 @@ export function falseStart(): void {
 }
 
 export function primaryStepTitle(session: TrainingSessionSnapshot | null): string {
-  if (!session) return t('Начать тренировку')
+  if (!session) return t('Start Training')
   const phase = session.phase
-  if (phase.kind === 'finished') return t('Готово')
-  if (phase.kind === 'away') return t('Вернулись')
-  return SessionPhase.canGoOutside(phase) ? t('Вышли') : t('Завершить')
+  if (phase.kind === 'finished') return t('Done')
+  if (phase.kind === 'away') return t('Back Inside')
+  return SessionPhase.canGoOutside(phase) ? t('Outside|step') : t('Finish')
 }

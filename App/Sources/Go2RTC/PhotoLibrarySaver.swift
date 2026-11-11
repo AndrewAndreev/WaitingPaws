@@ -13,11 +13,11 @@ enum PhotoLibrarySaver {
             switch self {
             case .denied:
                 #if os(macOS)
-                return String(localized: "Нет разрешения добавлять видео в Фото. Включите его в Системных настройках → Конфиденциальность и безопасность → Фото.")
+                return String(localized: "No permission to add videos to Photos. Turn it on in System Settings → Privacy & Security → Photos.")
                 #else
-                return String(localized: "Нет разрешения добавлять видео в Фото. Включите его в Настройках iOS → Waiting Paws.")
+                return String(localized: "No permission to add videos to Photos. Turn it on in iOS Settings → Waiting Paws.")
                 #endif
-            case .failed(let why): return String(localized: "Не удалось сохранить в Фото: \(why)")
+            case .failed(let why): return String(localized: "Couldn’t save to Photos: \(why)")
             }
         }
     }
@@ -28,7 +28,7 @@ enum PhotoLibrarySaver {
 
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         let size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
-        guard size > 0 else { throw SaveError.failed(String(localized: "файл записи пустой")) }
+        guard size > 0 else { throw SaveError.failed(String(localized: "the recording file is empty")) }
 
         do {
             try await PHPhotoLibrary.shared().performChanges {
@@ -36,14 +36,14 @@ enum PhotoLibrarySaver {
             }
         } catch {
             let codecs = await codecSummary(url)
-            throw SaveError.failed(String(localized: "\(error.localizedDescription) (кодеки: \(codecs))"))
+            throw SaveError.failed(String(localized: "\(error.localizedDescription) (codecs: \(codecs))"))
         }
     }
 
     /// "avc1, mp4a" style list of track codecs, for error messages.
     private static func codecSummary(_ url: URL) async -> String {
         let asset = AVURLAsset(url: url)
-        guard let tracks = try? await asset.load(.tracks), !tracks.isEmpty else { return String(localized: "не удалось прочитать файл") }
+        guard let tracks = try? await asset.load(.tracks), !tracks.isEmpty else { return String(localized: "couldn’t read the file") }
         var names: [String] = []
         for track in tracks {
             guard let descriptions = try? await track.load(.formatDescriptions) else { continue }
@@ -53,6 +53,6 @@ enum PhotoLibrarySaver {
                 names.append(String(chars))
             }
         }
-        return names.isEmpty ? String(localized: "нет дорожек") : names.joined(separator: ", ")
+        return names.isEmpty ? String(localized: "no tracks") : names.joined(separator: ", ")
     }
 }

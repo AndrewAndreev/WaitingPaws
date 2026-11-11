@@ -46,7 +46,7 @@ export function ServerStatusLine({ probe, compact = false }: { probe?: { phase: 
   const app = useStore((store) => store.app)!
   const retry = (
     <Button variant="link" className="setup-status__action" onClick={() => void call('go2rtc.restart')}>
-      {t('Попробовать снова')}
+      {t('Try Again')}
     </Button>
   )
   let content: ReactNode
@@ -56,9 +56,9 @@ export function ServerStatusLine({ probe, compact = false }: { probe?: { phase: 
         content = (
           <>
             <span className="dot" />
-            <span>{t('Встроенный go2rtc не запущен')}</span>
+            <span>{t('Built-in go2rtc is not running')}</span>
             <Button variant="link" className="setup-status__action" onClick={() => void call('go2rtc.restart')}>
-              {t('Запустить')}
+              {t('Start')}
             </Button>
           </>
         )
@@ -67,7 +67,7 @@ export function ServerStatusLine({ probe, compact = false }: { probe?: { phase: 
         content = (
           <>
             <Spinner />
-            <span>{t('Запускаем встроенный go2rtc…')}</span>
+            <span>{t('Starting built-in go2rtc…')}</span>
           </>
         )
         break
@@ -76,7 +76,7 @@ export function ServerStatusLine({ probe, compact = false }: { probe?: { phase: 
         content = (
           <>
             <span className="dot dot--live" />
-            <span>{compact ? `go2rtc ${version}` : t('Встроенный go2rtc %@ работает', version)}</span>
+            <span>{compact ? `go2rtc ${version}` : t('Built-in go2rtc %@ is running', version)}</span>
           </>
         )
         break
@@ -96,19 +96,19 @@ export function ServerStatusLine({ probe, compact = false }: { probe?: { phase: 
         content = (
           <>
             <WarningIcon className="setup-status__warning" />
-            <span>{t('Сборка без встроенного go2rtc — укажите свой сервер')}</span>
+            <span>{t('This build has no built-in go2rtc — enter your own server')}</span>
           </>
         )
         break
     }
   } else {
-    const host = app.server ? hostText(app.server.baseURL) : t('адрес не указан')
+    const host = app.server ? hostText(app.server.baseURL) : t('no address set')
     if (probe?.phase.kind === 'failed') {
       content = (
         <>
           <WarningIcon className="setup-status__warning" />
           <Tooltip content={probe.phase.message}>
-            <span className="ellipsis">{t('%@ не отвечает', host)}</span>
+            <span className="ellipsis">{t('%@ is not responding', host)}</span>
           </Tooltip>
         </>
       )
@@ -116,14 +116,14 @@ export function ServerStatusLine({ probe, compact = false }: { probe?: { phase: 
       content = (
         <>
           <span className="dot dot--live" />
-          <span className="ellipsis">{compact ? `go2rtc ${probe.serverVersion}` : t('Свой сервер go2rtc %@ · %@', probe.serverVersion, host)}</span>
+          <span className="ellipsis">{compact ? `go2rtc ${probe.serverVersion}` : t('Own go2rtc server %@ · %@', probe.serverVersion, host)}</span>
         </>
       )
     } else {
       content = (
         <>
           <ServerIcon className="setup-status__icon" />
-          <span className="ellipsis">{t('Свой сервер go2rtc · %@', host)}</span>
+          <span className="ellipsis">{t('Own go2rtc server · %@', host)}</span>
         </>
       )
     }
@@ -173,7 +173,7 @@ export function StillDot({ state }: { state: StillState | undefined }) {
   if (!state) return <span className="still-dot-space" />
   if (state.kind === 'loading') return <Spinner />
   return (
-    <Tooltip content={state.kind === 'loaded' ? t('Камера отвечает') : t('Нет картинки с камеры')}>
+    <Tooltip content={state.kind === 'loaded' ? t('The camera is responding') : t('No picture from the camera')}>
       <span className={'dot' + (state.kind === 'loaded' ? ' dot--live' : '')} />
     </Tooltip>
   )
@@ -189,13 +189,13 @@ export function MiHomeSignInCard({ variant, disabled, onSignIn }: { variant: 'ca
         <SignInIcon />
       </div>
       <div className="grow">
-        <div className="mihome-card__title">{t('Камеры Mi Home')}</div>
+        <div className="mihome-card__title">{t('Mi Home Cameras')}</div>
         <div className="mihome-card__text">
-          {variant === 'row' ? t('Нужен вход в аккаунт Xiaomi') : t('Войдите в аккаунт Xiaomi — здесь появятся камеры из Mi Home.')}
+          {variant === 'row' ? t('Xiaomi sign-in required') : t('Sign in to your Xiaomi account — your Mi Home cameras will appear here.')}
         </div>
       </div>
       <Button variant="primary" size={variant === 'row' ? 'sm' : 'md'} disabled={disabled} onClick={onSignIn}>
-        {t('Войти в Xiaomi…')}
+        {t('Sign In to Xiaomi…')}
       </Button>
     </div>
   )

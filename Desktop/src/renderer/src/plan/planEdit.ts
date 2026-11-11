@@ -17,7 +17,7 @@ export const PlanFormat = {
   /// "≈ 28 мин" for summaries (seconds dropped from ten minutes up).
   approx(seconds: number): string {
     const total = DurationText.wholeSeconds(seconds)
-    if (total >= 600) return t('≈ %lld мин', roundHalfAwayFromZero(total / 60))
+    if (total >= 600) return t('≈ %lld min', roundHalfAwayFromZero(total / 60))
     return '≈ ' + DurationText.short(seconds)
   },
 
@@ -26,17 +26,17 @@ export const PlanFormat = {
     return (delta < 0 ? '−' : '+') + DurationText.clock(Math.abs(delta))
   },
 
-  exits: (n: number) => plural(n, ['%d выход', '%d выхода', '%d выходов'], ['%d exit', '%d exits']),
-  breaks: (n: number) => plural(n, ['%d перерыв', '%d перерыва', '%d перерывов'], ['%d break', '%d breaks']),
-  notes: (n: number) => plural(n, ['%d заметка', '%d заметки', '%d заметок'], ['%d note', '%d notes']),
-  lines: (n: number) => plural(n, ['%d строка', '%d строки', '%d строк'], ['%d line', '%d lines']),
-  triggers: (n: number) => plural(n, ['%d триггер', '%d триггера', '%d триггеров'], ['%d trigger', '%d triggers']),
-  conditions: (n: number) => plural(n, ['%d условие', '%d условия', '%d условий'], ['%d condition', '%d conditions']),
+  exits: (n: number) => plural(n, ['%d exit', '%d exits'], ['%d выход', '%d выхода', '%d выходов']),
+  breaks: (n: number) => plural(n, ['%d break', '%d breaks'], ['%d перерыв', '%d перерыва', '%d перерывов']),
+  notes: (n: number) => plural(n, ['%d note', '%d notes'], ['%d заметка', '%d заметки', '%d заметок']),
+  lines: (n: number) => plural(n, ['%d line', '%d lines'], ['%d строка', '%d строки', '%d строк']),
+  triggers: (n: number) => plural(n, ['%d trigger', '%d triggers'], ['%d триггер', '%d триггера', '%d триггеров']),
+  conditions: (n: number) => plural(n, ['%d condition', '%d conditions'], ['%d условие', '%d условия', '%d условий']),
 
   /// «через 2:00» / «сразу»: when to come back after the dog did it.
   entryDelay(entry: EarlyEntry): string {
-    if (entry.delay !== null && entry.delay > 0) return t('через %@', DurationText.clock(entry.delay))
-    return EarlyEntry.unreadDelay(entry) ?? t('сразу')
+    if (entry.delay !== null && entry.delay > 0) return t('in %@', DurationText.clock(entry.delay))
+    return EarlyEntry.unreadDelay(entry) ?? t('right away')
   },
 
   /// «встала и пошла → через 2:00» (the common conditions in the bar above the table).

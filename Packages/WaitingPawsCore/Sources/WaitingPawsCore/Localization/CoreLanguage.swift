@@ -33,13 +33,13 @@ public enum CoreLanguage: String, Sendable {
     }
 }
 
-/// The Russian or the English text, for the current language.
-func tr(_ ru: String, _ en: String) -> String {
+/// The English or the Russian text, for the current language: `tr("Break", ru: "Перерыв")`.
+func tr(_ en: String, ru: String) -> String {
     CoreLanguage.current == .ru ? ru : en
 }
 
-/// "1 выход", "3 выхода", "5 выходов" / "1 exit", "2 exits".
-public func pluralText(_ count: Int, ru: (one: String, few: String, many: String), en: (one: String, other: String)) -> String {
+/// "1 exit", "2 exits" / "1 выход", "3 выхода", "5 выходов".
+public func pluralText(_ count: Int, en: (one: String, other: String), ru: (one: String, few: String, many: String)) -> String {
     switch CoreLanguage.current {
     case .ru:
         let mod10 = count % 10, mod100 = count % 100

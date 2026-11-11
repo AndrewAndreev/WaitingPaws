@@ -31,12 +31,12 @@ struct MacSettingsView: View {
                 .navigationTitle((pane ?? .camera).title)
                 .toolbar {
                     ToolbarItemGroup(placement: .navigation) {
-                        Button("Назад", systemImage: "chevron.left", action: goBack)
+                        Button("Back", systemImage: "chevron.left", action: goBack)
                             .disabled(back.isEmpty)
-                            .help("Назад")
-                        Button("Вперёд", systemImage: "chevron.right", action: goForward)
+                            .help("Back")
+                        Button("Forward", systemImage: "chevron.right", action: goForward)
                             .disabled(forward.isEmpty)
-                            .help("Вперёд")
+                            .help("Forward")
                     }
                 }
         }
@@ -97,10 +97,10 @@ struct MacSettingsView: View {
                 }
             }
         }
-        .searchable(text: $search, placement: .sidebar, prompt: "Поиск")
+        .searchable(text: $search, placement: .sidebar, prompt: "Search")
         .overlay {
             if !MacSettingsPane.allCases.contains(where: matches) {
-                Text("Ничего не найдено")
+                Text("No Results")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -190,13 +190,13 @@ enum MacSettingsPane: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .camera: return String(localized: "Камера")
-        case .connection: return String(localized: "Подключение")
-        case .training: return String(localized: "Тренировка")
-        case .files: return String(localized: "Запись и файлы")
+        case .camera: return String(localized: "Camera")
+        case .connection: return String(localized: "Connection")
+        case .training: return String(localized: "Training")
+        case .files: return String(localized: "Recording & Files")
         case .iPhone: return "iPhone"
-        case .diagnostics: return String(localized: "Диагностика")
-        case .about: return String(localized: "О приложении")
+        case .diagnostics: return String(localized: "Diagnostics")
+        case .about: return String(localized: "About")
         }
     }
 
@@ -282,7 +282,7 @@ private struct SettingsCameraRow: View {
             .clipShape(Circle())
             .overlay(Circle().strokeBorder(.primary.opacity(0.1)))
             VStack(alignment: .leading, spacing: 1) {
-                Text(camera.isConfigured ? camera.name : String(localized: "Камера"))
+                Text(camera.isConfigured ? camera.name : String(localized: "Camera"))
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 Text(subtitle(camera))
@@ -295,12 +295,12 @@ private struct SettingsCameraRow: View {
     }
 
     private func subtitle(_ camera: SettingsCamera) -> String {
-        guard camera.isConfigured else { return String(localized: "Не выбрана") }
-        let kind = camera.isXiaomi ? String(localized: "Камера Xiaomi") : String(localized: "Поток go2rtc")
-        guard model.setupServerReadyOrDemo else { return String(localized: "\(kind) · go2rtc не запущен") }
+        guard camera.isConfigured else { return String(localized: "Not selected") }
+        let kind = camera.isXiaomi ? String(localized: "Xiaomi Camera") : String(localized: "go2rtc stream")
+        guard model.setupServerReadyOrDemo else { return String(localized: "\(kind) · go2rtc not running") }
         switch SetupStillStore.shared.state(for: camera.streamName, model: model) {
-        case .loaded: return String(localized: "\(kind) · в сети")
-        case .failed: return String(localized: "\(kind) · нет связи")
+        case .loaded: return String(localized: "\(kind) · online")
+        case .failed: return String(localized: "\(kind) · no connection")
         case .loading, nil: return kind
         }
     }

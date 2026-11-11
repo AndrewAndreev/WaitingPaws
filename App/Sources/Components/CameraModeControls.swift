@@ -21,7 +21,7 @@ struct CameraModeMenuItems: View {
                         Section { Text(reason) }
                     }
                 } label: {
-                    Label("Настройки камеры", systemImage: "camera.badge.ellipsis")
+                    Label("Camera Settings", systemImage: "camera.badge.ellipsis")
                 }
             }
         }

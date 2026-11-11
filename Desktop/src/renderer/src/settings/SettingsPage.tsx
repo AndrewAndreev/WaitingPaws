@@ -27,26 +27,26 @@ interface PaneInfo {
 const PANES: PaneInfo[] = [
   {
     id: 'camera',
-    title: () => t('Камера'),
+    title: () => t('Camera'),
     icon: <VideoIcon />,
     keywords: ['xiaomi', 'mi home', 'аккаунт', 'качество', 'звук', 'плеер', 'mse', 'hls', 'webrtc', 'поток', '2k', 'hd', 'ночной', 'camera', 'account', 'quality', 'sound', 'audio', 'player', 'stream', 'night'],
   },
   {
     id: 'connection',
-    title: () => t('Подключение'),
+    title: () => t('Connection'),
     icon: <ConnectionIcon />,
     keywords: ['go2rtc', 'сервер', 'адрес', 'встроенный', 'сеть', 'логин', 'пароль', 'перезапустить', 'connection', 'server', 'address', 'embedded', 'built-in', 'network', 'login', 'username', 'password', 'restart'],
     desktopOnly: true,
   },
   {
     id: 'training',
-    title: () => t('Тренировка'),
+    title: () => t('Training'),
     icon: <PawIcon />,
     keywords: ['запись', 'автоматически', 'завершать', 'выход', 'сон', 'спящий', 'экран', 'training', 'recording', 'record', 'automatically', 'finish', 'exit', 'sleep', 'awake', 'screen'],
   },
   {
     id: 'recording',
-    title: () => t('Запись и файлы'),
+    title: () => t('Recording & Files'),
     icon: <FolderIcon />,
     keywords: ['папка', 'проводник', 'видео', 'запись', 'место', 'диск', 'удалить', 'история', 'files', 'folder', 'explorer', 'video', 'recording', 'storage', 'space', 'disk', 'delete', 'history'],
   },
@@ -59,20 +59,20 @@ const PANES: PaneInfo[] = [
   },
   {
     id: 'appearance',
-    title: () => t('Оформление'),
+    title: () => t('Appearance'),
     icon: <AppearanceIcon />,
     keywords: ['тема', 'тёмная', 'темная', 'светлая', 'язык', 'русский', 'english', 'theme', 'dark', 'light', 'language', 'appearance'],
   },
   {
     id: 'diagnostics',
-    title: () => t('Диагностика'),
+    title: () => t('Diagnostics'),
     icon: <DiagnosticsIcon />,
     keywords: ['задержка', 'нагрузка', 'журнал', 'логи', 'версия', 'diagnostics', 'delay', 'latency', 'performance', 'log', 'logs', 'version'],
     desktopOnly: true,
   },
   {
     id: 'about',
-    title: () => t('О приложении'),
+    title: () => t('About'),
     icon: <InfoIcon />,
     keywords: ['версия', 'политика', 'конфиденциальность', 'лицензии', 'поддержка', 'version', 'privacy', 'licenses', 'about', 'policy', 'support', 'github'],
   },
@@ -101,8 +101,8 @@ export function SettingsPage() {
 
   return (
     <div className="settings">
-      <nav className="settings__nav" aria-label={t('Настройки')}>
-        <h1 className="h1 settings__title">{t('Настройки')}</h1>
+      <nav className="settings__nav" aria-label={t('Settings')}>
+        <h1 className="h1 settings__title">{t('Settings')}</h1>
         <CameraHeader onClick={() => select('camera')} selected={pane === 'camera'} />
         <div className="settings__search">
           <SearchIcon />
@@ -110,8 +110,8 @@ export function SettingsPage() {
             className="input"
             type="search"
             value={search}
-            placeholder={t('Найти параметр')}
-            aria-label={t('Найти параметр')}
+            placeholder={t('Find a setting')}
+            aria-label={t('Find a setting')}
             spellCheck={false}
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={(event) => {
@@ -127,7 +127,7 @@ export function SettingsPage() {
               <span className="ellipsis">{item.title()}</span>
             </button>
           ))}
-          {visible.length === 0 && <div className="snav__empty">{t('Ничего не найдено')}</div>}
+          {visible.length === 0 && <div className="snav__empty">{t('No Results')}</div>}
         </div>
       </nav>
       <div className="settings__content" ref={content}>
@@ -160,15 +160,15 @@ function CameraHeader({ onClick, selected }: { onClick: () => void; selected: bo
   const app = useApp()
   const configured = isConfigured(app.settings)
   const ready = serverReady(app)
-  const kind = isXiaomiCamera(app, null) ? t('Камера Xiaomi') : t('Поток go2rtc')
+  const kind = isXiaomiCamera(app, null) ? t('Xiaomi Camera') : t('go2rtc stream')
   const subtitle = !configured
-    ? t('Не выбрана')
+    ? t('Not selected')
     : !ready
       ? app.settings.connectionMode === 'embedded' && app.go2rtc.status === 'starting'
-        ? t('%@ · запускается go2rtc', kind)
-        : t('%@ · go2rtc не запущен', kind)
+        ? t('%@ · starting go2rtc', kind)
+        : t('%@ · go2rtc not running', kind)
       : app.camera.videoSize
-        ? t('%@ · в сети', kind)
+        ? t('%@ · online', kind)
         : kind
   // Green once a player has had a picture from it, not merely because go2rtc runs.
   const online = configured && ready && app.camera.videoSize !== null
@@ -179,7 +179,7 @@ function CameraHeader({ onClick, selected }: { onClick: () => void; selected: bo
         {configured && <span className={'scamera-header__status' + (online ? ' scamera-header__status--on' : '')} />}
       </span>
       <span className="col" style={{ gap: 0, minWidth: 0 }}>
-        <span className="scamera-header__name ellipsis">{configured ? cameraName(app) : t('Камера')}</span>
+        <span className="scamera-header__name ellipsis">{configured ? cameraName(app) : t('Camera')}</span>
         <span className="scamera-header__subtitle ellipsis">{subtitle}</span>
       </span>
     </button>

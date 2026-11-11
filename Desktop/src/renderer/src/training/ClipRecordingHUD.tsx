@@ -61,7 +61,7 @@ export function ClipRecordingHUD() {
 
   return (
     <div className={`clip-hud-area clip-hud-area--${position}`} style={{ padding: MARGIN }}>
-      <Tooltip content={t('Перетащите панель в любой угол')}>
+      <Tooltip content={t('Drag the panel to any corner')}>
         <div
           ref={panel}
           className="clip-hud"
@@ -73,11 +73,11 @@ export function ClipRecordingHUD() {
           <span className="dot dot--rec" style={{ width: 12, height: 12 }} />
           <span className="clip-hud__time tabular">{since ? DurationText.clock((now - since) / 1000) : '0:00'}</span>
           <div className="clip-hud__text">
-            <strong>{t('Запись без тренировки')}</strong>
-            <span>{app.recording.resuming ? t('Камера пропала — продолжим, когда вернётся') : t('Видео появится в истории')}</span>
+            <strong>{t('Recording without training')}</strong>
+            <span>{app.recording.resuming ? t("The camera dropped out — recording resumes when it's back") : t('The video will appear in History')}</span>
           </div>
           <Button variant="danger-solid" size="lg" icon={<StopFilledIcon />} shortcut="Ctrl+R" onClick={() => ui.set({ confirmStopRecording: true })}>
-            {t('Остановить')}
+            {t('Stop')}
           </Button>
         </div>
       </Tooltip>

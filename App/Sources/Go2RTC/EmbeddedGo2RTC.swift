@@ -97,7 +97,7 @@ final class EmbeddedGo2RTC {
             if !MobileIsRunning() {
                 guard let ports = Self.freePorts(lan: lanPassword != nil) else {
                     throw NSError(domain: "go2rtc", code: 2, userInfo: [NSLocalizedDescriptionKey: String(
-                        localized: "Порты \(Self.preferredAPIPort)–\(Self.preferredAPIPort + 29) заняты другими программами — go2rtc негде запустить.")])
+                        localized: "Ports \(Self.preferredAPIPort)–\(Self.preferredAPIPort + 29) are taken by other apps — go2rtc has nowhere to run.")])
                 }
                 Self.apiPort = ports.api
                 Self.webrtcPort = ports.webrtc
@@ -111,7 +111,7 @@ final class EmbeddedGo2RTC {
             var error: NSError?
             Self.goStarted = true
             if !MobileStart(configURL.path, Self.overrides(lanPassword: lanPassword), &error) {
-                throw error ?? NSError(domain: "go2rtc", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "go2rtc не запустился")])
+                throw error ?? NSError(domain: "go2rtc", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "go2rtc didn’t start")])
             }
             return MobileVersion().components(separatedBy: "+").first ?? MobileVersion()
         }
@@ -120,7 +120,7 @@ final class EmbeddedGo2RTC {
             if await Self.waitUntilReachable() {
                 status = .running(version: version)
             } else {
-                status = .failed(String(localized: "go2rtc запустился, но API на 127.0.0.1:\(Self.apiPort) не отвечает"))
+                status = .failed(String(localized: "go2rtc started, but its API at 127.0.0.1:\(Self.apiPort) doesn’t respond"))
             }
         case .failure(let error):
             status = .failed(error.localizedDescription)
@@ -144,7 +144,7 @@ final class EmbeddedGo2RTC {
             print("[go2rtc] reopening \(address) failed: \(error?.localizedDescription ?? "?")")
         }
         if await Self.waitUntilReachable() { return true }
-        status = .failed(String(localized: "go2rtc перестал отвечать. Перезапустите приложение."))
+        status = .failed(String(localized: "go2rtc stopped responding. Restart the app."))
         return false
         #else
         return false

@@ -26,7 +26,7 @@ export const SyncPlatform = {
       case 'ipad':
         return 'iPad'
       case 'windows':
-        return tr('ПК', 'PC')
+        return tr('PC', 'ПК')
     }
   },
 
@@ -70,7 +70,7 @@ export const SyncDevice = {
 
   /** "Mac", "ПК"; "устройство" for an unknown kind. */
   kindTitle(device: SyncDevice): string {
-    return device.kind === null ? tr('устройство', 'device') : SyncPlatform.title(device.kind)
+    return device.kind === null ? tr('device', 'устройство') : SyncPlatform.title(device.kind)
   },
 
   /** The model, or the kind when the model is unknown. */

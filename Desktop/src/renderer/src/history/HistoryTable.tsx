@@ -43,16 +43,16 @@ interface Column extends ColumnSpec<SortKey> {
 
 /// Table columns (MacHistoryTable), least important hidden first when the page is narrow.
 const COLUMNS: Column[] = [
-  { key: 'date', label: 'Дата', width: 148, priority: 0 },
-  { key: 'start', label: 'Начало', width: 62, priority: 6 },
-  { key: 'title', label: 'Тренировка', min: 170, flex: 2, priority: 0 },
-  { key: 'trainers', label: 'Тренеры', min: 96, flex: 1, priority: 5 },
-  { key: 'exits', label: 'Выходы', width: 66, priority: 1 },
-  { key: 'falseStarts', label: 'Фальстарты', width: 94, priority: 2 },
-  { key: 'longest', label: 'Дольше всего', width: 122, priority: 0 },
-  { key: 'plan', label: 'План', width: 56, priority: 3 },
-  { key: 'duration', label: 'Длительность', width: 98, priority: 2, end: true },
-  { key: 'video', label: 'Видео', width: 72, priority: 3, end: true },
+  { key: 'date', label: 'Date', width: 148, priority: 0 },
+  { key: 'start', label: 'Start|column', width: 62, priority: 6 },
+  { key: 'title', label: 'Training', min: 170, flex: 2, priority: 0 },
+  { key: 'trainers', label: 'Trainers', min: 96, flex: 1, priority: 5 },
+  { key: 'exits', label: 'Exits', width: 66, priority: 1 },
+  { key: 'falseStarts', label: 'False Starts', width: 94, priority: 2 },
+  { key: 'longest', label: 'Longest', width: 122, priority: 0 },
+  { key: 'plan', label: 'Plan', width: 56, priority: 3 },
+  { key: 'duration', label: 'Duration', width: 98, priority: 2, end: true },
+  { key: 'video', label: 'Video', width: 72, priority: 3, end: true },
 ]
 
 /// "6:36 PM" needs a wider start column than "18:36".
@@ -179,7 +179,7 @@ export function HistoryTable({
       }}
       role="grid"
       aria-rowcount={rows.length}
-      aria-label={t('История')}
+      aria-label={t('History')}
       tabIndex={0}
       onKeyDown={onKeyDown}
       style={{ ['--hcols' as string]: template }}
@@ -254,39 +254,39 @@ function RowMenu({ row, preparing, actions }: { row: HistoryRow; preparing: bool
   return (
     <>
       <ContextMenuItem icon={<PlayIcon />} disabled={!row.video} onSelect={() => actions.play(row)}>
-        {t('Воспроизвести')}
+        {t('Play')}
       </ContextMenuItem>
       <ContextMenuItem icon={<FolderIcon />} onSelect={() => actions.reveal(row)}>
-        {row.video ? t('Показать в проводнике') : t('Показать лог в проводнике')}
+        {row.video ? t('Show in Explorer') : t('Show Log in Explorer')}
       </ContextMenuItem>
       {row.video && (
         <ContextMenuItem icon={<CopyFileIcon />} disabled={preparing} onSelect={() => actions.copyFile(row)}>
-          {t('Копировать файл')}
+          {t('Copy File')}
         </ContextMenuItem>
       )}
       {row.record && (
         <>
           <ContextMenuSeparator />
           <ContextMenuItem icon={<CopyIcon />} onSelect={() => actions.copyLog(row)}>
-            {t('Скопировать лог')}
+            {t('Copy Log')}
           </ContextMenuItem>
         </>
       )}
       <ContextMenuSeparator />
       {row.kind === 'clip' ? (
         <ContextMenuItem icon={<DeleteIcon />} danger onSelect={() => actions.confirmDelete(row, false)}>
-          {t('Удалить запись…')}
+          {t('Delete Recording…')}
         </ContextMenuItem>
       ) : row.video ? (
         <>
           <ContextMenuItem icon={<DeleteIcon />} danger onSelect={() => actions.confirmDelete(row, false)}>
-            {t('Удалить тренировку и видео…')}
+            {t('Delete Training and Video…')}
           </ContextMenuItem>
-          <ContextMenuItem onSelect={() => actions.confirmDelete(row, true)}>{t('Удалить только лог, видео оставить…')}</ContextMenuItem>
+          <ContextMenuItem onSelect={() => actions.confirmDelete(row, true)}>{t('Delete Log Only, Keep Video…')}</ContextMenuItem>
         </>
       ) : (
         <ContextMenuItem icon={<DeleteIcon />} danger onSelect={() => actions.confirmDelete(row, false)}>
-          {t('Удалить тренировку…')}
+          {t('Delete Training…')}
         </ContextMenuItem>
       )}
     </>
@@ -328,7 +328,7 @@ function Cell({ row, column, preparing, longestEver }: { row: HistoryRow; column
         <Dash />
       )
     case 'exits':
-      return record ? <span className="tabular">{t('%lld из %lld', completedExits(record), record.plan.exits.length)}</span> : <Dash />
+      return record ? <span className="tabular">{t('%lld of %lld', completedExits(record), record.plan.exits.length)}</span> : <Dash />
     case 'falseStarts': {
       const count = record ? falseStarts(record) : 0
       return count > 0 ? (
@@ -366,10 +366,10 @@ function Cell({ row, column, preparing, longestEver }: { row: HistoryRow; column
 function VideoCell({ row, preparing }: { row: HistoryRow; preparing: boolean }) {
   const delayed = useDelayed(preparing)
   const video = row.video
-  if (!video) return <Dash title={t('Видео нет')} />
+  if (!video) return <Dash title={t('No video')} />
   if (preparing) {
     return delayed ? (
-      <Tooltip content={t('готовится…')}>
+      <Tooltip content={t('preparing…')}>
         <span className="hvideo-preparing">
           <Spinner />
         </span>
@@ -379,7 +379,7 @@ function VideoCell({ row, preparing }: { row: HistoryRow; preparing: boolean }) 
   if (video.bytes !== null && video.bytes > 0) return <span className="tabular">{formatBytes(video.bytes)}</span>
   // The size is not known (the media scheme does not answer HEAD requests to the page): there is a video.
   return (
-    <span className="hvideo-glyph" title={video.duration !== null ? `${t('Видео')} · ${DurationText.clock(video.duration)}` : t('Видео')}>
+    <span className="hvideo-glyph" title={video.duration !== null ? `${t('Video')} · ${DurationText.clock(video.duration)}` : t('Video')}>
       <ClipIcon />
     </span>
   )
@@ -391,7 +391,7 @@ function Thumbnail({ row, preparing }: { row: HistoryRow; preparing: boolean }) 
   const [onScreen, ref] = useOnScreen<HTMLSpanElement>()
   const fileName = row.video?.exists === false ? null : row.video?.fileName ?? null
   const thumbnail = useThumbnail(fileName, onScreen && !preparing)
-  const help = row.kind === 'clip' ? t('Запись без тренировки') : row.video ? t('Тренировка') : t('Тренировка без видео')
+  const help = row.kind === 'clip' ? t('Recording without training') : row.video ? t('Training') : t('Training without video')
   let content: ReactNode = null
   if (!row.video) content = row.kind === 'clip' ? <ClipIcon /> : <PawFilledIcon className="hthumb__paw" />
   else if (thumbnail?.kind === 'image') content = <img src={thumbnail.url} alt="" draggable={false} />

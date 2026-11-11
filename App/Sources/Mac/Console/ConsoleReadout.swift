@@ -79,10 +79,10 @@ struct ConsoleReadout: View {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     if context.date.timeIntervalSince(undo.pressedAt) < AppModel.falseStartBackOutsideFor {
                         Button { withAnimation(.smooth(duration: 0.25)) { model.undoFalseStart() } } label: {
-                            Text("Отменить")
+                            Text("Cancel|verb")
                         }
                         .buttonStyle(ReadoutCapsuleStyle())
-                        .help(String(localized: "Отменить фальстарт выхода \(undo.exitNumber)"))
+                        .help(String(localized: "Undo the false start of exit \(undo.exitNumber)"))
                         .transition(.opacity)
                     }
                 }
@@ -172,7 +172,7 @@ struct ConsoleReadout: View {
             let showsFalseStart = content.showsFalseStart(at: context.date) && !beforeFirst
             HStack(spacing: 10) {
                 if let step = content.step {
-                    StepButton(title: step.title, icon: step.icon, key: String(localized: "Пробел"),
+                    StepButton(title: step.title, icon: step.icon, key: String(localized: "Space"),
                                fill: step.tint, foreground: .black) {
                         switch step {
                         case .outside: session.markBehindDoor()
@@ -182,14 +182,14 @@ struct ConsoleReadout: View {
                     }
                 }
                 if content.canStartOpenExit {
-                    StepButton(title: String(localized: "Ещё выход"), icon: .outside, key: nil,
+                    StepButton(title: String(localized: "Another Exit"), icon: .outside, key: nil,
                                fill: .white.opacity(0.08), foreground: .primary) {
                         session.startOpenExit()
                     }
                 }
                 if showsFalseStart {
                     // Orange, like a false start in the log and the history; what a click does is in the pointer's tip.
-                    StepButton(title: String(localized: "Фальстарт"), icon: .symbol("arrow.uturn.backward"), key: "⌫",
+                    StepButton(title: String(localized: "False Start"), icon: .symbol("arrow.uturn.backward"), key: "⌫",
                                fill: .white.opacity(0.08), foreground: MacPalette.orange,
                                hint: content.falseStartHint) {
                         model.falseStart()
@@ -319,7 +319,7 @@ struct MacTrainerTextFold: View {
             withAnimation(.smooth(duration: 0.25)) { open.toggle() }
         } label: {
             HStack(spacing: 6) {
-                Label("Текст тренера", systemImage: "doc.text")
+                Label("Trainer’s Text", systemImage: "doc.text")
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .bold))
                     .rotationEffect(.degrees(open ? 180 : 0))
@@ -474,25 +474,25 @@ struct ClipRecordingHUD: View {
                 Image(systemName: "eye")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(.secondary)
-                Text("Только камера").font(.system(size: 13, weight: .semibold))
+                Text("Camera Only").font(.system(size: 13, weight: .semibold))
             }
             Button { model.startRecording() } label: {
-                ShortcutLabel(title: String(localized: "Запись"), symbol: "record.circle", key: "⌘R")
+                ShortcutLabel(title: String(localized: "Record"), symbol: "record.circle", key: "⌘R")
             }
             .controlSize(.large)
             .disabled(!model.settings.isConfigured)
             Button { ui.cameraOnly = false } label: {
-                ShortcutLabel(title: String(localized: "Панели"), symbol: "sidebar.right", key: "esc")
+                ShortcutLabel(title: String(localized: "Panels"), symbol: "sidebar.right", key: "esc")
             }
             .controlSize(.large)
-            .help("Вернуть расписание и шкалу · ⇧⌘F")
+            .help("Bring back the schedule and timeline · ⇧⌘F")
         }
         .padding(.leading, 20)
         .padding(.trailing, 12)
         .padding(.vertical, 12)
         .modifier(HUDGlass())
         .environment(\.colorScheme, .dark)
-        .help("Перетащите панель в любой угол")
+        .help("Drag the panel to any corner")
     }
 
     /// Dark glass over any picture. Untinted, Liquid Glass turns light over a bright one (a white wall, now that a
@@ -515,9 +515,9 @@ struct ClipRecordingHUD: View {
                         .font(MacPalette.digits(34, weight: .medium))
                         .contentTransition(.numericText())
                 }
-                Text("Запись без тренировки").font(.system(size: 13, weight: .semibold))
+                Text("Recording without training").font(.system(size: 13, weight: .semibold))
                 Button { ui.confirmStopRecording = true } label: {
-                    ShortcutLabel(title: String(localized: "Остановить"), symbol: "stop.fill", key: "⌘R", prominent: true)
+                    ShortcutLabel(title: String(localized: "Stop"), symbol: "stop.fill", key: "⌘R", prominent: true)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(MacPalette.red)
@@ -528,7 +528,7 @@ struct ClipRecordingHUD: View {
             .padding(.vertical, 12)
             .modifier(HUDGlass())
             .environment(\.colorScheme, .dark)
-            .help("Перетащите панель в любой угол")
+            .help("Drag the panel to any corner")
         }
     }
 

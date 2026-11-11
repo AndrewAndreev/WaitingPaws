@@ -64,7 +64,7 @@ export function SessionPlanDialog() {
     })
   const save = async () => {
     if (await call('session.updatePlan', draft)) close()
-    else toast({ title: t('Прошедшие выходы и текущий нельзя удалить или переставить.'), kind: 'warning' })
+    else toast({ title: t("Exits already done and the current one can't be removed or moved."), kind: 'warning' })
   }
   return <PlanDialog plan={draft} setPlan={setPlan} fixedExits={TrainingSession.fixedExitCount(session)} onStart={() => void save()} onDone={close} />
 }
@@ -214,11 +214,11 @@ function PlanDialog({
           <WarningFilledIcon className="plan-review__icon" style={{ color: 'var(--warning)' }} />
         )
       }
-      title={running ? t('Расписание тренировки') : valid ? t('Расписание разобрано') : t('В расписании нет выходов')}
+      title={running ? t('Training Schedule') : valid ? t('Schedule Recognized') : t('No Exits in the Schedule')}
       description={
         <span className="plan-review__summary-text">
           {running
-            ? t('Тренировка идёт: изменения применятся сразу, и к идущему перерыву тоже. Прошедшие выходы и текущий нельзя удалить или переставить.')
+            ? t("The training is running: changes apply right away, to the current break too. Exits already done and the current one can't be removed or moved.")
             : summary(plan, lines)}
         </span>
       }
@@ -257,7 +257,7 @@ function PlanDialog({
 /// «8 выходов, 4 триггера, условия раннего входа у выходов 4, 6 и 8, правило фальстарта и 5 заметок. Проверьте…».
 function summary(plan: TrainingPlan, lines: PlanTextLine[]): string {
   if (plan.rawText === '') {
-    return t('%@. Проверьте длительности и перерывы перед стартом.', PlanFormat.exits(plan.exits.length))
+    return t('%@. Check the durations and breaks before you start.', PlanFormat.exits(plan.exits.length))
   }
   const parts = [PlanFormat.exits(lines.filter(PlanLine.isExit).length)]
   const breaks = lines.filter(PlanLine.isBreak).length
@@ -265,14 +265,14 @@ function summary(plan: TrainingPlan, lines: PlanTextLine[]): string {
   const triggers = plan.exits.reduce((sum, exit) => sum + exit.triggers.length, 0)
   if (triggers > 0) parts.push(PlanFormat.triggers(triggers))
   const early = plan.exits.filter((exit) => TrainingPlan.earlyEntries(plan, exit).length > 0)
-  if (early.length > 0 && early.length === plan.exits.length) parts.push(t('условия раннего входа у всех выходов'))
-  else if (early.length === 1) parts.push(t('условия раннего входа у выхода %lld', early[0].number))
-  else if (early.length > 1) parts.push(t('условия раннего входа у выходов %@', PlanFormat.list(early.map((exit) => String(exit.number)))))
-  if (lines.some((line) => line.kind.kind === 'doNotEnter')) parts.push(t('правило «не входить»'))
-  if (lines.some((line) => line.kind.kind === 'rule')) parts.push(t('правило фальстарта'))
+  if (early.length > 0 && early.length === plan.exits.length) parts.push(t('coming back early on every exit'))
+  else if (early.length === 1) parts.push(t('coming back early on exit %lld', early[0].number))
+  else if (early.length > 1) parts.push(t('coming back early on exits %@', PlanFormat.list(early.map((exit) => String(exit.number)))))
+  if (lines.some((line) => line.kind.kind === 'doNotEnter')) parts.push(t('the “don’t come in” rule'))
+  if (lines.some((line) => line.kind.kind === 'rule')) parts.push(t('false start rule'))
   const notes = lines.filter((line) => line.kind.kind === 'note').length
   if (notes > 0) parts.push(PlanFormat.notes(notes))
-  return t('%@. Проверьте и поправьте, если что-то прочитано не так.', PlanFormat.capitalizedFirst(PlanFormat.list(parts)))
+  return t('%@. Check them and fix anything that was read wrong.', PlanFormat.capitalizedFirst(PlanFormat.list(parts)))
 }
 
 // MARK: - Title, date, trainers, the common break
@@ -280,33 +280,33 @@ function summary(plan: TrainingPlan, lines: PlanTextLine[]): string {
 function PlanForm({ plan, setPlan }: { plan: TrainingPlan; setPlan: (next: TrainingPlan | ((current: TrainingPlan) => TrainingPlan)) => void }) {
   const own = ownBreaks(plan)
   const resetHelp = own.length
-    ? t('Убрать свои перерывы: %@', own.map((exit) => t('после %lld-го — %@', exit.number, DurationText.short(exit.breakAfter ?? 0))).join(', '))
-    : t('У всех выходов общий перерыв')
+    ? t('Remove own breaks: %@', own.map((exit) => t('after #%lld — %@', exit.number, DurationText.short(exit.breakAfter ?? 0))).join(', '))
+    : t('All exits use the default break')
   return (
     <div className="plan-form">
       <label className="plan-form__label" htmlFor="plan-title">
-        {t('Название:')}
+        {t('Title:')}
       </label>
-      <input id="plan-title" className="input" value={plan.title} placeholder={t('Тренировка')} onChange={(event) => setPlan((current) => ({ ...current, title: event.target.value }))} />
+      <input id="plan-title" className="input" value={plan.title} placeholder={t('Training')} onChange={(event) => setPlan((current) => ({ ...current, title: event.target.value }))} />
       <label className="plan-form__label" htmlFor="plan-date">
-        {t('Дата:')}
+        {t('Date:')}
       </label>
       <DateField id="plan-date" value={plan.date} onChange={(date) => setPlan((current) => ({ ...current, date }))} />
       <label className="plan-form__label" htmlFor="plan-trainers">
-        {t('Тренеры:')}
+        {t('Trainers:')}
       </label>
-      <input id="plan-trainers" className="input" value={plan.trainers} placeholder={t('Кто тренирует')} onChange={(event) => setPlan((current) => ({ ...current, trainers: event.target.value }))} />
-      <span className="plan-form__label">{t('Перерыв:')}</span>
+      <input id="plan-trainers" className="input" value={plan.trainers} placeholder={t('Who’s training')} onChange={(event) => setPlan((current) => ({ ...current, trainers: event.target.value }))} />
+      <span className="plan-form__label">{t('Break:')}</span>
       <div className="row plan-form__breaks">
         <DurationPopover
           value={plan.defaultBreak}
           onChange={(value) => {
             if (value !== null) setPlan((current) => setDefaultBreak(current, value))
           }}
-          title={t('Перерыв между выходами')}
+          title={t('Break Between Exits')}
           presets={PlanFormat.breakPresets}
           tint="break"
-          tooltip={t('Перерыв между выходами — у всех, кроме выходов со своим перерывом')}
+          tooltip={t('Break between exits — for every exit except those with their own break')}
         >
           <button type="button" className="btn plan-form__break tabular">
             {DurationText.short(plan.defaultBreak)}
@@ -316,7 +316,7 @@ function PlanForm({ plan, setPlan }: { plan: TrainingPlan; setPlan: (next: Train
         <Tooltip content={resetHelp}>
           <span className="plan-form__reset">
             <Button disabled={!own.length} onClick={() => setPlan(resetOwnBreaks)}>
-              {t('Сделать везде %@', DurationText.short(plan.defaultBreak))}
+              {t('Use %@ Everywhere', DurationText.short(plan.defaultBreak))}
             </Button>
           </span>
         </Tooltip>
@@ -375,7 +375,7 @@ function Footer({ plan, valid, running, onStart, onDone }: { plan: TrainingPlan;
           </span>
           {valid && (
             <span className="muted ellipsis">
-              {t('за дверью %@, перерывы %@', DurationText.short(PlanFormat.exitsTotal(plan)), DurationText.short(PlanFormat.breaksTotal(plan)))}
+              {t('outside %@, breaks %@', DurationText.short(PlanFormat.exitsTotal(plan)), DurationText.short(PlanFormat.breaksTotal(plan)))}
             </span>
           )}
         </div>
@@ -384,11 +384,11 @@ function Footer({ plan, valid, running, onStart, onDone }: { plan: TrainingPlan;
       <span className="spacer" />
       {running ? (
         <>
-          <Tooltip content={t('Закрыть без изменений · Esc')}>
-            <Button onClick={onDone}>{t('Отменить')}</Button>
+          <Tooltip content={t('Close without changes · Esc')}>
+            <Button onClick={onDone}>{t('Cancel|verb')}</Button>
           </Tooltip>
           <Button variant="primary" icon={<CheckIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
-            {t('Сохранить')}
+            {t('Save')}
           </Button>
         </>
       ) : (
@@ -403,16 +403,16 @@ function PendingButtons({ valid, onStart, onDone }: { valid: boolean; onStart: (
   return (
     <>
       {isConfigured(app.settings) && (
-        <Tooltip content={t('Включить запись с камеры вместе с тренировкой')}>
+        <Tooltip content={t('Record the camera during the training')}>
           <span className="plan-summary__record">
             <Checkbox checked={app.settings.autoRecord} onChange={(autoRecord) => void call('settings.update', { autoRecord })}>
-              {t('Записывать видео')}
+              {t('Record video')}
             </Checkbox>
           </span>
         </Tooltip>
       )}
-      <Tooltip content={t('Оставить расписание на пульте и поправить его на таймлайне · Esc')}>
-        <Button onClick={onDone}>{t('Готово')}</Button>
+      <Tooltip content={t('Keep the schedule in the main window and adjust it on the timeline · Esc')}>
+        <Button onClick={onDone}>{t('Done')}</Button>
       </Tooltip>
       <Button variant="primary" icon={<PlayFilledIcon />} shortcut="Ctrl+Enter" disabled={!valid} onClick={onStart}>
         {startTitle(app)}

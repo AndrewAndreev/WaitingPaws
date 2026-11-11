@@ -66,7 +66,7 @@ struct MacCameraPickerSheet: View {
     /// the stills refresh by themselves on opening (round 14: no ↻).
     private var header: some View {
         HStack(alignment: .center) {
-            Text(onlyStreams ? "Потоки go2rtc" : target == .second ? "Вторая камера" : "Камера")
+            Text(onlyStreams ? "go2rtc Streams" : target == .second ? "Second Camera" : "Camera")
                 .font(.title2.weight(.semibold))
             Spacer(minLength: 16)
         }
@@ -81,20 +81,20 @@ struct MacCameraPickerSheet: View {
     private var content: some View {
         switch catalog.phase {
         case .idle, .loading:
-            ProgressView("Ищем камеры…")
+            ProgressView("Looking for cameras…")
         case .waiting:
             ContentUnavailableView {
-                Label("go2rtc не запущен", systemImage: "video.slash")
+                Label("go2rtc is not running", systemImage: "video.slash")
             } description: {
-                Text("Список камер появится, когда go2rtc заработает.")
+                Text("The camera list will appear once go2rtc is running.")
             }
         case .failed(let message):
             ContentUnavailableView {
-                Label("Нет связи с go2rtc", systemImage: "exclamationmark.triangle")
+                Label("No Connection to go2rtc", systemImage: "exclamationmark.triangle")
             } description: {
                 Text(message)
             } actions: {
-                Button("Повторить") { Task { await reload() } }
+                Button("Try Again|short") { Task { await reload() } }
             }
         case .ready:
             grid
@@ -120,11 +120,11 @@ struct MacCameraPickerSheet: View {
                             detail: visibleAccounts.count > 1 ? "ID \(account.id) · \(SetupText.regionTitle(account.region))" : nil,
                             accessory: account.id == visibleAccounts.first?.id ? .signIn : nil) {
                         if let error = account.error {
-                            Label("Камеры не загрузились: \(error)", systemImage: "exclamationmark.triangle.fill")
+                            Label("Couldn’t load cameras: \(error)", systemImage: "exclamationmark.triangle.fill")
                                 .font(.callout)
                                 .foregroundStyle(MacPalette.orange)
                         } else if account.cameras.isEmpty {
-                            Text("В этом аккаунте нет камер.")
+                            Text("This account has no cameras.")
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -160,7 +160,7 @@ struct MacCameraPickerSheet: View {
         #if WP_NO_XIAOMI
         return nil
         #else
-        return onlyStreams ? nil : String(localized: "Другие камеры")
+        return onlyStreams ? nil : String(localized: "Other Cameras")
         #endif
     }
 
@@ -178,9 +178,9 @@ struct MacCameraPickerSheet: View {
                     Spacer()
                     #if !WP_NO_XIAOMI
                     if accessory == .signIn {
-                        Button("Войти в другой аккаунт…", systemImage: "person.badge.key") { signingIn = true }
+                        Button("Sign In to Another Account…", systemImage: "person.badge.key") { signingIn = true }
                             .buttonStyle(.borderless)
-                            .help("Добавить камеры ещё одного аккаунта Xiaomi")
+                            .help("Add cameras from another Xiaomi account")
                             .disabled(!model.setupServerReadyOrDemo)
                     }
                     #endif
@@ -203,7 +203,7 @@ struct MacCameraPickerSheet: View {
                             .foregroundStyle(.tint)
                     }
                     .frame(width: pickerTileWidth, height: pickerTileWidth * 9 / 16)
-                Text("Своя камера")
+                Text("Custom camera")
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                     .padding(.horizontal, 2)
@@ -211,8 +211,8 @@ struct MacCameraPickerSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Добавить камеру по адресу rtsp:// или http:// (камеру ONVIF — по её адресу rtsp://)")
-        .accessibilityLabel(String(localized: "Добавить свою камеру"))
+        .help("Add a camera by an rtsp:// or http:// address (an ONVIF camera by its rtsp:// address)")
+        .accessibilityLabel(String(localized: "Add a custom camera"))
         .disabled(!model.setupServerReadyOrDemo)
         .popover(isPresented: $addingStream, arrowEdge: .bottom) {
             SetupAddStreamForm(catalog: catalog) { stream in
@@ -253,15 +253,15 @@ struct MacCameraPickerSheet: View {
                     .help(error)
             } else if choosing {
                 ProgressView().controlSize(.small)
-                Text("Добавляем камеру…").foregroundStyle(.secondary)
+                Text("Adding the camera…").foregroundStyle(.secondary)
             } else if !serverIsFine {
                 // Only when the video server needs a hand («Запустить», «Попробовать снова»); its version is in Settings.
                 SetupServerStatusLabel(probe: catalog)
             }
             Spacer()
-            Button("Отменить") { dismiss() }
+            Button("Cancel|verb") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-            Button("Выбрать", action: choose)
+            Button("Choose", action: choose)
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(catalog.choice(for: selection) == nil || choosing)
@@ -312,7 +312,7 @@ struct MacCameraPickerSheet: View {
                 onChosen()
                 dismiss()
             } catch {
-                self.error = String(localized: "Не удалось добавить камеру: \(error.localizedDescription)")
+                self.error = String(localized: "Couldn’t add the camera: \(error.localizedDescription)")
             }
         }
     }
@@ -375,7 +375,7 @@ private struct SetupPickerTile: View {
     /// «Не в сети» (a stream: «Нет связи») when no picture comes: for VoiceOver and the tooltip, not on the tile.
     private var offlineText: String? {
         guard still == .failed else { return nil }
-        return isCamera ? String(localized: "Не в сети") : String(localized: "Нет связи")
+        return isCamera ? String(localized: "Offline") : String(localized: "No connection")
     }
 
     private var title: String {
@@ -394,7 +394,7 @@ private struct SetupPickerTile: View {
         case .camera(let camera):
             details = camera.technicalDetails.isEmpty ? camera.kind : camera.technicalDetails
         case .stream(let stream):
-            details = stream.sources.first.map(SettingsText.redacted) ?? String(localized: "Источник не указан")
+            details = stream.sources.first.map(SettingsText.redacted) ?? String(localized: "No source specified")
         }
         return [offlineText, pixels, details].compactMap { $0 }.joined(separator: " · ")
     }
@@ -429,15 +429,15 @@ struct SetupMiHomeSignInCard: View {
             SetupIconTile(symbol: "video.fill", color: MacPalette.pinkDeep, size: style == .listRow ? 30 : (style == .card ? 40 : 34))
                 .frame(width: style == .listRow ? 64 : nil)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Камеры Mi Home")
+                Text("Mi Home Cameras")
                     .font(.system(size: 13, weight: .semibold))
-                Text(style == .listRow ? "Нужен вход в аккаунт Xiaomi" : "Войдите в аккаунт Xiaomi — здесь появятся камеры из Mi Home.")
+                Text(style == .listRow ? "Xiaomi sign-in required" : "Sign in to your Xiaomi account — your Mi Home cameras will appear here.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
-            Button("Войти в Xiaomi…", action: signIn)
+            Button("Sign In to Xiaomi…", action: signIn)
                 .buttonStyle(.borderedProminent)
                 .controlSize(style == .listRow ? .small : .regular)
         }
@@ -466,11 +466,11 @@ struct SetupAddStreamForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Новый поток go2rtc").font(.headline)
+            Text("New go2rtc Stream").font(.headline)
             Form {
-                TextField("Название", text: $name, prompt: Text("testcam"))
+                TextField("Name", text: $name, prompt: Text("testcam"))
                     .plainInput()
-                TextField("Адрес", text: $source, prompt: Text("rtsp://192.168.1.20:554/live"))
+                TextField("Address", text: $source, prompt: Text("rtsp://192.168.1.20:554/live"))
                     .plainInput()
             }
             .formStyle(.columns)
@@ -483,7 +483,7 @@ struct SetupAddStreamForm: View {
             HStack {
                 if busy { ProgressView().controlSize(.small) }
                 Spacer()
-                Button("Добавить") { Task { await add() } }
+                Button("Add") { Task { await add() } }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!isValid || busy)

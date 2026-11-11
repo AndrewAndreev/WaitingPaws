@@ -60,7 +60,7 @@ export function MiniPanel() {
             </button>
           )}
           {live.canFalseStart && (
-            <button className="mini__btn" onClick={() => falseStart()} title={t('Фальстарт')}>
+            <button className="mini__btn" onClick={() => falseStart()} title={t('False Start')}>
               <FalseStartIcon />
             </button>
           )}
@@ -68,13 +68,13 @@ export function MiniPanel() {
       ) : (
         <>
           <span className="mini__text">
-            <strong>{askingStop ? t('Остановить запись?') : t('Запись без тренировки')}</strong>
+            <strong>{askingStop ? t('Stop recording?') : t('Recording without training')}</strong>
           </span>
           {askingStop ? (
             <>
               <button className="mini__btn" onClick={() => setAskingStop(false)}>
                 <RecordIcon />
-                {t('Продолжить')}
+                {t('Continue')}
               </button>
               <button
                 className="mini__btn mini__btn--stop"
@@ -84,18 +84,18 @@ export function MiniPanel() {
                 }}
               >
                 <StopFilledIcon />
-                {t('Остановить')}
+                {t('Stop')}
               </button>
             </>
           ) : (
             <button className="mini__btn mini__btn--stop" onClick={() => setAskingStop(true)}>
               <StopFilledIcon />
-              {t('Остановить')}
+              {t('Stop')}
             </button>
           )}
         </>
       )}
-      <button className="mini__btn mini__btn--round" onClick={() => void call('window.restore')} title={t('Развернуть окно тренировки')}>
+      <button className="mini__btn mini__btn--round" onClick={() => void call('window.restore')} title={t('Restore the training window')}>
         <RestoreIcon />
       </button>
     </div>

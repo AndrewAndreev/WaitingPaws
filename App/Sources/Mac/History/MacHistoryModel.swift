@@ -63,7 +63,7 @@ struct MacHistoryRow: Identifiable {
     }
 
     var title: String {
-        record.map { $0.plan.title.trimmingCharacters(in: .whitespaces) } ?? String(localized: "Запись без тренировки")
+        record.map { $0.plan.title.trimmingCharacters(in: .whitespaces) } ?? String(localized: "Recording without training")
     }
 
     var trainers: String { record?.plan.trainers ?? "" }
@@ -128,20 +128,20 @@ enum MacHistoryFormat {
     /// "813 МБ", "5,8 ГБ" / "813 MB", "5.8 GB" (decimal units, as in Finder).
     static func bytes(_ count: Int64) -> String {
         let megabytes = Double(count) / 1_000_000
-        if megabytes >= 1000 { return String(localized: "\(decimal(megabytes / 1000)) ГБ") }
-        if megabytes >= 10 { return String(localized: "\(Int(megabytes.rounded())) МБ") }
-        if megabytes >= 0.1 { return String(localized: "\(decimal(megabytes)) МБ") }
-        return String(localized: "\(max(1, Int((Double(count) / 1000).rounded()))) КБ")
+        if megabytes >= 1000 { return String(localized: "\(decimal(megabytes / 1000)) GB") }
+        if megabytes >= 10 { return String(localized: "\(Int(megabytes.rounded())) MB") }
+        if megabytes >= 0.1 { return String(localized: "\(decimal(megabytes)) MB") }
+        return String(localized: "\(max(1, Int((Double(count) / 1000).rounded()))) KB")
     }
 
     /// "1 тренировка", "11 тренировок" / "1 training", "11 trainings".
     static func trainings(_ n: Int) -> String {
-        pluralText(n, ru: ("тренировка", "тренировки", "тренировок"), en: ("training", "trainings"))
+        pluralText(n, en: ("training", "trainings"), ru: ("тренировка", "тренировки", "тренировок"))
     }
 
     /// "1 запись", "3 записи" / "1 recording", "3 recordings".
     static func recordings(_ n: Int) -> String {
-        pluralText(n, ru: ("запись", "записи", "записей"), en: ("recording", "recordings"))
+        pluralText(n, en: ("recording", "recordings"), ru: ("запись", "записи", "записей"))
     }
 
     /// "5,8" / "5.8": one decimal in the app's language.
@@ -177,9 +177,9 @@ final class MacHistoryController {
         var id: Self { self }
         var title: String {
             switch self {
-            case .all: String(localized: "Все")
-            case .trainings: String(localized: "Тренировки")
-            case .clips: String(localized: "Только видео")
+            case .all: String(localized: "All")
+            case .trainings: String(localized: "Trainings")
+            case .clips: String(localized: "Videos Only")
             }
         }
     }

@@ -73,7 +73,7 @@ struct MinimizedPanelHook: NSViewRepresentable {
             let visible = screen.visibleFrame
             let frame = CGRect(x: visible.midX - size.width / 2, y: visible.minY + 24, width: size.width, height: size.height)
             let panel = StripPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-            panel.title = String(localized: "Waiting Paws — панель")
+            panel.title = String(localized: "Waiting Paws — Panel")
             panel.level = .floating
             panel.isOpaque = false
             panel.backgroundColor = .clear
@@ -170,33 +170,33 @@ private struct MinimizedStrip: View {
                         if content.showsFalseStart(at: context.date) {
                             // Orange, as in the panel; what a click does is in the pointer's tip.
                             Button { ui.falseStart(model) } label: {
-                                Label("Фальстарт", systemImage: "arrow.uturn.backward")
+                                Label("False Start", systemImage: "arrow.uturn.backward")
                                     .foregroundStyle(MacPalette.orange)
                             }
                             .buttonStyle(HUDButtonStyle(height: 36))
-                            .help([String(localized: "Фальстарт"), content.falseStartHint]
+                            .help([String(localized: "False Start"), content.falseStartHint]
                                 .compactMap { $0 }.joined(separator: " — "))
                             .accessibilityLabel(content.falseStartAccessibilityLabel)
                             .accessibilityHint(content.falseStartHint ?? "")
                         }
                     } else {
-                        Text(askingStop ? "Остановить запись?" : "Запись без тренировки").font(.system(size: 12.5, weight: .semibold))
+                        Text(askingStop ? "Stop recording?" : "Recording without training").font(.system(size: 12.5, weight: .semibold))
                         if askingStop {
-                            Button { askingStop = false } label: { Label("Продолжить", systemImage: "record.circle") }
+                            Button { askingStop = false } label: { Label("Continue", systemImage: "record.circle") }
                                 .buttonStyle(HUDButtonStyle(height: 36))
                             Button {
                                 askingStop = false
                                 model.stopRecording(deleteFile: false)
-                            } label: { Label("Остановить", systemImage: "stop.fill") }
+                            } label: { Label("Stop", systemImage: "stop.fill") }
                                 .buttonStyle(HUDButtonStyle(tint: MacPalette.red, height: 36))
                         } else {
-                            Button { askingStop = true } label: { Label("Остановить", systemImage: "stop.fill") }
+                            Button { askingStop = true } label: { Label("Stop", systemImage: "stop.fill") }
                                 .buttonStyle(HUDButtonStyle(tint: MacPalette.red, height: 36))
                         }
                     }
                     Button(action: onRestore) { Image(systemName: "arrow.up.left.and.arrow.down.right") }
                         .buttonStyle(HUDButtonStyle(height: 36, circle: true))
-                        .help("Развернуть окно тренировки")
+                        .help("Restore the training window")
                 }
                 .padding(.leading, 12)
                 .padding(.trailing, 10)

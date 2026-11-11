@@ -27,22 +27,22 @@ export function ConnectionPane() {
   }
   return (
     <>
-      <PaneHeader title={t('Подключение')} description={t('Где работает go2rtc — сервер, который забирает видео с камеры Xiaomi.')} />
-      <Group footer={locked ? t('Во время тренировки или записи сервер не меняется.') : undefined}>
-        <div role="radiogroup" className="sgroup__items" aria-label={t('Режим')}>
+      <PaneHeader title={t('Connection')} description={t('Where go2rtc runs — the server that pulls video from the Xiaomi camera.')} />
+      <Group footer={locked ? t('The server can’t be changed during a training or recording.') : undefined}>
+        <div role="radiogroup" className="sgroup__items" aria-label={t('Mode')}>
           <RadioRow
             checked={mode === 'embedded'}
             disabled={locked}
             onSelect={() => setMode('embedded')}
-            title={t('Встроенный go2rtc')}
-            description={t('go2rtc работает внутри приложения, камера должна быть в той же Wi‑Fi сети. Видео и запись идут, пока приложение открыто.')}
+            title={t('Built-in go2rtc')}
+            description={t('go2rtc runs inside the app; the camera must be on the same Wi‑Fi network. Video and recording work while the app is open.')}
           />
           <RadioRow
             checked={mode === 'external'}
             disabled={locked}
             onSelect={() => setMode('external')}
-            title={t('Свой сервер go2rtc')}
-            description={t('Отдельный сервер go2rtc в сети: подходит, если нужна постоянная запись или доступ не из дома.')}
+            title={t('Own go2rtc Server')}
+            description={t('A separate go2rtc server on the network: for round-the-clock recording or access from outside your home.')}
           />
         </div>
       </Group>
@@ -66,10 +66,10 @@ function EmbeddedGroup() {
     setRestarting(false)
   }
   return (
-    <Group title={t('Встроенный go2rtc')}>
+    <Group title={t('Built-in go2rtc')}>
       <Row
         icon={<ServerIcon />}
-        title={t('Состояние')}
+        title={t('Status')}
         description={
           <span className="row sconn__status" style={{ gap: 6 }}>
             {status === 'starting' || restarting ? (
@@ -82,13 +82,13 @@ function EmbeddedGroup() {
         }
       >
         <Button icon={<ReloadIcon />} disabled={restarting || status === 'starting'} onClick={() => void restart()}>
-          {t('Перезапустить')}
+          {t('Restart')}
         </Button>
       </Row>
       <Row
         icon={<GlobeIcon />}
-        title={t('Адрес')}
-        description={app.go2rtc.lanEnabled ? t('Открыт и в локальной сети — для iPhone, с паролем.') : t('Только для этого компьютера.')}
+        title={t('Address')}
+        description={app.go2rtc.lanEnabled ? t('Also open on the local network — for iPhone, with a password.') : t('This computer only.')}
       >
         <Value mono selectable>
           127.0.0.1:{app.go2rtc.port}
@@ -96,10 +96,10 @@ function EmbeddedGroup() {
       </Row>
       <Row
         icon={<DocumentIcon />}
-        title={t('Файл go2rtc.yaml')}
+        title={t('go2rtc.yaml File')}
         description={
           <>
-            {t('Потоки и вход в Xiaomi. Не пересылайте его: в нём токены.')}
+            {t('Streams and the Xiaomi sign-in. Don’t share it: it contains tokens.')}
             {configPath && (
               <span className="srow__path mono selectable" title={configPath}>
                 {configPath}
@@ -108,7 +108,7 @@ function EmbeddedGroup() {
           </>
         }
       >
-        <Button onClick={() => void call('shell.showItem', 'go2rtcConfig')}>{t('Показать в проводнике')}</Button>
+        <Button onClick={() => void call('shell.showItem', 'go2rtcConfig')}>{t('Show in Explorer')}</Button>
       </Row>
     </Group>
   )
@@ -150,7 +150,7 @@ function ServerGroup({ locked }: { locked: boolean }) {
     // Saved as well (a field is left when the button is clicked anyway): changes apply at once.
     await commit()
     if (!server) {
-      setCheck({ kind: 'failed', message: t('Некорректный адрес'), detail: '' })
+      setCheck({ kind: 'failed', message: t('Invalid address'), detail: '' })
       return
     }
     setCheck({ kind: 'checking' })
@@ -162,7 +162,7 @@ function ServerGroup({ locked }: { locked: boolean }) {
       const detail = String((error as Error)?.message ?? error).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
       // A refused connection or a timeout says no more than this; the raw text stays in the tooltip.
       const unreachable = error instanceof Go2RTCError && error.kind === 'network'
-      setCheck({ kind: 'failed', message: unreachable ? t('%@ не отвечает', new URL(server.baseURL).host) : detail, detail })
+      setCheck({ kind: 'failed', message: unreachable ? t('%@ is not responding', new URL(server.baseURL).host) : detail, detail })
     }
   }
 
@@ -171,16 +171,16 @@ function ServerGroup({ locked }: { locked: boolean }) {
   }
 
   return (
-    <Group title={t('Свой сервер')}>
+    <Group title={t('Own Server')}>
       <Card>
         <Row
           icon={<ServerIcon />}
-          title={t('Сервер go2rtc')}
-          description={t('Адрес в сети, логин и пароль, если они заданы в go2rtc.')}
+          title={t('go2rtc Server')}
+          description={t('Its network address, plus the username and password if go2rtc has them set.')}
           below={
             <div className="sform">
               <label className="field">
-                <span className="field__label">{t('Адрес')}</span>
+                <span className="field__label">{t('Address')}</span>
                 <input
                   className="input"
                   value={url}
@@ -197,16 +197,16 @@ function ServerGroup({ locked }: { locked: boolean }) {
               </label>
               <div className="sform__pair">
                 <label className="field">
-                  <span className="field__label">{t('Логин')}</span>
-                  <input className="input" value={username} placeholder={t('Необязательно')} spellCheck={false} autoComplete="off" disabled={locked} onChange={(event) => setUsername(event.target.value)} onBlur={() => void commit()} onKeyDown={onKey} />
+                  <span className="field__label">{t('Username')}</span>
+                  <input className="input" value={username} placeholder={t('Optional')} spellCheck={false} autoComplete="off" disabled={locked} onChange={(event) => setUsername(event.target.value)} onBlur={() => void commit()} onKeyDown={onKey} />
                 </label>
                 <label className="field">
-                  <span className="field__label">{t('Пароль')}</span>
+                  <span className="field__label">{t('Password')}</span>
                   <input
                     className="input"
                     type="password"
                     value={password}
-                    placeholder={t('Необязательно')}
+                    placeholder={t('Optional')}
                     autoComplete="new-password"
                     disabled={locked}
                     onFocus={(event) => event.target.select()}
@@ -221,7 +221,7 @@ function ServerGroup({ locked }: { locked: boolean }) {
         />
         <Row title={<CheckResult check={check} />}>
           <Button disabled={locked || check.kind === 'checking' || !parsed} onClick={() => void runCheck()}>
-            {t('Проверить')}
+            {t('Check')}
           </Button>
         </Row>
       </Card>
@@ -232,19 +232,19 @@ function ServerGroup({ locked }: { locked: boolean }) {
 function CheckResult({ check }: { check: Check }) {
   switch (check.kind) {
     case 'idle':
-      return <span className="muted sconn__result">{t('Нужна версия 1.9.11 или новее с модулем xiaomi.')}</span>
+      return <span className="muted sconn__result">{t('Requires version 1.9.11 or later with the xiaomi module.')}</span>
     case 'checking':
       return (
         <span className="row muted sconn__result">
           <Spinner />
-          {t('Проверяем…')}
+          {t('Checking…')}
         </span>
       )
     case 'ok':
       return (
         <span className="row sconn__result" style={{ color: 'var(--success)' }}>
           <SuccessFilledIcon />
-          {check.version ? t('go2rtc %@ отвечает', check.version) : t('Сервер отвечает')}
+          {check.version ? t('go2rtc %@ is responding', check.version) : t('Server is responding')}
         </span>
       )
     case 'failed':

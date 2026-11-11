@@ -77,8 +77,8 @@ struct HistoryView: View {
             Group {
                 let items = items
                 if items.isEmpty {
-                    ContentUnavailableView("Пока нет тренировок", systemImage: "pawprint",
-                                           description: Text("После первой тренировки здесь появятся лог и видео."))
+                    ContentUnavailableView("No Trainings Yet", systemImage: "pawprint",
+                                           description: Text("After your first training, its log and video will appear here."))
                 } else {
                     // Ticking rows only in edit mode: otherwise a tap opens the training.
                     List(selection: isEditing ? $selection : nil) {
@@ -114,7 +114,7 @@ struct HistoryView: View {
                                 .navigationLinkIndicatorVisibility(isEditing ? .hidden : .automatic)
                                 #endif
                                 .contextMenu {
-                                    Button(item.isClip ? "Удалить запись…" : "Удалить тренировку…", systemImage: "trash", role: .destructive) {
+                                    Button(item.isClip ? "Delete Recording…" : "Delete Training…", systemImage: "trash", role: .destructive) {
                                         pendingDelete = [item]
                                     }
                                 }
@@ -133,7 +133,7 @@ struct HistoryView: View {
                     #endif
                 }
             }
-            .navigationTitle("История")
+            .navigationTitle("History")
             .navigationDestination(for: HistoryRoute.self) { route in
                 switch route {
                 case .session(let id):
@@ -151,14 +151,14 @@ struct HistoryView: View {
             // The EditButton in the bar and the list read the same edit mode.
             .environment(\.editMode, $editMode)
             #endif
-            .confirmationDialog("Удалить всю историю?", isPresented: $confirmClearAll, titleVisibility: .visible) {
-                Button("Удалить тренировки (\(model.history.count)) и записи (\(model.clips.count))", role: .destructive) {
+            .confirmationDialog("Delete All History?", isPresented: $confirmClearAll, titleVisibility: .visible) {
+                Button("Delete Trainings (\(model.history.count)) and Recordings (\(model.clips.count))", role: .destructive) {
                     model.deleteAll()
                     finishEditing()
                 }
-                Button("Отмена", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Логи и видео будут удалены с устройства. Копии в Фото останутся.")
+                Text("Logs and videos will be deleted from this device. Copies in Photos will remain.")
             }
             .confirmationDialog(deleteTitle,
                                 isPresented: Binding(get: { !pendingDelete.isEmpty }, set: { if !$0 { pendingDelete = [] } }),
@@ -166,7 +166,7 @@ struct HistoryView: View {
                 deleteButtons(items)
             } message: { items in
                 if items.contains(where: \.isClip) {
-                    if items.count == 1 { Text("Копия в Фото останется.") } else { Text("Копии в Фото останутся.") }
+                    if items.count == 1 { Text("The copy in Photos will remain.") } else { Text("The copies in Photos will remain.") }
                 }
             }
         }
@@ -202,14 +202,14 @@ struct HistoryView: View {
                 if #available(iOS 26.0, *) {
                     Button(role: .close) { dismiss() }
                 } else {
-                    Button("Закрыть") { dismiss() }
+                    Button("Close") { dismiss() }
                 }
             }
         }
         ToolbarItem(placement: .primaryAction) {
             if isEditing {
                 // «Готово» in words where «Править» stood, as Mail says it, not iOS 26's tinted ✓ circle.
-                Button("Готово") { finishEditing() }
+                Button("Done") { finishEditing() }
                     .fontWeight(.semibold)
             } else {
                 EditButton().disabled(items.isEmpty)
@@ -220,17 +220,17 @@ struct HistoryView: View {
         }
         #else
         ToolbarItem(placement: .cancellationAction) {
-            Button("Закрыть") { dismiss() }
+            Button("Close") { dismiss() }
         }
         ToolbarItem(placement: .primaryAction) {
             Menu {
-                Button("Показать папку в Finder", systemImage: "folder") { Finder.reveal(model.store.rootDirectory) }
-                Button("Удалить всё", systemImage: "trash", role: .destructive) { confirmClearAll = true }
+                Button("Show Folder in Finder", systemImage: "folder") { Finder.reveal(model.store.rootDirectory) }
+                Button("Delete All", systemImage: "trash", role: .destructive) { confirmClearAll = true }
                     .disabled(model.history.isEmpty && model.clips.isEmpty)
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
-            .accessibilityLabel("Ещё")
+            .accessibilityLabel("More")
         }
         #endif
     }
@@ -241,15 +241,15 @@ struct HistoryView: View {
     @ViewBuilder
     private var editBarButtons: some View {
         let allSelected = !items.isEmpty && selection.count == items.count
-        Button(allSelected ? "Снять выбор" : "Выбрать все") {
+        Button(allSelected ? "Deselect All" : "Select All") {
             selection = allSelected ? [] : Set(items.map(\.id))
         }
         Spacer()
         Group {
             if selection.isEmpty {
-                Button("Удалить всё", role: .destructive) { confirmClearAll = true }
+                Button("Delete All", role: .destructive) { confirmClearAll = true }
             } else {
-                Button("Удалить (\(selection.count))", role: .destructive) {
+                Button("Delete (\(selection.count))", role: .destructive) {
                     pendingDelete = items.filter { selection.contains($0.id) }
                 }
                 .contentTransition(.numericText())
@@ -276,14 +276,14 @@ struct HistoryView: View {
     private var deleteTitle: String {
         let trainings = pendingDelete.filter { !$0.isClip }.count
         let clips = pendingDelete.count - trainings
-        if pendingDelete.count == 1 { return clips == 1 ? String(localized: "Удалить запись?") : String(localized: "Удалить тренировку?") }
+        if pendingDelete.count == 1 { return clips == 1 ? String(localized: "Delete Recording?") : String(localized: "Delete Training?") }
         // Accusative: «Удалить 2 тренировки».
-        let trainingsText = pluralText(trainings, ru: ("тренировку", "тренировки", "тренировок"), en: ("training", "trainings"))
-        let clipsText = pluralText(clips, ru: ("запись", "записи", "записей"), en: ("recording", "recordings"))
+        let trainingsText = pluralText(trainings, en: ("training", "trainings"), ru: ("тренировку", "тренировки", "тренировок"))
+        let clipsText = pluralText(clips, en: ("recording", "recordings"), ru: ("запись", "записи", "записей"))
         switch (trainings, clips) {
-        case (_, 0): return String(localized: "Удалить \(trainingsText)?")
-        case (0, _): return String(localized: "Удалить \(clipsText)?")
-        default: return String(localized: "Удалить \(trainingsText) и \(clipsText)?")
+        case (_, 0): return String(localized: "Delete \(trainingsText)?")
+        case (0, _): return String(localized: "Delete \(clipsText)?")
+        default: return String(localized: "Delete \(trainingsText) and \(clipsText)?")
         }
     }
 
@@ -292,25 +292,25 @@ struct HistoryView: View {
         let records = items.compactMap(\.record)
         let clips = items.compactMap(\.clip)
         if records.isEmpty {
-            Button("Удалить", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 for clip in clips { model.delete(clip) }
                 finishEditing()
             }
         } else {
-            Button("Удалить вместе с видео", role: .destructive) {
+            Button("Delete with Video", role: .destructive) {
                 for record in records { model.delete(record, includingRecording: true) }
                 for clip in clips { model.delete(clip) }
                 finishEditing()
             }
             // Not with recordings among them: those are videos themselves.
             if clips.isEmpty, records.contains(where: { model.store.recordingURL(for: $0) != nil }) {
-                Button(records.count == 1 ? "Удалить только лог, видео оставить" : "Удалить только логи, видео оставить") {
+                Button(records.count == 1 ? "Delete Log Only, Keep Video" : "Delete Logs Only, Keep Videos") {
                     for record in records { model.delete(record, includingRecording: false) }
                     finishEditing()
                 }
             }
         }
-        Button("Отмена", role: .cancel) {}
+        Button("Cancel", role: .cancel) {}
     }
 }
 
@@ -363,14 +363,14 @@ enum HistoryDate {
 enum HistoryText {
     /// "1 фальстарт", "3 фальстарта" / "1 false start", "3 false starts".
     static func falseStarts(_ count: Int) -> String {
-        pluralText(count, ru: ("фальстарт", "фальстарта", "фальстартов"), en: ("false start", "false starts"))
+        pluralText(count, en: ("false start", "false starts"), ru: ("фальстарт", "фальстарта", "фальстартов"))
     }
 
     /// "7 из 7 выходов", "1 из 1 выхода" / "7 of 7 exits".
     static func exits(_ record: TrainingRecord) -> String {
         // Genitive after «из»: «из 1 выхода», «из 5 выходов».
-        let planned = pluralText(record.plan.exits.count, ru: ("выхода", "выходов", "выходов"), en: ("exit", "exits"))
-        return String(localized: "\(record.completedExits) из \(planned)")
+        let planned = pluralText(record.plan.exits.count, en: ("exit", "exits"), ru: ("выхода", "выходов", "выходов"))
+        return String(localized: "\(record.completedExits) of \(planned)")
     }
 
     /// "2:32", or a dash while no exit has been completed.
@@ -404,10 +404,10 @@ enum HistoryText {
     static func fromAttempt(_ attempt: Int) -> String? {
         switch attempt {
         case ..<2: return nil
-        case 2: return String(localized: "со второй попытки")
-        case 3: return String(localized: "с третьей попытки")
-        case 4: return String(localized: "с четвёртой попытки")
-        default: return String(localized: "с \(attempt)-й попытки")
+        case 2: return String(localized: "on the 2nd attempt")
+        case 3: return String(localized: "on the 3rd attempt")
+        case 4: return String(localized: "on the 4th attempt")
+        default: return String(localized: "on attempt \(attempt)")
         }
     }
 }
@@ -559,9 +559,9 @@ struct RecordingReport {
         var title: String {
             let time = HistoryDate.time(start)
             guard let list = RecordingReport.exitList(exits, capitalized: true) else {
-                return String(localized: "Начало — в записи \(time)")
+                return String(localized: "The start — in the recording at \(time)")
             }
-            return String(localized: "\(list) — в записи \(time)")
+            return String(localized: "\(list) — in the recording at \(time)")
         }
     }
 
@@ -597,15 +597,15 @@ struct RecordingReport {
             videoExits = []
             videoStart = nil
             if record.recordingFileName != nil {
-                (kind, text, systemImage) = (.deleted, String(localized: "Файл видео удалён"), "video.slash")
+                (kind, text, systemImage) = (.deleted, String(localized: "Video file deleted"), "video.slash")
             } else if spans.isEmpty {
-                (kind, text, systemImage) = (.none, String(localized: "Запись не включали"), "video.slash")
+                (kind, text, systemImage) = (.none, String(localized: "Recording was off"), "video.slash")
             } else if Self.recordedElsewhere(spans, earlierParts: earlierParts) {
                 // A training led from this iPhone on the Mac: the Mac recorded it, the iPhone keeps the log only.
-                (kind, text, systemImage) = (.elsewhere, String(localized: "Видео — в истории на \(model.linkedHostKind)"),
+                (kind, text, systemImage) = (.elsewhere, String(localized: "The video is in the history on the \(model.linkedHostKind)"),
                                              "laptopcomputer")
             } else {
-                (kind, text, systemImage) = (.empty, String(localized: "Видео не записалось"), "video.slash")
+                (kind, text, systemImage) = (.empty, String(localized: "No video was recorded"), "video.slash")
             }
             return
         }
@@ -620,7 +620,7 @@ struct RecordingReport {
         videoExits = Self.exits(of: record, in: video)
         videoStart = video.start
         guard spans.count > 1 || late || early else {
-            (kind, text, detail) = (.whole, String(localized: "Запись шла всю тренировку"), nil)
+            (kind, text, detail) = (.whole, String(localized: "Recorded the whole training"), nil)
             return
         }
         kind = .partial
@@ -629,17 +629,17 @@ struct RecordingReport {
             let gaps = zip(spans, spans.dropFirst()).map { ($0.end, $1.start.timeIntervalSince($0.end)) }
             let total = DurationText.clock(gaps.reduce(0) { $0 + max(0, $1.1) })
             text = gaps.count == 1
-                ? String(localized: "Запись прерывалась в \(time(gaps[0].0)) на \(total)")
-                : String(localized: "Запись прерывалась \(pluralText(gaps.count, ru: ("раз", "раза", "раз"), en: ("time", "times"))), всего на \(total)")
+                ? String(localized: "Recording paused at \(time(gaps[0].0)) for \(total)")
+                : String(localized: "Recording paused \(pluralText(gaps.count, en: ("time", "times"), ru: ("раз", "раза", "раз"))), \(total) in all")
         } else if late && early {
-            text = String(localized: "Запись шла \(time(video.start))–\(time(video.end))")
+            text = String(localized: "Recorded \(time(video.start))–\(time(video.end))")
         } else if late {
-            text = String(localized: "Запись началась в \(time(video.start))")
+            text = String(localized: "Recording started at \(time(video.start))")
         } else {
-            text = String(localized: "Запись остановлена в \(time(video.end))")
+            text = String(localized: "Recording stopped at \(time(video.end))")
         }
-        detail = Self.exitList(videoExits, capitalized: false).map { String(localized: "В этом видео — \($0)") }
-            ?? String(localized: "В этом видео выходов нет")
+        detail = Self.exitList(videoExits, capitalized: false).map { String(localized: "In this video: \($0)") }
+            ?? String(localized: "No exits in this video")
     }
 
     /// The recording's stretches in the training, oldest first.
@@ -705,10 +705,10 @@ struct RecordingReport {
         let list = formatter.string(from: runs) ?? runs.joined(separator: ", ")
         let single = sorted.count == 1
         switch (single, capitalized) {
-        case (true, false): return String(localized: "выход \(list)")
-        case (true, true): return String(localized: "Выход \(list)")
-        case (false, false): return String(localized: "выходы \(list)")
-        case (false, true): return String(localized: "Выходы \(list)")
+        case (true, false): return String(localized: "exit \(list)")
+        case (true, true): return String(localized: "Exit \(list)")
+        case (false, false): return String(localized: "exits \(list)")
+        case (false, true): return String(localized: "Exits \(list)")
         }
     }
 }
@@ -786,7 +786,7 @@ private struct HistoryRow: View {
             Spacer(minLength: 8)
             Text(HistoryText.longest(record))
                 .font(.system(.title3, design: .rounded, weight: .semibold).monospacedDigit())
-                .accessibilityLabel(String(localized: "самый длинный выход \(HistoryText.longest(record)), план \(HistoryText.longestPlan(record) ?? "—")"))
+                .accessibilityLabel(String(localized: "longest exit \(HistoryText.longest(record)), plan \(HistoryText.longestPlan(record) ?? "—")"))
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
@@ -860,7 +860,7 @@ private struct ClipRow: View {
                         .monospacedDigit()
                 }
                 .lineLimit(1)
-                Text("Запись без тренировки")
+                Text("Recording without training")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -912,18 +912,18 @@ enum HistoryPeriod: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .fourWeeks: String(localized: "4 недели")
-        case .threeMonths: String(localized: "3 месяца")
-        case .all: String(localized: "Всё время")
+        case .fourWeeks: String(localized: "4 Weeks")
+        case .threeMonths: String(localized: "3 Months")
+        case .all: String(localized: "All Time")
         }
     }
 
     /// Title of the change figure when the period starts after the first training.
     var gainTitle: String {
         switch self {
-        case .fourWeeks: String(localized: "За четыре недели")
-        case .threeMonths: String(localized: "За три месяца")
-        case .all: String(localized: "С первой тренировки")
+        case .fourWeeks: String(localized: "Over four weeks")
+        case .threeMonths: String(localized: "Over three months")
+        case .all: String(localized: "Since the first training")
         }
     }
 
@@ -988,14 +988,14 @@ struct HistoryProgress {
 
     /// «С первой тренировки» when the period reaches back to it, else the period's own «За четыре недели» etc.
     var gainTitle: String {
-        includesFirstTraining ? String(localized: "С первой тренировки") : period.gainTitle
+        includesFirstTraining ? String(localized: "Since the first training") : period.gainTitle
     }
 
     /// iPhone's title of the change, naming what it is counted from: «С первой тренировки» when the period reaches
     /// back to it, else the period's first training, «С 6 сент.» (the Mac says it in a note: «было 0:07 6 сент.»).
     var gainSince: String {
-        guard !includesFirstTraining, let first else { return String(localized: "С первой тренировки") }
-        return String(localized: "С \(HistoryDate.dayMonth(first.startedAt))")
+        guard !includesFirstTraining, let first else { return String(localized: "Since the first training") }
+        return String(localized: "Since \(HistoryDate.dayMonth(first.startedAt))")
     }
 
     /// The training whose date is closest to `date` (a finger or pointer on the chart).
@@ -1072,7 +1072,7 @@ private struct HistoryProgressCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(.isHeader)
-            .accessibilityValue(isExpanded ? String(localized: "развёрнуто") : String(localized: "свёрнуто"))
+            .accessibilityValue(isExpanded ? String(localized: "expanded") : String(localized: "collapsed"))
             if isExpanded {
                 // One training is a point, not a trend.
                 if progress.sessions.count > 1 {
@@ -1089,7 +1089,7 @@ private struct HistoryProgressCard: View {
 
     /// «4 недели · 3 месяца · Всё время», the Mac menu's periods; the pick is kept.
     private func periodPicker(_ period: HistoryPeriod) -> some View {
-        Picker("Период", selection: Binding(get: { period }, set: { picked in
+        Picker("Period", selection: Binding(get: { period }, set: { picked in
             selectedDate = nil
             withAnimation(.snappy(duration: 0.3)) { storedPeriod = picked.rawValue }
         })) {
@@ -1111,33 +1111,33 @@ private struct HistoryProgressCard: View {
             ForEach(progress.sessions) { record in
                 // Straight lines between the trainings (GPT, round 9): a curve drew values between them that no
                 // training had.
-                AreaMark(x: .value("Дата", record.startedAt), yStart: .value("За дверью", 0),
-                         yEnd: .value("За дверью", record.longestStayBehindDoor))
+                AreaMark(x: .value("Date", record.startedAt), yStart: .value("Outside", 0),
+                         yEnd: .value("Outside", record.longestStayBehindDoor))
                     .interpolationMethod(.linear)
                     .foregroundStyle(LinearGradient(colors: [accent.opacity(0.22), accent.opacity(0)],
                                                     startPoint: .top, endPoint: .bottom))
-                LineMark(x: .value("Дата", record.startedAt), y: .value("За дверью", record.longestStayBehindDoor),
-                         series: .value("Ряд", String(localized: "Факт")))
+                LineMark(x: .value("Date", record.startedAt), y: .value("Outside", record.longestStayBehindDoor),
+                         series: .value("Series", String(localized: "Actual")))
                     .interpolationMethod(.linear)
                     .foregroundStyle(accent)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
-                LineMark(x: .value("Дата", record.startedAt), y: .value("План", record.longestPlannedExit),
-                         series: .value("Ряд", String(localized: "План")))
+                LineMark(x: .value("Date", record.startedAt), y: .value("Plan", record.longestPlannedExit),
+                         series: .value("Series", String(localized: "Plan")))
                     .interpolationMethod(.stepEnd)
                     .foregroundStyle(Color.white.opacity(0.4))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
             }
             if let selected {
-                RuleMark(x: .value("Дата", selected.startedAt))
+                RuleMark(x: .value("Date", selected.startedAt))
                     .foregroundStyle(Color.white.opacity(0.3))
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
             ForEach(progress.sessions) { record in
-                PointMark(x: .value("Дата", record.startedAt), y: .value("За дверью", record.longestStayBehindDoor))
+                PointMark(x: .value("Date", record.startedAt), y: .value("Outside", record.longestStayBehindDoor))
                     .symbolSize(record.id == selected?.id ? 70 : 22)
                     .foregroundStyle(accent)
                 if record.falseStarts > 0 {
-                    PointMark(x: .value("Дата", record.startedAt), y: .value("Фальстарт", -lane / 2))
+                    PointMark(x: .value("Date", record.startedAt), y: .value("False Start", -lane / 2))
                         .symbol(.triangle)
                         .symbolSize(record.id == selected?.id ? 50 : 28)
                         .foregroundStyle(Theme.warning)
@@ -1183,7 +1183,7 @@ private struct HistoryProgressCard: View {
             onOpen(record)
         })
         .frame(height: 150)
-        .accessibilityLabel("График: дольше всего за дверью по тренировкам")
+        .accessibilityLabel("Chart: longest time outside per training")
     }
 
     /// A training's point across the chart, in the chart's own coordinates.
@@ -1213,7 +1213,7 @@ private struct HistoryProgressFigures: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             if let shown = selected ?? progress.best {
-                figure(selected.map { HistoryDate.day($0.startedAt) } ?? String(localized: "Самый длинный выход"),
+                figure(selected.map { HistoryDate.day($0.startedAt) } ?? String(localized: "Longest exit"),
                        HistoryText.longest(shown))
                     .animation(.snappy(duration: 0.2), value: shown.id)
             }
@@ -1264,7 +1264,7 @@ private struct RecordingSection: View {
                     ZStack {
                         Color.black
                         if let error = model.preparationErrors[name], !preparing {
-                            Label("Видео не подготовлено", systemImage: "exclamationmark.triangle")
+                            Label("Video not prepared", systemImage: "exclamationmark.triangle")
                                 .foregroundStyle(.white.opacity(0.75))
                                 .help(error)
                         } else {
@@ -1294,13 +1294,13 @@ private struct RecordingSection: View {
             }
         HStack {
             ShareLink(item: url) {
-                Label(preparing ? "Готовим видео…" : "Поделиться", systemImage: "square.and.arrow.up")
+                Label(preparing ? "Preparing video…" : "Share", systemImage: "square.and.arrow.up")
             }
             .disabled(preparing)
-            Button { model.saveToPhotos(url) } label: { Label("В Фото", systemImage: "photo.on.rectangle.angled") }
+            Button { model.saveToPhotos(url) } label: { Label("Save to Photos|short", systemImage: "photo.on.rectangle.angled") }
                 .disabled(preparing)
             #if os(macOS)
-            Button { Finder.reveal(url) } label: { Label("В Finder", systemImage: "folder") }
+            Button { Finder.reveal(url) } label: { Label("Show in Finder|short", systemImage: "folder") }
             #endif
         }
         .buttonStyle(.bordered)
@@ -1308,12 +1308,12 @@ private struct RecordingSection: View {
         if preparing, model.videoPreparations[name]?.leftover == true {
             Label(PreparationText.leftover, systemImage: "hourglass").font(.footnote).foregroundStyle(.secondary)
         } else if let error = model.preparationErrors[name], !preparing {
-            Label(String(localized: "Не удалось подготовить видео: \(error)"), systemImage: "exclamationmark.triangle.fill")
+            Label(String(localized: "Couldn’t prepare the video: \(error)"), systemImage: "exclamationmark.triangle.fill")
                 .font(.footnote).foregroundStyle(Theme.warning)
         } else if let error = status.error {
             Label(error, systemImage: "exclamationmark.triangle.fill").font(.footnote).foregroundStyle(Theme.warning)
         } else if status.saved {
-            Label("Сохранено в Фото", systemImage: "checkmark.circle.fill").font(.footnote).foregroundStyle(Theme.accent)
+            Label("Saved to Photos", systemImage: "checkmark.circle.fill").font(.footnote).foregroundStyle(Theme.accent)
         }
     }
 
@@ -1345,8 +1345,8 @@ private struct RecordingSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(duration.map { String(localized: "Смотреть видео, \(DurationText.clock($0))") }
-                            ?? String(localized: "Смотреть видео"))
+        .accessibilityLabel(duration.map { String(localized: "Play video, \(DurationText.clock($0))") }
+                            ?? String(localized: "Play video"))
     }
 }
 
@@ -1372,17 +1372,17 @@ struct ClipDetailView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(role: .destructive) { confirmDelete = true } label: { Image(systemName: "trash") }
-                    .accessibilityLabel("Удалить запись")
+                    .accessibilityLabel("Delete Recording")
             }
         }
-        .confirmationDialog("Удалить запись?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Удалить", role: .destructive) {
+        .confirmationDialog("Delete Recording?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
                 model.delete(clip)
                 dismiss()
             }
-            Button("Отмена", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Копия в Фото останется.")
+            Text("The copy in Photos will remain.")
         }
     }
 }
@@ -1457,7 +1457,7 @@ struct HistoryDetailView: View {
                                 .id(Self.bottomID)
                         }
                     } header: {
-                        Text("Видео")
+                        Text("Video")
                     } footer: {
                         // Only what isn't plain: which exits a single part holds («Запись началась в 18:40», «В этом
                         // видео — выходы 3–7»). A video of the whole training says nothing, and nor do the parts of one
@@ -1508,25 +1508,25 @@ struct HistoryDetailView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("Удалить тренировку…", systemImage: "trash", role: .destructive) { confirmDelete = true }
+                    Button("Delete Training…", systemImage: "trash", role: .destructive) { confirmDelete = true }
                 } label: {
-                    Label("Ещё", systemImage: "ellipsis")
+                    Label("More", systemImage: "ellipsis")
                 }
-                .accessibilityLabel("Ещё")
+                .accessibilityLabel("More")
             }
         }
-        .confirmationDialog("Удалить тренировку?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Удалить вместе с видео", role: .destructive) {
+        .confirmationDialog("Delete Training?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete with Video", role: .destructive) {
                 model.delete(record, includingRecording: true)
                 dismiss()
             }
             if videoURL != nil {
-                Button("Удалить только лог, видео оставить") {
+                Button("Delete Log Only, Keep Video") {
                     model.delete(record, includingRecording: false)
                     dismiss()
                 }
             }
-            Button("Отмена", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -1549,7 +1549,7 @@ struct HistoryDetailView: View {
                  start: part.start, end: part.end)
         }
         let last = Tile(url: video, caption: RecordingReport.exitList(report.videoExits, capitalized: true)
-                        ?? String(localized: "Видео"),
+                        ?? String(localized: "Video"),
                         start: report.videoStart ?? record.startedAt, end: record.finishedAt)
         return earlier + [last]
     }
@@ -1559,7 +1559,7 @@ struct HistoryDetailView: View {
     private func gapMark(from end: Date, to start: Date) -> some View {
         let gap = DurationText.clock(max(0, start.timeIntervalSince(end)))
         return VStack(spacing: 2) {
-            Text("нет записи")
+            Text("no recording")
                 .font(.caption2)
                 .multilineTextAlignment(.center)
                 .fixedSize()
@@ -1570,7 +1570,7 @@ struct HistoryDetailView: View {
         }
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Запись прерывалась в \(HistoryDate.time(end)) на \(gap)"))
+        .accessibilityLabel(String(localized: "Recording paused at \(HistoryDate.time(end)) for \(gap)"))
     }
 
     /// What became of the video, one or two quiet lines: «Запись прерывалась в 18:46 на 2:10», «Файл видео удалён».
@@ -1612,7 +1612,7 @@ struct HistoryDetailView: View {
     /// «Отправить тренеру», the one main action, in the summary.
     private var shareButton: some View {
         ShareLink(item: SessionLogFormatter.text(for: record), preview: SharePreview(record.plan.displayTitle)) {
-            Label("Отправить тренеру", systemImage: "square.and.arrow.up")
+            Label("Send to Trainer", systemImage: "square.and.arrow.up")
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundStyle(.black)
                 .frame(maxWidth: .infinity)
@@ -1645,10 +1645,10 @@ struct HistoryDetailView: View {
     private func figures(longest: ExitResult?, stacked: Bool) -> some View {
         HStack(alignment: .top, spacing: stacked ? 18 : 24) {
             // Genitive after «из»: «из 1 выхода», «из 7 выходов».
-            figure(String(localized: "\(record.completedExits) из \(record.plan.exits.count)"),
-                   HistoryText.word(pluralText(record.plan.exits.count, ru: ("выхода", "выходов", "выходов"), en: ("exit", "exits"))))
+            figure(String(localized: "\(record.completedExits) of \(record.plan.exits.count)"),
+                   HistoryText.word(pluralText(record.plan.exits.count, en: ("exit", "exits"), ru: ("выхода", "выходов", "выходов"))))
             if let longest, longest.awayDuration > 0 {
-                figure(DurationText.clock(longest.awayDuration), String(localized: "дольше всего"))
+                figure(DurationText.clock(longest.awayDuration), String(localized: "longest"))
             }
             if record.falseStarts > 0 {
                 figure("\(record.falseStarts)", HistoryText.word(HistoryText.falseStarts(record.falseStarts)), tint: Theme.warning)
@@ -1675,10 +1675,10 @@ struct HistoryDetailView: View {
     /// «Выходы … План  Факт» over the two columns of the rows.
     private var columnsHeader: some View {
         HStack(spacing: 10) {
-            Text("Выходы")
+            Text("Exits")
             Spacer(minLength: 8)
-            Text("План").frame(minWidth: column, alignment: .trailing)
-            Text("Факт").frame(minWidth: column, alignment: .trailing)
+            Text("Plan").frame(minWidth: column, alignment: .trailing)
+            Text("Actual").frame(minWidth: column, alignment: .trailing)
         }
     }
 
@@ -1737,7 +1737,7 @@ struct HistoryDetailView: View {
     /// as «↶ 1» in the list (design council, rounds 13–14: «Фальстарт», «попытка 2» and a ↶ on the repeat said it three
     /// ways). The repeat that follows is a plain «Выход 7».
     private func name(of result: ExitResult) -> Text {
-        let exit = Text("Выход \(result.number)")
+        let exit = Text("Exit \(result.number)")
         guard result.falseStart else { return exit }
         return Text("\(exit) \(Text(Image(systemName: "arrow.uturn.backward")).foregroundStyle(Theme.warning))")
     }
@@ -1772,13 +1772,13 @@ struct HistoryDetailView: View {
     /// "Выход 7, попытка 2, план 2:30, за дверью 2:32, дольше всего, перерыв после 2:02".
     private func accessibilityText(for result: ExitResult, showsBreak: Bool, isLongest: Bool) -> String {
         var parts = [result.attempt > 1
-            ? String(localized: "Выход \(result.number), попытка \(result.attempt)")
-            : String(localized: "Выход \(result.number)")]
+            ? String(localized: "Exit \(result.number), attempt \(result.attempt)")
+            : String(localized: "Exit \(result.number)")]
         var plan = result.isOpen ? PlannedExit.openText : DurationText.clock(result.plannedDuration)
         if result.untilStanding { plan += " " + PlannedExit.untilStandingText }
-        parts.append(String(localized: "план \(plan)"))
+        parts.append(String(localized: "plan \(plan)"))
         parts.append(SessionLogFormatter.outcome(of: result))
-        if isLongest { parts.append(String(localized: "дольше всего")) }
+        if isLongest { parts.append(String(localized: "longest")) }
         parts += SessionLogFormatter.observations(of: result, in: record)
         if showsBreak, specialBreak(after: result) != nil, let pause = SessionLogFormatter.breakText(for: result, in: record) {
             parts.append(pause)

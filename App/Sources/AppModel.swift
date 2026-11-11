@@ -282,12 +282,12 @@ final class AppModel {
                 }
                 if arguments.contains("--demo-barking") {
                     watch.markBarking(at: Date())
-                    session.observe(String(localized: "залаяла"), at: Date().addingTimeInterval(-3))
+                    session.observe(String(localized: "barked"), at: Date().addingTimeInterval(-3))
                 }
                 if let ago = number("--demo-quiet-ago") {
                     watch.markQuiet(at: Date().addingTimeInterval(-ago))
-                    session.observe(String(localized: "залаяла"), at: Date().addingTimeInterval(-ago - 9))
-                    session.observe(String(localized: "замолчала"), at: Date().addingTimeInterval(-ago))
+                    session.observe(String(localized: "barked"), at: Date().addingTimeInterval(-ago - 9))
+                    session.observe(String(localized: "went quiet"), at: Date().addingTimeInterval(-ago))
                 }
                 if !watch.isEmpty { storedExitWatch = watch }
             }
@@ -361,7 +361,7 @@ final class AppModel {
             return [(entry.event.lowercased(), away - delay)]
         }
         if away >= 90, let quiet = plan.doNotEnterRule?.quietTime, away - quiet >= 20 {
-            return [(String(localized: "залаяла"), away - quiet - 9), (String(localized: "замолчала"), away - quiet)]
+            return [(String(localized: "barked"), away - quiet - 9), (String(localized: "went quiet"), away - quiet)]
         }
         return []
     }
@@ -521,12 +521,12 @@ final class AppModel {
 
     /// «Начать тренировку и запись» when the start starts the recording too.
     var startTitle: String {
-        startRecordsToo ? String(localized: "Начать тренировку и запись") : String(localized: "Начать тренировку")
+        startRecordsToo ? String(localized: "Start Training & Recording") : String(localized: "Start Training")
     }
 
     /// «Завершить тренировку и запись» while a recording runs: finishing stops it.
     var finishTitle: String {
-        isRecordingNow ? String(localized: "Завершить тренировку и запись") : String(localized: "Завершить тренировку")
+        isRecordingNow ? String(localized: "Finish Training & Recording") : String(localized: "Finish Training")
     }
 
     func startSession(with plan: TrainingPlan) {
@@ -605,7 +605,7 @@ final class AppModel {
             if watch.barking { watch.markQuiet(at: Date()) } else { watch.markBarking(at: Date()) }
             barking = watch.barking
         }
-        session?.observe(barking ? String(localized: "залаяла") : String(localized: "замолчала"))
+        session?.observe(barking ? String(localized: "barked") : String(localized: "went quiet"))
     }
 
     /// «Фальстарт» just pressed on this device: the training before it, the exit it was about and the break it led
@@ -698,7 +698,7 @@ final class AppModel {
         do {
             try store.save(record)
         } catch {
-            errorMessage = String(localized: "Не удалось сохранить лог: \(error.localizedDescription)")
+            errorMessage = String(localized: "Couldn’t save the log: \(error.localizedDescription)")
         }
         history.insert(record, at: 0)
         lastRecord = record
@@ -733,11 +733,11 @@ final class AppModel {
             return
         }
         guard let client, !settings.streamName.isEmpty else {
-            errorMessage = String(localized: "Камера не настроена")
+            errorMessage = String(localized: "No camera is set up")
             return
         }
         guard !isRecordingLocally else { return }
-        let plan = session?.plan ?? TrainingPlan(title: String(localized: "Запись"))
+        let plan = session?.plan ?? TrainingPlan(title: String(localized: "Record"))
         let fileURL = store.newRecordingURL(for: plan)
         let stream = shownLocalStreamName
         do {
@@ -756,7 +756,7 @@ final class AppModel {
             }
             print("[rec] started \(fileURL.lastPathComponent) from \(stream)")
         } catch {
-            errorMessage = String(localized: "Не удалось начать запись: \(error.localizedDescription)")
+            errorMessage = String(localized: "Couldn’t start recording: \(error.localizedDescription)")
         }
     }
 
@@ -1195,7 +1195,7 @@ final class AppModel {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .auto: return String(localized: "Авто")
+            case .auto: return String(localized: "Auto")
             case .sd: return "SD"
             case .hd: return "HD"
             case .uhd: return "2K"
@@ -1306,7 +1306,7 @@ final class AppModel {
         guard let client else { return }
         let stream = second ? settings.secondStreamName : settings.streamName
         guard let source = await xiaomiSource(client: client, stream: stream), var components = URLComponents(string: source) else {
-            errorMessage = String(localized: "Не удалось сменить качество: go2rtc не отдал адрес камеры")
+            errorMessage = String(localized: "Couldn’t change quality: go2rtc didn’t return the camera address")
             return
         }
         var items = (components.queryItems ?? []).filter { $0.name != "subtype" }
@@ -1327,7 +1327,7 @@ final class AppModel {
             }
             print("[camera] \(second ? "second camera " : "")quality \(quality.rawValue): \(updated)")
         } catch {
-            errorMessage = String(localized: "Не удалось сменить качество: \(error.localizedDescription)")
+            errorMessage = String(localized: "Couldn’t change quality: \(error.localizedDescription)")
         }
     }
 
@@ -1390,7 +1390,7 @@ final class AppModel {
         do {
             try await client.xiaomiLogout(accountID: accountID)
         } catch {
-            errorMessage = String(localized: "Не удалось выйти из аккаунта Xiaomi: \(error.localizedDescription)")
+            errorMessage = String(localized: "Couldn’t sign out of Xiaomi: \(error.localizedDescription)")
             return
         }
         print("[xiaomi] signed out of account \(accountID)")
@@ -1571,8 +1571,8 @@ final class AppModel {
         guard recordingCutByBackground else { return }
         recordingCutByBackground = false
         startRecording()
-        linkNotice = LinkNotice(title: String(localized: "Запись продолжена"),
-                                detail: String(localized: "Пока приложение было свёрнуто, видео не записывалось. Начало записи — в истории."),
+        linkNotice = LinkNotice(title: String(localized: "Recording resumed"),
+                                detail: String(localized: "No video was recorded while the app was in the background. The start of the recording is in History."),
                                 systemImage: "record.circle")
     }
     #endif
@@ -1690,10 +1690,10 @@ extension AppModel {
 
     var activeSecondCameraName: String {
         #if DEBUG
-        if CommandLine.arguments.contains("--demo-second-camera") { return String(localized: "Комната") }
+        if CommandLine.arguments.contains("--demo-second-camera") { return String(localized: "Room") }
         #endif
         #if os(iOS)
-        if syncClient.isLinked { return syncClient.state?.secondCameraTitle ?? String(localized: "Камера 2") }
+        if syncClient.isLinked { return syncClient.state?.secondCameraTitle ?? String(localized: "Camera 2") }
         #endif
         return settings.secondCameraDisplayName
     }
@@ -1743,7 +1743,7 @@ extension AppModel {
 
     var activeCameraName: String {
         #if os(iOS)
-        if syncClient.isLinked { return syncClient.state?.cameraTitle ?? String(localized: "Камера \(linkedHostKind)") }
+        if syncClient.isLinked { return syncClient.state?.cameraTitle ?? String(localized: "\(linkedHostKind) Camera") }
         #endif
         return settings.cameraDisplayName
     }
@@ -1935,8 +1935,8 @@ extension AppModel {
                 // The link is gone (not restored in time, «Отключить синхронизацию», turned away): the training
                 // goes on there, it is just not seen here.
                 if isMirroringSession, let host = lastSyncHost {
-                    linkNotice = LinkNotice(title: String(localized: "Тренировка продолжается на \(host.kindTitle)"),
-                                            detail: String(localized: "Без связи с «\(host.name)» её здесь не видно."),
+                    linkNotice = LinkNotice(title: String(localized: "The training continues on the \(host.kindTitle)"),
+                                            detail: String(localized: "Without a connection to “\(host.name)”, it isn’t shown here."),
                                             systemImage: "wifi.slash")
                 }
                 session = nil
@@ -1957,8 +1957,8 @@ extension AppModel {
             print("[sync] \(shown ? "second" : "first") camera on screen, as on the \(kind)")
         }
         if previous == nil {
-            linkNotice = LinkNotice(title: String(localized: "Синхронизировано с «\(hostName)»"),
-                                    detail: String(localized: "Тренировка, запись и лог — на \(kind), шаги общие."))
+            linkNotice = LinkNotice(title: String(localized: "Synced with “\(hostName)”"),
+                                    detail: String(localized: "Training, recording and log stay on the \(kind); the steps are shared."))
         }
         // Recording without a training on the Mac: same full-screen view here, the screen stays on.
         if state.session == nil {
@@ -1968,8 +1968,8 @@ extension AppModel {
                 keepAwake(true)
             } else if state.recordingSince == nil, previous?.recordingSince != nil, previous?.session == nil {
                 keepAwake(false)
-                linkNotice = LinkNotice(title: String(localized: "Видео сохранено на \(kind)"),
-                                        detail: String(localized: "Оно в истории на «\(hostName)»."))
+                linkNotice = LinkNotice(title: String(localized: "Video saved on the \(kind)"),
+                                        detail: String(localized: "It’s in History on “\(hostName)”."))
             }
         }
         if let snapshot = state.session {

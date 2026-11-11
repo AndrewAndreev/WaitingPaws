@@ -120,14 +120,14 @@ private struct SettingsCameraPane: View {
                     .frame(width: 400)
                     .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
                 VStack(spacing: 2) {
-                    Text(camera.isConfigured ? camera.name : String(localized: "Камера не выбрана"))
+                    Text(camera.isConfigured ? camera.name : String(localized: "No camera selected"))
                         .font(.system(size: 20, weight: .semibold))
                     Text(detailLine(camera))
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                        .help(cameraModel(camera).map { String(localized: "Модель Mi Home: \($0)") } ?? "")
+                        .help(cameraModel(camera).map { String(localized: "Mi Home model: \($0)") } ?? "")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -151,7 +151,7 @@ private struct SettingsCameraPane: View {
         Section {
             #if !WP_NO_XIAOMI // the quality is a Mi Home camera's: none in a build without Xiaomi
             LabeledContent {
-                Picker("Качество", selection: quality(camera)) {
+                Picker("Quality", selection: quality(camera)) {
                     ForEach(AppModel.XiaomiQuality.allCases) { Text(model.qualityTitle($0, source: source)).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -159,34 +159,34 @@ private struct SettingsCameraPane: View {
                 .fixedSize()
                 .disabled(!qualityAvailable(camera) || switchingQuality)
             } label: {
-                Text("Качество")
+                Text("Quality")
                 if !camera.isConfigured {
-                    Text("Сначала выберите камеру.")
+                    Text("Choose a camera first.")
                 } else if !qualityAvailable(camera) {
-                    Text("Меняется только у камер Mi Home.")
+                    Text("Can only be changed for Mi Home cameras.")
                 } else {
-                    Text("На экране и в записи.")
+                    Text("On screen and in recordings.")
                 }
             }
             #endif
-            LabeledContent("Сейчас") {
+            LabeledContent("Current") {
                 HStack(spacing: 6) {
                     if switchingQuality { ProgressView().controlSize(.mini) }
                     Text(currentSize(camera)).monospacedDigit()
                 }
             }
-            Picker("Плеер", selection: $settings.playerMode) {
+            Picker("Player", selection: $settings.playerMode) {
                 ForEach(settings.availablePlayerModes) { Text($0.title).tag($0) }
             }
             Toggle(isOn: $settings.audioEnabled) {
-                Text("Звук с камеры в приложении")
-                Text("Только для плеера: запись всегда со звуком.")
+                Text("Camera sound in the app")
+                Text("Player only: recordings always include sound.")
             }
         } header: {
-            Text("Изображение и звук")
+            Text("Picture & Sound")
         } footer: {
             if settings.connectionMode == .embedded {
-                Text("WebRTC (минимальная задержка) доступен только со своим сервером go2rtc.")
+                Text("WebRTC (lowest latency) is only available with your own go2rtc server.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -195,13 +195,13 @@ private struct SettingsCameraPane: View {
         SettingsCameraModesSection(camera: camera)
 
         Section {
-            LabeledContent("Поток go2rtc") {
+            LabeledContent("go2rtc stream") {
                 Text(camera.isConfigured ? camera.streamName : "—")
                     .font(.system(size: 12, design: .monospaced))
                     .textSelection(.enabled)
             }
             if let source, !source.hasPrefix("xiaomi://") {
-                LabeledContent("Источник") {
+                LabeledContent("Source") {
                     Text(SettingsText.redacted(source))
                         .font(.system(size: 12, design: .monospaced))
                         .lineLimit(1)
@@ -210,21 +210,21 @@ private struct SettingsCameraPane: View {
                 }
             }
             if camera.isXiaomi {
-                LabeledContent("Аккаунт Xiaomi",
+                LabeledContent("Xiaomi Account",
                                value: camera.accountID.isEmpty ? "—" : "ID \(camera.accountID) · \(SetupText.regionTitle(camera.region))")
             }
         } header: {
-            Text("Источник")
+            Text("Source")
         } footer: {
             HStack(spacing: 8) {
                 Spacer()
                 #if !WP_NO_XIAOMI
                 // With no account the card above already offers the sign-in.
                 if accounts?.isEmpty != true {
-                    Button(accounts == nil ? "Войти в Xiaomi…" : "Войти в другой аккаунт Xiaomi…") { sheet = .signIn }
+                    Button(accounts == nil ? "Sign In to Xiaomi…" : "Sign In to Another Xiaomi Account…") { sheet = .signIn }
                 }
                 #endif
-                Button("Выбрать камеру…") { sheet = .picker(accountID: nil) }
+                Button("Choose Camera…") { sheet = .picker(accountID: nil) }
             }
         }
 
@@ -236,7 +236,7 @@ private struct SettingsCameraPane: View {
                         if signingOut == account {
                             ProgressView().controlSize(.small)
                         } else {
-                            Button("Выйти…") { signOutAccount = account }
+                            Button("Sign Out…") { signOutAccount = account }
                                 .disabled(signingOut != nil)
                         }
                     } label: {
@@ -244,15 +244,15 @@ private struct SettingsCameraPane: View {
                     }
                 }
             } header: {
-                Text("Аккаунты Xiaomi")
+                Text("Xiaomi Accounts")
             } footer: {
-                Text("После выхода ключ доступа Xiaomi удаляется с этого Mac, а камеры аккаунта — из приложения.")
+                Text("Signing out removes the Xiaomi access key from this Mac and the account’s cameras from the app.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            .alert("Выйти из аккаунта Xiaomi?", isPresented: Binding(get: { signOutAccount != nil },
+            .alert("Sign Out of Xiaomi?", isPresented: Binding(get: { signOutAccount != nil },
                                                                    set: { if !$0 { signOutAccount = nil } })) {
-                Button("Выйти", role: .destructive) {
+                Button("Sign Out", role: .destructive) {
                     guard let account = signOutAccount else { return }
                     signingOut = account
                     Task {
@@ -261,9 +261,9 @@ private struct SettingsCameraPane: View {
                         await loadAccounts()
                     }
                 }
-                Button("Отмена", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Камеры этого аккаунта перестанут показываться. Войти снова можно в любой момент.")
+                Text("This account’s cameras will no longer be shown. You can sign in again at any time.")
             }
         }
         #endif
@@ -276,19 +276,19 @@ private struct SettingsCameraPane: View {
     /// "Камера Xiaomi · аккаунт 6218440137" (the Mi Home model id stays in the tooltip) or "RTSP · 192.168.1.20".
     private func detailLine(_ camera: SettingsCamera) -> String {
         #if WP_NO_XIAOMI
-        guard camera.isConfigured else { return String(localized: "Сначала выберите камеру.") }
+        guard camera.isConfigured else { return String(localized: "Choose a camera first.") }
         #else
-        guard camera.isConfigured else { return String(localized: "Выберите камеру Mi Home или поток go2rtc.") }
+        guard camera.isConfigured else { return String(localized: "Choose a Mi Home camera or a go2rtc stream.") }
         #endif
         if camera.isXiaomi {
             return [SetupText.cameraKind(model: cameraModel(camera)),
-                    camera.accountID.isEmpty ? nil : String(localized: "аккаунт \(camera.accountID)")].compactMap { $0 }.joined(separator: " · ")
+                    camera.accountID.isEmpty ? nil : String(localized: "account \(camera.accountID)")].compactMap { $0 }.joined(separator: " · ")
         }
         if let source, let badge = SetupText.sourceBadge(source) {
             let host = URLComponents(string: source)?.host
             return [badge, host].compactMap { $0 }.joined(separator: " · ")
         }
-        return String(localized: "Поток go2rtc")
+        return String(localized: "go2rtc stream")
     }
 
     private func cameraModel(_ camera: SettingsCamera) -> String? {
@@ -301,7 +301,7 @@ private struct SettingsCameraPane: View {
             return SetupText.pixels(size)
         }
         #endif
-        guard let size = model.videoSize else { return camera.isConfigured ? "—" : String(localized: "нет камеры") }
+        guard let size = model.videoSize else { return camera.isConfigured ? "—" : String(localized: "no camera") }
         return SetupText.pixels(size)
     }
 
@@ -371,7 +371,7 @@ private struct SettingsCameraModesSection: View {
                 ForEach(modes.behaviourOptions) { CameraModeFormRow(option: $0) }
             } header: {
                 HStack(spacing: 6) {
-                    Text("Режим камеры")
+                    Text("Camera Mode")
                     if modes.state == .loading || !modes.pending.isEmpty { ProgressView().controlSize(.mini) }
                 }
             } footer: {
@@ -381,17 +381,17 @@ private struct SettingsCameraModesSection: View {
                     } else if case .unavailable(let reason) = modes.state {
                         Text(reason).foregroundStyle(.orange)
                     } else {
-                        Text("Настройки хранятся в самой камере и меняются через облако Xiaomi, как в Mi Home.")
+                        Text("These settings are stored in the camera itself and changed through the Xiaomi cloud, as in Mi Home.")
                             .foregroundStyle(.secondary)
                     }
                 }
                 .font(.footnote)
             }
         } else if camera.isXiaomi, modes.state == .loading {
-            Section("Режим камеры") {
+            Section("Camera Mode") {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Читаю настройки камеры…").foregroundStyle(.secondary)
+                    Text("Reading camera settings…").foregroundStyle(.secondary)
                 }
             }
         }
@@ -444,7 +444,7 @@ private struct SettingsCameraCard: View {
                         .glassEffect(.regular.interactive(), in: .capsule)
                 }
                 .buttonStyle(.plain)
-                .help("Переподключить камеру")
+                .help("Reconnect the camera")
                 .padding(8)
             }
         }
@@ -460,10 +460,10 @@ private struct SettingsCameraCard: View {
     private var chipText: String? {
         if camera.isDemo {
             guard case .loaded(_, let size) = demoStill else { return nil }
-            return String(localized: "В эфире · \(SetupText.pixels(size))")
+            return String(localized: "Live · \(SetupText.pixels(size))")
         }
         guard isPlaying else { return nil }
-        return liveSize.map { String(localized: "В эфире · \(SetupText.pixels($0))") } ?? String(localized: "Подключение…")
+        return liveSize.map { String(localized: "Live · \(SetupText.pixels($0))") } ?? String(localized: "Connecting…")
     }
 
     @ViewBuilder
@@ -488,7 +488,7 @@ private struct SettingsCameraCard: View {
                     .font(.callout)
                     .foregroundStyle(.white.opacity(0.6))
                 if !camera.isConfigured {
-                    Button("Выбрать камеру…", action: choose)
+                    Button("Choose Camera…", action: choose)
                         .buttonStyle(.borderedProminent)
                         .tint(MacPalette.pinkDeep)
                 }
@@ -497,11 +497,11 @@ private struct SettingsCameraCard: View {
     }
 
     private var placeholderText: String {
-        guard camera.isConfigured else { return String(localized: "Здесь будет картинка с камеры") }
+        guard camera.isConfigured else { return String(localized: "The camera picture will appear here") }
         switch SetupServerState.of(model) {
-        case .starting: return String(localized: "Запускаем go2rtc…")
-        case .failed, .stopped, .unavailable: return String(localized: "go2rtc не запущен")
-        default: return String(localized: "Нет картинки")
+        case .starting: return String(localized: "Starting go2rtc…")
+        case .failed, .stopped, .unavailable: return String(localized: "go2rtc is not running")
+        default: return String(localized: "No picture")
         }
     }
 
@@ -538,10 +538,10 @@ private struct SettingsConnectionPane: View {
         #if WP_NO_XIAOMI
         SettingsPaneHeader(pane: .connection, text: NoXiaomiText.connectionHeader)
         #else
-        SettingsPaneHeader(pane: .connection, text: String(localized: "Где работает go2rtc — сервер, который забирает видео с камеры Xiaomi."))
+        SettingsPaneHeader(pane: .connection, text: String(localized: "Where go2rtc runs — the server that pulls video from the Xiaomi camera."))
         #endif
         Section {
-            Picker("Режим", selection: modeSelection) {
+            Picker("Mode", selection: modeSelection) {
                 ForEach(ConnectionMode.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.radioGroup)
@@ -550,54 +550,54 @@ private struct SettingsConnectionPane: View {
                 check = .idle
             }
             if settings.connectionMode == .embedded && !choosingServer {
-                LabeledContent("Состояние") {
+                LabeledContent("Status") {
                     SetupServerStatusLabel()
                 }
-                LabeledContent("Адрес", value: "127.0.0.1:\(EmbeddedGo2RTC.apiPort)")
+                LabeledContent("Address", value: "127.0.0.1:\(EmbeddedGo2RTC.apiPort)")
                 LabeledContent {
-                    Button("Показать в Finder") { Finder.reveal(EmbeddedGo2RTC.configURL) }
+                    Button("Show in Finder") { Finder.reveal(EmbeddedGo2RTC.configURL) }
                 } label: {
-                    Text("Файл go2rtc.yaml")
+                    Text("go2rtc.yaml File")
                     #if WP_NO_XIAOMI
                     Text(NoXiaomiText.configFile)
                     #else
-                    Text("Потоки и вход в Xiaomi. Не пересылайте его: в нём токены.")
+                    Text("Streams and the Xiaomi sign-in. Don’t share it: it contains tokens.")
                     #endif
                 }
             }
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(settings.connectionMode == .embedded && !choosingServer
-                     ? "go2rtc работает внутри приложения, камера должна быть в той же Wi‑Fi сети. Видео и запись идут, пока приложение открыто."
-                     : "Отдельный сервер go2rtc в сети: подходит, если нужна постоянная запись или доступ не из дома.")
-                if busy { Text("Во время тренировки или записи сервер не меняется.") }
+                     ? "go2rtc runs inside the app; the camera must be on the same Wi‑Fi network. Video and recording work while the app is open."
+                     : "A separate go2rtc server on the network: for round-the-clock recording or access from outside your home.")
+                if busy { Text("The server can’t be changed during a training or recording.") }
             }
             .font(.footnote)
             .foregroundStyle(.secondary)
         }
         .disabled(busy)
         Section {
-            TextField("Адрес", text: address, prompt: Text("http://192.168.1.10:1984"))
+            TextField("Address", text: address, prompt: Text("http://192.168.1.10:1984"))
                 .plainInput()
-            TextField("Логин", text: $settings.serverUsername, prompt: Text("Необязательно"))
+            TextField("Username", text: $settings.serverUsername, prompt: Text("Optional"))
                 .plainInput()
-            SecureField("Пароль", text: $settings.serverPassword, prompt: Text("Необязательно"))
+            SecureField("Password", text: $settings.serverPassword, prompt: Text("Optional"))
             HStack(spacing: 8) {
                 result
                 Spacer(minLength: 8)
                 if choosingServer {
-                    Button("Подключить") {
+                    Button("Connect") {
                         choosingServer = false
                         settings.connectionMode = .external
                     }
                     .disabled(Go2RTCServer.parse(address.wrappedValue) == nil)
                 } else {
-                    Button("Проверить") { Task { await runCheck() } }
+                    Button("Check") { Task { await runCheck() } }
                         .disabled(check == .checking || Go2RTCServer.parse(address.wrappedValue) == nil)
                 }
             }
         } header: {
-            Text("Свой сервер")
+            Text("Own Server")
         }
         .disabled(busy || (settings.connectionMode == .embedded && !choosingServer))
         .onChange(of: settings.serverURLString) { check = .idle }
@@ -631,14 +631,14 @@ private struct SettingsConnectionPane: View {
             #if WP_NO_XIAOMI
             EmptyView() // any go2rtc plays RTSP
             #else
-            Text("Нужна версия 1.9.11 или новее с модулем xiaomi.")
+            Text("Requires version 1.9.11 or later with the xiaomi module.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
             #endif
         case .checking:
             ProgressView().controlSize(.small)
         case .ok(let version):
-            Label(version.isEmpty ? "Сервер отвечает" : "go2rtc \(version) отвечает", systemImage: "checkmark.circle.fill")
+            Label(version.isEmpty ? "Server is responding" : "go2rtc \(version) is responding", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(MacPalette.green)
         case .failed(let message):
             Label(message, systemImage: "xmark.octagon.fill")
@@ -650,7 +650,7 @@ private struct SettingsConnectionPane: View {
 
     private func runCheck() async {
         guard let server = model.settings.server, model.settings.connectionMode == .external else {
-            check = .failed(String(localized: "Некорректный адрес"))
+            check = .failed(String(localized: "Invalid address"))
             return
         }
         check = .checking
@@ -669,11 +669,11 @@ private struct SettingsTrainingPane: View {
 
     var body: some View {
         @Bindable var settings = model.settings
-        SettingsPaneHeader(pane: .training, text: String(localized: "Что происходит в начале тренировки. Заканчивается она только кнопкой «Завершить»."))
+        SettingsPaneHeader(pane: .training, text: String(localized: "What happens when a training starts. It ends only with the Finish button."))
         Section {
             Toggle(isOn: $settings.autoRecord) {
-                Text("Включать запись вместе с тренировкой")
-                Text("Видео с камеры пишется от начала тренировки до конца.")
+                Text("Start recording with the training")
+                Text("Camera video is recorded from the start of the training to the end.")
             }
         }
     }
@@ -688,10 +688,10 @@ private struct SettingsFilesPane: View {
     var body: some View {
         @Bindable var settings = model.settings
         let folder = model.store.rootDirectory
-        SettingsPaneHeader(pane: .files, text: String(localized: "Видео и логи тренировок хранятся на этом Mac."))
+        SettingsPaneHeader(pane: .files, text: String(localized: "Training videos and logs are stored on this Mac."))
         Section {
             LabeledContent {
-                Button("Показать в Finder") { Finder.reveal(folder) }
+                Button("Show in Finder") { Finder.reveal(folder) }
             } label: {
                 Label {
                     Text(folder.lastPathComponent)
@@ -704,13 +704,13 @@ private struct SettingsFilesPane: View {
                         .foregroundStyle(Color(red: 0.32, green: 0.64, blue: 0.98))
                 }
             }
-            LabeledContent("Занято", value: usage ?? String(localized: "Считаем…"))
+            LabeledContent("Used", value: usage ?? String(localized: "Calculating…"))
         }
         .task(id: model.history.count) { usage = await SettingsText.usage(of: model.store) }
         Section {
             Toggle(isOn: $settings.saveToPhotos) {
-                Text("Сохранять видео в Фото")
-                Text("Копия каждой записи попадает в медиатеку «Фото».")
+                Text("Save videos to Photos")
+                Text("A copy of every recording goes to your Photos library.")
             }
         }
     }
@@ -726,11 +726,11 @@ private struct SettingsIPhonePane: View {
     var body: some View {
         @Bindable var settings = model.settings
         let host = model.syncHost
-        SettingsPaneHeader(pane: .iPhone, text: String(localized: "iPhone в той же сети показывает камеру этого Mac и ведёт тренировку."))
+        SettingsPaneHeader(pane: .iPhone, text: String(localized: "An iPhone on the same network shows this Mac’s camera and runs the training."))
         Section {
             Toggle(isOn: $settings.shareWithIPhone) {
-                Text("Разрешить подключение с iPhone")
-                Text("Mac виден приложению Waiting Paws на iPhone в той же Wi‑Fi сети.")
+                Text("Allow connections from iPhone")
+                Text("Waiting Paws on an iPhone on the same Wi‑Fi network can see this Mac.")
             }
             .onChange(of: settings.shareWithIPhone) { _, on in
                 guard !AppModel.isUIPreview else { return }
@@ -738,36 +738,36 @@ private struct SettingsIPhonePane: View {
             }
         } footer: {
             if settings.shareWithIPhone && !model.embedded.lanEnabled && settings.connectionMode == .embedded {
-                Label("Видео для iPhone станет доступно после перезапуска Waiting Paws.", systemImage: "arrow.clockwise")
+                Label("Video for iPhone will be available after Waiting Paws restarts.", systemImage: "arrow.clockwise")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else if settings.shareWithIPhone && settings.connectionMode == .external {
                 // The iPhone is given only this Mac's built-in go2rtc, never the user's server (`AppModel.setUpSync`).
-                Label("Со своим сервером go2rtc iPhone ведёт тренировку, но видео с камеры на нём не показывается.", systemImage: "video.slash")
+                Label("With your own go2rtc server, the iPhone runs the training but doesn’t show the camera.", systemImage: "video.slash")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
         Section {
             LabeledContent {
-                TextField("Имя этого Mac", text: $settings.deviceName, prompt: Text(SyncIdentity.systemName))
+                TextField("This Mac's Name", text: $settings.deviceName, prompt: Text(SyncIdentity.systemName))
                     .labelsHidden()
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 240)
             } label: {
-                Text("Имя этого Mac")
-                Text("Под этим именем \(SyncIdentity.model) виден на iPhone.")
+                Text("This Mac's Name")
+                Text("iPhones see this \(SyncIdentity.model) under this name.")
             }
         }
         Section {
             if host.pairedDevices.isEmpty {
-                Text("Пока ни один iPhone не подключался.")
+                Text("No iPhone has connected yet.")
                     .foregroundStyle(.secondary)
             }
             ForEach(host.pairedDevices) { paired in
                 let online = host.isConnected(paired)
                 LabeledContent {
-                    Button("Забыть…") { forgetDevice = paired }
+                    Button("Forget…") { forgetDevice = paired }
                 } label: {
                     Label {
                         Text(paired.name)
@@ -779,20 +779,20 @@ private struct SettingsIPhonePane: View {
                 }
             }
         } header: {
-            Text("Разрешённые iPhone")
+            Text("Allowed iPhones")
         } footer: {
-            Text("Первое подключение каждого iPhone нужно разрешить на этом Mac. Запись и лог остаются на Mac. После «Забыть» iPhone снова попросит разрешения.")
+            Text("Each iPhone’s first connection must be allowed on this Mac. The recording and log stay on the Mac. After “Forget”, the iPhone will ask for permission again.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
-        .alert(forgetDevice.map { String(localized: "Забыть «\($0.name)»?") } ?? "",
+        .alert(forgetDevice.map { String(localized: "Forget “\($0.name)”?") } ?? "",
                isPresented: Binding(get: { forgetDevice != nil }, set: { if !$0 { forgetDevice = nil } }),
                presenting: forgetDevice) { paired in
-            Button("Забыть", role: .destructive) { host.forget(paired) }
-            Button("Отмена", role: .cancel) {}
+            Button("Forget", role: .destructive) { host.forget(paired) }
+            Button("Cancel", role: .cancel) {}
         } message: { paired in
-            let again = String(localized: "Чтобы снова подключиться, iPhone попросит разрешения на этом Mac.")
-            Text(host.isConnected(paired) ? String(localized: "iPhone отключится.") + " " + again : again)
+            let again = String(localized: "To connect again, the iPhone will ask for permission on this Mac.")
+            Text(host.isConnected(paired) ? String(localized: "The iPhone will disconnect.") + " " + again : again)
         }
     }
 
@@ -801,11 +801,11 @@ private struct SettingsIPhonePane: View {
         var parts: [String] = []
         if let model = paired.device.distinctModel { parts.append(model) }
         if online {
-            parts.append(String(localized: "Подключён сейчас"))
+            parts.append(String(localized: "Connected now"))
         } else if let lastSeen = paired.lastSeen {
-            parts.append(String(localized: "Последний раз \(lastSeen.formatted(.relative(presentation: .named)))"))
+            parts.append(String(localized: "Last connected \(lastSeen.formatted(.relative(presentation: .named)))"))
         } else {
-            parts.append(String(localized: "Подключение разрешено"))
+            parts.append(String(localized: "Connection allowed"))
         }
         return parts.joined(separator: " · ")
     }
@@ -818,32 +818,32 @@ private struct SettingsDiagnosticsPane: View {
 
     var body: some View {
         @Bindable var settings = model.settings
-        SettingsPaneHeader(pane: .diagnostics, text: String(localized: "Нагрузка на процессор и память — если видео подтормаживает."))
+        SettingsPaneHeader(pane: .diagnostics, text: String(localized: "CPU and memory load — in case the video stutters."))
         Section {
             Toggle(isOn: $settings.showPerformance) {
-                Text("Показывать нагрузку")
-                Text("Над камерой: на сколько секунд картинка отстаёт от камеры (сеть и буфер плеера), CPU, память и подвисания интерфейса.")
+                Text("Show performance stats")
+                Text("Over the camera: how many seconds the picture trails the camera (network and player buffer), CPU, memory and interface hangs.")
             }
             .onChange(of: settings.showPerformance) { _, on in
                 if on { model.performance.start() } else { model.performance.stop() }
             }
             if model.performance.isRunning {
-                LabeledContent("Сейчас", value: SettingsText.performance(model.performance.sample))
+                LabeledContent("Current", value: SettingsText.performance(model.performance.sample))
                     .monospacedDigit()
                 if let delay = model.performance.sample.videoDelayText {
-                    LabeledContent("Задержка", value: delay)
+                    LabeledContent("Delay", value: delay)
                         .monospacedDigit()
                 }
             }
         }
         Section {
             LabeledContent {
-                Button("Показать в Finder") {
+                Button("Show in Finder") {
                     Finder.reveal(AppModel.logsDirectory)
                 }
             } label: {
-                Text("Журнал приложения")
-                Text("Пригодится, если камера не подключается или запись оборвалась.")
+                Text("App Log")
+                Text("Useful if the camera won’t connect or a recording stopped unexpectedly.")
             }
         }
     }
@@ -856,17 +856,17 @@ private struct SettingsAboutPane: View {
     @State private var showLicenses = false
 
     var body: some View {
-        SettingsPaneHeader(pane: .about, text: String(localized: "Версия, политика конфиденциальности и лицензии."))
+        SettingsPaneHeader(pane: .about, text: String(localized: "Version, privacy policy and licenses."))
         Section {
-            LabeledContent("Версия", value: AppInfo.version)
-            LabeledContent("Политика конфиденциальности") {
-                Button("Открыть…") { showPrivacy = true }
+            LabeledContent("Version", value: AppInfo.version)
+            LabeledContent("Privacy Policy") {
+                Button("Open…") { showPrivacy = true }
             }
-            LabeledContent("Лицензии открытого ПО") {
-                Button("Открыть…") { showLicenses = true }
+            LabeledContent("Open-Source Licenses") {
+                Button("Open…") { showLicenses = true }
             }
         } footer: {
-            Text("Waiting Paws ничего не собирает и не отправляет разработчику: настройки, логи и видео остаются на ваших устройствах.")
+            Text("Waiting Paws collects nothing and sends nothing to the developer: settings, logs and videos stay on your devices.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -887,40 +887,40 @@ private struct SettingsUpdatesSection: View {
     @Bindable var updater: AppUpdater
 
     var body: some View {
-        Section("Обновления") {
+        Section("Updates") {
             if updater.isAvailable {
                 Picker(selection: $updater.mode) {
                     ForEach(AppUpdater.Mode.allCases) { Text($0.title).tag($0) }
                 } label: {
-                    Text("Новые версии")
+                    Text("New versions")
                     Text(updater.mode.explanation)
                 }
                 Toggle(isOn: $updater.nightly) {
-                    Text("Тестовые сборки (nightly)")
-                    Text("Новое раньше, чем в обычных версиях, но возможны ошибки. После выключения останется тестовая сборка, пока не выйдет следующая обычная версия.")
+                    Text("Test builds (nightly)")
+                    Text("New things before the regular versions, with possible bugs. After turning this off, the test build stays until the next regular version.")
                 }
                 if let pending = updater.pending {
                     LabeledContent {
-                        Button(pending.downloaded ? "Перезапустить" : "Загрузить и установить") { updater.installPending() }
+                        Button(pending.downloaded ? "Restart" : "Download and Install") { updater.installPending() }
                     } label: {
-                        Text(pending.downloaded ? "Версия \(pending.version) загружена" : "Доступна версия \(pending.version)")
+                        Text(pending.downloaded ? "Version \(pending.version) downloaded" : "Version \(pending.version) available")
                             .foregroundStyle(MacPalette.accent)
-                        Text(pending.downloaded ? "Установится, когда вы выйдете из Waiting Paws." : "Загрузится и установится по кнопке.")
+                        Text(pending.downloaded ? "Installs when you quit Waiting Paws." : "Downloads and installs when you click the button.")
                     }
                 }
                 LabeledContent {
-                    Button("Проверить сейчас") { updater.checkForUpdates() }
+                    Button("Check Now") { updater.checkForUpdates() }
                         .disabled(!updater.canCheck)
                 } label: {
-                    Text("Последняя проверка")
+                    Text("Last check")
                     if let lastCheck = updater.lastCheck {
                         Text(lastCheck, format: .relative(presentation: .named))
                     } else {
-                        Text("ещё не было")
+                        Text("not yet")
                     }
                 }
             } else {
-                Text("В сборке для разработки обновления выключены.")
+                Text("Updates are off in a development build.")
                     .foregroundStyle(.secondary)
             }
         }
@@ -939,7 +939,7 @@ private struct AboutSheet<Content: View>: View {
             Divider()
             HStack {
                 Spacer()
-                Button("Готово") { dismiss() }
+                Button("Done") { dismiss() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(12)
@@ -976,10 +976,10 @@ enum SettingsText {
             let videos = ((try? manager.contentsOfDirectory(atPath: recordings.path)) ?? []).filter { $0.hasSuffix(".mp4") }.count
             let logs = ((try? manager.contentsOfDirectory(atPath: sessions.path)) ?? []).filter { $0.hasSuffix(".json") }.count
             let size = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-            guard videos > 0 || logs > 0 else { return bytes > 0 ? String(localized: "\(size) · тренировок пока нет") : String(localized: "Пока пусто") }
+            guard videos > 0 || logs > 0 else { return bytes > 0 ? String(localized: "\(size) · no trainings yet") : String(localized: "Nothing yet") }
             var parts = [size]
-            if videos > 0 { parts.append(pluralText(videos, ru: ("видео", "видео", "видео"), en: ("video", "videos"))) }
-            if logs > 0 { parts.append(pluralText(logs, ru: ("лог", "лога", "логов"), en: ("log", "logs"))) }
+            if videos > 0 { parts.append(pluralText(videos, en: ("video", "videos"), ru: ("видео", "видео", "видео"))) }
+            if logs > 0 { parts.append(pluralText(logs, en: ("log", "logs"), ru: ("лог", "лога", "логов"))) }
             return parts.joined(separator: " · ")
         }.value
     }
@@ -998,10 +998,10 @@ enum SettingsText {
     static func performance(_ sample: PerformanceMonitor.Sample) -> String {
         [
             String(localized: "CPU \(Int(sample.cpuTotal.rounded())) %"),
-            String(localized: "главный поток \(Int(sample.cpuMain.rounded())) %"),
-            String(localized: "\(Int(sample.memoryMB.rounded())) МБ"),
-            String(localized: "UI +\(Int(sample.maxHangMs.rounded())) мс"),
-            pluralText(sample.threads, ru: ("поток", "потока", "потоков"), en: ("thread", "threads")),
+            String(localized: "main thread \(Int(sample.cpuMain.rounded()))%"),
+            String(localized: "\(Int(sample.memoryMB.rounded())) MB"),
+            String(localized: "UI +\(Int(sample.maxHangMs.rounded())) ms"),
+            pluralText(sample.threads, en: ("thread", "threads"), ru: ("поток", "потока", "потоков")),
         ].joined(separator: " · ")
     }
 }

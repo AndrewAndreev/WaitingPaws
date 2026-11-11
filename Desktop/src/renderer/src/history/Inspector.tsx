@@ -49,8 +49,8 @@ export function Inspector({ row, preparing, actions }: { row: HistoryRow | null;
     return (
       <div className="empty-state hinspector__empty">
         <InspectorIcon style={{ width: 32, height: 32 }} />
-        <div className="empty-state__title">{t('Ничего не выбрано')}</div>
-        <div>{t('Выберите тренировку или запись в таблице.')}</div>
+        <div className="empty-state__title">{t('Nothing Selected')}</div>
+        <div>{t('Select a training or a recording in the table.')}</div>
       </div>
     )
   }
@@ -66,16 +66,16 @@ export function Inspector({ row, preparing, actions }: { row: HistoryRow | null;
         </div>
       </div>
       {record && (
-        <Section id="summary" title={t('Итоги')}>
+        <Section id="summary" title={t('Summary')}>
           <Totals record={record} />
         </Section>
       )}
       {record && (
-        <Section id="log" title={t('Лог')}>
+        <Section id="log" title={t('Log')}>
           <ExitLog row={row} record={record} actions={actions} />
         </Section>
       )}
-      <Section id="video" title={t('Видео')}>
+      <Section id="video" title={t('Video')}>
         <VideoInfoSection row={row} preparing={preparing} actions={actions} />
       </Section>
       <div className="hinspector__footer">
@@ -165,11 +165,11 @@ function VideoPlayer({ fileName, exists, preparing }: { fileName: string; exists
       {(waiting || failed) && (
         <div className="hplayer__status">
           {failed ? (
-            <span>{t('Не удалось открыть видео')}</span>
+            <span>{t('Couldn’t open the video')}</span>
           ) : (
             <>
               <Spinner />
-              <span>{preparing ? t('Готовим видео…') : t('Открываем видео…')}</span>
+              <span>{preparing ? t('Preparing video…') : t('Opening video…')}</span>
             </>
           )}
         </div>
@@ -183,9 +183,9 @@ function NoVideo({ record }: { record: TrainingRecord | null }) {
     <div className="hnovideo">
       <VideoOffIcon />
       <div>
-        <div>{t('Видео нет')}</div>
+        <div>{t('No video')}</div>
         <div className="faint" style={{ fontSize: 12 }}>
-          {record?.recordingFileName ? t('Файл видео удалён') : t('Запись не включали')}
+          {record?.recordingFileName ? t('Video file deleted') : t('Recording was off')}
         </div>
       </div>
     </div>
@@ -217,7 +217,7 @@ function Strip({ row, record }: { row: HistoryRow; record: TrainingRecord }) {
   }
 
   return (
-    <div className="hstrip" ref={ref} aria-label={t('Выходы по времени')}>
+    <div className="hstrip" ref={ref} aria-label={t('Exits over time')}>
       <div className="hstrip__markers">
         {width > 0 &&
           segments
@@ -259,9 +259,9 @@ function Strip({ row, record }: { row: HistoryRow; record: TrainingRecord }) {
 }
 
 function Marker({ segment, left, canSeek }: { segment: StripSegment; left: number; canSeek: boolean }) {
-  const help = segment.kind === 'falseStart' ? t('Выход %lld: фальстарт', segment.exit) : t('Выход %lld', segment.exit)
+  const help = segment.kind === 'falseStart' ? t('Exit %lld: false start', segment.exit) : t('Exit %lld', segment.exit)
   return (
-    <Tooltip content={canSeek ? t('%@. Нажмите, чтобы перейти к этому выходу в видео.', help) : help} side="top">
+    <Tooltip content={canSeek ? t('%@. Click to jump to this exit in the video.', help) : help} side="top">
       <button
         type="button"
         tabIndex={-1}
@@ -304,19 +304,19 @@ function Totals({ record }: { record: TrainingRecord }) {
   const count = falseStarts(record)
   return (
     <dl className="hfacts">
-      {record.plan.trainers && <Fact label={t('Тренеры')} value={record.plan.trainers} />}
-      <Fact label={t('Выходы')} value={t('%lld из %lld по плану', completedExits(record), record.plan.exits.length)} />
-      <Fact label={t('Фальстарты')} value={<span style={count ? { color: 'var(--warning)' } : undefined}>{count === 0 ? t('нет') : String(count)}</span>} />
+      {record.plan.trainers && <Fact label={t('Trainers')} value={record.plan.trainers} />}
+      <Fact label={t('Exits')} value={t('%lld of %lld planned', completedExits(record), record.plan.exits.length)} />
+      <Fact label={t('False Starts')} value={<span style={count ? { color: 'var(--warning)' } : undefined}>{count === 0 ? t('none') : String(count)}</span>} />
       <Fact
-        label={t('Дольше всего')}
+        label={t('Longest')}
         value={
           <>
             <strong>{DurationText.clock(longestStay(record))}</strong>
-            <span className="muted">{'  ' + t('план %@', DurationText.clock(longestPlanned(record)))}</span>
+            <span className="muted">{'  ' + t('plan %@', DurationText.clock(longestPlanned(record)))}</span>
           </>
         }
       />
-      <Fact label={t('Длительность')} value={DurationText.clock(recordDuration(record))} />
+      <Fact label={t('Duration')} value={DurationText.clock(recordDuration(record))} />
     </dl>
   )
 }
@@ -337,21 +337,21 @@ function ExitLog({ row, record, actions }: { row: HistoryRow; record: TrainingRe
   const notes = record.events.filter((event) => event.kind === 'note' && (event.detail ?? '') !== '')
   return (
     <div className="col" style={{ gap: 0 }}>
-      <div className="hlog" role="table" aria-label={t('Лог')}>
+      <div className="hlog" role="table" aria-label={t('Log')}>
         <div className="hlog__row hlog__row--header" role="row">
           <span role="columnheader">№</span>
           <span role="columnheader" className="hlog__num">
-            {t('План')}
+            {t('Plan')}
           </span>
           <span role="columnheader" className="hlog__num">
-            {t('Факт')}
+            {t('Actual')}
           </span>
           <span role="columnheader" />
           <span role="columnheader" className="hlog__num">
-            {t('Перерыв')}
+            {t('Break')}
           </span>
           <span role="columnheader" className="hlog__num">
-            {t('план')}
+            {t('plan')}
           </span>
           <span role="columnheader" />
         </div>
@@ -365,16 +365,16 @@ function ExitLog({ row, record, actions }: { row: HistoryRow; record: TrainingRe
             const time = formatTime(note.time)
             return (
               <div key={note.id} className="selectable">
-                <span className="muted">{note.exitNumber !== null ? t('%@, выход %lld', time, note.exitNumber) : time}</span> {note.detail}
+                <span className="muted">{note.exitNumber !== null ? t('%@, exit %lld', time, note.exitNumber) : time}</span> {note.detail}
               </div>
             )
           })}
         </div>
       )}
       <div className="row" style={{ marginTop: 12 }}>
-        <Tooltip content={t('Скопировать лог для тренера') + ' (Ctrl+Shift+C)'}>
+        <Tooltip content={t('Copy the log for the trainer') + ' (Ctrl+Shift+C)'}>
           <Button size="sm" icon={copied ? <CheckIcon /> : <CopyIcon />} shortcut={copied ? undefined : 'Ctrl+Shift+C'} onClick={() => actions.copyLog(row)}>
-            {copied ? t('Скопировано') : t('Скопировать')}
+            {copied ? t('Copied') : t('Copy')}
           </Button>
         </Tooltip>
       </div>
@@ -386,11 +386,11 @@ function ExitLine({ record, result, isLast, canJump }: { record: TrainingRecord;
   const rest = isLast ? null : result.actualBreak
   const off = rest !== null && breakIsOff(result)
   const away = awayText(result, DurationText.clock)
-  const parts = [result.attempt > 1 ? t('Выход %lld, попытка %lld', result.number, result.attempt) : t('Выход %lld', result.number), SessionLogFormatter.outcome(result)]
-  if (result.untilStanding) parts.push(t('* план: или до вставания'))
+  const parts = [result.attempt > 1 ? t('Exit %lld, attempt %lld', result.number, result.attempt) : t('Exit %lld', result.number), SessionLogFormatter.outcome(result)]
+  if (result.untilStanding) parts.push(t('* plan: or until the dog stands'))
   const help = parts.join(', ')
   return (
-    <Tooltip content={canJump ? t('%@. Нажмите, чтобы перейти к этому выходу в видео.', help) : help} side="left">
+    <Tooltip content={canJump ? t('%@. Click to jump to this exit in the video.', help) : help} side="left">
       <div
         role="row"
         className={'hlog__row' + (canJump ? ' hlog__row--jump' : '')}
@@ -399,7 +399,7 @@ function ExitLine({ record, result, isLast, canJump }: { record: TrainingRecord;
         }}
       >
         <span className="muted">{result.attempt > 1 ? `${result.number}·${result.attempt}` : result.number}</span>
-        <span className="hlog__num muted">{result.isOpen ? t('доп.') : DurationText.clock(result.plannedDuration) + (result.untilStanding ? '*' : '')}</span>
+        <span className="hlog__num muted">{result.isOpen ? t('extra') : DurationText.clock(result.plannedDuration) + (result.untilStanding ? '*' : '')}</span>
         <span className={'hlog__num hlog__actual' + (result.falseStart ? ' hlog__actual--false' : '')}>{away ?? '—'}</span>
         <span className={'hlog__status' + (result.falseStart ? ' hlog__status--false' : '')}>{result.falseStart ? <FalseStartFilledIcon /> : <DoneCircleIcon />}</span>
         <span className={'hlog__num' + (off ? ' hlog__off' : rest === null ? ' faint' : '')}>{rest === null ? '—' : DurationText.clock(rest)}</span>
@@ -416,10 +416,10 @@ function VideoInfoSection({ row, preparing, actions }: { row: HistoryRow; prepar
   if (!video) {
     return (
       <div className="col" style={{ gap: 8, alignItems: 'flex-start' }}>
-        <span className="muted">{t('От этой тренировки остался только лог.')}</span>
+        <span className="muted">{t('Only the log remains from this training.')}</span>
         {row.record && (
           <Button size="sm" icon={<FolderIcon />} onClick={() => actions.reveal(row)}>
-            {t('Показать лог в проводнике')}
+            {t('Show Log in Explorer')}
           </Button>
         )}
       </div>
@@ -428,24 +428,24 @@ function VideoInfoSection({ row, preparing, actions }: { row: HistoryRow; prepar
   return (
     <div className="col" style={{ gap: 10 }}>
       <dl className="hfacts">
-        <Fact label={t('Файл')} value={<span className="hfacts__file" title={video.fileName}>{video.fileName}</span>} />
-        <Fact label={t('Длина')} value={video.duration !== null ? DurationText.clock(video.duration) : '—'} />
-        <Fact label={t('Размер')} value={preparing ? t('готовится…') : video.bytes ? formatBytes(video.bytes) : '—'} />
+        <Fact label={t('File')} value={<span className="hfacts__file" title={video.fileName}>{video.fileName}</span>} />
+        <Fact label={t('Length')} value={video.duration !== null ? DurationText.clock(video.duration) : '—'} />
+        <Fact label={t('Size')} value={preparing ? t('preparing…') : video.bytes ? formatBytes(video.bytes) : '—'} />
       </dl>
       <div className="row" style={{ flexWrap: 'wrap' }}>
         <Button size="sm" icon={<FolderIcon />} onClick={() => actions.reveal(row)}>
-          {t('Показать в проводнике')}
+          {t('Show in Explorer')}
         </Button>
-        <Tooltip content={t('Файл попадёт в буфер обмена — вставьте его в мессенджер или папку')}>
+        <Tooltip content={t('The file goes to the clipboard — paste it into a messenger or a folder')}>
           <Button size="sm" icon={<CopyFileIcon />} disabled={preparing} onClick={() => actions.copyFile(row)}>
-            {t('Копировать файл')}
+            {t('Copy File')}
           </Button>
         </Tooltip>
       </div>
       {delayed && (
         <div className="row muted" style={{ fontSize: 13 }}>
           <Spinner />
-          {t('Готовим видео для отправки…')}
+          {t('Preparing the video for sharing…')}
         </div>
       )}
     </div>
@@ -459,22 +459,22 @@ function DeleteButton({ row, actions }: { row: HistoryRow; actions: RowActions }
         <MenuTrigger asChild>
           <button type="button" className="btn btn--sm btn--danger">
             <DeleteIcon />
-            <span>{t('Удалить…')}</span>
+            <span>{t('Delete…')}</span>
             <ChevronDownIcon />
           </button>
         </MenuTrigger>
         <MenuContent>
           <MenuItem icon={<DeleteIcon />} danger onSelect={() => actions.confirmDelete(row, false)}>
-            {t('Удалить тренировку и видео…')}
+            {t('Delete Training and Video…')}
           </MenuItem>
-          <MenuItem onSelect={() => actions.confirmDelete(row, true)}>{t('Удалить только лог, видео оставить…')}</MenuItem>
+          <MenuItem onSelect={() => actions.confirmDelete(row, true)}>{t('Delete Log Only, Keep Video…')}</MenuItem>
         </MenuContent>
       </Menu>
     )
   }
   return (
     <Button size="sm" variant="danger" icon={<DeleteIcon />} onClick={() => actions.confirmDelete(row, false)}>
-      {row.kind === 'clip' ? t('Удалить запись…') : t('Удалить тренировку…')}
+      {row.kind === 'clip' ? t('Delete Recording…') : t('Delete Training…')}
     </Button>
   )
 }

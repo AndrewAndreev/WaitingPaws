@@ -15,17 +15,17 @@ public enum SessionEventKind: String, Codable, CaseIterable {
 
     public var title: String {
         switch self {
-        case .sessionStarted: return tr("Тренировка начата", "Training started")
-        case .exitStarted: return tr("Пошли к двери", "Walking to the door")
-        case .behindDoor: return tr("За дверью", "Outside")
-        case .exitEnded: return tr("Вернулись", "Back inside")
-        case .falseStart: return tr("Фальстарт / сброс", "False start / reset")
-        case .breakStarted: return tr("Перерыв", "Break")
-        case .breakEnded: return tr("Перерыв окончен", "Break over")
-        case .recordingStarted: return tr("Запись включена", "Recording started")
-        case .recordingStopped: return tr("Запись остановлена", "Recording stopped")
-        case .sessionFinished: return tr("Тренировка завершена", "Training finished")
-        case .note: return tr("Заметка", "Note")
+        case .sessionStarted: return tr("Training started", ru: "Тренировка начата")
+        case .exitStarted: return tr("Walking to the door", ru: "Пошли к двери")
+        case .behindDoor: return tr("Outside", ru: "За дверью")
+        case .exitEnded: return tr("Back inside", ru: "Вернулись")
+        case .falseStart: return tr("False start / reset", ru: "Фальстарт / сброс")
+        case .breakStarted: return tr("Break", ru: "Перерыв")
+        case .breakEnded: return tr("Break over", ru: "Перерыв окончен")
+        case .recordingStarted: return tr("Recording started", ru: "Запись включена")
+        case .recordingStopped: return tr("Recording stopped", ru: "Запись остановлена")
+        case .sessionFinished: return tr("Training finished", ru: "Тренировка завершена")
+        case .note: return tr("Note", ru: "Заметка")
         }
     }
 }
@@ -181,9 +181,9 @@ public enum SessionLogFormatter {
         let day = Self.day, time = Self.time
         var summary = "\(day.string(from: record.startedAt)), \(time.string(from: record.startedAt))–\(time.string(from: record.finishedAt))"
         summary += " (\(DurationText.short(record.duration)))"
-        summary += tr(" · выходов \(record.completedExits) из \(record.plan.exits.count)",
-                      " · exits \(record.completedExits) of \(record.plan.exits.count)")
-        if record.falseStarts > 0 { summary += tr(" · фальстартов \(record.falseStarts)", " · false starts \(record.falseStarts)") }
+        summary += tr(" · exits \(record.completedExits) of \(record.plan.exits.count)",
+                      ru: " · выходов \(record.completedExits) из \(record.plan.exits.count)")
+        if record.falseStarts > 0 { summary += tr(" · false starts \(record.falseStarts)", ru: " · фальстартов \(record.falseStarts)") }
         lines.append(summary)
         lines.append("")
 
@@ -191,7 +191,7 @@ public enum SessionLogFormatter {
             var line = "\(exitName(result.number)) — "
                 + (result.isOpen ? PlannedExit.openText : DurationText.short(result.plannedDuration))
             if result.untilStanding { line += " " + PlannedExit.untilStandingText }
-            if result.attempt > 1 { line += tr(", попытка \(result.attempt)", ", attempt \(result.attempt)") }
+            if result.attempt > 1 { line += tr(", attempt \(result.attempt)", ru: ", попытка \(result.attempt)") }
             line += ": \(outcome(of: result)) \(result.falseStart ? "❌" : "✅")"
             let seen = observations(of: result, in: record)
             if !seen.isEmpty { line += " · " + seen.joined(separator: ", ") }
@@ -204,7 +204,7 @@ public enum SessionLogFormatter {
         if !notes.isEmpty {
             lines.append("")
             for note in notes {
-                let exit = note.exitNumber.map { tr(" (выход \($0))", " (exit \($0))") } ?? ""
+                let exit = note.exitNumber.map { tr(" (exit \($0))", ru: " (выход \($0))") } ?? ""
                 lines.append("\(time.string(from: note.time))\(exit): \(note.detail ?? "")")
             }
         }
@@ -222,23 +222,23 @@ public enum SessionLogFormatter {
             .compactMap { event in
                 guard let text = event.detail, !text.isEmpty else { return nil }
                 let moment = DurationText.clock(max(0, event.time.timeIntervalSince(start)))
-                return tr("\(text) на \(moment)", "\(text) at \(moment)")
+                return tr("\(text) at \(moment)", ru: "\(text) на \(moment)")
             }
     }
 
     /// "3 выход" / "Exit 3": how the trainer's schedule names an exit.
     public static func exitName(_ number: Int) -> String {
-        tr("\(number) выход", "Exit \(number)")
+        tr("Exit \(number)", ru: "\(number) выход")
     }
 
     /// "за дверью 0:03", "фальстарт, за дверью 0:01", "фальстарт до двери".
     public static func outcome(of result: ExitResult) -> String {
-        let away = result.leftAt == nil ? nil : tr("за дверью \(DurationText.clock(result.awayDuration))",
-                                                   "outside \(DurationText.clock(result.awayDuration))")
+        let away = result.leftAt == nil ? nil : tr("outside \(DurationText.clock(result.awayDuration))",
+                                                   ru: "за дверью \(DurationText.clock(result.awayDuration))")
         if result.falseStart {
-            return away.map { tr("фальстарт, \($0)", "false start, \($0)") } ?? tr("фальстарт до двери", "false start before the door")
+            return away.map { tr("false start, \($0)", ru: "фальстарт, \($0)") } ?? tr("false start before the door", ru: "фальстарт до двери")
         }
-        return away ?? tr("не выходили за дверь", "didn't go outside")
+        return away ?? tr("didn't go outside", ru: "не выходили за дверь")
     }
 
     /// "перерыв после 2:10" / "break after: 2:10": the break that followed the exit, said as the plan says it («После —
@@ -248,11 +248,11 @@ public enum SessionLogFormatter {
     /// trainer checks her five minutes even when they were kept: «перерыв после 5:02 (план 5 мин)».
     public static func breakText(for result: ExitResult, in record: TrainingRecord? = nil) -> String? {
         guard let actual = result.actualBreak else { return nil }
-        var text = tr("перерыв после \(DurationText.clock(actual))", "break after: \(DurationText.clock(actual))")
+        var text = tr("break after: \(DurationText.clock(actual))", ru: "перерыв после \(DurationText.clock(actual))")
         let differs = abs(actual - result.plannedBreak) > 15
         let ownBreak = record.map { abs(result.plannedBreak - $0.plan.defaultBreak) >= 1 } ?? false
         if differs || ownBreak {
-            text += tr(" (план \(DurationText.short(result.plannedBreak)))", " (plan \(DurationText.short(result.plannedBreak)))")
+            text += tr(" (plan \(DurationText.short(result.plannedBreak)))", ru: " (план \(DurationText.short(result.plannedBreak)))")
         }
         return text
     }

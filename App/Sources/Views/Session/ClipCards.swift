@@ -21,9 +21,9 @@ struct ClipRecordingOverlay: View {
                         .fixedSize()
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(model.isLinkedToMac ? "Запись на \(model.linkedHostKind)" : "Запись без тренировки")
+                    Text(model.isLinkedToMac ? "Recording on the \(model.linkedHostKind)" : "Recording without training")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    Text(model.isLinkedToMac ? "Видео сохранится на \(model.linkedHostKind)" : "Видео появится в истории")
+                    Text(model.isLinkedToMac ? "The video will be saved on the \(model.linkedHostKind)" : "The video will appear in History")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(.white.opacity(0.6))
                 }
@@ -38,7 +38,7 @@ struct ClipRecordingOverlay: View {
                         .background(Theme.danger, in: Circle())
                 }
                 .buttonStyle(PressableButtonStyle())
-                .accessibilityLabel("Остановить запись")
+                .accessibilityLabel("Stop Recording")
             }
             .padding(.leading, 20)
             .padding(.trailing, 8)
@@ -80,12 +80,12 @@ struct ClipSavedCard: View {
         GlassCard(padding: 18) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Запись сохранена")
+                    Text("Recording Saved")
                         .font(Theme.display(22, weight: .bold))
                     Spacer()
-                    IconButton(systemImage: "xmark", label: String(localized: "Закрыть"), action: onClose)
+                    IconButton(systemImage: "xmark", label: String(localized: "Close"), action: onClose)
                 }
-                Text([duration.map { DurationText.clock($0) }, photos.saved ? String(localized: "в Фото") : nil].compactMap { $0 }.joined(separator: " · "))
+                Text([duration.map { DurationText.clock($0) }, photos.saved ? String(localized: "in Photos") : nil].compactMap { $0 }.joined(separator: " · "))
                     .font(.system(.subheadline, design: .rounded).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.6))
                 if let error = photos.error {
@@ -95,7 +95,7 @@ struct ClipSavedCard: View {
                 }
                 HStack(spacing: 8) {
                     ShareLink(item: clip.url) {
-                        Label(preparing ? "Готовим…" : "Поделиться", systemImage: "square.and.arrow.up")
+                        Label(preparing ? "Preparing…" : "Share", systemImage: "square.and.arrow.up")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
@@ -103,7 +103,7 @@ struct ClipSavedCard: View {
                     }
                     .buttonStyle(PressableButtonStyle())
                     .disabled(preparing)
-                    BigButton(title: String(localized: "История"), systemImage: "clock.arrow.circlepath", style: .secondary, height: 44, action: onHistory)
+                    BigButton(title: String(localized: "History"), systemImage: "clock.arrow.circlepath", style: .secondary, height: 44, action: onHistory)
                 }
             }
         }

@@ -96,7 +96,7 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
     const choice = findChoice(catalog, id)
     if (!choice || choosing || !setup.client) return
     if (forSecond && id === currentID(catalog, app.settings)) {
-      setError(t('Эта камера уже основная — выберите другую'))
+      setError(t('This is already the main camera — choose another one'))
       return
     }
     setChoosing(true)
@@ -105,7 +105,7 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
       const patch = await prepareChoice(choice, setup.client)
       if (forSecond) {
         if (patch.streamName === app.settings.streamName) {
-          setError(t('Эта камера уже основная — выберите другую'))
+          setError(t('This is already the main camera — choose another one'))
           setChoosing(false)
           return
         }
@@ -119,7 +119,7 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
       onClose()
       await call('streams.select', patch)
     } catch (caught) {
-      setError(t('Не удалось добавить камеру: %@', errorText(caught)))
+      setError(t('Couldn’t add the camera: %@', errorText(caught)))
       setChoosing(false)
     }
   }
@@ -141,32 +141,32 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
     content = (
       <div className="picker__empty">
         <Spinner large />
-        <span className="muted">{t('Ищем камеры…')}</span>
+        <span className="muted">{t('Looking for cameras…')}</span>
       </div>
     )
   } else if (phase.kind === 'waiting') {
     content = (
       <div className="picker__empty">
         <VideoOffIcon className="picker__empty-icon" />
-        <div className="empty-state__title">{t('go2rtc не запущен')}</div>
-        <div className="muted">{t('Список камер появится, когда go2rtc заработает.')}</div>
+        <div className="empty-state__title">{t('go2rtc is not running')}</div>
+        <div className="muted">{t('The camera list will appear once go2rtc is running.')}</div>
       </div>
     )
   } else if (phase.kind === 'failed') {
     content = (
       <div className="picker__empty">
         <WarningIcon className="picker__empty-icon" />
-        <div className="empty-state__title">{t('Нет связи с go2rtc')}</div>
+        <div className="empty-state__title">{t('No Connection to go2rtc')}</div>
         <div className="muted selectable">{phase.message}</div>
-        <Button onClick={() => void catalog.reload()}>{t('Повторить')}</Button>
+        <Button onClick={() => void catalog.reload()}>{t('Try Again|short')}</Button>
       </div>
     )
   } else if (onlyStreams && others.length === 0) {
     content = (
       <div className="picker__empty">
         <VideoOffIcon className="picker__empty-icon" />
-        <div className="empty-state__title">{t('В go2rtc нет потоков')}</div>
-        <div className="muted">{t('Добавьте источник по адресу rtsp:// или http:// (камеру ONVIF — по её адресу rtsp://).')}</div>
+        <div className="empty-state__title">{t('No Streams in go2rtc')}</div>
+        <div className="muted">{t('Add a source by an rtsp:// or http:// address (an ONVIF camera by its rtsp:// address).')}</div>
         <AddStreamButton setup={setup} variant="default" onAdded={(stream) => void catalog.reload().then(() => setSelection(streamID(stream.name)))} />
       </div>
     )
@@ -181,9 +181,9 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
             detail={`ID ${account.id} · ${regionTitle(account.region)}`}
             accessory={
               index === 0 ? (
-                <Tooltip content={t('Добавить камеры ещё одного аккаунта Xiaomi')}>
+                <Tooltip content={t('Add cameras from another Xiaomi account')}>
                   <Button variant="subtle" size="sm" icon={<SignInIcon />} disabled={!setup.ready} onClick={() => setSigningIn(true)}>
-                    {t('Войти в другой аккаунт…')}
+                    {t('Sign In to Another Account…')}
                   </Button>
                 </Tooltip>
               ) : null
@@ -193,13 +193,13 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
           </Section>
         ))}
         <Section
-          title={accounts.length === 0 ? t('Потоки go2rtc') : t('Другие потоки go2rtc')}
+          title={accounts.length === 0 ? t('go2rtc Streams') : t('Other go2rtc Streams')}
           accessory={
             <AddStreamButton setup={setup} variant="subtle" onAdded={(stream) => void catalog.reload().then(() => setSelection(streamID(stream.name)))} />
           }
         >
           {others.length === 0 ? (
-            <div className="picker__note muted">{t('Здесь появятся RTSP, HTTP и другие источники go2rtc.')}</div>
+            <div className="picker__note muted">{t('RTSP, HTTP and other go2rtc sources will appear here.')}</div>
           ) : (
             <div className="picker__grid">{others.map((stream) => tile({ kind: 'stream', stream }))}</div>
           )}
@@ -212,13 +212,13 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
     <Dialog
       open
       onOpenChange={(open) => !open && !choosing && onClose()}
-      title={forSecond ? t('Вторая камера') : onlyStreams ? t('Выберите поток go2rtc') : t('Выберите камеру')}
+      title={forSecond ? t('Second Camera') : onlyStreams ? t('Choose a go2rtc Stream') : t('Choose a Camera')}
       description={
         forSecond
-          ? t('Чтобы видеть другую комнату: переключайтесь в верхней панели или Ctrl+1 / Ctrl+2. Запись, качество и режимы остаются у основной камеры.')
+          ? t('To see another room: switch in the top bar or with Ctrl+1 / Ctrl+2. Recording, quality and modes stay with the main camera.')
           : onlyStreams
-            ? t('RTSP, HTTP и другие источники, которые уже есть в go2rtc.')
-            : t('Нужна та, что смотрит на входную дверь. Видео идёт по локальной сети через go2rtc.')
+            ? t('RTSP, HTTP and other sources already in go2rtc.')
+            : t('Pick the one facing the front door. Video travels over the local network through go2rtc.')
       }
       width={800}
       height={onlyStreams ? 520 : 640}
@@ -236,22 +236,22 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
             ) : choosing ? (
               <span className="row muted">
                 <Spinner />
-                {t('Добавляем камеру в go2rtc…')}
+                {t('Adding the camera to go2rtc…')}
               </span>
             ) : (
               <ServerStatusLine probe={catalog} />
             )}
           </div>
-          <Tooltip content={t('Обновить список камер')}>
-            <Button iconOnly className="picker__refresh" aria-label={t('Обновить')} disabled={!setup.ready || loading} onClick={() => void refresh()}>
+          <Tooltip content={t('Refresh the camera list')}>
+            <Button iconOnly className="picker__refresh" aria-label={t('Refresh')} disabled={!setup.ready || loading} onClick={() => void refresh()}>
               {loading ? <Spinner /> : <ReloadIcon />}
             </Button>
           </Tooltip>
           <Button onClick={onClose} disabled={choosing}>
-            {t('Отменить')}
+            {t('Cancel|verb')}
           </Button>
           <Button variant="primary" disabled={!findChoice(catalog, selection) || choosing} onClick={() => void choose(selection)}>
-            {t('Выбрать')}
+            {t('Choose')}
           </Button>
         </>
       }
@@ -303,11 +303,11 @@ function AccountCameras({ account, tile }: { account: CatalogAccount; tile: (cho
     return (
       <div className="picker__account-error">
         <WarningIcon />
-        <span className="selectable">{t('Камеры не загрузились: %@', account.error)}</span>
+        <span className="selectable">{t('Couldn’t load cameras: %@', account.error)}</span>
       </div>
     )
   }
-  if (account.cameras.length === 0) return <div className="picker__note muted">{t('В этом аккаунте нет камер.')}</div>
+  if (account.cameras.length === 0) return <div className="picker__note muted">{t('This account has no cameras.')}</div>
   return <div className="picker__grid">{account.cameras.map((camera) => tile({ kind: 'camera', camera }))}</div>
 }
 
@@ -344,21 +344,21 @@ function PickerTile({
     chip = (
       <>
         <span className="dot dot--live" />
-        {isCamera ? t('В сети') : (badge ?? t('В сети'))}
+        {isCamera ? t('Online') : (badge ?? t('Online'))}
       </>
     )
   } else if (still?.kind === 'failed') {
     chip = (
       <>
         <span className="dot" />
-        {isCamera ? t('Не в сети') : badge ? t('%@ · нет связи', badge) : t('Нет связи')}
+        {isCamera ? t('Offline') : badge ? t('%@ · no connection', badge) : t('No connection')}
       </>
     )
   } else {
     chip = (
       <>
         <Spinner />
-        {isCamera ? t('Подключение…') : (badge ?? t('Подключение…'))}
+        {isCamera ? t('Connecting…') : (badge ?? t('Connecting…'))}
       </>
     )
   }
@@ -417,10 +417,10 @@ function AddStreamButton({ setup, variant, onAdded }: { setup: SetupServer; vari
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Tooltip content={t('Добавить источник по адресу rtsp:// или http:// (камеру ONVIF — по её адресу rtsp://)')}>
+      <Tooltip content={t('Add a source by an rtsp:// or http:// address (an ONVIF camera by its rtsp:// address)')}>
         <Popover.Trigger asChild>
           <Button variant={variant} size={variant === 'subtle' ? 'sm' : 'md'} icon={<AddIcon />} disabled={!setup.ready}>
-            {t('Добавить поток…')}
+            {t('Add Stream…')}
           </Button>
         </Popover.Trigger>
       </Tooltip>
@@ -434,13 +434,13 @@ function AddStreamButton({ setup, variant, onAdded }: { setup: SetupServer; vari
               void add()
             }}
           >
-            <div className="h3">{t('Новый поток go2rtc')}</div>
+            <div className="h3">{t('New go2rtc Stream')}</div>
             <label className="field">
-              <span className="field__label">{t('Название')}</span>
+              <span className="field__label">{t('Name')}</span>
               <input className="input" value={name} placeholder="testcam" autoFocus spellCheck={false} onChange={(event) => setName(event.target.value)} />
             </label>
             <label className="field">
-              <span className="field__label">{t('Адрес')}</span>
+              <span className="field__label">{t('Address')}</span>
               <input
                 className="input mono"
                 value={source}
@@ -454,7 +454,7 @@ function AddStreamButton({ setup, variant, onAdded }: { setup: SetupServer; vari
               {busy && <Spinner />}
               <span className="spacer" />
               <Button type="submit" variant="primary" disabled={!valid || busy}>
-                {t('Добавить')}
+                {t('Add')}
               </Button>
             </div>
           </form>

@@ -12,14 +12,14 @@ enum MacPairingPrompt {
     static func present(_ request: SyncHost.PairingRequest, host: SyncHost) {
         dismissCurrent()
         let alert = NSAlert()
-        alert.messageText = String(localized: "Подключить «\(request.device.name)»?")
+        alert.messageText = String(localized: "Connect “\(request.device.name)”?")
         alert.informativeText = informativeText(request.device, hostName: host.hostName)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: String(localized: "Разрешить"))
-        alert.addButton(withTitle: String(localized: "Отклонить"))
+        alert.addButton(withTitle: String(localized: "Allow"))
+        alert.addButton(withTitle: String(localized: "Decline"))
         if request.wasPaired {
             // Paired before, yet no proof of it: maybe another device under its name. Warn, and Return declines.
-            alert.informativeText = String(localized: "Этот iPhone уже был подключён, но не подтвердил это. Если на нём не нажимали «Забыть», нажмите «Отклонить».")
+            alert.informativeText = String(localized: "This iPhone was linked before but couldn’t confirm it. If it wasn’t forgotten on the iPhone, choose Decline.")
                 + "\n\n" + alert.informativeText
             alert.alertStyle = .warning
             alert.buttons[0].keyEquivalent = ""
@@ -46,7 +46,7 @@ enum MacPairingPrompt {
     /// Which device asks (iOS calls every iPhone just "iPhone", so its model and this Mac's name tell the pairs apart),
     /// then what it gets.
     static func informativeText(_ device: SyncDevice, hostName: String) -> String {
-        String(localized: "\(device.modelTitle) просит доступ к «\(hostName)». Он увидит камеру этого Mac и сможет вести тренировку: кнопки, запись, лог. Запись и лог сохраняются на Mac. Разрешение запоминается, его можно отозвать в настройках.")
+        String(localized: "\(device.modelTitle) is asking for access to “\(hostName)”. It will see this Mac's camera and can run the training: buttons, recording, log. The recording and log are saved on the Mac. The permission is remembered; you can revoke it in Settings.")
     }
 
     /// The iPhone disconnected before the answer.

@@ -99,7 +99,7 @@ export class EmbeddedGo2RTC {
       const [first, last] = [PREFERRED_API_PORT, PREFERRED_API_PORT + 29]
       this.setStatus({
         kind: 'failed',
-        message: tr(`Порты ${first}–${last} заняты другими программами — go2rtc негде запустить.`, `Ports ${first}–${last} are taken by other apps — go2rtc has nowhere to run.`),
+        message: tr(`Ports ${first}–${last} are taken by other apps — go2rtc has nowhere to run.`, `Порты ${first}–${last} заняты другими программами — go2rtc негде запустить.`),
       })
       return
     }
@@ -149,7 +149,7 @@ export class EmbeddedGo2RTC {
           void this.start(this.lanPassword)
         }, 1000 * this.restarts)
       } else {
-        this.setStatus({ kind: 'failed', message: tr('go2rtc перестал отвечать. Перезапустите приложение.', 'go2rtc stopped responding. Restart the app.') })
+        this.setStatus({ kind: 'failed', message: tr('go2rtc stopped responding. Restart the app.', 'go2rtc перестал отвечать. Перезапустите приложение.') })
       }
     })
     child.on('error', (error) => {
@@ -179,7 +179,7 @@ export class EmbeddedGo2RTC {
     } else {
       this.setStatus({
         kind: 'failed',
-        message: tr(`go2rtc запустился, но API на 127.0.0.1:${this.apiPort} не отвечает`, `go2rtc started, but its API at 127.0.0.1:${this.apiPort} doesn’t respond`),
+        message: tr(`go2rtc started, but its API at 127.0.0.1:${this.apiPort} doesn’t respond`, `go2rtc запустился, но API на 127.0.0.1:${this.apiPort} не отвечает`),
       })
     }
   }

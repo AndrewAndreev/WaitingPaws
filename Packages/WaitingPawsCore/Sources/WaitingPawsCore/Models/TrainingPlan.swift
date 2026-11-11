@@ -27,14 +27,14 @@ public struct EarlyEntry: Codable, Equatable, Hashable, Identifiable {
 
     /// «через 2 мин» / «сразу» / «через пару минут» (`unreadDelay`).
     public var delayDescription: String {
-        guard let delay, delay > 0 else { return unreadDelay ?? tr("сразу", "right away") }
-        return tr("через \(DurationText.short(delay))", "in \(DurationText.short(delay))")
+        guard let delay, delay > 0 else { return unreadDelay ?? tr("right away", ru: "сразу") }
+        return tr("in \(DurationText.short(delay))", ru: "через \(DurationText.short(delay))")
     }
 
     /// «встала и пошла → 2:00», «легла → 0:30», «встала → сразу»: the short form for summaries.
     public var summary: String {
         let name = event.prefix(1).lowercased() + event.dropFirst()
-        guard let delay, delay > 0 else { return "\(name) → " + (unreadDelay ?? tr("сразу", "right away")) }
+        guard let delay, delay > 0 else { return "\(name) → " + (unreadDelay ?? tr("right away", ru: "сразу")) }
         return "\(name) → \(DurationText.clock(delay))"
     }
 
@@ -90,7 +90,7 @@ public struct EarlyEntry: Codable, Equatable, Hashable, Identifiable {
 
     /// «Встала → сразу»: an exit's «ИЛИ до вставания» as a condition of its own (`TrainingPlan.foldUntilStanding`).
     public static var untilStanding: EarlyEntry {
-        EarlyEntry(event: tr("Встала", "Stands up"))
+        EarlyEntry(event: tr("Stands up", ru: "Встала"))
     }
 }
 
@@ -207,17 +207,17 @@ public struct PlannedExit: Codable, Equatable, Hashable, Identifiable {
     }
 
     /// "или до вставания": come back as soon as the dog stands up.
-    public static var untilStandingText: String { tr("или до вставания", "or until the dog stands") }
+    public static var untilStandingText: String { tr("or until the dog stands", ru: "или до вставания") }
 
     /// An extra exit's time: «без времени».
-    public static var openText: String { tr("без времени", "no set time") }
+    public static var openText: String { tr("no set time", ru: "без времени") }
 }
 
 /// A parsed (and possibly hand-corrected) training schedule.
 public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     public static let defaultBreakDuration: TimeInterval = 120
     /// Title of a schedule without a header line.
-    public static var defaultTitle: String { tr("Тренировка", "Training") }
+    public static var defaultTitle: String { tr("Training", ru: "Тренировка") }
 
     public var id: UUID
     public var title: String
@@ -427,7 +427,7 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         guard let note = notes.first(where: { PlanParser.hasMark($0, "🚩") }) ?? notes.first(where: PlanParser.isDoNotEnterRule)
         else { return nil }
         let (title, detail) = PlanParser.splitCondition(note)
-        return Rule(title: title ?? tr("Не входить", "Do not come in"), detail: detail, text: note)
+        return Rule(title: title ?? tr("Do not come in", ru: "Не входить"), detail: detail, text: note)
     }
 
     /// What an edit changed, for the session log: "перерывы 2 мин → 3 мин", "выход 4: 45 с → 1 мин",
@@ -435,39 +435,39 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     public func changes(from old: TrainingPlan) -> [String] {
         var changes: [String] = []
         if defaultBreak != old.defaultBreak {
-            changes.append(tr("перерывы \(DurationText.short(old.defaultBreak)) → \(DurationText.short(defaultBreak))",
-                              "breaks \(DurationText.short(old.defaultBreak)) → \(DurationText.short(defaultBreak))"))
+            changes.append(tr("breaks \(DurationText.short(old.defaultBreak)) → \(DurationText.short(defaultBreak))",
+                              ru: "перерывы \(DurationText.short(old.defaultBreak)) → \(DurationText.short(defaultBreak))"))
         }
         for (index, exit) in exits.enumerated() {
             guard let oldIndex = old.exits.firstIndex(where: { $0.id == exit.id }) else {
-                changes.append(tr("добавлен выход \(exit.number) — \(exit.durationDescription)",
-                                  "exit \(exit.number) added — \(exit.durationDescription)"))
+                changes.append(tr("exit \(exit.number) added — \(exit.durationDescription)",
+                                  ru: "добавлен выход \(exit.number) — \(exit.durationDescription)"))
                 continue
             }
             let was = old.exits[oldIndex]
             // «или до вставания» is a condition now: «ранний вход» below says it changed.
             if was.duration != exit.duration {
-                changes.append(tr("выход \(exit.number): \(was.durationDescription) → \(exit.durationDescription)",
-                                  "exit \(exit.number): \(was.durationDescription) → \(exit.durationDescription)"))
+                changes.append(tr("exit \(exit.number): \(was.durationDescription) → \(exit.durationDescription)",
+                                  ru: "выход \(exit.number): \(was.durationDescription) → \(exit.durationDescription)"))
             }
             if was.triggers != exit.triggers {
-                changes.append(tr("выход \(exit.number): триггеры", "exit \(exit.number): triggers"))
+                changes.append(tr("exit \(exit.number): triggers", ru: "выход \(exit.number): триггеры"))
             }
             if old.earlyEntries(of: was) != earlyEntries(of: exit) {
-                changes.append(tr("выход \(exit.number): ранний вход", "exit \(exit.number): coming back early"))
+                changes.append(tr("exit \(exit.number): coming back early", ru: "выход \(exit.number): ранний вход"))
             }
             if was.noteText != exit.noteText {
-                changes.append(tr("выход \(exit.number): заметка", "exit \(exit.number): note"))
+                changes.append(tr("exit \(exit.number): note", ru: "выход \(exit.number): заметка"))
             }
             // Own breaks only: a new common break is already said above.
             let before = old.breakAfter(exitAt: oldIndex), after = breakAfter(exitAt: index)
             if (was.breakAfter != nil || exit.breakAfter != nil), before != after, index < exits.count - 1 {
-                changes.append(tr("перерыв после выхода \(exit.number): \(DurationText.short(before)) → \(DurationText.short(after))",
-                                  "break after exit \(exit.number): \(DurationText.short(before)) → \(DurationText.short(after))"))
+                changes.append(tr("break after exit \(exit.number): \(DurationText.short(before)) → \(DurationText.short(after))",
+                                  ru: "перерыв после выхода \(exit.number): \(DurationText.short(before)) → \(DurationText.short(after))"))
             }
         }
         for exit in old.exits where !exits.contains(where: { $0.id == exit.id }) {
-            changes.append(tr("убран выход \(exit.number)", "exit \(exit.number) removed"))
+            changes.append(tr("exit \(exit.number) removed", ru: "убран выход \(exit.number)"))
         }
         return changes
     }

@@ -36,16 +36,16 @@ struct MacHistoryProgressPanel: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 16) {
-            Text("Дольше всего за дверью").font(.headline).fixedSize()
+            Text("Longest Time Outside").font(.headline).fixedSize()
             Spacer(minLength: 8)
             // The iPhone card's three periods; the pick is kept.
-            Picker("Период", selection: Binding(get: { controller.period(for: records) }, set: { controller.pick($0) })) {
+            Picker("Period", selection: Binding(get: { controller.period(for: records) }, set: { controller.pick($0) })) {
                 ForEach(MacHistoryPeriod.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.menu)
             .labelsHidden()
             .fixedSize()
-            .help("Период графика и цифр слева")
+            .help("Period of the chart and the figures on the left")
         }
     }
 
@@ -56,7 +56,7 @@ struct MacHistoryProgressPanel: View {
     private func figures(_ progress: HistoryProgress) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             // «Самый длинный выход», not «рекорд»: a longer exit is a fact about the dog, not a score.
-            figure(String(localized: "Самый длинный выход"),
+            figure(String(localized: "Longest exit"),
                    progress.longestEver.map { DurationText.clock($0.longestStayBehindDoor) } ?? "—")
             // The change keeps the plain text colour: longer is not automatically better (a calmer dog is).
             if let gain = progress.gainText {
@@ -83,26 +83,26 @@ struct MacHistoryProgressPanel: View {
         return Chart {
             ForEach(progress.sessions) { record in
                 // Straight lines between the trainings: a curve drew values between them that no training had.
-                AreaMark(x: .value("Дата", record.startedAt), yStart: .value("За дверью", 0),
-                         yEnd: .value("За дверью", record.longestStayBehindDoor))
+                AreaMark(x: .value("Date", record.startedAt), yStart: .value("Outside", 0),
+                         yEnd: .value("Outside", record.longestStayBehindDoor))
                     .interpolationMethod(.linear)
                     .foregroundStyle(LinearGradient(colors: [accent.opacity(0.24), accent.opacity(0)],
                                                     startPoint: .top, endPoint: .bottom))
-                LineMark(x: .value("Дата", record.startedAt), y: .value("За дверью", record.longestStayBehindDoor),
-                         series: .value("Ряд", String(localized: "Факт")))
+                LineMark(x: .value("Date", record.startedAt), y: .value("Outside", record.longestStayBehindDoor),
+                         series: .value("Series", String(localized: "Actual")))
                     .interpolationMethod(.linear)
                     .foregroundStyle(accent)
                     .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round))
             }
             if let selected, progress.sessions.contains(where: { $0.id == selected.id }) {
-                RuleMark(x: .value("Дата", selected.startedAt))
+                RuleMark(x: .value("Date", selected.startedAt))
                     .foregroundStyle(accent.opacity(0.35))
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
             ForEach(progress.sessions) { record in
                 let isSelected = record.id == selected?.id
                 let isHovered = record.id == hovered?.id
-                PointMark(x: .value("Дата", record.startedAt), y: .value("За дверью", record.longestStayBehindDoor))
+                PointMark(x: .value("Date", record.startedAt), y: .value("Outside", record.longestStayBehindDoor))
                     .symbolSize(isSelected ? 70 : isHovered ? 50 : 26)
                     .foregroundStyle(accent)
                     .annotation(position: .top, alignment: .center, spacing: 6,
@@ -147,7 +147,7 @@ struct MacHistoryProgressPanel: View {
                     }
             }
         }
-        .accessibilityLabel("График: дольше всего за дверью по тренировкам")
+        .accessibilityLabel("Chart: longest time outside per training")
     }
 
     /// "2 окт. · 2:32" over the point under the pointer.

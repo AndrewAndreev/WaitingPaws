@@ -62,10 +62,10 @@ struct XiaomiSignInSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     if step == .account {
                         Button { dismiss() } label: { Image(systemName: "xmark") }
-                            .accessibilityLabel("Отменить")
+                            .accessibilityLabel("Cancel|verb")
                     } else {
                         Button { backToAccount() } label: { Image(systemName: "chevron.left") }
-                            .accessibilityLabel("Изменить логин")
+                            .accessibilityLabel("Change Username")
                     }
                 }
                 ToolbarItem(placement: .principal) {
@@ -112,11 +112,11 @@ struct XiaomiSignInSheet: View {
             switch step {
             case .account:
                 AppIconImage(size: 64, glow: false)
-                Text("Вход в аккаунт Xiaomi")
+                Text("Sign In to Your Xiaomi Account")
                     .font(.system(size: 26, weight: .bold))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Тот же логин и пароль, что в приложении Mi\u{00A0}Home. Камеры появятся сразу после входа.")
+                Text("The same username and password as in the Mi Home app. Your cameras appear right after you sign in.")
                     .font(.system(size: 16))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -127,7 +127,7 @@ struct XiaomiSignInSheet: View {
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(Theme.accent, Color(red: 0.36, green: 0.85, blue: 0.56))
                     .frame(height: 64)
-                Text("Введите код")
+                Text("Enter Code")
                     .font(.system(size: 26, weight: .bold))
                 Text(codeDestination(phone: phone, email: email))
                     .font(.system(size: 16))
@@ -140,9 +140,9 @@ struct XiaomiSignInSheet: View {
     }
 
     private func codeDestination(phone: String?, email: String?) -> String {
-        if let phone { return String(localized: "Xiaomi отправил SMS на \(phone)") }
-        if let email { return String(localized: "Xiaomi отправил код на \(email)") }
-        return String(localized: "Xiaomi отправил код по SMS или на почту")
+        if let phone { return String(localized: "Xiaomi sent a text message to \(phone)") }
+        if let email { return String(localized: "Xiaomi sent a code to \(email)") }
+        return String(localized: "Xiaomi sent a code by text message or e-mail")
     }
 
     // MARK: Step 1: account
@@ -170,12 +170,12 @@ struct XiaomiSignInSheet: View {
                     .buttonStyle(.plain)
                 }
             } header: {
-                Text("Уже вошли на этом iPhone")
+                Text("Already Signed In on This iPhone")
             }
         }
         Section {
-            SignInFieldRow(label: String(localized: "Логин")) {
-                TextField("Логин", text: $login, prompt: Text("E-mail или телефон"))
+            SignInFieldRow(label: String(localized: "Username")) {
+                TextField("Username", text: $login, prompt: Text("Email or Phone"))
                     .textContentType(.username)
                     #if os(iOS)
                     .keyboardType(.emailAddress)
@@ -185,19 +185,19 @@ struct XiaomiSignInSheet: View {
                     .submitLabel(.next)
                     .onSubmit { focus = .password }
             }
-            SignInFieldRow(label: String(localized: "Пароль")) {
-                SecureField("Пароль", text: $password, prompt: Text("Пароль Mi Home"))
+            SignInFieldRow(label: String(localized: "Password")) {
+                SecureField("Password", text: $password, prompt: Text("Mi Home password"))
                     .textContentType(.password)
                     .focused($focus, equals: .password)
                     .submitLabel(.go)
                     .onSubmit(submit)
             }
-            Picker("Регион", selection: $region) {
+            Picker("Region", selection: $region) {
                 ForEach(SetupText.regions) { Text(SetupText.regionTitle($0)).tag($0) }
             }
             .pickerStyle(.menu)
         } header: {
-            if !existingAccounts.isEmpty { Text("Другой аккаунт") }
+            if !existingAccounts.isEmpty { Text("Another Account") }
         } footer: {
             VStack(alignment: .leading, spacing: 8) {
                 passwordNote
@@ -213,18 +213,18 @@ struct XiaomiSignInSheet: View {
         case .failed(let message):
             VStack(alignment: .leading, spacing: 6) {
                 Label(message, systemImage: "xmark.octagon.fill").foregroundStyle(Theme.danger)
-                Button("Попробовать снова") { model.startEmbeddedIfNeeded() }
+                Button("Try Again") { model.startEmbeddedIfNeeded() }
             }
             .font(.footnote)
         case .unavailable:
-            Label("Сборка без встроенного go2rtc: выполните GoMobile/build.sh или укажите свой сервер",
+            Label("This build has no built-in go2rtc: run GoMobile/build.sh or set up your own server",
                   systemImage: "exclamationmark.triangle.fill")
                 .font(.footnote)
                 .foregroundStyle(Theme.warning)
         default:
             HStack(spacing: 10) {
                 ProgressView()
-                Text("Запускаем встроенный go2rtc…").foregroundStyle(.secondary)
+                Text("Starting built-in go2rtc…").foregroundStyle(.secondary)
             }
             .font(.footnote)
         }
@@ -241,7 +241,7 @@ struct XiaomiSignInSheet: View {
                 .disabled(captchaImage != nil)
         } footer: {
             VStack(spacing: 14) {
-                Text(resent ? "Новый код отправлен" : "Код из «Сообщений» появится над клавиатурой")
+                Text(resent ? "A new code was sent" : "The code from Messages appears above the keyboard")
                 resendButton
                 if captchaImage == nil { errorLabel }
             }
@@ -255,7 +255,7 @@ struct XiaomiSignInSheet: View {
     private var resendButton: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let left = Int(resendAt.timeIntervalSince(context.date).rounded(.up))
-            Button(left > 0 ? "Отправить ещё раз через \(left) с" : "Отправить ещё раз", action: resend)
+            Button(left > 0 ? "Resend in \(left) s" : "Resend", action: resend)
                 .font(.system(size: 15, weight: .semibold))
                 .monospacedDigit()
                 .disabled(left > 0 || busy || password.isEmpty || captchaImage != nil)
@@ -269,19 +269,19 @@ struct XiaomiSignInSheet: View {
             HStack(spacing: 12) {
                 captchaPicture(image)
                 GlassCircleButton(systemImage: "arrow.clockwise", action: newCaptcha)
-                    .accessibilityLabel("Другая картинка")
+                    .accessibilityLabel("New Picture")
                     .disabled(busy || password.isEmpty)
             }
             .padding(.vertical, 4)
-            SignInFieldRow(label: String(localized: "Символы")) {
-                TextField("Символы", text: $captcha, prompt: Text("Как на картинке"))
+            SignInFieldRow(label: String(localized: "Characters")) {
+                TextField("Characters", text: $captcha, prompt: Text("As in the picture"))
                     .plainInput()
                     .focused($focus, equals: .captcha)
                     .submitLabel(.go)
                     .onSubmit(submit)
             }
         } header: {
-            Label("Xiaomi просит подтвердить, что вы не робот", systemImage: "checkmark.shield.fill")
+            Label("Xiaomi wants to make sure you’re not a robot|present", systemImage: "checkmark.shield.fill")
                 .textCase(nil)
         } footer: {
             errorLabel
@@ -309,8 +309,8 @@ struct XiaomiSignInSheet: View {
     private var passwordNote: some View {
         Label {
             Text(model.settings.connectionMode == .embedded
-                 ? "Пароль уходит только встроенному go2rtc на этом iPhone, Waiting Paws его не хранит."
-                 : "Пароль уходит только вашему серверу go2rtc, Waiting Paws его не хранит.")
+                 ? "The password goes only to the built-in go2rtc on this iPhone; Waiting Paws doesn’t store it."
+                 : "The password goes only to your go2rtc server; Waiting Paws doesn’t store it.")
         } icon: {
             Image(systemName: "lock.fill")
         }
@@ -335,11 +335,11 @@ struct XiaomiSignInSheet: View {
 
     private var primaryTitle: String {
         if busy {
-            if captchaImage != nil { return String(localized: "Проверяем…") }
-            return step == .account ? String(localized: "Входим…") : String(localized: "Проверяем код…")
+            if captchaImage != nil { return String(localized: "Checking…") }
+            return step == .account ? String(localized: "Signing in…") : String(localized: "Checking the code…")
         }
-        if captchaImage != nil { return String(localized: "Продолжить") }
-        return step == .account ? String(localized: "Войти") : String(localized: "Подтвердить")
+        if captchaImage != nil { return String(localized: "Continue") }
+        return step == .account ? String(localized: "Sign In") : String(localized: "Confirm")
     }
 
     private var canSubmit: Bool {
@@ -438,7 +438,7 @@ struct XiaomiSignInSheet: View {
             accountID = nil
         } else {
             backToAccount()
-            error = String(localized: "Вход прошёл, но go2rtc не вернул аккаунт. Попробуйте ещё раз.")
+            error = String(localized: "Signed in, but go2rtc didn’t return the account. Try again.")
             return
         }
         print("[setup] signed in to Xiaomi account \(accountID ?? "(one of the known)")")
@@ -511,7 +511,7 @@ private struct SignInCodeField: View {
                 .focused($focused)
                 .opacity(0.02)
                 .frame(width: 1, height: 1)
-                .accessibilityLabel("Код подтверждения")
+                .accessibilityLabel("Verification Code")
                 .onChange(of: code) { _, new in
                     let digits = String(new.filter(\.isNumber).prefix(length))
                     if digits != new { code = digits }

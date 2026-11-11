@@ -82,7 +82,7 @@ export function HistoryPage() {
 
   const records = useMemo(() => list?.records ?? [], [list])
   const clips = useMemo(() => list?.clips ?? [], [list])
-  const untitled = t('Запись без тренировки')
+  const untitled = t('Recording without training')
   const allRows = useMemo(() => buildRows(records, clips, videos, untitled), [records, clips, videos, untitled])
   const rows = useMemo(() => sortRows(filterRows(allRows, scope, search), sort, coreLocale()), [allRows, scope, search, sort])
   const selectedKey = selection ? rowKey(selection.kind, selection.id) : null
@@ -176,7 +176,7 @@ export function HistoryPage() {
       copyFile: (row) => {
         if (!row.video) return
         callStrict('shell.copyFile', row.video.fileName).then(
-          () => toast({ title: t('Видео скопировано — вставьте его в мессенджер или папку'), kind: 'success' }),
+          () => toast({ title: t('Video copied — paste it into a messenger or a folder'), kind: 'success' }),
           (error: Error) => toast({ title: error.message, kind: 'danger' }),
         )
       },
@@ -261,12 +261,12 @@ export function HistoryPage() {
         <div className="history__main">
           <div className="empty-state history__empty">
             <PawIcon style={{ width: 40, height: 40 }} />
-            <div className="empty-state__title h2">{t('Пока нет тренировок')}</div>
+            <div className="empty-state__title h2">{t('No Trainings Yet')}</div>
             <div className="history__empty-text">
-              {t('Вставьте расписание тренера (Ctrl+Shift+V) и проведите тренировку — здесь появятся её лог, видео и график: сколько собака спокойно ждёт за дверью.')}
+              {t('Paste the trainer’s schedule (Ctrl+Shift+V) and run a training — its log, video and a chart of how long the dog calmly waits outside will appear here.')}
             </div>
             <Button variant="primary" onClick={() => ui.set({ route: 'training' })} style={{ marginTop: 8 }}>
-              {t('Перейти к тренировке')}
+              {t('Go to Training')}
             </Button>
           </div>
         </div>
@@ -275,7 +275,7 @@ export function HistoryPage() {
           {records.length === 0 ? (
             <div className="history__noprogress muted">
               <ProgressChartIcon />
-              {t('График прогресса появится после первой тренировки.')}
+              {t('The progress chart will appear after the first training.')}
             </div>
           ) : (
             <ProgressPanel records={records} selectedId={selected?.record?.id ?? null} onReveal={(id) => reveal(rowKey('record', id))} />
@@ -294,7 +294,7 @@ export function HistoryPage() {
         </div>
       )}
       {showsInspector && !isEmpty && list !== null && (
-        <aside className="history__inspector" aria-label={t('Инспектор')}>
+        <aside className="history__inspector" aria-label={t('Inspector')}>
           <Splitter />
           <div className="hinspector__scroll" key={selected ? keyOf(selected) : 'none'}>
             <Inspector row={selected} preparing={selected?.video ? finalizing.has(selected.video.fileName) : false} actions={actions} />
@@ -328,25 +328,25 @@ function CommandBar({ isEmpty, selected, summary, actions }: { isEmpty: boolean;
   const scope = useHistoryUI((store) => store.scope)
   const showsInspector = useHistoryUI((store) => store.showsInspector)
   const copied = useHistoryUI((store) => (selected ? store.copiedKey === keyOf(selected) : false))
-  const explorerHelp = selected?.video ? t('Показать видео в проводнике') : selected?.record ? t('Показать лог в проводнике') : t('Показать папку истории в проводнике')
+  const explorerHelp = selected?.video ? t('Show the video in Explorer') : selected?.record ? t('Show Log in Explorer') : t('Show the history folder in Explorer')
   return (
-    <div className="hbar" role="toolbar" aria-label={t('История')}>
+    <div className="hbar" role="toolbar" aria-label={t('History')}>
       <Segmented<Scope>
         value={scope}
         disabled={isEmpty}
         onChange={(value) => historyUI.set({ scope: value })}
         options={[
-          { value: 'all', label: t('Все') },
-          { value: 'trainings', label: t('Тренировки') },
-          { value: 'clips', label: t('Только видео') },
+          { value: 'all', label: t('All') },
+          { value: 'trainings', label: t('Trainings') },
+          { value: 'clips', label: t('Videos Only') },
         ]}
       />
       <SearchBox disabled={isEmpty} />
       <span className="hbar__summary ellipsis tabular">{summary}</span>
       <span className="spacer" />
-      <Tooltip content={t('Скопировать лог для тренера') + ' (Ctrl+Shift+C)'}>
+      <Tooltip content={t('Copy the log for the trainer') + ' (Ctrl+Shift+C)'}>
         <Button variant="subtle" icon={<CopyIcon />} disabled={!selected?.record} onClick={() => selected && actions.copyLog(selected)}>
-          <span className="hbar__label">{copied ? t('Скопировано') : t('Скопировать лог')}</span>
+          <span className="hbar__label">{copied ? t('Copied') : t('Copy Log')}</span>
         </Button>
       </Tooltip>
       <Tooltip content={explorerHelp}>
@@ -359,11 +359,11 @@ function CommandBar({ isEmpty, selected, summary, actions }: { isEmpty: boolean;
         />
       </Tooltip>
       <Menu>
-        <Tooltip content={t('Удалить выбранное') + ' (Delete)'}>
+        <Tooltip content={t('Delete selected|items') + ' (Delete)'}>
           <MenuTrigger asChild>
             <button type="button" className="btn btn--subtle" disabled={isEmpty}>
               <DeleteIcon />
-              <span className="hbar__label">{t('Удалить')}</span>
+              <span className="hbar__label">{t('Delete')}</span>
               <ChevronDownIcon className="hbar__chevron" />
             </button>
           </MenuTrigger>
@@ -372,17 +372,17 @@ function CommandBar({ isEmpty, selected, summary, actions }: { isEmpty: boolean;
           {selected && <DeleteItems row={selected} actions={actions} />}
           {selected && <MenuSeparator />}
           <MenuItem icon={<DeleteIcon />} danger onSelect={() => historyUI.set({ confirmDeleteAll: true })}>
-            {t('Удалить всё…')}
+            {t('Delete All…')}
           </MenuItem>
         </MenuContent>
       </Menu>
       <span className="hbar__sep" />
-      <Tooltip content={(showsInspector ? t('Скрыть инспектор') : t('Показать инспектор')) + ' (Ctrl+Alt+I)'}>
+      <Tooltip content={(showsInspector ? t('Hide inspector') : t('Show inspector')) + ' (Ctrl+Alt+I)'}>
         <Button
           variant="subtle"
           iconOnly
           aria-pressed={showsInspector}
-          aria-label={t('Инспектор')}
+          aria-label={t('Inspector')}
           disabled={isEmpty}
           icon={showsInspector ? <InspectorFilledIcon /> : <InspectorIcon />}
           onClick={() => {
@@ -401,16 +401,16 @@ function DeleteItems({ row, actions }: { row: HistoryRow; actions: RowActions })
   if (row.kind === 'clip') {
     return (
       <MenuItem icon={<DeleteIcon />} danger onSelect={() => actions.confirmDelete(row, false)}>
-        {t('Удалить запись…')}
+        {t('Delete Recording…')}
       </MenuItem>
     )
   }
   return (
     <>
       <MenuItem icon={<DeleteIcon />} danger onSelect={() => actions.confirmDelete(row, false)}>
-        {row.video ? t('Удалить тренировку и видео…') : t('Удалить тренировку…')}
+        {row.video ? t('Delete Training and Video…') : t('Delete Training…')}
       </MenuItem>
-      {row.video && <MenuItem onSelect={() => actions.confirmDelete(row, true)}>{t('Удалить только лог, видео оставить…')}</MenuItem>}
+      {row.video && <MenuItem onSelect={() => actions.confirmDelete(row, true)}>{t('Delete Log Only, Keep Video…')}</MenuItem>}
     </>
   )
 }
@@ -423,8 +423,8 @@ function SearchBox({ disabled }: { disabled: boolean }) {
       <input
         className="input"
         type="search"
-        placeholder={t('Поиск')}
-        aria-label={t('Поиск')}
+        placeholder={t('Search')}
+        aria-label={t('Search')}
         value={search}
         disabled={disabled}
         spellCheck={false}
@@ -441,7 +441,7 @@ function SearchBox({ disabled }: { disabled: boolean }) {
         }}
       />
       {search && (
-        <button type="button" className="hsearch__clear" aria-label={t('Очистить поиск')} onClick={() => historyUI.set({ search: '' })}>
+        <button type="button" className="hsearch__clear" aria-label={t('Clear search')} onClick={() => historyUI.set({ search: '' })}>
           <CloseIcon />
         </button>
       )}
@@ -454,8 +454,8 @@ function NoRows({ scope, search }: { scope: Scope; search: string }) {
     return (
       <div className="empty-state htable__empty">
         <NoResultsIcon style={{ width: 32, height: 32 }} />
-        <div className="empty-state__title">{t('Нет результатов для «%@»', search.trim())}</div>
-        <div>{t('Проверьте написание или попробуйте другой запрос.')}</div>
+        <div className="empty-state__title">{t('No Results for “%@”', search.trim())}</div>
+        <div>{t('Check the spelling or try a new search.')}</div>
       </div>
     )
   }
@@ -463,16 +463,16 @@ function NoRows({ scope, search }: { scope: Scope; search: string }) {
     return (
       <div className="empty-state htable__empty">
         <ClipIcon style={{ width: 32, height: 32 }} />
-        <div className="empty-state__title">{t('Нет записей без тренировки')}</div>
-        <div>{t('Здесь будут видео, снятые кнопкой записи без тренировки, и видео, у которых удалили лог.')}</div>
+        <div className="empty-state__title">{t('No Recordings Without a Training')}</div>
+        <div>{t('Videos recorded with the record button outside a training, and videos whose log was deleted, appear here.')}</div>
       </div>
     )
   }
   return (
     <div className="empty-state htable__empty">
       <PawIcon style={{ width: 32, height: 32 }} />
-      <div className="empty-state__title">{t('Тренировок пока нет')}</div>
-      <div>{t('Есть только записи без тренировки — они во вкладке «Только видео».')}</div>
+      <div className="empty-state__title">{t('No Trainings Yet|window')}</div>
+      <div>{t('There are only recordings without a training — find them under “Videos Only”.')}</div>
     </div>
   )
 }
@@ -491,7 +491,7 @@ function Splitter() {
       className="hsplitter"
       role="separator"
       aria-orientation="vertical"
-      aria-label={t('Ширина инспектора')}
+      aria-label={t('Inspector width')}
       onPointerDown={(event) => {
         event.currentTarget.setPointerCapture(event.pointerId)
         start.current = { x: event.clientX, width: historyUI.get().inspectorWidth }
@@ -518,9 +518,9 @@ function DeleteDialog({ visible, onDeleted }: { visible: HistoryRow[]; onDeleted
   const { row, onlyLog } = pending
   const day = dayMonth(row.date)
   const time = formatTime(row.date)
-  const what = row.kind === 'clip' ? t('Запись %@, %@.', day, time) : t('«%@», %@, %@.', row.title, day, time)
-  const title = row.kind === 'clip' ? t('Удалить запись?') : onlyLog === true ? t('Удалить лог тренировки?') : t('Удалить тренировку?')
-  const description = onlyLog === true ? t('%@ Видео останется в истории как запись без тренировки.', what) : what
+  const what = row.kind === 'clip' ? t('Recording from %@, %@.', day, time) : t('“%@”, %@, %@.', row.title, day, time)
+  const title = row.kind === 'clip' ? t('Delete Recording?') : onlyLog === true ? t('Delete Training Log?') : t('Delete Training?')
+  const description = onlyLog === true ? t('%@ The video will stay in History as a recording without a training.', what) : what
 
   const remove = (logOnly: boolean) => {
     close()
@@ -548,20 +548,20 @@ function DeleteDialog({ visible, onDeleted }: { visible: HistoryRow[]; onDeleted
       hideClose
       footer={
         <>
-          {row.kind === 'record' && onlyLog === null && <Button onClick={() => remove(true)}>{t('Удалить только лог, видео оставить')}</Button>}
+          {row.kind === 'record' && onlyLog === null && <Button onClick={() => remove(true)}>{t('Delete Log Only, Keep Video')}</Button>}
           <span className="spacer" />
-          <Button onClick={close}>{t('Отмена')}</Button>
+          <Button onClick={close}>{t('Cancel')}</Button>
           {row.kind === 'clip' ? (
             <Button variant="danger-solid" autoFocus onClick={() => remove(false)}>
-              {t('Удалить запись')}
+              {t('Delete Recording')}
             </Button>
           ) : onlyLog === true ? (
             <Button variant="danger-solid" autoFocus onClick={() => remove(true)}>
-              {t('Удалить лог')}
+              {t('Delete Log')}
             </Button>
           ) : (
             <Button variant="danger-solid" autoFocus onClick={() => remove(false)}>
-              {row.video ? t('Удалить тренировку и видео') : t('Удалить тренировку')}
+              {row.video ? t('Delete Training and Video') : t('Delete Training')}
             </Button>
           )}
         </>
@@ -576,20 +576,20 @@ function DeleteAllDialog({ trainings, clips }: { trainings: number; clips: numbe
   if (!open) return null
   const trainingsPart = trainingsAccusative(trainings)
   const clipsPart = recordingsText(clips)
-  const action = clips === 0 ? t('Удалить %@', trainingsPart) : trainings === 0 ? t('Удалить %@', clipsPart) : t('Удалить %@ и %@', trainingsPart, clipsPart)
+  const action = clips === 0 ? t('Delete %@', trainingsPart) : trainings === 0 ? t('Delete %@', clipsPart) : t('Delete %@ and %@', trainingsPart, clipsPart)
   return (
     <Dialog
       open
       onOpenChange={(value) => !value && close()}
       icon={<DeleteIcon style={{ color: 'var(--danger)', width: 24, height: 24, marginTop: 2 }} />}
-      title={t('Удалить всю историю?')}
-      description={t('Логи и видео будут удалены с этого компьютера.')}
+      title={t('Delete All History?')}
+      description={t('Logs and videos will be deleted from this computer.')}
       width={480}
       hideClose
       footer={
         <>
           <Button autoFocus onClick={close}>
-            {t('Отмена')}
+            {t('Cancel')}
           </Button>
           <Button
             variant="danger-solid"

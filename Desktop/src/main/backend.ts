@@ -397,7 +397,7 @@ export class AppBackend {
       await this.store.save(record)
     } catch (error) {
       const message = (error as Error).message
-      this.fail(tr(`Не удалось сохранить лог: ${message}`, `Couldn’t save the log: ${message}`))
+      this.fail(tr(`Couldn’t save the log: ${message}`, `Не удалось сохранить лог: ${message}`))
     } finally {
       this.savingRecord = null
     }
@@ -521,10 +521,10 @@ export class AppBackend {
     const client = this.client()
     const stream = this.settings.value.streamName
     if (!client || !stream) {
-      this.fail(tr('Камера не настроена', 'No camera is set up'))
+      this.fail(tr('No camera is set up', 'Камера не настроена'))
       return
     }
-    const plan = this.session?.snapshot.plan ?? TrainingPlan.make({ title: tr('Запись', 'Record') })
+    const plan = this.session?.snapshot.plan ?? TrainingPlan.make({ title: tr('Record', 'Запись') })
     const path = await this.store.newRecordingPath(plan)
     if (intent !== this.recordingIntent || this.isRecordingLocally) return
     try {
@@ -540,7 +540,7 @@ export class AppBackend {
       log(`[rec] started ${basename(path)}`)
     } catch (error) {
       const message = (error as Error).message
-      this.fail(tr(`Не удалось начать запись: ${message}`, `Couldn’t start recording: ${message}`))
+      this.fail(tr(`Couldn’t start recording: ${message}`, `Не удалось начать запись: ${message}`))
     }
     this.emit()
   }
@@ -630,7 +630,7 @@ export class AppBackend {
       log(`[rec] the file could not be written (${reason ?? '?'}): recording stopped`)
       // Still recording until the stop below (which keeps what was written).
       this.resuming = true
-      this.fail(tr(`Запись остановлена: не удалось записать файл (${reason ?? '?'})`, `Recording stopped: couldn’t write the file (${reason ?? '?'})`))
+      this.fail(tr(`Recording stopped: couldn’t write the file (${reason ?? '?'})`, `Запись остановлена: не удалось записать файл (${reason ?? '?'})`))
       void this.stopRecording(false)
       return
     }
@@ -775,7 +775,7 @@ export class AppBackend {
     if (!client) return
     const source = await this.readXiaomiSource(client)
     if (!source) {
-      this.fail(tr('Не удалось сменить качество: go2rtc не отдал адрес камеры', 'Couldn’t change quality: go2rtc didn’t return the camera address'))
+      this.fail(tr('Couldn’t change quality: go2rtc didn’t return the camera address', 'Не удалось сменить качество: go2rtc не отдал адрес камеры'))
       return
     }
     const [base, query = ''] = source.split('?')
@@ -791,7 +791,7 @@ export class AppBackend {
       log(`[camera] quality ${quality}`)
     } catch (error) {
       const message = (error as Error).message
-      this.fail(tr(`Не удалось сменить качество: ${message}`, `Couldn’t change quality: ${message}`))
+      this.fail(tr(`Couldn’t change quality: ${message}`, `Не удалось сменить качество: ${message}`))
     }
     this.emit()
   }

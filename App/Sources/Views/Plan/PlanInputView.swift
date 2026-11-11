@@ -20,7 +20,7 @@ struct PlanInputView: View {
                         .padding(8)
                         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     if text.isEmpty {
-                        Text("🐹 Тренировка на понедельник - Аня/Марк - 05.10.2026\n➡️ Все перерывы 2 минуты\n1 выход - 5 секунд\n2 выход - 10 секунд\n…")
+                        Text("🐹 Monday training - Anna/Mark - 25.10.2026\n➡️ All breaks 2 minutes\nExit 1 - 5 seconds\nExit 2 - 10 seconds\n…")
                             .font(.system(.body, design: .monospaced))
                             .foregroundStyle(.white.opacity(0.3))
                             .padding(16)
@@ -29,23 +29,23 @@ struct PlanInputView: View {
                 }
 
                 HStack(spacing: 10) {
-                    BigButton(title: String(localized: "Из буфера"), systemImage: "doc.on.clipboard", style: .secondary, height: 44) {
+                    BigButton(title: String(localized: "Paste|from clipboard"), systemImage: "doc.on.clipboard", style: .secondary, height: 44) {
                         if let pasted = Pasteboard.string, !pasted.isEmpty { text = pasted }
                     }
-                    BigButton(title: String(localized: "Разобрать"), systemImage: "wand.and.stars", height: 44) {
+                    BigButton(title: String(localized: "Parse"), systemImage: "wand.and.stars", height: 44) {
                         plan = PlanParser.parse(text)
                     }
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .padding(16)
-            .navigationTitle("Расписание")
+            .navigationTitle("Schedule")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Закрыть") { dismiss() }
+                    Button("Close") { dismiss() }
                 }
             }
             .navigationDestination(item: $plan) { parsed in

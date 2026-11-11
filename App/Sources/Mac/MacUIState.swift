@@ -53,12 +53,12 @@ final class MacUIState {
     /// ⌘⇧V: parse the trainer's message from the clipboard and show how it was read.
     func pasteSchedule(_ model: AppModel) {
         guard let text = Pasteboard.string, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            model.errorMessage = String(localized: "В буфере обмена нет текста. Скопируйте сообщение тренера и попробуйте снова.")
+            model.errorMessage = String(localized: "There’s no text on the clipboard. Copy the trainer’s message and try again.")
             return
         }
         let plan = PlanParser.parse(text)
         guard plan.isValid else {
-            model.errorMessage = String(localized: "В скопированном тексте не нашлось ни одного выхода («1 выход - 30 секунд»).")
+            model.errorMessage = String(localized: "No exits found in the copied text (“Exit 1 - 30 seconds”).")
             return
         }
         model.setPending(plan)
@@ -92,7 +92,7 @@ final class MacUIState {
         if session.updatePlan(plan) {
             editingSessionPlan = nil
         } else {
-            model.errorMessage = String(localized: "Прошедшие выходы и текущий нельзя удалить или переставить.")
+            model.errorMessage = String(localized: "Exits already done and the current one can't be removed or moved.")
         }
     }
 
@@ -142,10 +142,10 @@ final class MacUIState {
     func primaryStepTitle(_ model: AppModel) -> String {
         guard let session = model.session else { return model.startTitle }
         switch session.phase {
-        case .away: return String(localized: "Вернулись")
-        case .breakTime(_, _, _, nil): return String(localized: "Завершить")
-        case .ready, .leaving, .breakTime: return String(localized: "Вышли")
-        case .finished: return String(localized: "Готово")
+        case .away: return String(localized: "Back Inside")
+        case .breakTime(_, _, _, nil): return String(localized: "Finish")
+        case .ready, .leaving, .breakTime: return String(localized: "Outside|step")
+        case .finished: return String(localized: "Done")
         }
     }
 }
@@ -161,7 +161,7 @@ struct MacCommands: Commands {
         // The app from GitHub updates itself (Sparkle); the App Store one has no such item.
         CommandGroup(after: .appInfo) {
             if let updater = AppUpdater.shared {
-                Button("Проверить обновления…") { updater.checkForUpdates() }
+                Button("Check for Updates…") { updater.checkForUpdates() }
                     .disabled(!updater.isAvailable || !updater.canCheck)
             }
         }
@@ -169,10 +169,10 @@ struct MacCommands: Commands {
         CommandGroup(replacing: .newItem) {}
         CommandGroup(before: .toolbar) {
             let zoomKeys = !ui.showsPlanEditor(model)
-            Button("Увеличить") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.zoom(by: ZoomState.step) } }
+            Button("Zoom In") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.zoom(by: ZoomState.step) } }
                 .keyboardShortcut(zoomKeys ? KeyboardShortcut("=", modifiers: .command) : nil)
                 .disabled(ui.cameraZoom.scale >= ZoomState.maxScale)
-            Button("Уменьшить") {
+            Button("Zoom Out") {
                 withAnimation(.spring(response: 0.3)) {
                     ui.cameraZoom.zoom(by: 1 / ZoomState.step)
                     ui.cameraZoom.settle()
@@ -180,34 +180,34 @@ struct MacCommands: Commands {
             }
             .keyboardShortcut(zoomKeys ? KeyboardShortcut("-", modifiers: .command) : nil)
             .disabled(!ui.cameraZoom.isZoomed)
-            Button("Без увеличения") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.reset() } }
+            Button("Actual Size") { withAnimation(.spring(response: 0.3)) { ui.cameraZoom.reset() } }
                 .keyboardShortcut(zoomKeys ? KeyboardShortcut("0", modifiers: .command) : nil)
                 .disabled(!ui.cameraZoom.isZoomed)
             Divider()
-            Button(model.settings.cameraDisplayName.isEmpty ? String(localized: "Первая камера") : model.settings.cameraDisplayName) {
+            Button(model.settings.cameraDisplayName.isEmpty ? String(localized: "First Camera") : model.settings.cameraDisplayName) {
                 model.showCamera(second: false)
             }
             .keyboardShortcut("1", modifiers: .command)
             .disabled(!model.hasSecondCamera)
-            Button(model.hasSecondCamera ? model.activeSecondCameraName : String(localized: "Вторая камера")) {
+            Button(model.hasSecondCamera ? model.activeSecondCameraName : String(localized: "Second Camera")) {
                 model.showCamera(second: true)
             }
             .keyboardShortcut("2", modifiers: .command)
             .disabled(!model.hasSecondCamera)
             Divider()
-            Button(model.panTilt.isActive ? "Закончить поворот камеры" : "Повернуть камеру") {
+            Button(model.panTilt.isActive ? "Stop Turning Camera" : "Turn Camera") {
                 withAnimation(.smooth(duration: 0.25)) { model.panTilt.toggle() }
             }
             .disabled(!model.canPanTilt)
-            Button(ui.cameraOnly ? "Показать панели" : "Только камера") {
+            Button(ui.cameraOnly ? "Show Panels" : "Camera Only") {
                 withAnimation(.smooth(duration: 0.35)) { ui.toggleCameraOnly(model) }
             }
             .keyboardShortcut("f", modifiers: [.command, .shift])
             .disabled(model.session != nil || model.isRecordingClip || (!ui.cameraOnly && !model.settings.isConfigured))
             Divider()
         }
-        CommandMenu("Тренировка") {
-            Button("Вставить расписание") { ui.pasteSchedule(model) }
+        CommandMenu("Training") {
+            Button("Paste Schedule") { ui.pasteSchedule(model) }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
                 .disabled(model.session != nil)
             Button(model.startTitle) { ui.startPending(model) }
@@ -215,29 +215,29 @@ struct MacCommands: Commands {
                 .disabled(model.pendingPlan == nil || model.session != nil)
             Divider()
             // Space and ⌫ work in the training window itself (a menu key equivalent would steal them from text fields).
-            Button(String(localized: "\(ui.primaryStepTitle(model)) (Пробел)")) { ui.primaryStep(model) }
+            Button(String(localized: "\(ui.primaryStepTitle(model)) (Space)")) { ui.primaryStep(model) }
                 .disabled(model.session == nil)
-            Button("Фальстарт (⌫)") { ui.falseStart(model) }
+            Button("False Start (⌫)") { ui.falseStart(model) }
                 .disabled(!ui.canFalseStart(model))
             // The panel's capsule beside «Осталось», all through the break a false start led to.
-            Button("Отменить фальстарт") { withAnimation(.smooth(duration: 0.25)) { model.undoFalseStart() } }
+            Button("Undo False Start") { withAnimation(.smooth(duration: 0.25)) { model.undoFalseStart() } }
                 .disabled(model.falseStartUndo == nil)
             Divider()
             // Before a training ⌘R is the panel's «Без тренировки ▾ → Записать видео»; in one it records the training.
-            Button(model.isRecordingNow ? String(localized: "Остановить запись…")
-                   : model.session == nil ? String(localized: "Записать без тренировки") : String(localized: "Начать запись")) {
+            Button(model.isRecordingNow ? String(localized: "Stop Recording…")
+                   : model.session == nil ? String(localized: "Record without a training") : String(localized: "Start Recording")) {
                 ui.toggleRecording(model)
             }
             .keyboardShortcut("r", modifiers: .command)
             .disabled(!model.isRecordingNow && !model.settings.isConfigured)
-            Button("Изменить расписание…") { ui.editSessionPlan(model) }
+            Button("Edit Schedule…") { ui.editSessionPlan(model) }
                 .keyboardShortcut("e", modifiers: .command)
                 .disabled(model.session == nil)
             Button(model.finishTitle + "…") { ui.confirmFinish = true }
                 .keyboardShortcut(".", modifiers: .command)
                 .disabled(model.session == nil)
             Divider()
-            Button("История") { openWindow(id: "history") }
+            Button("History") { openWindow(id: "history") }
                 .keyboardShortcut("y", modifiers: .command)
         }
     }

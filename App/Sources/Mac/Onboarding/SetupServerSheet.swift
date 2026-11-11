@@ -21,8 +21,8 @@ struct SetupServerSheet: View {
             HStack(spacing: 12) {
                 SetupIconTile(symbol: "server.rack", color: Color(red: 0.36, green: 0.42, blue: 0.52), size: 44)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Свой сервер go2rtc").font(.headline)
-                    Text("go2rtc на компьютере или NAS в вашей сети вместо встроенного.")
+                    Text("Own go2rtc Server").font(.headline)
+                    Text("go2rtc on a computer or NAS on your network instead of the built-in one.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -33,15 +33,15 @@ struct SetupServerSheet: View {
 
             Form {
                 Section {
-                    TextField("Адрес", text: $urlText, prompt: Text("http://192.168.1.10:1984"))
+                    TextField("Address", text: $urlText, prompt: Text("http://192.168.1.10:1984"))
                         .plainInput()
-                    TextField("Логин", text: $username, prompt: Text("Необязательно"))
+                    TextField("Username", text: $username, prompt: Text("Optional"))
                         .plainInput()
-                    SecureField("Пароль", text: $password, prompt: Text("Необязательно"))
+                    SecureField("Password", text: $password, prompt: Text("Optional"))
                     HStack(spacing: 8) {
                         result
                         Spacer(minLength: 8)
-                        Button("Проверить подключение") { Task { await runCheck() } }
+                        Button("Check Connection") { Task { await runCheck() } }
                             .disabled(check == .checking || Go2RTCServer.parse(urlText) == nil)
                     }
                 } footer: {
@@ -50,7 +50,7 @@ struct SetupServerSheet: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     #else
-                    Text("Нужна версия 1.9.11 или новее с модулем xiaomi. Пароль сервера хранится в связке ключей.")
+                    Text("Requires version 1.9.11 or later with the xiaomi module. The server password is stored in the keychain.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     #endif
@@ -64,17 +64,17 @@ struct SetupServerSheet: View {
 
             HStack(spacing: 10) {
                 if model.settings.connectionMode == .external, EmbeddedGo2RTC.isAvailable {
-                    Button("Вернуться к встроенному") {
+                    Button("Switch Back to Built-in") {
                         model.settings.connectionMode = .embedded
                         model.startEmbeddedIfNeeded()
                         dismiss()
                     }
-                    .help("go2rtc внутри приложения, без отдельного сервера")
+                    .help("go2rtc inside the app, without a separate server")
                 }
                 Spacer()
-                Button("Отменить") { dismiss() }
+                Button("Cancel|verb") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("Подключить") { Task { await connect() } }
+                Button("Connect") { Task { await connect() } }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(check == .checking || Go2RTCServer.parse(urlText) == nil)
@@ -103,9 +103,9 @@ struct SetupServerSheet: View {
             EmptyView()
         case .checking:
             ProgressView().controlSize(.small)
-            Text("Проверяем…").foregroundStyle(.secondary)
+            Text("Checking…").foregroundStyle(.secondary)
         case .ok(let version):
-            Label(version.isEmpty ? "Сервер отвечает" : "go2rtc \(version) отвечает", systemImage: "checkmark.circle.fill")
+            Label(version.isEmpty ? "Server is responding" : "go2rtc \(version) is responding", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(MacPalette.green)
         case .failed(let message):
             Label(message, systemImage: "xmark.octagon.fill")

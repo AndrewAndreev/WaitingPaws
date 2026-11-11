@@ -23,7 +23,7 @@ struct PanTiltPad: View {
             }
             .frame(width: diameter, height: diameter)
             VStack(spacing: 1) {
-                Text("Поворот камеры")
+                Text("Turning the camera")
                     .font(.system(.caption, design: .rounded, weight: .semibold))
                 Text(panTilt.failure ?? hint)
                     .font(.system(.caption2, design: .rounded))
@@ -39,16 +39,16 @@ struct PanTiltPad: View {
         }
         .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Поворот камеры")
+        .accessibilityLabel("Turning the camera")
     }
 
     private var arrowOffset: CGFloat { diameter * 0.32 }
 
     private var hint: String {
         #if os(macOS)
-        String(localized: "Или стрелки на клавиатуре · Esc")
+        String(localized: "Or the arrow keys · Esc")
         #else
-        String(localized: "Удерживайте стрелку, чтобы вести дальше")
+        String(localized: "Hold an arrow to keep turning")
         #endif
     }
 
@@ -110,9 +110,9 @@ private struct DoneButton: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Готово")
+        .accessibilityLabel("Done")
         #if os(macOS)
-        .help("Готово · Esc")
+        .help("Done · Esc")
         #endif
     }
 }
@@ -138,10 +138,10 @@ extension PanTiltDirection {
 
     var title: String {
         switch self {
-        case .left: return String(localized: "Повернуть влево")
-        case .right: return String(localized: "Повернуть вправо")
-        case .up: return String(localized: "Наклонить вверх")
-        case .down: return String(localized: "Наклонить вниз")
+        case .left: return String(localized: "Turn Left")
+        case .right: return String(localized: "Turn Right")
+        case .up: return String(localized: "Tilt Up")
+        case .down: return String(localized: "Tilt Down")
         }
     }
 }

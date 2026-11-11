@@ -10,9 +10,9 @@ import { historyUI, useHistoryUI } from './state'
 import { useSize } from './useSize'
 
 const PERIODS: { value: Period; title: string; gain: string }[] = [
-  { value: 'fourWeeks', title: '4 недели', gain: 'За четыре недели' },
-  { value: 'threeMonths', title: '3 месяца', gain: 'За три месяца' },
-  { value: 'all', title: 'Всё время', gain: 'С первой тренировки' },
+  { value: 'fourWeeks', title: '4 Weeks', gain: 'Over four weeks' },
+  { value: 'threeMonths', title: '3 Months', gain: 'Over three months' },
+  { value: 'all', title: 'All Time', gain: 'Since the first training' },
 ]
 
 /// Top of the page (MacHistoryProgressPanel): key numbers on the left, «Дольше всего за дверью» per training on
@@ -22,42 +22,42 @@ export function ProgressPanel({ records, selectedId, onReveal }: { records: Trai
   const data = useMemo(() => progress(records, period), [records, period])
   const periodInfo = PERIODS.find((item) => item.value === period)!
   return (
-    <section className="hprogress" aria-label={t('Дольше всего за дверью')}>
+    <section className="hprogress" aria-label={t('Longest Time Outside')}>
       <div className="hprogress__figures">
         {data.best ? (
-          <Figure title={t('Рекорд за дверью')} value={DurationText.clock(longestStay(data.best))} note={t('%@ · план %@', dayMonth(data.best.startedAt), DurationText.clock(longestPlanned(data.best)))} />
+          <Figure title={t('Best time outside')} value={DurationText.clock(longestStay(data.best))} note={t('%@ · plan %@', dayMonth(data.best.startedAt), DurationText.clock(longestPlanned(data.best)))} />
         ) : (
-          <Figure title={t('Рекорд за дверью')} value="—" note={t('пока ни одного выхода')} />
+          <Figure title={t('Best time outside')} value="—" note={t('no exits yet')} />
         )}
-        <GainFigure title={data.includesFirstTraining ? t('С первой тренировки') : t(periodInfo.gain)} gain={data.gain} first={data.first} />
+        <GainFigure title={data.includesFirstTraining ? t('Since the first training') : t(periodInfo.gain)} gain={data.gain} first={data.first} />
         <Figure
-          title={t('Без фальстартов')}
-          value={t('%lld из %lld', data.cleanCount, data.sessions.length)}
-          note={data.falseStartTotal === 0 ? t('ни одного фальстарта') : t('фальстартов всего: %lld', data.falseStartTotal)}
+          title={t('No false starts')}
+          value={t('%lld of %lld', data.cleanCount, data.sessions.length)}
+          note={data.falseStartTotal === 0 ? t('no false starts') : t('total false starts: %lld', data.falseStartTotal)}
         />
       </div>
       <div className="hprogress__chart">
         <div className="hprogress__header">
-          <span className="h3 ellipsis">{t('Дольше всего за дверью')}</span>
+          <span className="h3 ellipsis">{t('Longest Time Outside')}</span>
           <span className="spacer" />
           <div className="hprogress__legend">
             <span className="legend">
               <span className="hlegend-line" />
-              {t('дольше всего')}
+              {t('longest')}
             </span>
             <span className="legend">
               <span className="hlegend-dash" />
-              {t('план')}
+              {t('plan')}
             </span>
             <span className="legend">
               <span className="hlegend-dot" />
-              {t('был фальстарт')}
+              {t('had a false start')}
             </span>
           </div>
           <Menu>
-            <Tooltip content={t('Период графика и цифр слева')}>
+            <Tooltip content={t('Period of the chart and the figures on the left')}>
               <MenuTrigger asChild>
-                <button type="button" className="btn btn--sm hprogress__period" aria-label={t('Период')}>
+                <button type="button" className="btn btn--sm hprogress__period" aria-label={t('Period')}>
                   <span>{t(periodInfo.title)}</span>
                   <ChevronDownIcon />
                 </button>
@@ -91,9 +91,9 @@ function Figure({ title, value, note, tint }: { title: string; value: string; no
 }
 
 function GainFigure({ title, gain, first }: { title: string; gain: number | null; first: TrainingRecord | null }) {
-  if (gain === null || !first) return <Figure title={title} value="—" note={t('нужно хотя бы две тренировки')} />
+  if (gain === null || !first) return <Figure title={title} value="—" note={t('needs at least two trainings')} />
   const tint = gain > 0 ? 'var(--success)' : gain < 0 ? 'var(--warning)' : undefined
-  return <Figure title={title} value={(gain < 0 ? '−' : '+') + DurationText.clock(Math.abs(gain))} note={t('было %@ %@', DurationText.clock(longestStay(first)), dayMonth(first.startedAt))} tint={tint} />
+  return <Figure title={title} value={(gain < 0 ? '−' : '+') + DurationText.clock(Math.abs(gain))} note={t('was %@ on %@', DurationText.clock(longestStay(first)), dayMonth(first.startedAt))} tint={tint} />
 }
 
 const MARGIN = { left: 44, right: 14, top: 26, bottom: 24 }
@@ -137,7 +137,7 @@ function Chart({ sessions, domain, selectedId, onReveal }: { sessions: TrainingR
       }}
       style={{ cursor: hovered !== null ? 'pointer' : 'default' }}
       role="img"
-      aria-label={t('График: дольше всего за дверью по тренировкам')}
+      aria-label={t('Chart: longest time outside per training')}
     >
       {width > 0 && height > 0 && (
         <svg width={width} height={height} className="hchart__svg">

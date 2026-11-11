@@ -43,14 +43,14 @@ struct PlanEditorView: View {
 
     /// "после 2 — 3 мин, после 5 — 1 мин".
     private func breaksList(_ breaks: [(number: Int, value: TimeInterval)]) -> String {
-        breaks.map { String(localized: "после \($0.number) — \(DurationText.short($0.value))") }
+        breaks.map { String(localized: "after \($0.number) — \(DurationText.short($0.value))") }
             .joined(separator: ", ")
     }
 
     /// «Свой перерыв: после 6 — 5 мин»: the exceptions to the common break, named.
     private var ownBreaksTitle: String {
         let list = breaksList(ownBreaks.map { ($0.number, $0.breakAfter ?? 0) })
-        return ownBreaks.count == 1 ? String(localized: "Свой перерыв: \(list)") : String(localized: "Свои перерывы: \(list)")
+        return ownBreaks.count == 1 ? String(localized: "Custom breaks: \(list)|one") : String(localized: "Custom breaks: \(list)")
     }
 
     /// The own breaks «Сделать все по …» took away that are still common now: what «Вернуть» gives back.
@@ -71,9 +71,9 @@ struct PlanEditorView: View {
     private func ruleTitle(_ note: String) -> String? {
         guard PlanParser.isDoNotEnterRule(note) else { return nil }
         if let quiet = plan.doNotEnterRule?.quietTime {
-            return String(localized: "Ждать тишины \(DurationText.short(quiet))")
+            return String(localized: "Wait for quiet \(DurationText.short(quiet))")
         }
-        return String(localized: "Ждать тишины")
+        return String(localized: "Wait for quiet")
     }
 
     /// The training's name, without the spaces round it.
@@ -89,7 +89,7 @@ struct PlanEditorView: View {
     /// up. «с перерывами» after it went (design council, round 12): the list over it has the breaks.
     private var totalText: String {
         let total = DurationText.wholeSeconds(plan.estimatedDuration)
-        return total >= 600 ? String(localized: "≈ \(Int((Double(total) / 60).rounded())) мин")
+        return total >= 600 ? String(localized: "≈ \(Int((Double(total) / 60).rounded())) min")
                             : "≈ " + DurationText.short(plan.estimatedDuration)
     }
 
@@ -135,7 +135,7 @@ struct PlanEditorView: View {
         .onAppear { print("[perf] PlanEditorView appear at", PerformanceMonitor.timeFormatter.string(from: Date())) }
         #endif
         // The training's name, as the trainer titled it (design council, round 13: «Проверьте план» said what to do).
-        .navigationTitle(isRunning ? String(localized: "Расписание") : (titleText.isEmpty ? String(localized: "Проверьте план") : titleText))
+        .navigationTitle(isRunning ? String(localized: "Schedule") : (titleText.isEmpty ? String(localized: "Review Plan") : titleText))
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -163,7 +163,7 @@ struct PlanEditorView: View {
                         Image(systemName: isReordering ? "checkmark" : "arrow.up.arrow.down")
                             .fontWeight(.semibold)
                     }
-                    .accessibilityLabel(isReordering ? String(localized: "Готово") : String(localized: "Изменить порядок"))
+                    .accessibilityLabel(isReordering ? String(localized: "Done") : String(localized: "Reorder"))
                 }
             }
         }
@@ -193,9 +193,9 @@ struct PlanEditorView: View {
         return List {
             Section {
                 DisclosureGroup(isExpanded: $showDetails) {
-                    TextField("Название", text: $plan.title)
-                    TextField("Кто тренирует", text: $plan.trainers)
-                    DatePicker("Дата", selection: Binding(
+                    TextField("Name", text: $plan.title)
+                    TextField("Who’s training", text: $plan.trainers)
+                    DatePicker("Date", selection: Binding(
                         get: { plan.date ?? Date() },
                         set: { plan.date = $0 }), displayedComponents: .date)
                 } label: {
@@ -203,7 +203,7 @@ struct PlanEditorView: View {
                     // under it the fields for all three; the trainer's head line they were read from under the row.
                     Label {
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(subtitle.isEmpty ? String(localized: "Дата") : subtitle)
+                            Text(subtitle.isEmpty ? String(localized: "Date") : subtitle)
                                 .foregroundStyle(Color.primary)
                                 .lineLimit(1)
                             let header = source.words(.header, in: plan)
@@ -272,12 +272,12 @@ struct PlanEditorView: View {
                     plan.exits.append(PlannedExit(number: plan.exits.count + 1, duration: old.exits.last?.duration ?? 5))
                     plan = plan.keepingCommonEntriesScope(from: old)
                 } label: {
-                    Label("Добавить выход", systemImage: "plus.circle.fill")
+                    Label("Add Exit", systemImage: "plus.circle.fill")
                 }
                 .id(Self.endID)
             } header: {
                 HStack {
-                    Text("Выходы · \(plan.exits.count)")
+                    Text("Exits · \(plan.exits.count)")
                     Spacer()
                     Text(totalText)
                         .foregroundStyle(.secondary)
@@ -325,10 +325,10 @@ struct PlanEditorView: View {
                         get: { plan.defaultBreak == value }, set: { if $0 { setDefaultBreak(value) } }))
                 }
                 Divider()
-                Button("Другой…", systemImage: "timer") { customBreak = true }
+                Button("Custom…", systemImage: "timer") { customBreak = true }
                 if !ownBreaks.isEmpty {
                     Section(ownBreaksTitle) {
-                        Button("Сделать все по \(DurationText.short(plan.defaultBreak))", systemImage: "equal.circle") {
+                        Button("Set All to \(DurationText.short(plan.defaultBreak))", systemImage: "equal.circle") {
                             makeBreaksCommon()
                         }
                     }
@@ -336,7 +336,7 @@ struct PlanEditorView: View {
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     // «Перерывы»: the list under it says between what (design council, round 12).
-                    Text("Перерывы")
+                    Text("Breaks")
                         .lineLimit(1)
                         .foregroundStyle(Color.primary)
                     Spacer(minLength: 8)
@@ -361,7 +361,7 @@ struct PlanEditorView: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "arrow.uturn.backward")
-                        Text("Вернуть: \(breaksList(restorable))")
+                        Text("Restore: \(breaksList(restorable))")
                     }
                     .font(.footnote)
                     .foregroundStyle(Theme.accent)
@@ -375,7 +375,7 @@ struct PlanEditorView: View {
         }
         .popover(isPresented: $customBreak) {
             DurationEditor(value: Binding(get: { plan.defaultBreak }, set: { setDefaultBreak($0 ?? plan.defaultBreak) }),
-                           title: String(localized: "Перерывы"), presets: DurationPresets.breaks,
+                           title: String(localized: "Breaks"), presets: DurationPresets.breaks,
                            defaultValue: nil, secondsStep: 5)
                 .presentationCompactAdaptation(.popover)
         }
@@ -454,13 +454,13 @@ struct PlanEditorView: View {
         return VStack(spacing: 10) {
             // Why «Начать тренировку» / «Сохранить» below is greyed out.
             if !plan.isValid {
-                Label("В расписании нет выходов", systemImage: "exclamationmark.triangle.fill")
+                Label("No Exits in the Schedule", systemImage: "exclamationmark.triangle.fill")
                     .font(.system(.footnote, design: .rounded, weight: .medium))
                     .foregroundStyle(Theme.warning)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if isRunning {
-                BigButton(title: String(localized: "Сохранить"), systemImage: "checkmark", height: 50) {
+                BigButton(title: String(localized: "Save"), systemImage: "checkmark", height: 50) {
                     var final = plan
                     final.renumber()
                     onStart(final)
@@ -468,13 +468,13 @@ struct PlanEditorView: View {
                 .disabled(!plan.isValid)
             } else if model.isLinkedToMac {
                 // Recording follows the Mac's setting there.
-                Label("Это расписание уже и на \(model.linkedHostKind) — начать можно там или здесь.", systemImage: "laptopcomputer.and.iphone")
+                Label("This schedule is on the \(model.linkedHostKind) too — start it there or here.", systemImage: "laptopcomputer.and.iphone")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(Theme.info)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 Toggle(isOn: $settings.autoRecord) {
-                    Label("Записывать видео", systemImage: "record.circle")
+                    Label("Record video", systemImage: "record.circle")
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                 }
                 .tint(Theme.accent)
@@ -482,7 +482,7 @@ struct PlanEditorView: View {
             if !isRunning {
                 // «Начать тренировку» alone: the switch right above it says whether the recording starts too (design
                 // council, round 12: «и запись» said it again).
-                BigButton(title: String(localized: "Начать тренировку"), systemImage: "play.fill", height: 50) {
+                BigButton(title: String(localized: "Start Training"), systemImage: "play.fill", height: 50) {
                     var final = plan
                     final.renumber()
                     onStart(final)
@@ -622,7 +622,7 @@ struct PlanEditorView: View {
         Button { showSource = true } label: {
             Label {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("Текст тренера").foregroundStyle(Color.primary)
+                    Text("Trainer’s Text").foregroundStyle(Color.primary)
                     Spacer(minLength: 8)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
@@ -635,7 +635,7 @@ struct PlanEditorView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityHint(String(localized: "Строки тренера, из которых прочитан план"))
+        .accessibilityHint(String(localized: "The trainer's lines the plan was read from"))
     }
 
     /// After an exit's line tapped in the trainer's text: that exit's row in view, unfolded to its editors.
@@ -664,7 +664,7 @@ struct PlanEditorView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Общие условия")
+                        Text("Common conditions")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         if !saidByWords {
                             Text(plan.commonEarlyEntries.map(\.conditionText).joined(separator: " · "))
@@ -676,7 +676,7 @@ struct PlanEditorView: View {
                 } icon: {
                     Image(systemName: "figure.run").foregroundStyle(Theme.warning)
                 }
-                Picker("К каким выходам", selection: Binding(
+                Picker("Which exits", selection: Binding(
                     get: { plan.commonEntriesScope.map { $0 == .all ? 0 : 1 } ?? 2 },
                     set: { choice in
                         switch choice {
@@ -685,9 +685,9 @@ struct PlanEditorView: View {
                         default: pickingCommonExits = true
                         }
                     })) {
-                    Text("Ко всем").tag(0)
-                    Text("От 1 мин").tag(1)
-                    Text("Выбрать").tag(2)
+                    Text("All exits").tag(0)
+                    Text("From 1 min").tag(1)
+                    Text("Choose").tag(2)
                 }
                 .pickerStyle(.segmented)
             }
@@ -731,13 +731,13 @@ private struct TrainerSourceView: View {
             }
         }
         .background(Theme.panel)
-        .navigationTitle("Текст тренера")
+        .navigationTitle("Trainer’s Text")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Готово") { dismiss() }
+                Button("Done") { dismiss() }
             }
         }
     }
@@ -758,7 +758,7 @@ private struct TrainerSourceView: View {
             if let exit {
                 Button { onJump(exit.id) } label: { content }
                     .buttonStyle(.plain)
-                    .accessibilityHint(String(localized: "Открыть выход \(exit.number) в плане"))
+                    .accessibilityHint(String(localized: "Open exit \(exit.number) in the plan"))
             } else {
                 content
             }
@@ -866,9 +866,9 @@ private struct CommonExitsPicker: View {
             ForEach($plan.exits) { $exit in
                 Toggle(isOn: $exit.usesCommonEarlyEntries) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Выход \(exit.number) · \(DurationText.short(exit.duration))")
+                        Text("Exit \(exit.number) · \(DurationText.short(exit.duration))")
                         if !exit.earlyEntries.isEmpty {
-                            Text("свои условия").font(.caption).foregroundStyle(.secondary)
+                            Text("own conditions").font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -876,12 +876,12 @@ private struct CommonExitsPicker: View {
                 .disabled(!exit.earlyEntries.isEmpty)
             }
         }
-        .navigationTitle("Общие условия")
+        .navigationTitle("Common conditions")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() } }
+            ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
         }
     }
 }
@@ -923,16 +923,16 @@ private struct ExitRow: View {
             }
         }
         .swipeActions(edge: .leading) {
-            Button(action: onEdit) { Label("Изменить", systemImage: "slider.horizontal.3") }.tint(Theme.info)
+            Button(action: onEdit) { Label("Edit", systemImage: "slider.horizontal.3") }.tint(Theme.info)
         }
         // Set explicitly: with the leading action SwiftUI no longer adds the list's own «Удалить».
         .swipeActions(edge: .trailing) {
             if let onDelete {
-                Button(role: .destructive, action: onDelete) { Label("Удалить", systemImage: "trash") }
+                Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
             }
         }
         .contextMenu {
-            Button("Триггеры, условия, заметка…", systemImage: "slider.horizontal.3", action: onEdit)
+            Button("Triggers, Conditions, Note…", systemImage: "slider.horizontal.3", action: onEdit)
         }
     }
 
@@ -1024,11 +1024,11 @@ private struct ExitRow: View {
         let ownBreak = !isLast && exit.breakAfter != nil
         if triggers || entries || ownBreak {
             HStack(spacing: 7) {
-                if triggers { sign("bolt.fill", Theme.warning).accessibilityLabel(String(localized: "Триггеры на выходе")) }
-                if entries { sign("figure.run", Theme.info).accessibilityLabel(String(localized: "Ранний вход")) }
+                if triggers { sign("bolt.fill", Theme.warning).accessibilityLabel(String(localized: "Triggers on the way out")) }
+                if entries { sign("figure.run", Theme.info).accessibilityLabel(String(localized: "Coming back early")) }
                 if ownBreak, let own = exit.breakAfter {
                     sign("pause.circle", Theme.info)
-                        .accessibilityLabel(String(localized: "Свой перерыв после выхода: \(DurationText.short(own))"))
+                        .accessibilityLabel(String(localized: "Own break after this exit: \(DurationText.short(own))"))
                 }
             }
             .padding(.leading, 4)
@@ -1047,7 +1047,7 @@ private struct ExitRow: View {
         Text("\(Text(Image(systemName: "pause.circle")).foregroundStyle(Theme.info)) \(Text(verbatim: DurationText.short(value)).foregroundStyle(.white.opacity(0.6)))")
             .font(.system(size: 13, design: .rounded))
             .lineLimit(1)
-            .accessibilityLabel(String(localized: "Свой перерыв после выхода: \(DurationText.short(value))"))
+            .accessibilityLabel(String(localized: "Own break after this exit: \(DurationText.short(value))"))
     }
 
     // MARK: Unfolded
@@ -1057,15 +1057,15 @@ private struct ExitRow: View {
             HStack(spacing: 5) {
                 number
                 stepButton("minus") { exit.duration = max(0, exit.duration - stepFor(exit.duration - 1)) }
-                DurationButton(value: $exit.duration, title: String(localized: "Выход \(exit.number)"), presets: DurationPresets.exits, width: 52)
+                DurationButton(value: $exit.duration, title: String(localized: "Exit \(exit.number)"), presets: DurationPresets.exits, width: 52)
                 stepButton("plus") { exit.duration += stepFor(exit.duration) }
                 Spacer(minLength: 0)
                 if !isLast {
                     HStack(spacing: 3) {
                         Image(systemName: "pause.circle")
                             .foregroundStyle(.secondary)
-                            .help("Перерыв после выхода")
-                        DurationButton(value: $exit.breakAfter, title: String(localized: "Перерыв после выхода \(exit.number)"),
+                            .help("Break after the exit")
+                        DurationButton(value: $exit.breakAfter, title: String(localized: "Break After Exit \(exit.number)"),
                                        presets: DurationPresets.breaks, defaultValue: defaultBreak, secondsStep: 5,
                                        font: .system(.subheadline, design: .rounded), width: 46)
                     }
@@ -1076,7 +1076,7 @@ private struct ExitRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Group {
                         if summary.isEmpty {
-                            Text("Триггеры, условия, заметка")
+                            Text("Triggers, Conditions, Note")
                                 .font(.system(size: 13, design: .rounded))
                                 .foregroundStyle(.secondary)
                         } else {
@@ -1092,7 +1092,7 @@ private struct ExitRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "Выход \(exit.number): триггеры, ранний вход, заметка"))
+            .accessibilityLabel(String(localized: "Exit \(exit.number): triggers, coming back early, note"))
             trainerWords
         }
         .padding(.vertical, 4)
@@ -1179,7 +1179,7 @@ private struct QuietDisclosureStyle: DisclosureGroupStyle {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityValue(configuration.isExpanded ? String(localized: "развёрнуто") : String(localized: "свёрнуто"))
+        .accessibilityValue(configuration.isExpanded ? String(localized: "expanded") : String(localized: "collapsed"))
         if configuration.isExpanded {
             configuration.content
         }
@@ -1598,6 +1598,6 @@ struct TrainerQuote: View {
             Capsule().fill(Color.white.opacity(0.16)).frame(width: 2)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Слова тренера: \(lines.map { String($0.characters) }.joined(separator: "\n"))"))
+        .accessibilityLabel(String(localized: "Trainer's words: \(lines.map { String($0.characters) }.joined(separator: "\n"))"))
     }
 }

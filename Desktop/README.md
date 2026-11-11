@@ -48,7 +48,7 @@ backend only through `window.wp` (`src/shared/api.ts`), so the same UI can run i
 ```
 src/core       TypeScript port of Packages/WaitingPawsCore (parser, engine, log, store, go2rtc client, camera
                modes, sync protocol; node/syncCrypto.ts for the main process) — tests in test/
-src/shared     UI ↔ backend contract, settings, i18n (Russian keys, English from Tools/strings/en.json + strings/*.json)
+src/shared     UI ↔ backend contract, settings, i18n (English keys, Russian from Tools/strings/ru.json + strings/*.ru.json)
 src/main       backend: go2rtc process, recorder, finalizer bridge, storage, camera modes, sync/ (iPhone host)
 src/preload    window.wp (and the media window's file access)
 src/renderer   React UI: training/, history/, settings/, onboarding/, plan/, player/, media/ (finalizer)

@@ -112,15 +112,15 @@ export class LiveSession {
   get timerCaption(): string {
     switch (this.phase.kind) {
       case 'ready':
-        return t('план')
+        return t('plan')
       case 'leaving':
-        return t('к двери')
+        return t('to the door')
       case 'away':
       case 'breakTime':
-        if (this.isOpenExit) return t('прошло')
-        return this.overdue ? t('сверх плана') : t('осталось')
+        if (this.isOpenExit) return t('elapsed')
+        return this.overdue ? t('over plan') : t('left')
       case 'finished':
-        return t('всего')
+        return t('total')
     }
   }
 
@@ -130,28 +130,28 @@ export class LiveSession {
       case 'ready':
       case 'leaving':
       case 'away':
-        return t('Выход %lld', this.currentExit?.number ?? 0)
+        return t('Exit %lld', this.currentExit?.number ?? 0)
       case 'breakTime':
-        return phase.nextExitIndex === null ? t('Последний перерыв') : t('Перерыв')
+        return phase.nextExitIndex === null ? t('Last Break') : t('Break')
       case 'finished':
-        return t('Тренировка завершена')
+        return t('Training Complete')
     }
   }
 
   /// "за дверью", "сверх плана"…: what the timer is doing, next to the title.
   get phaseName(): string {
-    if (this.overdue) return t('сверх плана')
+    if (this.overdue) return t('over plan')
     switch (this.phase.kind) {
       case 'ready':
-        return t('перед выходом')
+        return t('before the exit')
       case 'leaving':
-        return t('к двери')
+        return t('to the door')
       case 'away':
-        return t('за дверью')
+        return t('outside')
       case 'breakTime':
-        return t('осталось')
+        return t('left')
       case 'finished':
-        return t('готово')
+        return t('done')
     }
   }
 
@@ -169,8 +169,8 @@ export class LiveSession {
       case 'leaving':
       case 'away': {
         const exit = this.currentExit
-        const parts = [exit?.isOpen ? t('Выход без времени — вернитесь, когда нужно') : t('План %@', this.exitDescription)]
-        if (attempt > 1) parts.push(t('попытка %lld', attempt))
+        const parts = [exit?.isOpen ? t('An exit with no set time — come back when you need to') : t('Plan %@', this.exitDescription)]
+        if (attempt > 1) parts.push(t('attempt %lld', attempt))
         return parts.join(' · ')
       }
       case 'breakTime':
@@ -178,12 +178,12 @@ export class LiveSession {
           const next = this.plan.exits[phase.nextExitIndex]
           const description = PlannedExit.durationDescription(next)
           return attempt > 1
-            ? t('Следующий выход %lld — %@ · попытка %lld', next.number, description, attempt)
-            : t('Следующий выход %lld — %@', next.number, description)
+            ? t('Next: exit %lld — %@ · attempt %lld', next.number, description, attempt)
+            : t('Next: exit %lld — %@', next.number, description)
         }
-        return t('Выходы закончились: «Ещё выход» или «Завершить»')
+        return t('No exits left: “Another Exit” or “Finish”')
       case 'finished':
-        return t('выходов %lld из %lld · фальстартов %lld', this.completedExits, this.plan.exits.length, this.falseStarts)
+        return t('exits: %lld of %lld · false starts: %lld', this.completedExits, this.plan.exits.length, this.falseStarts)
     }
   }
 

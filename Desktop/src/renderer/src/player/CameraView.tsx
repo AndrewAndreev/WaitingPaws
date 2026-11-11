@@ -83,7 +83,7 @@ export function CameraView({ baseURL, stream, mode, muted, fill = false, reloadT
       {showStatus && <CameraStatusOverlay phase={phase} />}
       {zoom.scale > 1.01 && (
         <button className="camera__zoom-badge" onClick={zoom.reset}>
-          {Math.round(zoom.scale * 100)}% · {t('Сбросить')}
+          {Math.round(zoom.scale * 100)}% · {t('Reset')}
         </button>
       )}
       {children}
@@ -107,7 +107,7 @@ export function CameraStatusOverlay({ phase }: { phase: PlayerPhase }) {
     return (
       <div className="camera__pill">
         <span className="spinner" />
-        {t('Нет новых кадров — ждём камеру')}
+        {t('No new frames — waiting for the camera')}
       </div>
     )
   }
@@ -115,17 +115,17 @@ export function CameraStatusOverlay({ phase }: { phase: PlayerPhase }) {
   return (
     <div className="camera__status">
       {failed ? <VideoOffIcon style={{ width: 32, height: 32, opacity: 0.7 }} /> : <span className="spinner spinner--lg" />}
-      <div className="camera__status-title">{failed ? t('Камера не отвечает') : phase.kind === 'connecting' ? t('Подключаемся к камере…') : t('Камера на связи, ждём первый кадр…')}</div>
-      {failed && <div className="camera__status-detail">{t('%@. Пробуем снова…', capitalize(t(phase.reason)))}</div>}
+      <div className="camera__status-title">{failed ? t('The camera doesn’t respond') : phase.kind === 'connecting' ? t('Connecting to the camera…') : t('Camera connected, waiting for the first frame…')}</div>
+      {failed && <div className="camera__status-detail">{t('%@. Trying again…', capitalize(t(phase.reason)))}</div>}
       {failed && window.wp.platform === 'win32' && /udp.*timeout/i.test(phase.raw) && (
         <div className="camera__status-hint">
-          {t('Камера не отвечает по UDP — так бывает, когда брандмауэр Windows не пропускает go2rtc. Разрешите Waiting Paws в частных сетях.')}
+          {t("The camera doesn't answer over UDP — this happens when Windows Firewall blocks go2rtc. Allow Waiting Paws on private networks.")}
           <button className="btn btn--sm" onClick={() => void window.wp.call('shell.openFirewall')}>
-            {t('Открыть настройки брандмауэра')}
+            {t('Open Firewall Settings')}
           </button>
         </div>
       )}
-      {!failed && slow && <div className="camera__status-detail">{t('Дольше обычного: камера может быть не в сети или занята другим приложением.')}</div>}
+      {!failed && slow && <div className="camera__status-detail">{t('Taking longer than usual: the camera may be offline or busy with another app.')}</div>}
     </div>
   )
 }

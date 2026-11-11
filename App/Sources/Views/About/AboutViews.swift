@@ -57,7 +57,7 @@ struct PrivacyPolicyView: View {
             .frame(maxWidth: .infinity)
             .textSelection(.enabled)
         }
-        .navigationTitle("Политика конфиденциальности")
+        .navigationTitle("Privacy Policy")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -93,7 +93,7 @@ struct LicensesView: View {
             .padding(16)
             .textSelection(.enabled)
         }
-        .navigationTitle("Лицензии открытого ПО")
+        .navigationTitle("Open-Source Licenses")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif

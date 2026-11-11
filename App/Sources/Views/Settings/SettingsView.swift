@@ -26,7 +26,7 @@ struct SettingsView: View {
             ScrollViewReader { proxy in
             Form {
                 Section {
-                    Picker("Режим", selection: modeSelection) {
+                    Picker("Mode", selection: modeSelection) {
                         ForEach(ConnectionMode.allCases) { mode in Text(mode.title).tag(mode) }
                     }
                     .onChange(of: settings.connectionMode) { _, _ in
@@ -34,53 +34,53 @@ struct SettingsView: View {
                         checkStatus = ""
                     }
                     if settings.connectionMode == .embedded && !choosingServer {
-                        LabeledContent("Состояние", value: embeddedStatusText)
+                        LabeledContent("Status", value: embeddedStatusText)
                     } else {
-                        TextField("Адрес", text: address, prompt: Text("http://192.168.1.10:1984"))
+                        TextField("Address", text: address, prompt: Text("http://192.168.1.10:1984"))
                             .plainInput()
-                        TextField("Логин", text: $settings.serverUsername)
+                        TextField("Username", text: $settings.serverUsername)
                             .plainInput()
-                        SecureField("Пароль", text: $settings.serverPassword)
+                        SecureField("Password", text: $settings.serverPassword)
                         HStack {
                             if choosingServer {
-                                Button("Подключить") {
+                                Button("Connect") {
                                     choosingServer = false
                                     settings.connectionMode = .external
                                 }
                                 .disabled(Go2RTCServer.parse(address.wrappedValue) == nil)
                             } else {
-                                Button("Проверить") { Task { await check() } }
+                                Button("Check") { Task { await check() } }
                             }
                             Spacer()
                             Text(checkStatus).font(.footnote).foregroundStyle(.secondary)
                         }
                     }
                 } header: {
-                    Text("Подключение")
+                    Text("Connection")
                 } footer: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(settings.connectionMode == .embedded && !choosingServer
-                             ? "go2rtc работает внутри приложения, камера должна быть в той же Wi-Fi сети. Видео и запись идут, пока приложение открыто."
-                             : "Отдельный сервер go2rtc в сети: подходит, если нужен доступ не из дома или постоянная запись.")
-                        if isBusy { Text("Во время тренировки или записи сервер не меняется.") }
+                             ? "go2rtc runs inside the app; the camera must be on the same Wi-Fi network. Video and recording work while the app is open."
+                             : "A separate go2rtc server on your network: useful for access away from home or for continuous recording.")
+                        if isBusy { Text("The server can’t be changed during a training or recording.") }
                     }
                 }
                 .disabled(isBusy)
 
                 Section {
-                    LabeledContent("Поток", value: settings.cameraDisplayName.isEmpty ? "—" : settings.cameraDisplayName)
+                    LabeledContent("Stream", value: settings.cameraDisplayName.isEmpty ? "—" : settings.cameraDisplayName)
                     #if WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`): no account, no sign-in
-                    Button("Выбрать камеру…") { showCameraPicker = true }
+                    Button("Choose Camera…") { showCameraPicker = true }
                     #else
-                    LabeledContent("Аккаунт Xiaomi", value: settings.xiaomiAccountID.isEmpty ? "—" : "ID \(settings.xiaomiAccountID) · \(settings.xiaomiRegion.rawValue)")
-                    Button("Выбрать камеру…") { showCameraPicker = true }
+                    LabeledContent("Xiaomi Account", value: settings.xiaomiAccountID.isEmpty ? "—" : "ID \(settings.xiaomiAccountID) · \(settings.xiaomiRegion.rawValue)")
+                    Button("Choose Camera…") { showCameraPicker = true }
                     if settings.xiaomiAccountID.isEmpty {
-                        Button("Войти в аккаунт Xiaomi…") { showXiaomi = true }
+                        Button("Sign In to Xiaomi…|account") { showXiaomi = true }
                     } else {
-                        Button("Войти в другой аккаунт Xiaomi…") { showXiaomi = true }
+                        Button("Sign In to Another Xiaomi Account…") { showXiaomi = true }
                         Button(role: .destructive) { confirmSignOut = true } label: {
                             HStack {
-                                Text("Выйти из аккаунта Xiaomi")
+                                Text("Sign Out of Xiaomi")
                                 if signingOut { Spacer(); ProgressView() }
                             }
                         }
@@ -88,40 +88,40 @@ struct SettingsView: View {
                     }
                     #endif
                 } header: {
-                    Text("Камера")
+                    Text("Camera")
                 } footer: {
                     #if !WP_NO_XIAOMI
                     if !settings.xiaomiAccountID.isEmpty {
-                        Text("После выхода ключ доступа Xiaomi удаляется с устройства, а камеры этого аккаунта — из приложения.")
+                        Text("After you sign out, the Xiaomi access key is removed from the device and this account’s cameras are removed from the app.")
                     }
                     #endif
                 }
 
                 Section {
-                    Picker("Режим", selection: $settings.playerMode) {
+                    Picker("Mode", selection: $settings.playerMode) {
                         ForEach(settings.availablePlayerModes) { mode in Text(mode.title).tag(mode) }
                     }
-                    Toggle("Звук с камеры в приложении", isOn: $settings.audioEnabled)
+                    Toggle("Camera sound in the app", isOn: $settings.audioEnabled)
                 } header: {
-                    Text("Плеер")
+                    Text("Player")
                 } footer: {
-                    Text("Звук только в плеере; видео всегда записывается со звуком камеры.")
+                    Text("This only affects the player; video is always recorded with the camera’s sound.")
                 }
 
                 Section {
-                    Toggle("Включать запись вместе с тренировкой", isOn: $settings.autoRecord)
-                    Toggle("Сохранять видео в Фото", isOn: $settings.saveToPhotos)
+                    Toggle("Start recording with the training", isOn: $settings.autoRecord)
+                    Toggle("Save videos to Photos", isOn: $settings.saveToPhotos)
                     #if os(iOS)
-                    Toggle("Вибрация", isOn: $settings.haptics)
+                    Toggle("Haptics", isOn: $settings.haptics)
                     TrainingAlertsToggle(isOn: $settings.notifications)
                     #endif
                 } header: {
-                    Text("Тренировка")
+                    Text("Training")
                 } footer: {
                     #if os(iOS)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Короткая вибрация, когда выходит время: план выхода, перерыв, отсчёт условия или тишина. Это сигнал таймера, а не разрешение входить.")
-                        Text("Когда приложение свёрнуто или экран заблокирован, о том же скажет уведомление — без звука, чтобы не услышала собака.")
+                        Text("A short vibration when time is up: the exit's plan, the break, a condition's countdown or the quiet. It's a timer signal, not a sign that it's OK to go in.")
+                        Text("When the app is in the background or the screen is locked, a notification tells you the same — silently, so the dog doesn't hear it.")
                     }
                     #endif
                 }
@@ -132,50 +132,50 @@ struct SettingsView: View {
 
                 #if os(macOS)
                 Section {
-                    Toggle("Разрешить подключение с iPhone", isOn: $settings.shareWithIPhone)
+                    Toggle("Allow connections from iPhone", isOn: $settings.shareWithIPhone)
                         .onChange(of: settings.shareWithIPhone) { _, on in
                             if on { model.syncHost.start() } else { model.syncHost.stop() }
                         }
                     ForEach(model.syncHost.pairedDevices) { device in
                         LabeledContent(device.name) {
-                            Button("Забыть") { model.syncHost.forget(device) }
+                            Button("Forget") { model.syncHost.forget(device) }
                         }
                     }
                 } header: {
                     Text("iPhone")
                 } footer: {
                     Text(settings.shareWithIPhone && !model.embedded.lanEnabled && settings.connectionMode == .embedded
-                         ? "iPhone в той же сети найдёт этот Mac, покажет его камеру и сможет вести тренировку. Видео для iPhone станет доступно после перезапуска приложения."
-                         : "iPhone в той же сети найдёт этот Mac, покажет его камеру и сможет вести тренировку. Запись и лог остаются на Mac. Первое подключение каждого iPhone нужно разрешить здесь.")
+                         ? "An iPhone on the same network will find this Mac, show its camera, and be able to run the training. Video for iPhone becomes available after the app restarts."
+                         : "An iPhone on the same network will find this Mac, show its camera, and be able to run the training. Recordings and the log stay on the Mac. Each iPhone’s first connection must be allowed here.")
                 }
                 #endif
 
-                Section("Диагностика") {
-                    Toggle("Показывать нагрузку", isOn: $settings.showPerformance)
+                Section("Diagnostics") {
+                    Toggle("Show performance stats", isOn: $settings.showPerformance)
                         .onChange(of: settings.showPerformance) { _, on in
                             if on { model.performance.start() } else { model.performance.stop() }
                         }
-                    Text("Над камерой: на сколько секунд картинка отстаёт от камеры (сеть и буфер плеера), CPU, память и подвисания интерфейса.")
+                    Text("Over the camera: how many seconds the picture trails the camera (network and player buffer), CPU, memory and interface hangs.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
 
                 Section {
                     #if os(macOS)
-                    Button("Показать в Finder") { Finder.reveal(model.store.rootDirectory) }
+                    Button("Show in Finder") { Finder.reveal(model.store.rootDirectory) }
                     #else
-                    Text("Видео и логи доступны в приложении «Файлы» → На iPhone → Waiting Paws.")
+                    Text("Videos and logs are in the Files app → On My iPhone → Waiting Paws.")
                         .font(.footnote).foregroundStyle(.secondary)
                     #endif
                 } header: {
-                    Text("Файлы")
+                    Text("Files")
                 }
 
                 Section {
-                    LabeledContent("Версия", value: AppInfo.version)
-                    NavigationLink("Политика конфиденциальности") { PrivacyPolicyView() }
-                    NavigationLink("Лицензии открытого ПО") { LicensesView() }
+                    LabeledContent("Version", value: AppInfo.version)
+                    NavigationLink("Privacy Policy") { PrivacyPolicyView() }
+                    NavigationLink("Open-Source Licenses") { LicensesView() }
                 } header: {
-                    Text("О приложении")
+                    Text("About")
                 }
             }
             .formStyle(.grouped)
@@ -187,10 +187,10 @@ struct SettingsView: View {
             }
             #endif
             }
-            .navigationTitle("Настройки")
+            .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Готово") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
             #if !WP_NO_XIAOMI
@@ -202,8 +202,8 @@ struct SettingsView: View {
                 .environment(model)
                 .sheetFrame(width: 520, height: 620)
             }
-            .confirmationDialog("Выйти из аккаунта Xiaomi?", isPresented: $confirmSignOut, titleVisibility: .visible) {
-                Button("Выйти", role: .destructive) {
+            .confirmationDialog("Sign Out of Xiaomi?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                Button("Sign Out", role: .destructive) {
                     let account = settings.xiaomiAccountID
                     signingOut = true
                     Task {
@@ -211,9 +211,9 @@ struct SettingsView: View {
                         signingOut = false
                     }
                 }
-                Button("Отмена", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Камеры этого аккаунта перестанут показываться. Войти снова можно в любой момент.")
+                Text("This account’s cameras will no longer be shown. You can sign in again at any time.")
             }
             #endif
             .sheet(isPresented: $showCameraPicker) {
@@ -226,11 +226,11 @@ struct SettingsView: View {
                 .sheetFrame(width: 520, height: 560)
             }
             #if os(iOS)
-            .confirmationDialog(forgetHost.map { String(localized: "Забыть «\($0.device.name)»?") } ?? "",
+            .confirmationDialog(forgetHost.map { String(localized: "Forget “\($0.device.name)”?") } ?? "",
                                 isPresented: Binding(get: { forgetHost != nil }, set: { if !$0 { forgetHost = nil } }),
                                 titleVisibility: .visible, presenting: forgetHost) { host in
-                Button("Забыть", role: .destructive) { model.syncClient.forget(host.id) }
-                Button("Отмена", role: .cancel) {}
+                Button("Forget", role: .destructive) { model.syncClient.forget(host.id) }
+                Button("Cancel", role: .cancel) {}
             } message: { host in
                 Text(forgetMessage(host))
             }
@@ -267,11 +267,11 @@ struct SettingsView: View {
 
     private var embeddedStatusText: String {
         switch model.embedded.status {
-        case .idle: return String(localized: "не запущен")
-        case .starting: return String(localized: "запускается…")
-        case .running(let version): return String(localized: "работает, go2rtc \(version)")
-        case .failed(let message): return String(localized: "ошибка: \(message)")
-        case .unavailable: return String(localized: "фреймворк не собран")
+        case .idle: return String(localized: "not running")
+        case .starting: return String(localized: "starting…")
+        case .running(let version): return String(localized: "running, go2rtc \(version)")
+        case .failed(let message): return String(localized: "error: \(message)")
+        case .unavailable: return String(localized: "framework not built")
         }
     }
 
@@ -283,7 +283,7 @@ struct SettingsView: View {
         @Bindable var settings = model.settings
         let client = model.syncClient
         Section {
-            LabeledContent("Имя этого \(SyncIdentity.platform.title)") {
+            LabeledContent("This \(SyncIdentity.platform.title)'s Name") {
                 TextField(SyncIdentity.systemName, text: $settings.deviceName)
                     .multilineTextAlignment(.trailing)
                     .submitLabel(.done)
@@ -291,16 +291,16 @@ struct SettingsView: View {
             .id("sync")
             switch client.status {
             case .connected(let host):
-                hostLabel(host, detail: String(localized: "Синхронизировано"))
-                Button("Отключить синхронизацию", role: .destructive) { client.disconnect() }
+                hostLabel(host, detail: String(localized: "Synced"))
+                Button("Stop Syncing", role: .destructive) { client.disconnect() }
             case .connecting(let host), .waitingApproval(let host):
-                hostLabel(host, detail: String(localized: "Подключаемся…"))
+                hostLabel(host, detail: String(localized: "Connecting…|verb"))
             case .idle, .failed:
                 if case .failed(let message) = client.status {
                     Text(message).foregroundStyle(.orange)
                 }
                 if client.hosts.isEmpty {
-                    Text("В этой сети нет Mac с открытым Waiting Paws").foregroundStyle(.secondary)
+                    Text("No Mac with Waiting Paws open on this network").foregroundStyle(.secondary)
                 }
             }
             ForEach(client.hosts.filter { $0.id != client.host?.id }) { host in
@@ -313,24 +313,24 @@ struct SettingsView: View {
                 .disabled(model.session != nil || !host.isCompatible || client.isBusy)
             }
         } header: {
-            Text("Синхронизация")
+            Text("Sync")
         } footer: {
-            Text("Камера, запись и лог остаются на Mac, а iPhone ведёт тренировку из-за двери. К последнему Mac, с которым работал, iPhone подключается сам. Имя выше видно на Mac при подключении.")
+            Text("The camera, recording and log stay on the Mac, while the iPhone runs the training from behind the door. The iPhone reconnects by itself to the last Mac it worked with. The Mac sees the name above when the iPhone connects.")
         }
         if !client.pairedHosts.isEmpty {
             Section {
                 ForEach(client.pairedHosts.sorted { $0.lastConnected > $1.lastConnected }) { paired in
                     LabeledContent {
-                        Button("Забыть", role: .destructive) { forgetHost = paired }
+                        Button("Forget", role: .destructive) { forgetHost = paired }
                             .buttonStyle(.borderless)
                     } label: {
                         hostLabel(paired.device, detail: pairedDetail(paired))
                     }
                 }
             } header: {
-                Text("Подключались раньше")
+                Text("Connected Before")
             } footer: {
-                Text("После «Забыть» для синхронизации с этим компьютером снова понадобится «Разрешить» на нём.")
+                Text("After Forget, syncing with that computer needs Allow on it again.")
             }
         }
     }
@@ -346,22 +346,22 @@ struct SettingsView: View {
 
     /// «Забыть «…»?»: the computer will have to allow this iPhone again; a sync with it running now stops.
     private func forgetMessage(_ host: SyncClient.PairedHost) -> String {
-        let again = String(localized: "Чтобы снова синхронизироваться, на \(host.device.kindTitle) понадобится «Разрешить».")
+        let again = String(localized: "To sync again, you’ll need to allow it on the \(host.device.kindTitle).")
         let client = model.syncClient
         // `forget` also gives up a link being restored.
         let linked = (client.isConnected && client.host?.id == host.id) || client.reconnecting?.id == host.id
-        return linked ? String(localized: "Синхронизация отключится.") + " " + again : again
+        return linked ? String(localized: "Syncing will stop.") + " " + again : again
     }
 
     private func pairedDetail(_ paired: SyncClient.PairedHost) -> String {
         var parts: [String] = []
         if let model = paired.device.distinctModel { parts.append(model) }
         if model.syncClient.host?.id == paired.id, model.syncClient.isConnected {
-            parts.append(String(localized: "подключён сейчас"))
+            parts.append(String(localized: "connected now"))
         } else if model.syncClient.isNearby(paired.id) {
-            parts.append(String(localized: "рядом"))
+            parts.append(String(localized: "nearby"))
         } else {
-            parts.append(String(localized: "последний раз \(paired.lastConnected.formatted(.relative(presentation: .named)))"))
+            parts.append(String(localized: "last connected \(paired.lastConnected.formatted(.relative(presentation: .named)))"))
         }
         return parts.joined(separator: " · ")
     }
@@ -369,13 +369,13 @@ struct SettingsView: View {
 
     private func check() async {
         guard let client = model.client else {
-            checkStatus = String(localized: "Некорректный адрес")
+            checkStatus = String(localized: "Invalid address")
             return
         }
         checkStatus = "…"
         do {
             let version = try await client.version()
-            checkStatus = version.isEmpty ? String(localized: "Сервер отвечает") : "go2rtc \(version)"
+            checkStatus = version.isEmpty ? String(localized: "Server is responding") : "go2rtc \(version)"
         } catch {
             checkStatus = error.localizedDescription
         }

@@ -47,7 +47,7 @@ export function ServerSetupDialog({ onClose, onSaved }: { onClose: () => void; o
       result = { kind: 'ok', version: await new Go2RTCClient(target, { fetch: bridgeFetch, timeoutMs: 10_000 }).version() }
     } catch (error) {
       const detail = errorText(error)
-      result = { kind: 'failed', message: isUnreachable(error) ? t('%@ не отвечает', hostText(target.baseURL)) : detail, detail }
+      result = { kind: 'failed', message: isUnreachable(error) ? t('%@ is not responding', hostText(target.baseURL)) : detail, detail }
     }
     setCheck(result)
     return result
@@ -77,20 +77,20 @@ export function ServerSetupDialog({ onClose, onSaved }: { onClose: () => void; o
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={t('Свой сервер go2rtc')}
-      description={t('go2rtc на компьютере или NAS в вашей сети вместо встроенного.')}
+      title={t('Own go2rtc Server')}
+      description={t('go2rtc on a computer or NAS on your network instead of the built-in one.')}
       width={520}
       footer={
         <>
           {settings.connectionMode === 'external' && app.go2rtc.status !== 'unavailable' && (
-            <Tooltip content={t('go2rtc внутри приложения, без отдельного сервера')}>
-              <Button onClick={() => void backToEmbedded()}>{t('Вернуться к встроенному')}</Button>
+            <Tooltip content={t('go2rtc inside the app, without a separate server')}>
+              <Button onClick={() => void backToEmbedded()}>{t('Switch Back to Built-in')}</Button>
             </Tooltip>
           )}
           <span className="spacer" />
-          <Button onClick={onClose}>{t('Отменить')}</Button>
+          <Button onClick={onClose}>{t('Cancel|verb')}</Button>
           <Button variant="primary" disabled={busy || !parsed} onClick={() => void connect()}>
-            {t('Подключить')}
+            {t('Connect')}
           </Button>
         </>
       }
@@ -103,7 +103,7 @@ export function ServerSetupDialog({ onClose, onSaved }: { onClose: () => void; o
         }}
       >
         <label className="field">
-          <span className="field__label">{t('Адрес')}</span>
+          <span className="field__label">{t('Address')}</span>
           <input
             className="input"
             value={urlText}
@@ -115,24 +115,24 @@ export function ServerSetupDialog({ onClose, onSaved }: { onClose: () => void; o
         </label>
         <div className="server-setup__pair">
           <label className="field grow">
-            <span className="field__label">{t('Логин')}</span>
+            <span className="field__label">{t('Username')}</span>
             <input
               className="input"
               value={username}
               spellCheck={false}
               autoComplete="off"
-              placeholder={t('Необязательно')}
+              placeholder={t('Optional')}
               onChange={(event) => setUsername(event.target.value)}
             />
           </label>
           <label className="field grow">
-            <span className="field__label">{t('Пароль')}</span>
+            <span className="field__label">{t('Password')}</span>
             <input
               className="input"
               type="password"
               value={password}
               autoComplete="new-password"
-              placeholder={t('Необязательно')}
+              placeholder={t('Optional')}
               onFocus={(event) => password === PASSWORD_MARKER && event.target.select()}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -142,11 +142,11 @@ export function ServerSetupDialog({ onClose, onSaved }: { onClose: () => void; o
           <CheckResult check={check} />
           <span className="spacer" />
           <Button disabled={busy || !parsed} onClick={() => void runCheck()}>
-            {t('Проверить подключение')}
+            {t('Check Connection')}
           </Button>
         </div>
         <div className="field__hint">
-          {t('Нужна версия 1.9.11 или новее с модулем xiaomi. Пароль сервера хранится в зашифрованном виде на этом компьютере.')}
+          {t('Requires version 1.9.11 or later with the xiaomi module. The server password is stored encrypted on this computer.')}
         </div>
         <button type="submit" hidden tabIndex={-1} />
       </form>
@@ -162,14 +162,14 @@ function CheckResult({ check }: { check: Check }) {
       return (
         <span className="row muted">
           <Spinner />
-          {t('Проверяем…')}
+          {t('Checking…')}
         </span>
       )
     case 'ok':
       return (
         <span className="server-setup__ok">
           <SuccessFilledIcon />
-          {check.version ? t('go2rtc %@ отвечает', check.version) : t('Сервер отвечает')}
+          {check.version ? t('go2rtc %@ is responding', check.version) : t('Server is responding')}
         </span>
       )
     case 'failed':

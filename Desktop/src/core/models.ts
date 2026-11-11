@@ -71,16 +71,16 @@ export const EarlyEntry = {
 
   /** «через 2 мин» / «сразу» / «через пару минут» (`unreadDelay`). */
   delayDescription(entry: EarlyEntry): string {
-    if (entry.delay === null || entry.delay <= 0) return EarlyEntry.unreadDelay(entry) ?? tr('сразу', 'right away')
+    if (entry.delay === null || entry.delay <= 0) return EarlyEntry.unreadDelay(entry) ?? tr('right away', 'сразу')
     const text = DurationText.short(entry.delay)
-    return tr(`через ${text}`, `in ${text}`)
+    return tr(`in ${text}`, `через ${text}`)
   },
 
   /** «встала и пошла → 2:00», «легла → 0:30», «встала → сразу»: the short form for summaries. */
   summary(entry: EarlyEntry): string {
     const [first = '', ...rest] = Array.from(entry.event)
     const name = first.toLowerCase() + rest.join('')
-    if (entry.delay === null || entry.delay <= 0) return `${name} → ` + (EarlyEntry.unreadDelay(entry) ?? tr('сразу', 'right away'))
+    if (entry.delay === null || entry.delay <= 0) return `${name} → ` + (EarlyEntry.unreadDelay(entry) ?? tr('right away', 'сразу'))
     return `${name} → ${DurationText.clock(entry.delay)}`
   },
 
@@ -128,7 +128,7 @@ export const EarlyEntry = {
 
   /** «Встала → сразу»: an exit's «ИЛИ до вставания» as a condition of its own (`TrainingPlan.foldUntilStanding`). */
   untilStanding(): EarlyEntry {
-    return EarlyEntry.make({ event: tr('Встала', 'Stands up') })
+    return EarlyEntry.make({ event: tr('Stands up', 'Встала') })
   },
 
   encode(entry: EarlyEntry): JSONObject {
@@ -242,12 +242,12 @@ export const PlannedExit = {
 
   /** "или до вставания": come back as soon as the dog stands up. */
   untilStandingText(): string {
-    return tr('или до вставания', 'or until the dog stands')
+    return tr('or until the dog stands', 'или до вставания')
   },
 
   /** An extra exit's time: «без времени». */
   openText(): string {
-    return tr('без времени', 'no set time')
+    return tr('no set time', 'без времени')
   },
 
   encode(exit: PlannedExit): JSONObject {
@@ -328,7 +328,7 @@ export const TrainingPlan = {
 
   /** Title of a schedule without a header line. */
   defaultTitle(): string {
-    return tr('Тренировка', 'Training')
+    return tr('Training', 'Тренировка')
   },
 
   make(fields: Partial<TrainingPlan> = {}): TrainingPlan {
@@ -492,7 +492,7 @@ export const TrainingPlan = {
       plan.notes.find((text) => PlanParser.hasMark(text, '🚩')) ?? plan.notes.find((text) => PlanParser.isDoNotEnterRule(text))
     if (note === undefined) return null
     const { title, detail } = PlanParser.splitCondition(note)
-    return { title: title ?? tr('Не входить', 'Do not come in'), detail, text: note }
+    return { title: title ?? tr('Do not come in', 'Не входить'), detail, text: note }
   },
 
   /**
@@ -504,30 +504,30 @@ export const TrainingPlan = {
     const short = DurationText.short
     if (plan.defaultBreak !== old.defaultBreak) {
       changes.push(
-        tr(`перерывы ${short(old.defaultBreak)} → ${short(plan.defaultBreak)}`, `breaks ${short(old.defaultBreak)} → ${short(plan.defaultBreak)}`),
+        tr(`breaks ${short(old.defaultBreak)} → ${short(plan.defaultBreak)}`, `перерывы ${short(old.defaultBreak)} → ${short(plan.defaultBreak)}`),
       )
     }
     plan.exits.forEach((exit, index) => {
       const oldIndex = old.exits.findIndex((other) => sameUUID(other.id, exit.id))
       const description = PlannedExit.durationDescription(exit)
       if (oldIndex < 0) {
-        changes.push(tr(`добавлен выход ${exit.number} — ${description}`, `exit ${exit.number} added — ${description}`))
+        changes.push(tr(`exit ${exit.number} added — ${description}`, `добавлен выход ${exit.number} — ${description}`))
         return
       }
       const was = old.exits[oldIndex]
       // «или до вставания» is a condition now: «ранний вход» below says it changed.
       if (was.duration !== exit.duration) {
         const before = PlannedExit.durationDescription(was)
-        changes.push(tr(`выход ${exit.number}: ${before} → ${description}`, `exit ${exit.number}: ${before} → ${description}`))
+        changes.push(tr(`exit ${exit.number}: ${before} → ${description}`, `выход ${exit.number}: ${before} → ${description}`))
       }
       if (!deepEqual(was.triggers, exit.triggers)) {
-        changes.push(tr(`выход ${exit.number}: триггеры`, `exit ${exit.number}: triggers`))
+        changes.push(tr(`exit ${exit.number}: triggers`, `выход ${exit.number}: триггеры`))
       }
       if (!deepEqual(TrainingPlan.earlyEntries(old, was), TrainingPlan.earlyEntries(plan, exit))) {
-        changes.push(tr(`выход ${exit.number}: ранний вход`, `exit ${exit.number}: coming back early`))
+        changes.push(tr(`exit ${exit.number}: coming back early`, `выход ${exit.number}: ранний вход`))
       }
       if (PlannedExit.noteText(was) !== PlannedExit.noteText(exit)) {
-        changes.push(tr(`выход ${exit.number}: заметка`, `exit ${exit.number}: note`))
+        changes.push(tr(`exit ${exit.number}: note`, `выход ${exit.number}: заметка`))
       }
       // Own breaks only: a new common break is already said above.
       const before = TrainingPlan.breakAfter(old, oldIndex)
@@ -535,15 +535,15 @@ export const TrainingPlan = {
       if ((was.breakAfter !== null || exit.breakAfter !== null) && before !== after && index < plan.exits.length - 1) {
         changes.push(
           tr(
-            `перерыв после выхода ${exit.number}: ${short(before)} → ${short(after)}`,
             `break after exit ${exit.number}: ${short(before)} → ${short(after)}`,
+            `перерыв после выхода ${exit.number}: ${short(before)} → ${short(after)}`,
           ),
         )
       }
     })
     for (const exit of old.exits) {
       if (!plan.exits.some((other) => sameUUID(other.id, exit.id))) {
-        changes.push(tr(`убран выход ${exit.number}`, `exit ${exit.number} removed`))
+        changes.push(tr(`exit ${exit.number} removed`, `убран выход ${exit.number}`))
       }
     }
     return changes

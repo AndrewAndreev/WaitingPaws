@@ -17,15 +17,15 @@ export function TrainerText({ plan, exitIndex }: { plan: TrainingPlan; exitIndex
     <section className="trainer-text">
       <h4 className="brief__title">
         <SourceTextIcon />
-        {t('Текст тренера')}
+        {t('Trainer’s Text')}
         <span className="spacer" />
-        <Tooltip content={t('Развернуть')}>
-          <Button variant="subtle" size="sm" iconOnly className="trainer-text__expand" icon={<ExpandIcon />} aria-label={t('Развернуть')} onClick={() => setExpanded(true)} />
+        <Tooltip content={t('Expand')}>
+          <Button variant="subtle" size="sm" iconOnly className="trainer-text__expand" icon={<ExpandIcon />} aria-label={t('Expand')} onClick={() => setExpanded(true)} />
         </Tooltip>
       </h4>
       <TrainerLines plan={plan} lines={lines} exitIndex={exitIndex} />
       {expanded && (
-        <Dialog open onOpenChange={(open) => !open && setExpanded(false)} title={t('Текст тренера')} width={760} height={820} bodyClassName="trainer-text__dialog">
+        <Dialog open onOpenChange={(open) => !open && setExpanded(false)} title={t('Trainer’s Text')} width={760} height={820} bodyClassName="trainer-text__dialog">
           <TrainerLines plan={plan} lines={lines} exitIndex={exitIndex} large />
         </Dialog>
       )}

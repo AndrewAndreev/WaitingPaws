@@ -31,8 +31,8 @@ export function GlobalDialogs() {
       <Dialog
         open={confirmFinish && app.session !== null}
         onOpenChange={(open) => ui.set({ confirmFinish: open })}
-        title={t('Завершить тренировку?')}
-        description={t('Запись остановится, лог и видео сохранятся в истории.')}
+        title={t('Finish Training?')}
+        description={t('Recording will stop; the log and video will be saved to History.')}
         hideClose
         width={580}
         footer={
@@ -44,10 +44,10 @@ export function GlobalDialogs() {
                 void call('session.abandon')
               }}
             >
-              {t('Отменить без сохранения')}
+              {t('Cancel Without Saving')}
             </Button>
             <span className="spacer" />
-            <Button onClick={() => ui.set({ confirmFinish: false })}>{t('Продолжить')}</Button>
+            <Button onClick={() => ui.set({ confirmFinish: false })}>{t('Continue')}</Button>
             <Button
               variant="primary"
               autoFocus
@@ -56,7 +56,7 @@ export function GlobalDialogs() {
                 void call('session.command', 'finish')
               }}
             >
-              {t('Завершить и сохранить')}
+              {t('Finish and Save')}
             </Button>
           </>
         }
@@ -66,8 +66,8 @@ export function GlobalDialogs() {
       <Dialog
         open={confirmStopRecording && isRecording(app)}
         onOpenChange={(open) => ui.set({ confirmStopRecording: open })}
-        title={t('Остановить запись?')}
-        description={app.session ? t('Тренировка продолжится без видео. То, что уже записано, сохранится.') : t('Видео сохранится в истории.')}
+        title={t('Stop recording?')}
+        description={app.session ? t('The training goes on without video. What has been recorded so far will be kept.') : t('The video will be saved to History.')}
         hideClose
         width={460}
         footer={
@@ -79,11 +79,11 @@ export function GlobalDialogs() {
                 void call('recording.stop')
               }}
             >
-              {t('Остановить запись')}
+              {t('Stop Recording')}
             </Button>
             <span className="spacer" />
             <Button variant="primary" autoFocus onClick={() => ui.set({ confirmStopRecording: false })}>
-              {t('Продолжить запись')}
+              {t('Keep Recording')}
             </Button>
           </>
         }
@@ -93,13 +93,13 @@ export function GlobalDialogs() {
         open={app.errorMessage !== null}
         onOpenChange={(open) => !open && void call('state.dismissError')}
         icon={<ErrorIcon style={{ color: 'var(--danger)', width: 24, height: 24, marginTop: 2 }} />}
-        title={t('Ошибка')}
+        title={t('Error')}
         description={app.errorMessage ?? ''}
         width={440}
         hideClose
         footer={
           <Button variant="primary" autoFocus onClick={() => void call('state.dismissError')}>
-            {t('Ок')}
+            {t('OK')}
           </Button>
         }
       />
@@ -109,8 +109,8 @@ export function GlobalDialogs() {
           open
           onOpenChange={(open) => !open && void call('sync.respond', request.id, false)}
           icon={<PhoneIcon style={{ color: 'var(--info)', width: 24, height: 24, marginTop: 2 }} />}
-          title={t('«%@» хочет подключиться', request.model && request.model !== request.deviceName ? `${request.deviceName} (${request.model})` : request.deviceName)}
-          description={t('iPhone увидит камеру и сможет вести тренировку на этом компьютере. Разрешайте только своим устройствам.')}
+          title={t('“%@” wants to connect', request.model && request.model !== request.deviceName ? `${request.deviceName} (${request.model})` : request.deviceName)}
+          description={t('The iPhone will see the camera and can run the training on this computer. Allow only your own devices.')}
           hideClose
           width={460}
           footer={
@@ -118,17 +118,17 @@ export function GlobalDialogs() {
             // default then.
             <>
               <Button variant={request.wasPaired ? 'primary' : 'default'} autoFocus={request.wasPaired} onClick={() => void call('sync.respond', request.id, false)}>
-                {t('Отклонить')}
+                {t('Decline')}
               </Button>
               <Button variant={request.wasPaired ? 'default' : 'primary'} onClick={() => void call('sync.respond', request.id, true)}>
-                {t('Разрешить')}
+                {t('Allow')}
               </Button>
             </>
           }
         >
           {request.wasPaired ? (
             <InfoBar kind="warning" icon={<WarningIcon style={{ color: 'var(--warning)', flex: 'none' }} />}>
-              {t('Этот iPhone уже был подключён, но не подтвердил это. Если на нём не нажимали «Забыть», нажмите «Отклонить».')}
+              {t('This iPhone was linked before but couldn’t confirm it. If it wasn’t forgotten on the iPhone, choose Decline.')}
             </InfoBar>
           ) : undefined}
         </Dialog>
@@ -161,7 +161,7 @@ function SummaryDialog({ record }: { record: TrainingRecord }) {
       open
       onOpenChange={(open) => !open && close()}
       icon={<CheckIcon style={{ color: 'var(--success)', width: 28, height: 28, marginTop: 2 }} />}
-      title={t('Тренировка завершена')}
+      title={t('Training Complete')}
       description={`${record.plan.title} · ${formatTime(record.startedAt)}–${formatTime(record.finishedAt)} (${DurationText.short(Math.max(60, Math.round(duration / 60) * 60))})`}
       width={620}
       footer={
@@ -173,24 +173,24 @@ function SummaryDialog({ record }: { record: TrainingRecord }) {
               close()
             }}
           >
-            {t('История')}
+            {t('History')}
           </Button>
           <Button variant="primary" autoFocus onClick={close}>
-            {t('Готово')}
+            {t('Done')}
           </Button>
         </>
       }
     >
       <div className="col" style={{ gap: 16 }}>
         <div className="summary-stats">
-          <SummaryStat value={t('%lld из %lld', completed, record.plan.exits.length)} label={t('выходов')} />
-          <SummaryStat value={String(falseStarts)} label={t('фальстартов')} warn={falseStarts > 0} />
-          <SummaryStat value={DurationText.clock(longest)} label={t('дольше всего за дверью')} />
+          <SummaryStat value={t('%lld of %lld', completed, record.plan.exits.length)} label={t('exits')} />
+          <SummaryStat value={String(falseStarts)} label={t('false starts')} warn={falseStarts > 0} />
+          <SummaryStat value={DurationText.clock(longest)} label={t('longest outside')} />
         </div>
         <PlanFactChart record={record} />
         <div className="col" style={{ gap: 6 }}>
           <div className="row">
-            <span className="h3">{t('Лог для тренера')}</span>
+            <span className="h3">{t('Log for the Trainer')}</span>
             <span className="spacer" />
             <Button
               size="sm"
@@ -200,7 +200,7 @@ function SummaryDialog({ record }: { record: TrainingRecord }) {
                 setCopied(true)
               }}
             >
-              {copied ? t('Скопировано') : t('Скопировать')}
+              {copied ? t('Copied') : t('Copy')}
             </Button>
           </div>
           <pre className="log-box selectable">{log}</pre>
@@ -212,11 +212,11 @@ function SummaryDialog({ record }: { record: TrainingRecord }) {
               <div className="ellipsis">{video}</div>
               <div className="faint" style={{ fontSize: 12 }}>
                 {DurationText.clock(duration)}
-                {finalizing ? ' · ' + t('готовится…') : ''}
+                {finalizing ? ' · ' + t('preparing…') : ''}
               </div>
             </div>
             <Button size="sm" icon={<FolderIcon />} onClick={() => void call('shell.showItem', 'recording', video)}>
-              {t('Показать в проводнике')}
+              {t('Show in Explorer')}
             </Button>
           </div>
         )}
@@ -246,19 +246,19 @@ export function PlanFactChart({ record }: { record: TrainingRecord }) {
   return (
     <div className="col" style={{ gap: 6 }}>
       <div className="row">
-        <span className="h3">{t('План и факт')}</span>
+        <span className="h3">{t('Plan vs. Actual')}</span>
         <span className="spacer" />
         <span className="legend">
           <span className="legend__swatch seg--exit" style={{ opacity: 0.45 }} />
-          {t('план')}
+          {t('plan')}
         </span>
         <span className="legend">
           <span className="legend__swatch seg--outside" />
-          {t('за дверью')}
+          {t('outside')}
         </span>
         <span className="legend">
           <span className="legend__swatch seg--false" />
-          {t('фальстарт')}
+          {t('false start')}
         </span>
       </div>
       <div className="bars" style={{ height }}>
@@ -301,8 +301,8 @@ function ClipSavedDialog({ clip }: { clip: RecordingClip }) {
       open
       onOpenChange={(open) => !open && close()}
       icon={<ClipIcon style={{ color: 'var(--danger)', width: 24, height: 24, marginTop: 2 }} />}
-      title={t('Запись сохранена')}
-      description={t('Видео без тренировки — в истории.')}
+      title={t('Recording Saved')}
+      description={t('The video without a training is in History.')}
       width={480}
       footer={
         <>
@@ -313,10 +313,10 @@ function ClipSavedDialog({ clip }: { clip: RecordingClip }) {
               close()
             }}
           >
-            {t('История')}
+            {t('History')}
           </Button>
           <Button variant="primary" autoFocus onClick={close}>
-            {t('Готово')}
+            {t('Done')}
           </Button>
         </>
       }
@@ -327,7 +327,7 @@ function ClipSavedDialog({ clip }: { clip: RecordingClip }) {
           <div className="grow">
             <div className="ellipsis">{clip.fileName}</div>
             <div className="faint" style={{ fontSize: 12 }}>
-              {finalizing ? t('готовится…') : formatBytes(size)}
+              {finalizing ? t('preparing…') : formatBytes(size)}
             </div>
           </div>
         </div>
@@ -338,15 +338,15 @@ function ClipSavedDialog({ clip }: { clip: RecordingClip }) {
           disabled={finalizing}
           onClick={() => {
             callStrict('shell.copyFile', clip.fileName).then(
-              () => toast({ title: t('Видео скопировано — вставьте его в мессенджер или папку'), kind: 'success' }),
+              () => toast({ title: t('Video copied — paste it into a messenger or a folder'), kind: 'success' }),
               (error: Error) => toast({ title: error.message, kind: 'danger' }),
             )
           }}
         >
-          {t('Копировать файл')}
+          {t('Copy File')}
         </Button>
         <Button size="sm" icon={<FolderIcon />} onClick={() => void call('shell.showItem', 'recording', clip.fileName)}>
-          {t('Показать в проводнике')}
+          {t('Show in Explorer')}
         </Button>
         </div>
       </div>

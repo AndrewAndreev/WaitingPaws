@@ -36,7 +36,7 @@ enum SetupServerState: Equatable {
             case .unavailable: return .unavailable
             }
         case .external:
-            let host = model.settings.server.map { Self.hostText($0.baseURL) } ?? String(localized: "адрес не указан")
+            let host = model.settings.server.map { Self.hostText($0.baseURL) } ?? String(localized: "no address set")
             if case .failed(let message) = probe?.phase { return .externalFailed(host: host, message: message) }
             return .external(host: host, version: probe?.serverVersion)
         }
@@ -61,14 +61,14 @@ struct SetupServerStatusLabel: View {
             switch state {
             case .starting:
                 ProgressView().controlSize(.mini)
-                Text("Запускаем встроенный go2rtc…")
+                Text("Starting built-in go2rtc…")
             case .running(let version):
                 StatusDot(color: MacPalette.green, size: 6)
-                Text(compact ? "go2rtc \(version)" : "Встроенный go2rtc \(version) работает")
+                Text(compact ? "go2rtc \(version)" : "Built-in go2rtc \(version) is running")
             case .stopped:
                 StatusDot(color: .secondary.opacity(0.6), size: 6)
-                Text("Встроенный go2rtc не запущен")
-                Button("Запустить") { model.setupRetryEmbedded() }
+                Text("Built-in go2rtc is not running")
+                Button("Start") { model.setupRetryEmbedded() }
                     .buttonStyle(.borderless)
             case .failed(let message):
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(MacPalette.orange)
@@ -76,23 +76,23 @@ struct SetupServerStatusLabel: View {
                     .lineLimit(2)
                     .truncationMode(.tail)
                     .help(message)
-                Button("Попробовать снова") { model.setupRetryEmbedded() }
+                Button("Try Again") { model.setupRetryEmbedded() }
                     .buttonStyle(.borderless)
                     .fixedSize()
             case .unavailable:
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(MacPalette.orange)
-                Text("Сборка без встроенного go2rtc — укажите свой сервер")
+                Text("This build has no built-in go2rtc — enter your own server")
             case .external(let host, let version):
                 if let version {
                     StatusDot(color: MacPalette.green, size: 6)
-                    Text(compact ? "go2rtc \(version)" : "Свой сервер go2rtc \(version) · \(host)")
+                    Text(compact ? "go2rtc \(version)" : "Own go2rtc server \(version) · \(host)")
                 } else {
                     Image(systemName: "server.rack")
-                    Text("Свой сервер go2rtc · \(host)")
+                    Text("Own go2rtc server · \(host)")
                 }
             case .externalFailed(let host, let message):
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(MacPalette.orange)
-                Text("\(host) не отвечает")
+                Text("\(host) is not responding")
                     .help(message)
             }
         }
@@ -148,7 +148,7 @@ struct SetupCodeField: View {
                 .autocorrectionDisabled()
                 .opacity(0.011)
                 .focused($focused)
-                .accessibilityLabel("Код подтверждения")
+                .accessibilityLabel("Verification Code")
                 .onChange(of: code) { _, new in
                     let digits = String(new.filter(\.isNumber).prefix(length))
                     if digits != new { code = digits }
@@ -180,7 +180,7 @@ struct SetupCaptchaImage: View {
         .background(.white, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(.black.opacity(0.12)))
-        .accessibilityLabel("Капча")
+        .accessibilityLabel("Captcha")
     }
 }
 

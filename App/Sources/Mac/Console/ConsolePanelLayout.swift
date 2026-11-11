@@ -137,7 +137,7 @@ struct TrainingPanelEdge: View {
                 }
                 .onEnded { _ in startWidth = nil }
         )
-        .help(canFold ? "Потяните, чтобы изменить ширину; до упора вправо — только камера" : "Потяните, чтобы изменить ширину")
+        .help(canFold ? "Drag to resize; all the way to the right for camera only" : "Drag to resize")
         .accessibilityHidden(true)
     }
 }

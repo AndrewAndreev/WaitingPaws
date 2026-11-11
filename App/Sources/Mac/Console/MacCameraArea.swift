@@ -137,16 +137,16 @@ struct MacCameraArea: View {
                 }
             }
         } else {
-            CameraPlaceholder(text: String(localized: "Камера не выбрана"))
+            CameraPlaceholder(text: String(localized: "No camera selected"))
         }
     }
 
     /// Started without a camera: the timer, schedule and log work; a camera can be added any time.
     private var noCamera: some View {
         ContentUnavailableView {
-            Label("Без камеры", systemImage: "pawprint.fill")
+            Label("No Camera", systemImage: "pawprint.fill")
         } actions: {
-            Button("Подключить камеру…") { openWindow(id: "welcome") }
+            Button("Connect a Camera…") { openWindow(id: "welcome") }
                 .buttonStyle(.borderedProminent)
         }
         .foregroundStyle(.white.opacity(0.85))
@@ -154,9 +154,9 @@ struct MacCameraArea: View {
 
     private var embeddedStatusText: String {
         switch model.embedded.status {
-        case .idle, .starting: return String(localized: "Запускаем go2rtc…")
+        case .idle, .starting: return String(localized: "Starting go2rtc…")
         case .failed(let message): return message
-        case .unavailable: return String(localized: "Встроенный go2rtc не собран")
+        case .unavailable: return String(localized: "Built-in go2rtc isn’t included in this build")
         case .running: return ""
         }
     }

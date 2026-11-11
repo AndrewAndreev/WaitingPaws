@@ -125,23 +125,23 @@ export function SessionTimeline({ live }: { live: LiveSession }) {
   return (
     <div className="timeline">
       <div className="timeline__header">
-        <span className="h3">{t('Таймлайн')}</span>
+        <span className="h3">{t('Timeline')}</span>
         <span className="timeline__legend">
-          <Legend kind="exit" text={t('выход')} />
-          <Legend kind="break" text={t('перерыв')} />
-          <Legend kind="over" text={t('сверх плана / фальстарт')} />
+          <Legend kind="exit" text={t('exit')} />
+          <Legend kind="break" text={t('break')} />
+          <Legend kind="over" text={t('over plan / false start')} />
         </span>
         <span className="spacer" />
         <Stats live={live} />
-        <Button icon={<EditIcon />} onClick={() => ui.set({ editingSessionPlan: true })} title={t('Поправить выходы и перерывы прямо во время тренировки') + ' (Ctrl+E)'}>
-          {t('Расписание…')}
+        <Button icon={<EditIcon />} onClick={() => ui.set({ editingSessionPlan: true })} title={t('Change exits and breaks right during the training') + ' (Ctrl+E)'}>
+          {t('Schedule…')}
         </Button>
       </div>
       <div className="timeline__body" ref={ref}>
         <Ruler start={start} end={end} x={x} />
         <div className="timeline__lanes">
           <div className="lane">
-            <span className="lane__title">{t('План')}</span>
+            <span className="lane__title">{t('Plan')}</span>
             {planSegments.map((segment, index) => {
               const edge = segment.edge!
               const value = blockValue(live.plan, edge)
@@ -185,14 +185,14 @@ export function SessionTimeline({ live }: { live: LiveSession }) {
                 className={'tl-handle' + (sameEdge(drag?.edge, segment.edge) ? ' is-active' : '')}
                 style={{ left: x(segment.end) - 5 }}
                 onPointerDown={(event) => startResize(event, segment.edge!)}
-                title={t('Тяните край блока, чтобы изменить длительность (⇧ — по 5 с)')}
+                title={t('Drag the edge of a block to change its length (⇧ — in 5 s steps)')}
               >
                 <span className="tl-handle__grip" />
               </div>
             ))}
           </div>
-          <Lane title={t('Факт')} segments={factSegments(live, plan)} x={x} />
-          <Lane title={t('Запись')} segments={recordSegments(live)} x={x} thin />
+          <Lane title={t('Actual')} segments={factSegments(live, plan)} x={x} />
+          <Lane title={t('Record')} segments={recordSegments(live)} x={x} thin />
         </div>
         <div className="timeline__playhead" style={{ left: x(live.now) }}>
           <span className="timeline__playhead-label tabular">{formatTime(live.now, true)}</span>
@@ -208,13 +208,13 @@ function Stats({ live }: { live: LiveSession }) {
   const drift = live.drift
   return (
     <span className="timeline__stats">
-      <Stat value={t('%lld из %lld', live.completedExits, live.plan.exits.length)} label={t('выходов')} />
-      <Stat value={String(live.falseStarts)} label={t('фальстартов')} warn={live.falseStarts > 0} />
-      <Stat value={DurationText.clock((live.now - live.session.startedAt) / 1000)} label={t('идёт тренировка')} />
-      <Stat value={`≈ ${formatTime(live.eta)}`} label={t('конец по плану')} />
+      <Stat value={t('%lld of %lld', live.completedExits, live.plan.exits.length)} label={t('exits')} />
+      <Stat value={String(live.falseStarts)} label={t('false starts')} warn={live.falseStarts > 0} />
+      <Stat value={DurationText.clock((live.now - live.session.startedAt) / 1000)} label={t('training time')} />
+      <Stat value={`≈ ${formatTime(live.eta)}`} label={t('planned end')} />
       {drift !== null && Math.abs(drift) >= 1 && (
-        <span title={drift > 0 ? t('отстаём от плана на %@', DurationText.clock(drift)) : t('опережаем план на %@', DurationText.clock(-drift))}>
-          <Stat value={(drift > 0 ? '+' : '−') + DurationText.clock(Math.abs(drift))} label={t('от плана')} warn={drift > 60} />
+        <span title={drift > 0 ? t('behind plan by %@', DurationText.clock(drift)) : t('ahead of plan by %@', DurationText.clock(-drift))}>
+          <Stat value={(drift > 0 ? '+' : '−') + DurationText.clock(Math.abs(drift))} label={t('vs plan')} warn={drift > 60} />
         </span>
       )}
     </span>
@@ -246,7 +246,7 @@ function DragTip({ plan, drag, x }: { plan: TrainingPlan; drag: EdgeDrag; x: num
 
 function edgeTitle(plan: TrainingPlan, edge: PlanEdge): string {
   const number = plan.exits[edge.index]?.number ?? edge.index + 1
-  return edge.kind === 'exit' ? t('Выход %lld', number) : t('Перерыв после %lld', number)
+  return edge.kind === 'exit' ? t('Exit %lld', number) : t('Break after %lld', number)
 }
 
 function blockValue(plan: TrainingPlan, edge: PlanEdge): number {
@@ -440,8 +440,8 @@ export function EmptyTimeline() {
   return (
     <div className="empty-state" style={{ height: '100%' }}>
       <ChartIcon style={{ width: 28, height: 28 }} />
-      <div className="empty-state__title">{t('Здесь появится план на шкале времени')}</div>
-      <div style={{ fontSize: 13 }}>{t('После вставки расписания выходы и перерывы можно растянуть мышью перед стартом.')}</div>
+      <div className="empty-state__title">{t('The plan will appear here on a timeline')}</div>
+      <div style={{ fontSize: 13 }}>{t('After pasting a schedule, you can drag exits and breaks with the mouse to adjust them before the start.')}</div>
     </div>
   )
 }

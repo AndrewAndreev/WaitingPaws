@@ -47,17 +47,17 @@ struct ExitEditorView: View {
             }
             Section {
                 HStack {
-                    Text("За дверью")
+                    Text("Outside")
                     Spacer()
-                    DurationButton(value: $draft.keepingCommonEntriesScope.exits[index].duration, title: String(localized: "Выход \(exit.number)"),
+                    DurationButton(value: $draft.keepingCommonEntriesScope.exits[index].duration, title: String(localized: "Exit \(exit.number)"),
                                    presets: DurationPresets.exits, tint: Theme.accent)
                 }
                 if index < draft.exits.count - 1 {
                     HStack {
-                        Text("Перерыв после")
+                        Text("Break After")
                         Spacer()
                         DurationButton(value: $draft.exits[index].breakAfter,
-                                       title: String(localized: "Перерыв после выхода \(exit.number)"),
+                                       title: String(localized: "Break After Exit \(exit.number)"),
                                        presets: DurationPresets.breaks, defaultValue: draft.defaultBreak, secondsStep: 5,
                                        tint: Theme.info)
                     }
@@ -73,7 +73,7 @@ struct ExitEditorView: View {
                         triggerText = ""
                         triggerEdit = TriggerEdit(index: nil)
                     } label: {
-                        Label("Добавить", systemImage: "plus")
+                        Label("Add", systemImage: "plus")
                             .font(.system(.subheadline, design: .rounded, weight: .medium))
                             .foregroundStyle(Theme.accent)
                             .padding(.horizontal, 12)
@@ -86,42 +86,42 @@ struct ExitEditorView: View {
             } header: {
                 // No sentence under it (design council, round 17): the trainer's words over the fields show what a
                 // trigger is.
-                Label("Триггеры на выходе", systemImage: "bolt.fill")
+                Label("Triggers on the way out", systemImage: "bolt.fill")
             }
 
             entriesSection(index)
 
             Section {
-                TextField("Заметка к выходу", text: Binding(
+                TextField("Note for the exit", text: Binding(
                     get: { draft.exits[index].note ?? "" },
                     set: { draft.exits[index].note = $0.isEmpty ? nil : $0 }), axis: .vertical)
                     .lineLimit(3...10)
             } header: {
-                Label("Заметка", systemImage: "text.bubble")
+                Label("Note", systemImage: "text.bubble")
             }
         }
         #if os(macOS)
         .formStyle(.grouped)
         #endif
-        .navigationTitle(String(localized: "Выход \(exit.number)"))
+        .navigationTitle(String(localized: "Exit \(exit.number)"))
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Отмена") { dismiss() } }
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Готово") {
+                Button("Done") {
                     plan = draft
                     dismiss()
                 }
                 .fontWeight(.semibold)
             }
         }
-        .alert(triggerEdit?.index == nil ? String(localized: "Новый триггер") : String(localized: "Триггер"),
+        .alert(triggerEdit?.index == nil ? String(localized: "New Trigger") : String(localized: "Trigger"),
                isPresented: Binding(get: { triggerEdit != nil }, set: { if !$0 { triggerEdit = nil } })) {
-            TextField("куртка, обувь, ключи…", text: $triggerText)
-            Button("Готово") { commitTrigger(exitIndex: index) }
-            Button("Отмена", role: .cancel) {}
+            TextField("jacket, shoes, keys…", text: $triggerText)
+            Button("Done") { commitTrigger(exitIndex: index) }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -149,7 +149,7 @@ struct ExitEditorView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Убрать «\(trigger)»")
+            .accessibilityLabel("Remove “\(trigger)”")
         }
         .font(.system(.subheadline, design: .rounded, weight: .medium))
         .padding(.leading, 12)
@@ -189,25 +189,25 @@ struct ExitEditorView: View {
             Button {
                 withAnimation { draft.addEarlyEntry(toExitAt: index) }
             } label: {
-                Label("Своё условие", systemImage: "plus")
+                Label("Own condition", systemImage: "plus")
             }
             if !draft.commonEarlyEntries.isEmpty {
                 if exit.earlyEntries.isEmpty {
                     Toggle(isOn: $draft.exits[index].usesCommonEarlyEntries) {
-                        Text("Общие условия тренировки")
+                        Text("The training’s common conditions")
                     }
                     .tint(Theme.accent)
                 } else {
-                    Button("Вернуть общие условия") {
+                    Button("Use the common conditions") {
                         withAnimation { draft.restoreCommonEarlyEntries(ofExitAt: index) }
                     }
                 }
             }
         } header: {
             HStack {
-                Label("Ранний вход", systemImage: "figure.run")
+                Label("Coming back early", systemImage: "figure.run")
                 Spacer()
-                if common { Text("общие").foregroundStyle(Theme.warning) }
+                if common { Text("common|plural").foregroundStyle(Theme.warning) }
             }
         }
     }
@@ -242,10 +242,10 @@ private struct EntryEditorRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
                 Menu {
-                    Picker("Цвет", selection: $entry.tone) {
-                        Text("🟡 Жёлтый").tag(EarlyEntry.Tone.yellow)
-                        Text("🟢 Зелёный").tag(EarlyEntry.Tone.green)
-                        Text("Без цвета").tag(EarlyEntry.Tone.plain)
+                    Picker("Color", selection: $entry.tone) {
+                        Text("🟡 Yellow").tag(EarlyEntry.Tone.yellow)
+                        Text("🟢 Green").tag(EarlyEntry.Tone.green)
+                        Text("No color").tag(EarlyEntry.Tone.plain)
                     }
                 } label: {
                     Circle().fill(entry.tone.color).frame(width: 12, height: 12)
@@ -254,11 +254,11 @@ private struct EntryEditorRow: View {
                 }
                 .menuStyle(.button)
                 .buttonStyle(.plain)
-                .accessibilityLabel("Цвет условия")
-                TextField("Встала и пошла", text: $entry.event)
+                .accessibilityLabel("Condition color")
+                TextField("Stood up and walked", text: $entry.event)
                     .font(.system(.body, design: .rounded, weight: .medium))
                 if isCommon {
-                    Text("общее")
+                    Text("common")
                         .font(.system(.caption2, design: .rounded, weight: .semibold))
                         .foregroundStyle(Theme.warning)
                         .padding(.horizontal, 6)
@@ -266,8 +266,8 @@ private struct EntryEditorRow: View {
                         .background(Theme.warning.opacity(0.15), in: Capsule())
                 }
                 DurationButton(value: Binding(get: { entry.delay ?? 0 }, set: { entry.delay = $0 > 0 ? $0 : nil }),
-                               title: String(localized: "Через сколько входить"), presets: DurationPresets.entryDelays,
-                               zeroTitle: String(localized: "сразу"), tint: Theme.info)
+                               title: String(localized: "Come in after"), presets: DurationPresets.entryDelays,
+                               zeroTitle: String(localized: "right away"), tint: Theme.info)
             }
             if hasDetail {
                 TextField(text: Binding(get: { entry.detail ?? "" }, set: { entry.detail = $0.isEmpty ? nil : $0 }),

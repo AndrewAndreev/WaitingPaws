@@ -28,7 +28,7 @@ struct MacHistoryTable: View {
         @Bindable var controller = controller
         ScrollViewReader { scroller in
             Table(rows, selection: $controller.selection, sortOrder: $controller.sortOrder) {
-                TableColumn("Дата", value: \.date) { row in
+                TableColumn("Date", value: \.date) { row in
                     HStack(spacing: 8) {
                         MacHistoryThumbnail(video: row.video, preparing: preparing(row),
                                             progress: row.video.flatMap { model.videoPreparations[$0.fileName]?.fraction } ?? 0,
@@ -39,7 +39,7 @@ struct MacHistoryTable: View {
                 }
                 .width(min: 170, ideal: 186)
 
-                TableColumn("Тренировка", value: \.title) { row in
+                TableColumn("Training", value: \.title) { row in
                     Text(row.title)
                         .foregroundStyle(row.isClip ? .secondary : .primary)
                         .help(row.title)
@@ -48,12 +48,12 @@ struct MacHistoryTable: View {
 
                 // «7 · ↶1»: the exits done — «5 из 7» only where not all were — and the false starts with them, in
                 // their orange, only where there were any.
-                TableColumn("Выходы", value: \.exitsDone) { row in
+                TableColumn("Exits", value: \.exitsDone) { row in
                     if let record = row.record {
                         HStack(spacing: 6) {
                             Group {
                                 if record.completedExits < record.plan.exits.count {
-                                    Text("\(record.completedExits) из \(record.plan.exits.count)")
+                                    Text("\(record.completedExits) of \(record.plan.exits.count)")
                                 } else {
                                     Text(verbatim: "\(record.completedExits)")
                                 }
@@ -70,7 +70,7 @@ struct MacHistoryTable: View {
                 }
                 .width(min: 90, ideal: 104)
 
-                TableColumn("Дольше всего", value: \.longest) { row in
+                TableColumn("Longest", value: \.longest) { row in
                     if let record = row.record {
                         LongestCell(value: record.longestStayBehindDoor,
                                     plan: record.longestResult?.plannedDuration ?? record.longestPlannedExit)
@@ -122,21 +122,21 @@ struct MacHistoryRowMenu: View {
     let row: MacHistoryRow
 
     var body: some View {
-        Button("Воспроизвести", systemImage: "play") { controller.play(row) }
+        Button("Play", systemImage: "play") { controller.play(row) }
             .disabled(row.video == nil)
-        Button(row.video == nil ? "Показать лог в Finder" : "Показать в Finder", systemImage: "folder") {
+        Button(row.video == nil ? "Show Log in Finder" : "Show in Finder", systemImage: "folder") {
             controller.revealInFinder(row, model: model)
         }
         if let video = row.video {
-            Button("Сохранить в Фото", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
+            Button("Save to Photos", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
             // AppKit's share picker with the file itself, not ShareLink (see `MacShareItem`).
-            Button("Отправить видео…", systemImage: "film") { controller.shareAnchor.show(.file(video.url), atPointer: true) }
+            Button("Share Video…", systemImage: "film") { controller.shareAnchor.show(.file(video.url), atPointer: true) }
                 .disabled(model.finalizingFileNames.contains(video.fileName))
         }
         if let record = row.record, let log = row.logText {
             Divider()
-            Button("Скопировать лог", systemImage: "doc.on.doc") { controller.copyLog(of: row) }
-            Button("Отправить лог…", systemImage: "square.and.arrow.up") {
+            Button("Copy Log", systemImage: "doc.on.doc") { controller.copyLog(of: row) }
+            Button("Send Log…", systemImage: "square.and.arrow.up") {
                 controller.shareAnchor.show(.text(log, title: record.plan.title, subject: record.plan.title), atPointer: true)
             }
         }
@@ -276,7 +276,7 @@ private struct LongestCell: View {
             }
         }
         .monospacedDigit()
-        .help(String(localized: "план \(DurationText.clock(plan))"))
+        .help(String(localized: "plan \(DurationText.clock(plan))"))
     }
 }
 #endif

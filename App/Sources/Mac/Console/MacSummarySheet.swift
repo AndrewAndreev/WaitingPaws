@@ -23,7 +23,7 @@ struct MacSummarySheet: View {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     // Two lines, as on the iPhone: what happened and when (the schedule's name is in the history).
-                    Text("Тренировка завершена").font(.title3.weight(.semibold))
+                    Text("Training Complete").font(.title3.weight(.semibold))
                     // As on the iPhone and in the history: «Ср, 4 нояб. · 22:22–22:37 · 15 мин».
                     Text(verbatim: "\(HistoryDate.day(record.startedAt)) · \(HistoryDate.time(record.startedAt))–\(HistoryDate.time(record.finishedAt)) · \(DurationText.short(max(60, (record.duration / 60).rounded() * 60)))")
                         .monospacedDigit()
@@ -34,12 +34,12 @@ struct MacSummarySheet: View {
             // The iPhone's order: exits, the longest one, false starts — only when there were any. The words under the
             // numbers agree with them: «из 1 выхода», «1 фальстарт», «2 фальстарта».
             HStack(spacing: 0) {
-                stat(String(localized: "\(record.completedExits) из \(record.plan.exits.count)"),
-                     HistoryText.word(pluralText(record.plan.exits.count, ru: ("выхода", "выходов", "выходов"),
-                                                 en: ("exit", "exits"))))
+                stat(String(localized: "\(record.completedExits) of \(record.plan.exits.count)"),
+                     HistoryText.word(pluralText(record.plan.exits.count, en: ("exit", "exits"),
+                                                 ru: ("выхода", "выходов", "выходов"))))
                 if let longest = record.longestResult, longest.awayDuration > 0 {
                     Divider().frame(height: 34)
-                    stat(DurationText.clock(longest.awayDuration), String(localized: "дольше всего"))
+                    stat(DurationText.clock(longest.awayDuration), String(localized: "longest"))
                 }
                 if record.falseStarts > 0 {
                     Divider().frame(height: 34)
@@ -70,7 +70,7 @@ struct MacSummarySheet: View {
                         Text(fileInfo(url)).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Показать в Finder") { Finder.reveal(url) }
+                    Button("Show in Finder") { Finder.reveal(url) }
                         .controlSize(.small)
                 }
             }
@@ -81,12 +81,12 @@ struct MacSummarySheet: View {
             // history is in the toolbar.
             HStack {
                 Spacer()
-                Button("Готово", action: onClose)
+                Button("Done", action: onClose)
                     .keyboardShortcut(.cancelAction)
                 // The prominent look is the label's own (a plain-styled button). AppKit's picker, not ShareLink: see
                 // `MacShareItem` (Telegram never sent ShareLink's log and its sheet stuck).
                 MacShareButton(.text(log, title: record.plan.displayTitle)) {
-                    Label("Отправить тренеру…", systemImage: "square.and.arrow.up")
+                    Label("Send to Trainer…", systemImage: "square.and.arrow.up")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
@@ -96,7 +96,7 @@ struct MacSummarySheet: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.defaultAction)
-                .help("Отправить лог тренеру · ↩")
+                .help("Send the log to the trainer · ↩")
             }
         }
         .padding(20)
@@ -127,10 +127,10 @@ struct MacSummarySheet: View {
         let hasMarks = marks.contains { !$0.isEmpty }
         return Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 5) {
             GridRow {
-                Text("Выход")
-                Text("План").gridColumnAlignment(.trailing)
-                Text("Факт").gridColumnAlignment(.trailing)
-                if hasMarks { Text("Отмечено") }
+                Text("Exit")
+                Text("Plan").gridColumnAlignment(.trailing)
+                Text("Actual").gridColumnAlignment(.trailing)
+                if hasMarks { Text("Marked") }
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
@@ -164,18 +164,18 @@ struct MacSummarySheet: View {
     private func help(for result: ExitResult) -> String {
         var plan = result.isOpen ? PlannedExit.openText : DurationText.clock(result.plannedDuration)
         if result.untilStanding { plan += " " + PlannedExit.untilStandingText }
-        return "\(String(localized: "план \(plan)")), \(SessionLogFormatter.outcome(of: result))"
+        return "\(String(localized: "plan \(plan)")), \(SessionLogFormatter.outcome(of: result))"
     }
 
     /// "Выход 7 · попытка 2 фальстарт".
     private func exitName(_ result: ExitResult) -> some View {
         HStack(spacing: 4) {
-            Text("Выход \(result.number)")
+            Text("Exit \(result.number)")
             if result.attempt > 1 {
-                Text("· попытка \(result.attempt)").foregroundStyle(MacHistoryInk.orange)
+                Text("· attempt \(result.attempt)").foregroundStyle(MacHistoryInk.orange)
             }
             if result.falseStart {
-                Text("фальстарт").foregroundStyle(MacHistoryInk.orange)
+                Text("false start").foregroundStyle(MacHistoryInk.orange)
             }
         }
         .lineLimit(1)
@@ -189,7 +189,7 @@ struct MacSummarySheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(notes) { note in
                     let time = MacFormat.time.string(from: note.time)
-                    let when = note.exitNumber.map { String(localized: "\(time), выход \($0)") } ?? time
+                    let when = note.exitNumber.map { String(localized: "\(time), exit \($0)") } ?? time
                     Text("\(Text(when).foregroundStyle(.secondary))  \(note.detail ?? "")")
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -203,7 +203,7 @@ struct MacSummarySheet: View {
         if let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize {
             parts.append(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
         }
-        if model.finalizingFileNames.contains(url.lastPathComponent) { parts.append(String(localized: "готовится…")) }
+        if model.finalizingFileNames.contains(url.lastPathComponent) { parts.append(String(localized: "preparing…")) }
         return parts.joined(separator: " · ")
     }
 
@@ -229,16 +229,16 @@ struct MacClipSavedSheet: View {
                     .font(.system(size: 26))
                     .foregroundStyle(MacPalette.pink)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Запись сохранена").font(.title3.weight(.semibold))
+                    Text("Recording Saved").font(.title3.weight(.semibold))
                     Text(clip.url.lastPathComponent).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
             }
             HStack {
-                MacShareButton(.file(clip.url)) { Label("Отправить…", systemImage: "square.and.arrow.up") }
-                Button("Показать в Finder") { Finder.reveal(clip.url) }
+                MacShareButton(.file(clip.url)) { Label("Share…", systemImage: "square.and.arrow.up") }
+                Button("Show in Finder") { Finder.reveal(clip.url) }
                 Spacer()
-                Button("История", action: onHistory)
-                Button("Готово", action: onClose)
+                Button("History", action: onHistory)
+                Button("Done", action: onClose)
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .tint(MacPalette.pinkDeep)

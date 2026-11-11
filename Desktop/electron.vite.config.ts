@@ -51,7 +51,7 @@ export default defineConfig({
     root: resolve(__dirname, 'src/renderer'),
     resolve: { alias: { ...alias, '@renderer': resolve(__dirname, 'src/renderer/src') } },
     plugins: [react()],
-    // The UI strings live in the repo's shared translation table (Tools/strings/en.json).
+    // The UI strings live in the repo's shared translation table (Tools/strings/ru.json).
     server: { fs: { allow: [resolve(__dirname, '..')] } },
     build: {
       outDir: resolve(out, 'renderer'),

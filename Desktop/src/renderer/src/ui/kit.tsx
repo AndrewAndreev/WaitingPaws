@@ -242,7 +242,7 @@ export function Dialog({ open, onOpenChange, title, description, icon, width = 4
                   </div>
                   {!hideClose && (
                     <RDialog.Close asChild>
-                      <Button variant="subtle" iconOnly className="dialog__close" aria-label={t('Закрыть')}>
+                      <Button variant="subtle" iconOnly className="dialog__close" aria-label={t('Close')}>
                         <X />
                       </Button>
                     </RDialog.Close>
@@ -297,7 +297,7 @@ export function Checkbox({ checked, onChange, children, disabled }: { checked: b
 }
 
 export function Spinner({ large }: { large?: boolean }) {
-  return <span className={'spinner' + (large ? ' spinner--lg' : '')} aria-label={t('Загрузка')} />
+  return <span className={'spinner' + (large ? ' spinner--lg' : '')} aria-label={t('Loading')} />
 }
 
 export function InfoBar({ kind = 'info', icon, title, children, action }: { kind?: 'info' | 'warning' | 'danger' | 'neutral'; icon?: ReactNode; title?: ReactNode; children?: ReactNode; action?: ReactNode }) {

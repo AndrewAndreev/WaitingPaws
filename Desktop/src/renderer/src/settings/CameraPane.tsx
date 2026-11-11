@@ -93,42 +93,42 @@ export function CameraPane() {
   }
 
   const detail = (() => {
-    if (!configured) return t('Выберите камеру Mi Home или поток go2rtc.')
-    if (xiaomi) return [cameraKind(model), app.settings.xiaomiAccountID ? t('аккаунт %@', app.settings.xiaomiAccountID) : null].filter(Boolean).join(' · ')
+    if (!configured) return t('Choose a Mi Home camera or a go2rtc stream.')
+    if (xiaomi) return [cameraKind(model), app.settings.xiaomiAccountID ? t('account %@', app.settings.xiaomiAccountID) : null].filter(Boolean).join(' · ')
     const badge = sourceBadge(source)
     if (badge && source) return [badge, sourceHost(source)].filter(Boolean).join(' · ')
-    return t('Поток go2rtc')
+    return t('go2rtc stream')
   })()
 
   const size = app.camera.videoSize
-  const currentSize = size ? pixels(size.width, size.height) : configured ? '—' : t('нет камеры')
+  const currentSize = size ? pixels(size.width, size.height) : configured ? '—' : t('no camera')
   const modes = availablePlayerModes(app.settings)
 
   return (
     <>
-      <PaneHeader title={t('Камера')} />
+      <PaneHeader title={t('Camera')} />
 
       <div className="scam card">
         <CameraPreview phase={phase} onPhase={setPhase} />
         <div className="scam__info">
-          <div className="h2 ellipsis">{configured ? cameraName(app) : t('Камера не выбрана')}</div>
-          <Tooltip content={model ? t('Модель Mi Home: %@', model) : null}>
+          <div className="h2 ellipsis">{configured ? cameraName(app) : t('No camera selected')}</div>
+          <Tooltip content={model ? t('Mi Home model: %@', model) : null}>
             <div className="muted ellipsis scam__detail">{detail}</div>
           </Tooltip>
           <PreviewProblem phase={phase} />
           <div className="row scam__actions">
             <Button variant={configured ? 'default' : 'primary'} icon={<CameraAddIcon />} onClick={() => ui.set({ showCameraPicker: true })}>
-              {configured ? t('Выбрать другую камеру…') : t('Выбрать камеру…')}
+              {configured ? t('Choose Another Camera…') : t('Choose Camera…')}
             </Button>
           </div>
         </div>
       </div>
 
-      <Group title={t('Изображение и звук')}>
+      <Group title={t('Picture & Sound')}>
         <Row
           icon={<QualityIcon />}
-          title={t('Качество')}
-          description={!configured ? t('Сначала выберите камеру.') : !qualityAvailable ? t('Меняется только у камер Mi Home.') : t('На экране и в записи.')}
+          title={t('Quality')}
+          description={!configured ? t('Choose a camera first.') : !qualityAvailable ? t('Can only be changed for Mi Home cameras.') : t('On screen and in recordings.')}
           disabled={!qualityAvailable}
         >
           <Segmented
@@ -138,36 +138,36 @@ export function CameraPane() {
             onChange={(value) => void setQuality(value)}
           />
         </Row>
-        <Row icon={<ResolutionIcon />} title={t('Сейчас')} description={t('Размер кадра, который присылает камера.')}>
+        <Row icon={<ResolutionIcon />} title={t('Current')} description={t('The frame size the camera is sending.')}>
           <span className="row" style={{ gap: 8 }}>
             {switchingQuality && <Spinner />}
             <Value>{currentSize}</Value>
           </span>
         </Row>
-        <Row icon={<PlayerIcon />} title={t('Плеер')} description={t('Как картинка идёт с go2rtc в окно. Если видео не показывается или отстаёт, попробуйте другой.')}>
+        <Row icon={<PlayerIcon />} title={t('Player')} description={t('How the picture gets from go2rtc to the window. If the video doesn’t show or lags, try another one.')}>
           <Select<PlayerMode>
-            label={t('Плеер')}
+            label={t('Player')}
             value={effectivePlayerMode(app.settings)}
             options={modes.map((mode) => ({ value: mode, label: playerTitle(mode) }))}
             onChange={(mode) => void call('settings.update', { playerMode: mode })}
             width={240}
           />
         </Row>
-        <Row icon={<SoundOnIcon />} title={t('Звук с камеры в приложении')} description={t('Только для плеера: запись всегда со звуком.')}>
-          <Switch checked={app.settings.audioEnabled} label={t('Звук с камеры в приложении')} onChange={(value) => void call('settings.update', { audioEnabled: value })} />
+        <Row icon={<SoundOnIcon />} title={t('Camera sound in the app')} description={t('Player only: recordings always include sound.')}>
+          <Switch checked={app.settings.audioEnabled} label={t('Camera sound in the app')} onChange={(value) => void call('settings.update', { audioEnabled: value })} />
         </Row>
       </Group>
 
       <CameraModesGroup xiaomi={xiaomi} />
 
-      <Group title={t('Источник')}>
-        <Row icon={<StreamIcon />} title={t('Поток go2rtc')} description={source && !source.startsWith('xiaomi://') ? <span className="mono ellipsis selectable" title={redacted(source)}>{redacted(source)}</span> : undefined}>
+      <Group title={t('Source')}>
+        <Row icon={<StreamIcon />} title={t('go2rtc stream')} description={source && !source.startsWith('xiaomi://') ? <span className="mono ellipsis selectable" title={redacted(source)}>{redacted(source)}</span> : undefined}>
           <Value mono selectable>
             {configured ? streamName : '—'}
           </Value>
         </Row>
         {xiaomi && (
-          <Row icon={<AccountIcon />} title={t('Аккаунт Xiaomi')}>
+          <Row icon={<AccountIcon />} title={t('Xiaomi Account')}>
             <Value>{app.settings.xiaomiAccountID ? `ID ${app.settings.xiaomiAccountID} · ${regionTitle(app.settings.xiaomiRegion)}` : '—'}</Value>
           </Row>
         )}
@@ -178,15 +178,15 @@ export function CameraPane() {
       <Dialog
         open={signOutAccount !== null}
         onOpenChange={(open) => !open && setSignOutAccount(null)}
-        title={t('Выйти из аккаунта Xiaomi?')}
-        description={t('Камеры этого аккаунта перестанут показываться. Войти снова можно в любой момент.')}
+        title={t('Sign Out of Xiaomi?')}
+        description={t('This account’s cameras will no longer be shown. You can sign in again at any time.')}
         hideClose
         width={460}
         footer={
           <>
-            <Button onClick={() => setSignOutAccount(null)}>{t('Отмена')}</Button>
+            <Button onClick={() => setSignOutAccount(null)}>{t('Cancel')}</Button>
             <Button variant="danger-solid" autoFocus onClick={() => signOutAccount && void signOut(signOutAccount)}>
-              {t('Выйти')}
+              {t('Sign Out')}
             </Button>
           </>
         }
@@ -198,11 +198,11 @@ export function CameraPane() {
 function playerTitle(mode: PlayerMode): string {
   switch (mode) {
     case 'webrtc':
-      return t('WebRTC (минимальная задержка)')
+      return t('WebRTC (lowest latency)')
     case 'mse':
       return 'MSE'
     case 'hls':
-      return t('HLS (запасной)')
+      return t('HLS (fallback)')
   }
 }
 
@@ -228,12 +228,12 @@ function CameraPreview({ phase, onPhase }: { phase: PlayerPhase | null; onPhase:
 
   if (!playing || !app.server) {
     const text = !configured
-      ? t('Здесь будет картинка с камеры')
+      ? t('The camera picture will appear here')
       : app.go2rtc.status === 'starting'
-        ? t('Запускаем go2rtc…')
+        ? t('Starting go2rtc…')
         : app.settings.connectionMode === 'embedded' && app.go2rtc.status !== 'running'
-          ? t('go2rtc не запущен')
-          : t('Нет картинки')
+          ? t('go2rtc is not running')
+          : t('No picture')
     return (
       <div className="scam__preview scam__preview--empty">
         <VideoOffIcon style={{ width: 32, height: 32 }} />
@@ -259,8 +259,8 @@ function CameraPreview({ phase, onPhase }: { phase: PlayerPhase | null; onPhase:
         }}
       >
         <PreviewChip phase={phase} size={liveSize} />
-        <Tooltip content={t('Переподключить камеру')}>
-          <button className="scam__reload" aria-label={t('Переподключить камеру')} onClick={() => setReload((value) => value + 1)}>
+        <Tooltip content={t('Reconnect the camera')}>
+          <button className="scam__reload" aria-label={t('Reconnect the camera')} onClick={() => setReload((value) => value + 1)}>
             <ReloadIcon />
           </button>
         </Tooltip>
@@ -275,7 +275,7 @@ function PreviewChip({ phase, size }: { phase: PlayerPhase | null; size: { width
     return (
       <div className="scam__chip scam__chip--failed">
         <span className="dot" style={{ background: 'var(--danger)' }} />
-        {t('Камера не отвечает')}
+        {t('The camera doesn’t respond')}
       </div>
     )
   }
@@ -283,7 +283,7 @@ function PreviewChip({ phase, size }: { phase: PlayerPhase | null; size: { width
     return (
       <div className="scam__chip">
         <span className="spinner" style={small} />
-        {t('Нет новых кадров — ждём камеру')}
+        {t('No new frames — waiting for the camera')}
       </div>
     )
   }
@@ -291,7 +291,7 @@ function PreviewChip({ phase, size }: { phase: PlayerPhase | null; size: { width
   return (
     <div className="scam__chip tabular">
       {live ? <span className="dot dot--live" /> : <span className="spinner" style={small} />}
-      {live ? t('В эфире · %@', pixels(size.width, size.height)) : t('Подключение…')}
+      {live ? t('Live · %@', pixels(size.width, size.height)) : t('Connecting…')}
     </div>
   )
 }
@@ -303,7 +303,7 @@ function PreviewProblem({ phase }: { phase: PlayerPhase | null }) {
   const reason = t(phase.reason)
   return (
     <Tooltip content={phase.raw || null}>
-      <div className="scam__problem">{t('%@. Пробуем снова…', reason ? reason[0].toUpperCase() + reason.slice(1) : reason)}</div>
+      <div className="scam__problem">{t('%@. Trying again…', reason ? reason[0].toUpperCase() + reason.slice(1) : reason)}</div>
     </Tooltip>
   )
 }
@@ -314,8 +314,8 @@ function CameraModesGroup({ xiaomi }: { xiaomi: boolean }) {
   if (!modes.options.length) {
     if (xiaomi && modes.state === 'loading') {
       return (
-        <Group title={t('Режим камеры')}>
-          <Row icon={<CameraIcon />} title={<span className="muted">{t('Читаю настройки камеры…')}</span>}>
+        <Group title={t('Camera Mode')}>
+          <Row icon={<CameraIcon />} title={<span className="muted">{t('Reading camera settings…')}</span>}>
             <Spinner />
           </Row>
         </Group>
@@ -329,10 +329,10 @@ function CameraModesGroup({ xiaomi }: { xiaomi: boolean }) {
   ) : modes.state === 'unavailable' && modes.reason ? (
     <span style={{ color: 'var(--warning)' }}>{modes.reason}</span>
   ) : (
-    t('Настройки хранятся в самой камере и меняются через облако Xiaomi, как в Mi Home.')
+    t('These settings are stored in the camera itself and changed through the Xiaomi cloud, as in Mi Home.')
   )
   return (
-    <Group title={t('Режим камеры')} busy={modes.state === 'loading' || modes.options.some((option) => !option.canChange && modes.state === 'ready')} footer={footer}>
+    <Group title={t('Camera Mode')} busy={modes.state === 'loading' || modes.options.some((option) => !option.canChange && modes.state === 'ready')} footer={footer}>
       {ordered.map((option) => (
         <CameraModeRow key={option.key} option={option} />
       ))}
@@ -371,17 +371,17 @@ function XiaomiAccountsGroup({ accounts, signingOut, onSignOut }: { accounts: st
   const list = accounts ?? (app.settings.xiaomiAccountID ? [app.settings.xiaomiAccountID] : [])
   if (list.length === 0) {
     return (
-      <Group title={t('Аккаунты Xiaomi')}>
-        <Row icon={<AccountIcon />} title={t('Камеры Mi Home')} description={t('Войдите в аккаунт Xiaomi — здесь появятся камеры из Mi Home.')}>
+      <Group title={t('Xiaomi Accounts')}>
+        <Row icon={<AccountIcon />} title={t('Mi Home Cameras')} description={t('Sign in to your Xiaomi account — your Mi Home cameras will appear here.')}>
           <Button onClick={signIn} disabled={!serverReady(app)}>
-            {t('Войти в Xiaomi…')}
+            {t('Sign In to Xiaomi…')}
           </Button>
         </Row>
       </Group>
     )
   }
   return (
-    <Group title={t('Аккаунты Xiaomi')} footer={t('После выхода ключ доступа Xiaomi удаляется с этого компьютера, а камеры аккаунта — из приложения.')}>
+    <Group title={t('Xiaomi Accounts')} footer={t('Signing out removes the Xiaomi access key from this computer and the account’s cameras from the app.')}>
       <Card>
         {list.map((account) => (
           <Row
@@ -394,14 +394,14 @@ function XiaomiAccountsGroup({ accounts, signingOut, onSignOut }: { accounts: st
               <Spinner />
             ) : (
               <Button icon={<SignOutIcon />} disabled={signingOut !== null} onClick={() => onSignOut(account)}>
-                {t('Выйти…')}
+                {t('Sign Out…')}
               </Button>
             )}
           </Row>
         ))}
-        <Row title={<span className="muted">{t('Ещё один аккаунт — камеры из другого дома Mi Home.')}</span>}>
+        <Row title={<span className="muted">{t('Another account — cameras from another Mi Home household.')}</span>}>
           <Button variant="subtle" onClick={signIn} disabled={!serverReady(app)}>
-            {t('Войти в другой аккаунт Xiaomi…')}
+            {t('Sign In to Another Xiaomi Account…')}
           </Button>
         </Row>
       </Card>

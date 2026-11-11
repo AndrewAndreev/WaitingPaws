@@ -93,7 +93,7 @@ struct MacPlanTimelineEditor: View {
             header
             Divider()
             if plan.exits.isEmpty {
-                Text("В расписании нет выходов")
+                Text("No Exits in the Schedule")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -132,7 +132,7 @@ struct MacPlanTimelineEditor: View {
     private var header: some View {
         HStack(spacing: 12) {
             // «План» alone: its length is the card's «≈ 25 мин» and the flag at the plan's end.
-            Text("План").font(.headline)
+            Text("Plan").font(.headline)
             if let original, differs(from: original) {
                 deviation(from: original)
             }
@@ -147,14 +147,14 @@ struct MacPlanTimelineEditor: View {
     private func deviation(from original: TrainingPlan) -> some View {
         let delta = plan.estimatedDuration - original.estimatedDuration
         return HStack(spacing: 8) {
-            Text(delta == 0 ? String(localized: "изменён") : MacPlanFormat.signed(delta))
+            Text(delta == 0 ? String(localized: "changed") : MacPlanFormat.signed(delta))
                 .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(MacPalette.pink)
                 .padding(.horizontal, 8)
                 .frame(height: 20)
                 .background(MacPalette.pink.opacity(0.16), in: Capsule())
                 .fixedSize()
-            Button("Как у тренера", systemImage: "arrow.uturn.backward") {
+            Button("As the Trainer Wrote", systemImage: "arrow.uturn.backward") {
                 withAnimation(.snappy) {
                     plan.exits = original.exits
                     plan.defaultBreak = original.defaultBreak
@@ -163,7 +163,7 @@ struct MacPlanTimelineEditor: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .fixedSize()
-            .help("Вернуть выходы и перерывы из текста тренера: \(MacPlanFormat.approx(original.estimatedDuration))")
+            .help("Restore the exits and breaks from the trainer’s text: \(MacPlanFormat.approx(original.estimatedDuration))")
         }
     }
 
@@ -193,18 +193,18 @@ struct MacPlanTimelineEditor: View {
                 Button { step(-1) } label: { Image(systemName: "minus.magnifyingglass") }
                     .keyboardShortcut("-", modifiers: .command)
                     .disabled(zoom <= 1.001)
-                    .help("Уменьшить · ⌘−, щипок или ⌥-прокрутка")
+                    .help("Zoom out · ⌘−, pinch or ⌥-scroll")
                 Button { step(1) } label: { Image(systemName: "plus.magnifyingglass") }
                     .keyboardShortcut("=", modifiers: .command)
                     .disabled(zoom >= Self.zoomSteps.last! - 0.001)
-                    .help("Увеличить · ⌘+, щипок или ⌥-прокрутка")
+                    .help("Zoom in · ⌘+, pinch or ⌥-scroll")
             }
             .fixedSize()
-            Button("По ширине") { setZoom(1) }
+            Button("Fit") { setZoom(1) }
                 .buttonStyle(.bordered)
                 .keyboardShortcut("0", modifiers: .command)
                 .disabled(zoom <= 1.001)
-                .help("Вся тренировка по ширине · ⌘0")
+                .help("Fit the whole training · ⌘0")
         }
         .controlSize(.small)
     }
@@ -253,7 +253,7 @@ struct MacPlanTimelineEditor: View {
                         scroll(to: inset + t * pps - viewport / 2)
                     }
             )
-            .help("Вся тренировка — щёлкните или тяните, чтобы прокрутить")
+            .help("The whole training — click or drag to scroll")
         }
         .padding(.bottom, 4)
     }
@@ -262,7 +262,7 @@ struct MacPlanTimelineEditor: View {
 
     private var laneTitles: some View {
         ZStack(alignment: .topLeading) {
-            laneTitle(String(localized: "План"), top: planTop, height: planHeight)
+            laneTitle(String(localized: "Plan"), top: planTop, height: planHeight)
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .padding(.leading, 14)
@@ -323,7 +323,7 @@ struct MacPlanTimelineEditor: View {
                     // «+12:40» as in the review table — a bare «17:00» would read as a clock time.
                     // The finish time wins where the two would overlap.
                     if x < end - 46 || x > end + 100 {
-                        let text = t == 0 ? String(localized: "старт") : "+" + DurationText.clock(t)
+                        let text = t == 0 ? String(localized: "start") : "+" + DurationText.clock(t)
                         context.draw(Text(text).font(.system(size: 10).monospacedDigit()).foregroundStyle(.secondary),
                                      at: CGPoint(x: x + 3, y: 7), anchor: .leading)
                     }
@@ -395,12 +395,12 @@ struct MacPlanTimelineEditor: View {
     @ViewBuilder
     private func blockMenu(_ block: Block) -> some View {
         if let value = block.original, block.changed {
-            Button("Как у тренера — \(DurationText.short(value))") {
+            Button("As the Trainer Wrote — \(DurationText.short(value))") {
                 withAnimation(.snappy) { set(block.edge, to: value) }
             }
         }
         if block.edge.kind == .pause, block.own {
-            Button("Как у всех — \(DurationText.short(plan.defaultBreak))") {
+            Button("Default — \(DurationText.short(plan.defaultBreak))") {
                 withAnimation(.snappy) { plan.exits[block.edge.index].breakAfter = nil }
             }
         }
@@ -509,13 +509,13 @@ struct MacPlanTimelineEditor: View {
 
     private func tooltip(_ block: Block) -> some View {
         let name = block.edge.kind == .exit
-            ? String(localized: "Выход \(block.number)")
-            : String(localized: "Перерыв после \(block.number)")
+            ? String(localized: "Exit \(block.number)")
+            : String(localized: "Break after \(block.number)")
         let reference = block.original ?? (drag?.edge == block.edge ? drag?.startValue : nil)
         let delta = reference.map { block.duration - $0 } ?? 0
         let value = Text(MacPlanFormat.cell(block.duration)).fontWeight(.bold)
         let change = Text(delta == 0 ? "" : " (\(MacPlanFormat.signed(delta)))").foregroundStyle(.black.opacity(0.55))
-        let own = Text(block.edge.kind == .pause && block.own ? " · свой" : "").foregroundStyle(.black.opacity(0.55))
+        let own = Text(block.edge.kind == .pause && block.own ? " · own" : "").foregroundStyle(.black.opacity(0.55))
         return Text("\(name) · \(value)\(change)\(own)")
             .font(.system(size: 11, weight: .semibold).monospacedDigit())
             .foregroundStyle(.black)
@@ -664,14 +664,14 @@ struct MacPlanTimelineEditor: View {
             switch edge.kind {
             case .exit:
                 text = untilStanding
-                    ? String(localized: "Выход \(number) · \(length) или до вставания")
-                    : String(localized: "Выход \(number) · \(length)")
+                    ? String(localized: "Exit \(number) · \(length) or until the dog stands")
+                    : String(localized: "Exit \(number) · \(length)")
             case .pause:
                 text = own
-                    ? String(localized: "Перерыв после выхода \(number) · \(length), свой")
-                    : String(localized: "Перерыв после выхода \(number) · \(length)")
+                    ? String(localized: "Break after exit \(number) · \(length), own")
+                    : String(localized: "Break after exit \(number) · \(length)")
             }
-            if changed, let original { text = String(localized: "\(text) · у тренера \(DurationText.short(original))") }
+            if changed, let original { text = String(localized: "\(text) · trainer wrote \(DurationText.short(original))") }
             return text
         }
     }

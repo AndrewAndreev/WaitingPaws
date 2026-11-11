@@ -34,12 +34,12 @@ export function RecordingPane() {
   }, [app.historyRevision, app.finalizing.length])
 
   const usageText = (() => {
-    if (!usage) return t('Считаем…')
-    if (usage.videos === 0 && usage.trainings === 0) return usage.bytes > 0 ? t('%@ · тренировок пока нет', formatBytes(usage.bytes)) : t('Пока пусто')
+    if (!usage) return t('Calculating…')
+    if (usage.videos === 0 && usage.trainings === 0) return usage.bytes > 0 ? t('%@ · no trainings yet', formatBytes(usage.bytes)) : t('Nothing yet')
     // The size is that of the videos; logs alone take next to nothing.
     const parts = usage.bytes > 0 ? [formatBytes(usage.bytes)] : []
-    if (usage.videos > 0) parts.push(plural(usage.videos, ['%d видео', '%d видео', '%d видео'], ['%d video', '%d videos']))
-    if (usage.trainings > 0) parts.push(plural(usage.trainings, ['%d лог', '%d лога', '%d логов'], ['%d log', '%d logs']))
+    if (usage.videos > 0) parts.push(plural(usage.videos, ['%d video', '%d videos'], ['%d видео', '%d видео', '%d видео']))
+    if (usage.trainings > 0) parts.push(plural(usage.trainings, ['%d log', '%d logs'], ['%d лог', '%d лога', '%d логов']))
     return parts.join(' · ')
   })()
 
@@ -53,40 +53,40 @@ export function RecordingPane() {
 
   return (
     <>
-      <PaneHeader title={t('Запись и файлы')} description={t('Видео и логи тренировок хранятся на этом компьютере.')} />
+      <PaneHeader title={t('Recording & Files')} description={t('Training videos and logs are stored on this computer.')} />
       {desktop && (
-        <Group title={t('Папки')}>
+        <Group title={t('Folders')}>
           <FolderRow icon={<FolderIcon />} title="Waiting Paws" path={app.paths.documents} kind="documents" />
-          <FolderRow icon={<VideoIcon />} title={t('Видео')} path={app.paths.recordings} kind="recordings" />
-          <FolderRow icon={<LogIcon />} title={t('Логи тренировок')} path={app.paths.sessions} kind="sessions" />
+          <FolderRow icon={<VideoIcon />} title={t('Video')} path={app.paths.recordings} kind="recordings" />
+          <FolderRow icon={<LogIcon />} title={t('Training Logs')} path={app.paths.sessions} kind="sessions" />
         </Group>
       )}
-      <Group title={t('Место на диске')}>
-        <Row icon={<StorageIcon />} title={t('Занято')} description={t('Видео и логи всех тренировок и отдельных записей.')}>
+      <Group title={t('Disk Space')}>
+        <Row icon={<StorageIcon />} title={t('Used')} description={t('Videos and logs of all trainings and standalone recordings.')}>
           <Value>{usageText}</Value>
         </Row>
       </Group>
-      <Group title={t('История')}>
-        <Row icon={<DeleteIcon />} title={t('Удалить всю историю')} description={t('Все тренировки с их логами и видео, и отдельные записи. Это нельзя отменить.')}>
+      <Group title={t('History')}>
+        <Row icon={<DeleteIcon />} title={t('Delete all history')} description={t('Every training with its log and video, and standalone recordings. This can’t be undone.')}>
           <Button variant="danger" disabled={nothing || deleting} onClick={() => setConfirmDelete(true)}>
-            {t('Удалить всю историю…')}
+            {t('Delete All History…')}
           </Button>
         </Row>
       </Group>
       <Dialog
         open={confirmDelete}
         onOpenChange={(open) => !deleting && setConfirmDelete(open)}
-        title={t('Удалить всю историю?')}
-        description={t('Логи и видео будут удалены с этого компьютера. Это нельзя отменить.')}
+        title={t('Delete All History?')}
+        description={t('Logs and videos will be deleted from this computer. This can’t be undone.')}
         hideClose
         width={480}
         footer={
           <>
             <Button autoFocus disabled={deleting} onClick={() => setConfirmDelete(false)}>
-              {t('Отмена')}
+              {t('Cancel')}
             </Button>
             <Button variant="danger-solid" disabled={deleting} onClick={() => void deleteAll()}>
-              {usage && usage.trainings > 0 && usage.clips > 0 ? t('Удалить тренировки (%lld) и записи (%lld)', usage.trainings, usage.clips) : t('Удалить всё')}
+              {usage && usage.trainings > 0 && usage.clips > 0 ? t('Delete Trainings (%lld) and Recordings (%lld)', usage.trainings, usage.clips) : t('Delete All')}
             </Button>
           </>
         }
@@ -106,7 +106,7 @@ function FolderRow({ icon, title, path, kind }: { icon: React.ReactNode; title: 
         </span>
       }
     >
-      <Button onClick={() => void call('shell.showItem', kind)}>{t('Показать в проводнике')}</Button>
+      <Button onClick={() => void call('shell.showItem', kind)}>{t('Show in Explorer')}</Button>
     </Row>
   )
 }

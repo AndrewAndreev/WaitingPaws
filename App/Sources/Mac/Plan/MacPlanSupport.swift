@@ -15,7 +15,7 @@ enum MacPlanFormat {
     /// "≈ 28 мин" for summaries (seconds dropped from ten minutes up).
     static func approx(_ seconds: TimeInterval) -> String {
         let total = DurationText.wholeSeconds(seconds)
-        if total >= 600 { return String(localized: "≈ \(Int((Double(total) / 60).rounded())) мин") }
+        if total >= 600 { return String(localized: "≈ \(Int((Double(total) / 60).rounded())) min") }
         return "≈ " + DurationText.short(seconds)
     }
 
@@ -27,8 +27,8 @@ enum MacPlanFormat {
 
     /// "Ждать тишины 30 с": the trainer's rule against coming in, what it asks (it holds on every exit).
     static func quietRuleTitle(_ plan: TrainingPlan) -> String {
-        plan.doNotEnterRule?.quietTime.map { String(localized: "Ждать тишины \(DurationText.short($0))") }
-            ?? String(localized: "Ждать тишины")
+        plan.doNotEnterRule?.quietTime.map { String(localized: "Wait for quiet \(DurationText.short($0))") }
+            ?? String(localized: "Wait for quiet")
     }
 
     /// Exit durations offered in the editor (from «выйти и вернуться» to ten minutes).
@@ -644,20 +644,20 @@ struct MacDurationEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title).font(.headline)
             HStack(spacing: 6) {
-                TextField("Минуты", value: Binding(get: { total / 60 },
+                TextField("Minutes", value: Binding(get: { total / 60 },
                                                    set: { set(max(0, min(120, $0)) * 60 + total % 60) }),
                           format: .number)
                     .frame(width: 44)
                     .multilineTextAlignment(.trailing)
                     .focused($minutesFocused)
-                Text("мин").foregroundStyle(.secondary)
-                TextField("Секунды", value: Binding(get: { total % 60 },
+                Text("min").foregroundStyle(.secondary)
+                TextField("Seconds", value: Binding(get: { total % 60 },
                                                     set: { set(total / 60 * 60 + max(0, min(59, $0))) }),
                           format: .number)
                     .frame(width: 38)
                     .multilineTextAlignment(.trailing)
-                Text("с").foregroundStyle(.secondary)
-                Stepper("Изменить",
+                Text("s").foregroundStyle(.secondary)
+                Stepper("Edit",
                         onIncrement: { set(total + Int(total >= 60 ? 30 : step)) },
                         onDecrement: { set(max(0, total - Int(total > 60 ? 30 : step))) })
                 .labelsHidden()
@@ -690,7 +690,7 @@ struct MacDurationEditor: View {
 
             if let defaultValue {
                 Divider()
-                Toggle("Как у всех — \(DurationText.short(defaultValue))", isOn: Binding(
+                Toggle("Default — \(DurationText.short(defaultValue))", isOn: Binding(
                     get: { value == nil },
                     set: { if $0 { value = nil; onClose() } else { value = defaultValue } }))
                     .toggleStyle(.checkbox)

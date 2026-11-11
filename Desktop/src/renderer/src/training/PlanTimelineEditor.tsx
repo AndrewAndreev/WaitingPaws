@@ -207,18 +207,18 @@ export function PlanTimelineEditor() {
   return (
     <div className="timeline pte">
       <div className={'timeline__header pte__header' + (changed ? ' pte__header--changed' : '')}>
-        <span className="h3">{t('План')}</span>
+        <span className="h3">{t('Plan')}</span>
         <span className="muted tabular pte__total">
           {PlanFormat.exits(plan.exits.length)} · {PlanFormat.approx(total)}
         </span>
         {original && changed && (
           <>
             <span className="badge badge--accent tabular">
-              {total === TrainingPlan.estimatedDuration(original) ? t('изменён') : t('%@ к плану тренера', PlanFormat.signed(total - TrainingPlan.estimatedDuration(original)))}
+              {total === TrainingPlan.estimatedDuration(original) ? t('changed') : t('%@ vs. trainer’s plan', PlanFormat.signed(total - TrainingPlan.estimatedDuration(original)))}
             </span>
-            <Tooltip content={t('Вернуть выходы и перерывы из текста тренера: %@', PlanFormat.approx(TrainingPlan.estimatedDuration(original)))}>
+            <Tooltip content={t('Restore the exits and breaks from the trainer’s text: %@', PlanFormat.approx(TrainingPlan.estimatedDuration(original)))}>
               <Button size="sm" icon={<RevertIcon />} onClick={() => setPlan((current) => revertedToOriginal(current, original))}>
-                {t('Как у тренера')}
+                {t('As the Trainer Wrote')}
               </Button>
             </Tooltip>
           </>
@@ -228,25 +228,25 @@ export function PlanTimelineEditor() {
           <>
             <span className="pte__hint pte__hint--long">
               <ResizeIcon />
-              {t('Тяните край блока, чтобы изменить длительность')}
+              {t('Drag a block’s edge to change its duration')}
             </span>
             <span className="pte__hint pte__hint--short">
               <ResizeIcon />
-              {t('Тяните край блока')}
+              {t('Drag a block’s edge')}
             </span>
             <span className="pte__sep" />
             <span className="faint tabular pte__zoom">{Math.round(zoom * 100)}%</span>
             <div className="row" style={{ gap: 2 }}>
-              <Tooltip content={t('Уменьшить (Ctrl+−, Ctrl+колесо мыши)')}>
-                <Button variant="subtle" size="sm" iconOnly className="pte__zoom-button" icon={<ZoomOutIcon />} aria-label={t('Уменьшить')} disabled={!zoomed} onClick={() => applyZoom(Timeline.steppedZoom(zoom, -1))} />
+              <Tooltip content={t('Zoom out (Ctrl+−, Ctrl+mouse wheel)')}>
+                <Button variant="subtle" size="sm" iconOnly className="pte__zoom-button" icon={<ZoomOutIcon />} aria-label={t('Zoom Out')} disabled={!zoomed} onClick={() => applyZoom(Timeline.steppedZoom(zoom, -1))} />
               </Tooltip>
-              <Tooltip content={t('Увеличить (Ctrl+=, Ctrl+колесо мыши)')}>
-                <Button variant="subtle" size="sm" iconOnly className="pte__zoom-button" icon={<ZoomInIcon />} aria-label={t('Увеличить')} disabled={zoom >= Timeline.maxZoom - 0.001} onClick={() => applyZoom(Timeline.steppedZoom(zoom, 1))} />
+              <Tooltip content={t('Zoom in (Ctrl+=, Ctrl+mouse wheel)')}>
+                <Button variant="subtle" size="sm" iconOnly className="pte__zoom-button" icon={<ZoomInIcon />} aria-label={t('Zoom In')} disabled={zoom >= Timeline.maxZoom - 0.001} onClick={() => applyZoom(Timeline.steppedZoom(zoom, 1))} />
               </Tooltip>
             </div>
-            <Tooltip content={t('Вся тренировка по ширине') + ' (Ctrl+0)'}>
+            <Tooltip content={t('Fit the whole training') + ' (Ctrl+0)'}>
               <Button size="sm" disabled={!zoomed} onClick={() => applyZoom(1)}>
-                {t('По ширине')}
+                {t('Fit')}
               </Button>
             </Tooltip>
           </>
@@ -254,19 +254,19 @@ export function PlanTimelineEditor() {
       </div>
       {plan.exits.length === 0 ? (
         <div className="empty-state" style={{ flex: 1 }}>
-          {t('В расписании нет выходов')}
+          {t('No Exits in the Schedule')}
         </div>
       ) : (
         <div className="pte__body">
           <div className="pte__titles" style={{ width: TITLE_WIDTH }}>
             <span className="pte__title" style={{ top: lanes.planTop, height: lanes.planHeight }}>
-              {t('План')}
+              {t('Plan')}
             </span>
             <span className="pte__title" style={{ top: lanes.factTop, height: lanes.factHeight }}>
-              {t('Факт')}
+              {t('Actual')}
             </span>
             <span className="pte__title" style={{ top: lanes.recordTop, height: lanes.recordHeight }}>
-              {t('Запись')}
+              {t('Record')}
             </span>
           </div>
           <div className="pte__main">
@@ -291,7 +291,7 @@ export function PlanTimelineEditor() {
                   ))}
                   <div className="pte-lane pte-lane--fact" style={{ left: Timeline.inset, top: lanes.factTop, width: Math.max(2, total * pps), height: lanes.factHeight }}>
                     <span className="pte-lane__text" style={{ transform: `translateX(${sticky}px)` }}>
-                      {t('появится после старта')}
+                      {t('appears after the start')}
                     </span>
                   </div>
                   <div
@@ -300,7 +300,7 @@ export function PlanTimelineEditor() {
                   >
                     {configured && (
                       <span className="pte-lane__text pte-lane__text--small" style={{ transform: `translateX(${sticky}px)` }}>
-                        {recording ? t('REC · начнётся со стартом') : t('без записи — включите «Записывать видео»')}
+                        {recording ? t('REC · starts with the training') : t('not recording — turn on “Record video”')}
                       </span>
                     )}
                   </div>
@@ -340,20 +340,20 @@ export function PlanTimelineEditor() {
                 <div className="pte__legend">
                   <span className="legend">
                     <span className="legend__swatch pte-swatch--exit" />
-                    {t('выход')}
+                    {t('exit')}
                   </span>
                   <span className="legend">
                     <span className="legend__swatch pte-swatch--break" />
-                    {t('перерыв')}
+                    {t('break')}
                   </span>
                   <span className="legend">
                     <span className="legend__swatch pte-swatch--own" />
-                    {t('свой перерыв')}
+                    {t('own break')}
                   </span>
                   {original && (
                     <span className="legend">
                       <span className="pte-swatch--changed" />
-                      {t('изменено относительно тренера')}
+                      {t('changed from the trainer’s plan')}
                     </span>
                   )}
                 </div>
@@ -396,7 +396,7 @@ function Ruler({ pps, total, width, height, lanes }: { pps: number; total: numbe
         .filter((tick) => tick.major && (tick.x < end - 46 || tick.x > end + 64))
         .map((tick) => (
           <span key={tick.time} className="pte-ruler__label tabular" style={{ left: tick.x + 3 }}>
-            {tick.time === 0 ? t('старт') : '+' + DurationText.clock(tick.time)}
+            {tick.time === 0 ? t('start') : '+' + DurationText.clock(tick.time)}
           </span>
         ))}
       <span className="pte-ruler__end tabular" style={{ left: end + 4 }}>
@@ -450,7 +450,7 @@ function Block({
         <span className="pte-block__pause tabular" style={{ opacity: width >= 48 ? 1 : 0 }}>
           <BreakFilledIcon />
           {PlanFormat.cell(block.duration)}
-          {block.own && width >= 96 && <span className="pte-block__own">{t(' · свой')}</span>}
+          {block.own && width >= 96 && <span className="pte-block__own">{t(' · own')}</span>}
         </span>
       )}
       {changed && width > 18 && <span className="pte-block__dot" />}
@@ -471,10 +471,10 @@ function Block({
       <ContextMenuContent>
         {changed && block.original !== null && (
           <ContextMenuItem icon={<RevertIcon />} onSelect={() => onRevert(block.original!)}>
-            {t('Как у тренера — %@', DurationText.short(block.original))}
+            {t('As the Trainer Wrote — %@', DurationText.short(block.original))}
           </ContextMenuItem>
         )}
-        {!exit && block.own && <ContextMenuItem onSelect={onCommonBreak}>{t('Как у всех — %@', DurationText.short(plan.defaultBreak))}</ContextMenuItem>}
+        {!exit && block.own && <ContextMenuItem onSelect={onCommonBreak}>{t('Default — %@', DurationText.short(plan.defaultBreak))}</ContextMenuItem>}
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -483,7 +483,7 @@ function Block({
 /// Vertical guide through the lanes plus the live label «Выход 6 · 2:30 (+0:30)».
 function EditGuide({ block, pps, full, lanes, reference }: { block: PlanBlock; pps: number; full: number; lanes: Lanes; reference: number | null }) {
   const x = Timeline.inset + blockEnd(block) * pps
-  const name = block.edge.kind === 'exit' ? t('Выход %lld', block.number) : t('Перерыв после %lld', block.number)
+  const name = block.edge.kind === 'exit' ? t('Exit %lld', block.number) : t('Break after %lld', block.number)
   const delta = reference !== null ? block.duration - reference : 0
   return (
     <>
@@ -491,7 +491,7 @@ function EditGuide({ block, pps, full, lanes, reference }: { block: PlanBlock; p
       <div className="pte-tip tabular" style={{ left: Math.min(Math.max(x, 110), full - 110) }}>
         {name} · <b>{DurationText.clock(block.duration)}</b>
         {delta !== 0 && <span className="pte-tip__extra"> ({PlanFormat.signed(delta)})</span>}
-        {block.edge.kind === 'pause' && block.own && <span className="pte-tip__extra">{t(' · свой')}</span>}
+        {block.edge.kind === 'pause' && block.own && <span className="pte-tip__extra">{t(' · own')}</span>}
       </div>
     </>
   )
@@ -521,7 +521,7 @@ function Overview({ blocks, pps, full, offset, viewport, onScroll }: { blocks: P
     onScroll(inset + time * pps - viewport / 2)
   }
   return (
-    <Tooltip content={t('Вся тренировка — щёлкните или тяните, чтобы прокрутить')} side="top">
+    <Tooltip content={t('The whole training — click or drag to scroll')} side="top">
       <div
         className="pte-overview"
         ref={ref}

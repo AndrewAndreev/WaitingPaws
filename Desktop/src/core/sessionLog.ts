@@ -46,27 +46,27 @@ export const SessionEventKind = {
   title(kind: SessionEventKind): string {
     switch (kind) {
       case 'sessionStarted':
-        return tr('Тренировка начата', 'Training started')
+        return tr('Training started', 'Тренировка начата')
       case 'exitStarted':
-        return tr('Пошли к двери', 'Walking to the door')
+        return tr('Walking to the door', 'Пошли к двери')
       case 'behindDoor':
-        return tr('За дверью', 'Outside')
+        return tr('Outside', 'За дверью')
       case 'exitEnded':
-        return tr('Вернулись', 'Back inside')
+        return tr('Back inside', 'Вернулись')
       case 'falseStart':
-        return tr('Фальстарт / сброс', 'False start / reset')
+        return tr('False start / reset', 'Фальстарт / сброс')
       case 'breakStarted':
-        return tr('Перерыв', 'Break')
+        return tr('Break', 'Перерыв')
       case 'breakEnded':
-        return tr('Перерыв окончен', 'Break over')
+        return tr('Break over', 'Перерыв окончен')
       case 'recordingStarted':
-        return tr('Запись включена', 'Recording started')
+        return tr('Recording started', 'Запись включена')
       case 'recordingStopped':
-        return tr('Запись остановлена', 'Recording stopped')
+        return tr('Recording stopped', 'Запись остановлена')
       case 'sessionFinished':
-        return tr('Тренировка завершена', 'Training finished')
+        return tr('Training finished', 'Тренировка завершена')
       case 'note':
-        return tr('Заметка', 'Note')
+        return tr('Note', 'Заметка')
     }
   },
 
@@ -280,9 +280,9 @@ export const SessionLogFormatter = {
     summary += ` (${DurationText.short(TrainingRecord.duration(record))})`
     const completed = TrainingRecord.completedExits(record)
     const planned = record.plan.exits.length
-    summary += tr(` · выходов ${completed} из ${planned}`, ` · exits ${completed} of ${planned}`)
+    summary += tr(` · exits ${completed} of ${planned}`, ` · выходов ${completed} из ${planned}`)
     const falseStarts = TrainingRecord.falseStarts(record)
-    if (falseStarts > 0) summary += tr(` · фальстартов ${falseStarts}`, ` · false starts ${falseStarts}`)
+    if (falseStarts > 0) summary += tr(` · false starts ${falseStarts}`, ` · фальстартов ${falseStarts}`)
     lines.push(summary)
     lines.push('')
 
@@ -291,7 +291,7 @@ export const SessionLogFormatter = {
         `${SessionLogFormatter.exitName(result.number)} — ` +
         (result.isOpen ? PlannedExit.openText() : DurationText.short(result.plannedDuration))
       if (result.untilStanding) line += ' ' + PlannedExit.untilStandingText()
-      if (result.attempt > 1) line += tr(`, попытка ${result.attempt}`, `, attempt ${result.attempt}`)
+      if (result.attempt > 1) line += tr(`, attempt ${result.attempt}`, `, попытка ${result.attempt}`)
       line += `: ${SessionLogFormatter.outcome(result)} ${result.falseStart ? '❌' : '✅'}`
       // The break after the last exit only ends the session.
       if (index < record.results.length - 1) {
@@ -305,7 +305,7 @@ export const SessionLogFormatter = {
     if (notes.length > 0) {
       lines.push('')
       for (const note of notes) {
-        const exit = note.exitNumber === null ? '' : tr(` (выход ${note.exitNumber})`, ` (exit ${note.exitNumber})`)
+        const exit = note.exitNumber === null ? '' : tr(` (exit ${note.exitNumber})`, ` (выход ${note.exitNumber})`)
         lines.push(`${time(note.time)}${exit}: ${note.detail ?? ''}`)
       }
     }
@@ -315,29 +315,29 @@ export const SessionLogFormatter = {
 
   /** "3 выход" / "Exit 3": how the trainer's schedule names an exit. */
   exitName(number: number): string {
-    return tr(`${number} выход`, `Exit ${number}`)
+    return tr(`Exit ${number}`, `${number} выход`)
   },
 
   /** "за дверью 0:03", "фальстарт, за дверью 0:01", "фальстарт до двери". */
   outcome(result: ExitResult): string {
     const awayClock = DurationText.clock(ExitResult.awayDuration(result))
-    const away = result.leftAt === null ? null : tr(`за дверью ${awayClock}`, `outside ${awayClock}`)
+    const away = result.leftAt === null ? null : tr(`outside ${awayClock}`, `за дверью ${awayClock}`)
     if (result.falseStart) {
       return away !== null
-        ? tr(`фальстарт, ${away}`, `false start, ${away}`)
-        : tr('фальстарт до двери', 'false start before the door')
+        ? tr(`false start, ${away}`, `фальстарт, ${away}`)
+        : tr('false start before the door', 'фальстарт до двери')
     }
-    return away ?? tr('не выходили за дверь', "didn't go outside")
+    return away ?? tr("didn't go outside", 'не выходили за дверь')
   },
 
   /** "перерыв 2:10", with the plan only when the break was noticeably different from it. */
   breakText(result: ExitResult): string | null {
     const actual = result.actualBreak
     if (actual === null) return null
-    let text = tr(`перерыв ${DurationText.clock(actual)}`, `break ${DurationText.clock(actual)}`)
+    let text = tr(`break ${DurationText.clock(actual)}`, `перерыв ${DurationText.clock(actual)}`)
     if (Math.abs(actual - result.plannedBreak) > 15) {
       const plan = DurationText.short(result.plannedBreak)
-      text += tr(` (план ${plan})`, ` (plan ${plan})`)
+      text += tr(` (plan ${plan})`, ` (план ${plan})`)
     }
     return text
   },

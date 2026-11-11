@@ -162,12 +162,12 @@ extension PerformanceMonitor.Sample {
     var videoDelayText: String? {
         guard let playerDelay else { return nil }
         // A long freeze (the camera is away): its length says more than a sum of big numbers.
-        if playerDelay >= 10 { return String(localized: "Нет новых кадров \(Int(playerDelay)) с") }
+        if playerDelay >= 10 { return String(localized: "No new frames for \(Int(playerDelay)) s") }
         let format: (Double) -> String = { $0.formatted(.number.precision(.fractionLength(1))) }
         guard let networkDelay, let videoDelay else {
-            return String(localized: "Задержка ≥ \(format(playerDelay)) с: только буфер плеера")
+            return String(localized: "Delay ≥ \(format(playerDelay)) s: player buffer only")
         }
-        return String(localized: "Задержка ≈ \(format(videoDelay)) с: сеть \(format(networkDelay)) с + буфер \(format(playerDelay)) с")
+        return String(localized: "Delay ≈ \(format(videoDelay)) s: network \(format(networkDelay)) s + buffer \(format(playerDelay)) s")
     }
 
     /// Warning above 1.2 s, alarm above 2 s.

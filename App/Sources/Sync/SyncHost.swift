@@ -232,7 +232,7 @@ final class SyncHost {
         if allow {
             approve(request.id)
         } else if let client = clients[request.id] {
-            client.channel.send(.rejected(String(localized: "На Mac подключение отклонили")))
+            client.channel.send(.rejected(String(localized: "The connection was declined on the Mac")))
             Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(300))
                 self?.drop(request.id)
@@ -280,7 +280,7 @@ final class SyncHost {
         case .hello(let hello):
             guard client.hello == nil else { return }
             guard hello.protocolVersion == SyncProtocol.version else {
-                client.channel.send(.rejected(String(localized: "Обновите Waiting Paws на iPhone и на Mac")))
+                client.channel.send(.rejected(String(localized: "Update Waiting Paws on both the iPhone and the Mac")))
                 return
             }
             let key = SyncCrypto.newKey()
@@ -311,7 +311,7 @@ final class SyncHost {
                 if let current = pairingRequest, current.id != id {
                     guard current.device.id == hello.deviceID else {
                         print("[sync] \(hello.deviceName) turned away: another request is waiting for an answer")
-                        client.channel.send(.rejected(String(localized: "Сначала ответьте на другой запрос на Mac")))
+                        client.channel.send(.rejected(String(localized: "Answer the other request on the Mac first")))
                         Task { [weak self] in
                             try? await Task.sleep(for: .milliseconds(300))
                             self?.drop(id)

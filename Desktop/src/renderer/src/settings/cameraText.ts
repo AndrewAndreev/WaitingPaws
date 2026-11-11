@@ -32,8 +32,8 @@ export function cameraKind(model: string | null): string {
   const parts = (model ?? '').toLowerCase().split('.')
   const peephole = parts.length > 1 && parts[1] === 'cateye'
   const vendor = vendors[parts[0] ?? '']
-  if (!vendor) return peephole ? t('Видеоглазок Mi Home') : t('Камера Mi Home')
-  return peephole ? t('Видеоглазок %@', vendor) : t('Камера %@', vendor)
+  if (!vendor) return peephole ? t('Mi Home Peephole Camera') : t('Mi Home Camera')
+  return peephole ? t('%@ Peephole Camera', vendor) : t('%@ Camera', vendor)
 }
 
 /// "rtsp://192.168.1.20:554/live" → "RTSP".
@@ -80,17 +80,17 @@ export function redacted(source: string): string {
 export function regionTitle(region: XiaomiRegion): string {
   switch (region) {
     case 'ru':
-      return t('Россия')
+      return t('Russia')
     case 'de':
-      return t('Европа')
+      return t('Europe')
     case 'cn':
-      return t('Китай')
+      return t('China')
     case 'us':
-      return t('США')
+      return t('United States')
     case 'sg':
-      return t('Сингапур')
+      return t('Singapore')
     case 'i2':
-      return t('Индия')
+      return t('India')
   }
 }
 
@@ -107,14 +107,14 @@ export function isXiaomiCamera(app: AppState, source: string | null): boolean {
 export function go2rtcStatusText(app: AppState): string {
   switch (app.go2rtc.status) {
     case 'running':
-      return t('работает, go2rtc %@', app.go2rtc.version ?? '')
+      return t('running, go2rtc %@', app.go2rtc.version ?? '')
     case 'starting':
-      return t('запускается…')
+      return t('starting…')
     case 'failed':
-      return t('ошибка: %@', app.go2rtc.message ?? '')
+      return t('error: %@', app.go2rtc.message ?? '')
     case 'unavailable':
-      return t('go2rtc.exe не найден')
+      return t('go2rtc.exe not found')
     case 'idle':
-      return t('не запущен')
+      return t('not running')
   }
 }

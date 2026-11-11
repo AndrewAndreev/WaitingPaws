@@ -489,7 +489,7 @@ export class TrainingSession {
     this.log('exitStarted', now, {
       exitNumber: exit.number,
       attempt: this.state.attempt,
-      detail: tr(`план ${description}`, `plan ${description}`),
+      detail: tr(`plan ${description}`, `план ${description}`),
     })
   }
 
@@ -637,7 +637,7 @@ export class TrainingSession {
       if (changes.length) {
         this.log('note', this.clock(), {
           exitNumber: this.currentExit?.number ?? null,
-          detail: tr('Расписание изменено: ', 'Schedule changed: ') + changes.join('; '),
+          detail: tr('Schedule changed: ', 'Расписание изменено: ') + changes.join('; '),
         })
       }
     })
@@ -673,7 +673,7 @@ export class TrainingSession {
       const completed = TrainingSession.completedExitsCount(this.state)
       const planned = this.state.plan.exits.length
       this.log('sessionFinished', now, {
-        detail: tr(`выходов ${completed} из ${planned}`, `exits ${completed} of ${planned}`),
+        detail: tr(`exits ${completed} of ${planned}`, `выходов ${completed} из ${planned}`),
       })
     })
   }
@@ -725,7 +725,7 @@ export class TrainingSession {
     this.log('behindDoor', now, {
       exitNumber: exit.number,
       attempt: this.state.attempt,
-      detail: tr(`план ${description}`, `plan ${description}`),
+      detail: tr(`plan ${description}`, `план ${description}`),
     })
   }
 
@@ -736,9 +736,9 @@ export class TrainingSession {
     const planned = DurationText.short(duration)
     let detail: string | null = null
     if (actual < duration) {
-      detail = tr(`досрочно, ${clock} из ${planned}`, `early, ${clock} of ${planned}`)
+      detail = tr(`early, ${clock} of ${planned}`, `досрочно, ${clock} из ${planned}`)
     } else if (actual - duration >= 1) {
-      detail = tr(`дольше плана, ${clock} из ${planned}`, `longer than planned, ${clock} of ${planned}`)
+      detail = tr(`longer than planned, ${clock} of ${planned}`, `дольше плана, ${clock} из ${planned}`)
     }
     this.log('breakEnded', now, { detail })
   }
@@ -768,8 +768,8 @@ export class TrainingSession {
       attempt,
       detail:
         leftAt === null && since === now
-          ? tr('до двери', 'before the door')
-          : tr(`за дверью ${away}, всего ${total}`, `outside ${away}, total ${total}`),
+          ? tr('before the door', 'до двери')
+          : tr(`outside ${away}, total ${total}`, `за дверью ${away}, всего ${total}`),
     })
 
     let nextIndex: number | null
@@ -789,7 +789,7 @@ export class TrainingSession {
     })
     const planText = DurationText.short(plannedBreak)
     this.log('breakStarted', now, {
-      detail: tr(`план ${planText}`, `plan ${planText}`) + (nextIndex === null ? tr(', последний', ', last') : ''),
+      detail: tr(`plan ${planText}`, `план ${planText}`) + (nextIndex === null ? tr(', last', ', последний') : ''),
     })
   }
 

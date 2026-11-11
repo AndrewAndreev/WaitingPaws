@@ -43,7 +43,7 @@ final class SetupCameraCatalog {
         var kind: String { SetupText.cameraKind(model: model) }
         /// Tooltip with what the readable text leaves out: the Mi Home model id and the address.
         var technicalDetails: String {
-            [model.map { String(localized: "Модель Mi Home: \($0)") }, host.map { "IP \($0)" }].compactMap { $0 }.joined(separator: " · ")
+            [model.map { String(localized: "Mi Home model: \($0)") }, host.map { "IP \($0)" }].compactMap { $0 }.joined(separator: " · ")
         }
         /// What its still shows: the go2rtc stream, or a preview of the camera itself.
         var stillSource: SetupStillSource { streamName.map { .stream($0) } ?? .camera(self) }
@@ -233,7 +233,7 @@ final class SetupCameraCatalog {
         }
         switch choice {
         case .stream(let stream):
-            guard !Self.isPreviewStream(stream.name) else { throw SetupError(String(localized: "Это временный поток превью, его нельзя выбрать")) }
+            guard !Self.isPreviewStream(stream.name) else { throw SetupError(String(localized: "This is a temporary preview stream and can’t be chosen")) }
             model.settings.cameraTitle = stream.name
             model.settings.streamName = stream.name
         case .camera(let camera):
@@ -267,7 +267,7 @@ final class SetupCameraCatalog {
         let title: String
         switch choice {
         case .stream(let stream):
-            guard !Self.isPreviewStream(stream.name) else { throw SetupError(String(localized: "Это временный поток превью, его нельзя выбрать")) }
+            guard !Self.isPreviewStream(stream.name) else { throw SetupError(String(localized: "This is a temporary preview stream and can’t be chosen")) }
             name = stream.name
             title = stream.name
         case .camera(let camera):
@@ -285,7 +285,7 @@ final class SetupCameraCatalog {
             title = camera.name
         }
         guard name != model.settings.streamName else {
-            throw SetupError(String(localized: "Эта камера уже основная — выберите другую"))
+            throw SetupError(String(localized: "This is already the main camera — choose another one"))
         }
         model.settings.secondCameraTitle = title
         model.settings.secondStreamName = name
@@ -299,7 +299,7 @@ final class SetupCameraCatalog {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let source = source.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !Self.isPreviewStream(name) else {
-            throw SetupError(String(localized: "Имена на «\(Self.previewPrefix)» заняты Waiting Paws"))
+            throw SetupError(String(localized: "Names starting with “\(Self.previewPrefix)” are reserved for Waiting Paws"))
         }
         let stream = Go2RTCStream(name: name, sources: [source])
         if SetupDemo.isOn || AppModel.isUIPreview {

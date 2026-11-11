@@ -16,7 +16,7 @@ export function NewTrainingPanel() {
   return (
     <div className="panel-scroll">
       <div className="new-training">
-        <h2 className="h2">{t('Новая тренировка')}</h2>
+        <h2 className="h2">{t('New Training')}</h2>
         {plan ? (
           <>
             <TodayCard plan={plan} />
@@ -27,9 +27,9 @@ export function NewTrainingPanel() {
         )}
         <hr className="divider" />
         <Button block size="lg" icon={<RecordIcon />} shortcut="Ctrl+R" disabled={!isConfigured(app.settings)} onClick={() => void call('recording.start')}>
-          {t('Только запись')}
+          {t('Record Only')}
         </Button>
-        <p className="caption muted">{t('Видео без расписания и лога — например, посмотреть, что собака делает одна.')}</p>
+        <p className="caption muted">{t('Video without a schedule or log — for example, to see what the dog does alone.')}</p>
       </div>
     </div>
   )
@@ -40,10 +40,10 @@ function TodayCard({ plan }: { plan: TrainingPlan }) {
   return (
     <div className="card card--padded today">
       <div className="row">
-        <span className="section-title">{t('СЕГОДНЯ')}</span>
+        <span className="section-title">{t('TODAY')}</span>
         <span className="spacer" />
-        <button className="btn btn--link" onClick={() => ui.set({ reviewingPlan: true })} title={t('Как прочитан текст тренера')}>
-          {t('Показать разбор')}
+        <button className="btn btn--link" onClick={() => ui.set({ reviewingPlan: true })} title={t('How the trainer’s text was read')}>
+          {t('Show Breakdown')}
         </button>
       </div>
       <div>
@@ -58,12 +58,12 @@ function TodayCard({ plan }: { plan: TrainingPlan }) {
       <div className="row">
         {isConfigured(app.settings) && (
           <Checkbox checked={app.settings.autoRecord} onChange={(value) => void call('settings.update', { autoRecord: value })}>
-            {t('Записывать видео')}
+            {t('Record video')}
           </Checkbox>
         )}
         <span className="spacer" />
         <button className="btn btn--link muted" style={{ color: 'var(--text-secondary)' }} onClick={() => void call('pending.set', null)}>
-          {t('Убрать')}
+          {t('Remove')}
         </button>
       </div>
     </div>
@@ -73,10 +73,10 @@ function TodayCard({ plan }: { plan: TrainingPlan }) {
 function summary(plan: TrainingPlan): string {
   const parts: string[] = []
   if (plan.trainers) parts.push(plan.trainers)
-  parts.push(plural(plan.exits.length, ['%d выход', '%d выхода', '%d выходов'], ['%d exit', '%d exits']))
+  parts.push(plural(plan.exits.length, ['%d exit', '%d exits'], ['%d выход', '%d выхода', '%d выходов']))
   const estimated = TrainingPlan.estimatedDuration(plan)
   parts.push(`≈ ${DurationText.short(Math.round(estimated / 60) * 60)}`)
-  parts.push(t('конец ≈ %@', formatTime(Date.now() + estimated * 1000)))
+  parts.push(t('ends ≈ %@', formatTime(Date.now() + estimated * 1000)))
   return parts.join(' · ')
 }
 
@@ -101,9 +101,9 @@ function PasteZone({ compact }: { compact: boolean }) {
     return (
       <div className={'paste-zone paste-zone--compact' + (targeted ? ' paste-zone--targeted' : '')} {...handlers}>
         <PasteIcon style={{ color: 'var(--accent-text)' }} />
-        <span className="grow">{t('Другое расписание')}</span>
+        <span className="grow">{t('Another schedule')}</span>
         <Button size="sm" icon={<PasteIcon />} shortcut="Ctrl+Shift+V" onClick={() => void pasteSchedule()}>
-          {t('Вставить')}
+          {t('Paste')}
         </Button>
       </div>
     )
@@ -111,12 +111,12 @@ function PasteZone({ compact }: { compact: boolean }) {
   return (
     <div className={'paste-zone' + (targeted ? ' paste-zone--targeted' : '')} {...handlers}>
       <PasteIcon style={{ width: 28, height: 28, color: 'var(--accent-text)' }} />
-      <div className="h3">{t('Вставьте расписание от тренера')}</div>
+      <div className="h3">{t('Paste the trainer’s schedule')}</div>
       <div className="muted" style={{ fontSize: 13, textAlign: 'center' }}>
-        {t('Текст из Telegram или WhatsApp — выходы, перерывы и заметки разберутся сами.')}
+        {t('Text from Telegram or WhatsApp — exits, breaks and notes are recognized automatically.')}
       </div>
       <Button variant="primary" size="lg" icon={<PasteIcon />} shortcut="Ctrl+Shift+V" onClick={() => void pasteSchedule()}>
-        {t('Вставить')}
+        {t('Paste')}
       </Button>
     </div>
   )

@@ -9,8 +9,8 @@ export function DiagnosticsBar({ delay }: { delay: { buffer: number; network: nu
   const seconds = (value: number) => value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   const text =
     delay.network === null
-      ? t('Задержка ≥ %@ с: только буфер плеера', seconds(delay.buffer))
-      : t('Задержка ≈ %@ с: сеть %@ с + буфер %@ с', seconds(total), seconds(delay.network), seconds(delay.buffer))
+      ? t('Delay ≥ %@ s: player buffer only', seconds(delay.buffer))
+      : t('Delay ≈ %@ s: network %@ s + buffer %@ s', seconds(total), seconds(delay.network), seconds(delay.buffer))
   return (
     <div className="camera__diagnostics tabular" style={{ color: tone }}>
       {text}

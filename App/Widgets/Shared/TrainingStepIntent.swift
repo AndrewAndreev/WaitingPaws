@@ -6,17 +6,17 @@ import Foundation
 /// background, or launches it), so the step is taken by the app's own training — and a training mirrored from a Mac
 /// forwards it there, as the app's buttons do. The extension compiles this type only to draw the button.
 struct TrainingStepIntent: LiveActivityIntent {
-    static let title: LocalizedStringResource = "Шаг тренировки"
+    static let title: LocalizedStringResource = "Training step"
     /// Only for the button: not offered in Shortcuts, Spotlight or Siri.
     static let isDiscoverable = false
     /// The point is not to unlock the phone behind the door.
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     /// `TrainingActivityAttributes.Step`.
-    @Parameter(title: "Шаг")
+    @Parameter(title: "Step")
     var step: String
     /// `TrainingActivityAttributes.training`: a press left over from another training does nothing.
-    @Parameter(title: "Тренировка")
+    @Parameter(title: "Training")
     var training: String
 
     init() {}

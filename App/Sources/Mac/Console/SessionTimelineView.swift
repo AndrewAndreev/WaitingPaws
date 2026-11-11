@@ -76,9 +76,9 @@ struct SessionTimelineView: View {
                 ZStack(alignment: .topLeading) {
                     ruler(width: width, axis: axis)
                     VStack(alignment: .leading, spacing: laneSpacing) {
-                        lane(String(localized: "План"), segments: planSegments, width: width, axis: axis)
-                        lane(String(localized: "Факт"), segments: factSegments, width: width, axis: axis)
-                        lane(String(localized: "Запись"), segments: recordSegments, width: width, axis: axis, height: 14)
+                        lane(String(localized: "Plan"), segments: planSegments, width: width, axis: axis)
+                        lane(String(localized: "Actual"), segments: factSegments, width: width, axis: axis)
+                        lane(String(localized: "Record"), segments: recordSegments, width: width, axis: axis, height: 14)
                     }
                     .padding(.top, lanesTop)
                     playhead(width: width, axis: axis, height: geo.size.height)
@@ -127,7 +127,7 @@ struct SessionTimelineView: View {
                                         color: own ? MacPalette.breakOwn : MacPalette.breakFill,
                                         label: own ? DurationText.short(b) : nil,
                                         edge: PlanEdge(index: index, kind: .pause),
-                                        wideLabel: own ? String(localized: "после \(exit.number)-го — \(DurationText.short(b))") : nil))
+                                        wideLabel: own ? String(localized: "after #\(exit.number) — \(DurationText.short(b))") : nil))
                 t = t.addingTimeInterval(b)
             }
         }
@@ -232,8 +232,8 @@ struct SessionTimelineView: View {
     static func kind(of words: String) -> MarkKind {
         let words = words.lowercased()
         func any(_ list: [String]) -> Bool { list.contains { $0.lowercased() == words } }
-        if any([String(localized: "залаяла"), "залаяла", "barked"]) { return .bark }
-        if any([String(localized: "замолчала"), "замолчала", "went quiet"]) { return .quiet }
+        if any([String(localized: "barked"), "залаяла", "barked"]) { return .bark }
+        if any([String(localized: "went quiet"), "замолчала", "went quiet"]) { return .quiet }
         return .condition
     }
 
@@ -358,7 +358,7 @@ struct SessionTimelineView: View {
                 .popover(isPresented: Binding(get: { editing == edge }, set: { if !$0 { endTyping(edge) } }), arrowEdge: .bottom) {
                     typingEditor(edge)
                 }
-                .help(edgeTitle(edge) + " — " + String(localized: "щёлкните, чтобы вписать, или тяните край (⇧ — по 5 с)"))
+                .help(edgeTitle(edge) + " — " + String(localized: "click to type it in, or drag the edge (⇧ — in 5 s steps)"))
         } else {
             body
         }
@@ -434,7 +434,7 @@ struct SessionTimelineView: View {
 
     private func edgeTitle(_ edge: PlanEdge) -> String {
         let number = plan.exits.indices.contains(edge.index) ? plan.exits[edge.index].number : edge.index + 1
-        return edge.kind == .exit ? String(localized: "Выход \(number)") : String(localized: "Перерыв после \(number)")
+        return edge.kind == .exit ? String(localized: "Exit \(number)") : String(localized: "Break after \(number)")
     }
 
     private func value(of edge: PlanEdge, in plan: TrainingPlan) -> TimeInterval {
@@ -535,10 +535,10 @@ private struct TimelineHeader: View {
             Spacer(minLength: 0)
             numbers
             Button { ui.editSessionPlan(app) } label: {
-                Label("Расписание…", systemImage: "slider.horizontal.3")
+                Label("Schedule…", systemImage: "slider.horizontal.3")
             }
             .controlSize(.small)
-            .help("Поправить выходы и перерывы прямо во время тренировки · ⌘E")
+            .help("Change exits and breaks right during the training · ⌘E")
         }
         .padding(.horizontal, 14)
         .frame(height: 40)
@@ -554,10 +554,10 @@ private struct TimelineHeader: View {
 
     /// «конец по плану», and how far from it while the plan's own arithmetic holds (a false start repeats an exit).
     private var tip: String {
-        let end = String(localized: "конец по плану")
+        let end = String(localized: "planned end")
         guard let drift = model.drift, abs(drift) >= 1, model.session.falseStartsCount == 0 else { return end }
-        return end + " · " + (drift > 0 ? String(localized: "отстаём от плана на \(DurationText.clock(drift))")
-                                        : String(localized: "опережаем план на \(DurationText.clock(-drift))"))
+        return end + " · " + (drift > 0 ? String(localized: "behind plan by \(DurationText.clock(drift))")
+                                        : String(localized: "ahead of plan by \(DurationText.clock(-drift))"))
     }
 }
 

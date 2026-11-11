@@ -18,34 +18,34 @@ export function IPhonePane() {
   const forgettingOnline = forgetting ? isOnline(sync.pairedDevices.find((device) => device.id === forgetting.id) ?? forgetting) : false
   return (
     <>
-      <PaneHeader title="iPhone" description={t('iPhone в той же сети показывает камеру этого компьютера и ведёт тренировку.')} />
+      <PaneHeader title="iPhone" description={t('An iPhone on the same network shows this computer’s camera and runs the training.')} />
       <Group>
-        <Row icon={<PhoneLaptopIcon />} title={t('Разрешить подключение с iPhone')} description={t('Компьютер виден приложению Waiting Paws на iPhone в той же Wi‑Fi сети.')}>
-          <Switch checked={enabled} label={t('Разрешить подключение с iPhone')} onChange={(value) => void call('sync.setEnabled', value)} />
+        <Row icon={<PhoneLaptopIcon />} title={t('Allow connections from iPhone')} description={t('Waiting Paws on an iPhone on the same Wi‑Fi network can see this computer.')}>
+          <Switch checked={enabled} label={t('Allow connections from iPhone')} onChange={(value) => void call('sync.setEnabled', value)} />
         </Row>
         {sync.hostName && (
-          <Row icon={<DesktopIcon />} title={t('Имя на iPhone')} description={t('Под этим именем компьютер появится в приложении на iPhone.')}>
+          <Row icon={<DesktopIcon />} title={t('Name on iPhone')} description={t('The iPhone app shows this computer under this name.')}>
             <Value selectable>{sync.hostName}</Value>
           </Row>
         )}
-        {sync.error && enabled && <InfoBar kind="warning" icon={<WarningIcon style={{ color: 'var(--warning)', flex: 'none' }} />} title={t('iPhone не сможет подключиться')}>{sync.error}</InfoBar>}
+        {sync.error && enabled && <InfoBar kind="warning" icon={<WarningIcon style={{ color: 'var(--warning)', flex: 'none' }} />} title={t('iPhone can’t connect')}>{sync.error}</InfoBar>}
         {/* The iPhone gets the built-in go2rtc's address, never the user's server. */}
         {enabled && app.settings.connectionMode === 'external' && (
           <InfoBar kind="neutral" icon={<VideoOffIcon style={{ color: 'var(--info)', flex: 'none' }} />}>
-            {t('Со своим сервером go2rtc iPhone ведёт тренировку, но видео с камеры на нём не показывается.')}
+            {t('With your own go2rtc server, the iPhone runs the training but doesn’t show the camera.')}
           </InfoBar>
         )}
-        <InfoBar kind="neutral" icon={<FirewallIcon style={{ color: 'var(--info)', flex: 'none' }} />} title={t('Брандмауэр Windows')}>
-          {t('При первом включении Windows спросит, можно ли go2rtc и Waiting Paws работать в сети. Разрешите доступ в частных сетях — иначе iPhone не увидит этот компьютер.')}
+        <InfoBar kind="neutral" icon={<FirewallIcon style={{ color: 'var(--info)', flex: 'none' }} />} title={t('Windows Firewall')}>
+          {t('The first time you turn this on, Windows asks whether go2rtc and Waiting Paws may use the network. Allow access on private networks, or the iPhone won’t see this computer.')}
         </InfoBar>
       </Group>
 
       <Group
-        title={t('Разрешённые iPhone')}
-        footer={t('Первое подключение каждого iPhone нужно разрешить на этом компьютере. Запись и лог остаются на компьютере. После «Забыть» iPhone снова попросит разрешения.')}
+        title={t('Allowed iPhones')}
+        footer={t('Each iPhone’s first connection must be allowed on this computer. The recording and log stay on the computer. After “Forget”, the iPhone will ask for permission again.')}
       >
         <Card>
-          {sync.pairedDevices.length === 0 && <Row icon={<PhoneIcon />} title={<span className="muted">{t('Пока ни один iPhone не подключался.')}</span>} />}
+          {sync.pairedDevices.length === 0 && <Row icon={<PhoneIcon />} title={<span className="muted">{t('No iPhone has connected yet.')}</span>} />}
           {sync.pairedDevices.map((device) => {
             const online = isOnline(device)
             return (
@@ -56,28 +56,28 @@ export function IPhonePane() {
                 description={
                   <span className="row" style={{ gap: 6 }}>
                     {online && <span className="dot dot--live" />}
-                    {online ? t('Подключён сейчас') : t('Подключение разрешено')}
+                    {online ? t('Connected now') : t('Connection allowed')}
                   </span>
                 }
               >
-                <Button onClick={() => setForgetting(device)}>{t('Забыть')}</Button>
+                <Button onClick={() => setForgetting(device)}>{t('Forget')}</Button>
               </Row>
             )
           })}
         </Card>
       </Group>
 
-      <Group title={t('Как подключить iPhone')}>
+      <Group title={t('How to Connect an iPhone')}>
         <div className="card siphone__steps">
           <ol>
-            <li>{t('Включите «Разрешить подключение с iPhone» и разрешите доступ в окне брандмауэра Windows.')}</li>
-            <li>{t('Подключите iPhone к той же Wi‑Fi сети, что и этот компьютер.')}</li>
+            <li>{t('Turn on “Allow connections from iPhone” and allow access when Windows Firewall asks.')}</li>
+            <li>{t('Connect the iPhone to the same Wi‑Fi network as this computer.')}</li>
             <li>
               {sync.hostName
-                ? t('Откройте Waiting Paws на iPhone: появится карточка «Рядом ПК с Waiting Paws» — «%@». Нажмите «Синхронизировать тренировку с ПК». Тот же выбор есть в настройках приложения на iPhone, в разделе «Синхронизация».', sync.hostName)
-                : t('Откройте Waiting Paws на iPhone: появится карточка «Рядом ПК с Waiting Paws» с именем этого компьютера. Нажмите «Синхронизировать тренировку с ПК». Тот же выбор есть в настройках приложения на iPhone, в разделе «Синхронизация».')}
+                ? t('Open Waiting Paws on the iPhone: a “PC with Waiting Paws Nearby” card appears — “%@”. Tap “Sync Training with PC”. The same choice is in the iPhone app’s settings, in the “Sync” section.', sync.hostName)
+                : t('Open Waiting Paws on the iPhone: a “PC with Waiting Paws Nearby” card appears with this computer’s name. Tap “Sync Training with PC”. The same choice is in the iPhone app’s settings, in the “Sync” section.')}
             </li>
-            <li>{t('Здесь появится запрос — нажмите «Разрешить». Дальше этот iPhone будет подключаться сам.')}</li>
+            <li>{t('A request appears here — click “Allow”. After that, this iPhone connects by itself.')}</li>
           </ol>
         </div>
       </Group>
@@ -85,13 +85,13 @@ export function IPhonePane() {
       <Dialog
         open={forgetting !== null}
         onOpenChange={(open) => !open && setForgetting(null)}
-        title={t('Забыть «%@»?', forgetting?.name ?? '')}
-        description={(forgettingOnline ? t('iPhone отключится.') + ' ' : '') + t('Чтобы снова подключиться, iPhone попросит разрешения на этом компьютере.')}
+        title={t('Forget “%@”?', forgetting?.name ?? '')}
+        description={(forgettingOnline ? t('The iPhone will disconnect.') + ' ' : '') + t('To connect again, the iPhone will ask for permission on this computer.')}
         hideClose
         width={460}
         footer={
           <>
-            <Button onClick={() => setForgetting(null)}>{t('Отмена')}</Button>
+            <Button onClick={() => setForgetting(null)}>{t('Cancel')}</Button>
             <Button
               variant="danger-solid"
               autoFocus
@@ -100,7 +100,7 @@ export function IPhonePane() {
                 setForgetting(null)
               }}
             >
-              {t('Забыть')}
+              {t('Forget')}
             </Button>
           </>
         }

@@ -14,7 +14,7 @@ const QUALITIES: XiaomiQuality[] = ['auto', '1', '2', '3']
 export function qualityTitle(quality: XiaomiQuality): string {
   switch (quality) {
     case 'auto':
-      return t('Авто')
+      return t('Auto')
     case '1':
       return 'SD'
     case '2':
@@ -41,7 +41,7 @@ export function CameraMenu() {
   const app = useStore((store) => store.app)!
   const online = cameraOnline(app)
   const quality = app.camera.xiaomiQuality
-  const name = cameraName(app) || t('Камера')
+  const name = cameraName(app) || t('Camera')
   const label = quality ? `${name} · ${qualityTitle(quality)}` : name
   const hasModes = Boolean(app.cameraModes?.options?.length)
   const second = hasSecondCamera(app.settings)
@@ -49,10 +49,10 @@ export function CameraMenu() {
     <div className="tb-cameras">
       {second && <CameraSwitcher />}
       <Menu>
-        <Tooltip content={online ? t('Камера, качество и режим съёмки') : t('Камера не на связи — выбрать или переподключить')}>
+        <Tooltip content={online ? t('Camera, quality and shooting mode') : t('Camera offline — choose or reconnect')}>
           <MenuTrigger asChild>
             {second ? (
-              <button className="tb-btn tb-btn--chevron" aria-label={t('Камеры')}>
+              <button className="tb-btn tb-btn--chevron" aria-label={t('Cameras')}>
                 {!online && <VideoOffIcon />}
                 <ChevronDownIcon style={{ width: 14, height: 14 }} />
               </button>
@@ -78,14 +78,14 @@ function CameraSwitcher() {
   const chosen = useStore((store) => store.camera)
   const live = useStore((store) => store.cameraLive)
   const shown = visibleCamera(app.settings, chosen)
-  const names: Record<CameraSlot, string> = { main: cameraName(app) || t('Камера'), second: secondCameraDisplayName(app.settings) }
+  const names: Record<CameraSlot, string> = { main: cameraName(app) || t('Camera'), second: secondCameraDisplayName(app.settings) }
   const segment = (slot: CameraSlot, keys: string) => (
     <Tooltip
       key={slot}
       content={
         shown === slot
           ? `${names[slot]} (${keys})`
-          : t('%1$@ — %2$@ (%3$@)', names[slot], live[slot] ? t('на связи') : t('подключается…'), keys)
+          : t('%1$@ — %2$@ (%3$@)', names[slot], live[slot] ? t('online') : t('connecting…'), keys)
       }
     >
       <button type="button" className="tb-seg__item" aria-pressed={shown === slot} onClick={() => ui.set({ camera: slot })}>
@@ -95,7 +95,7 @@ function CameraSwitcher() {
     </Tooltip>
   )
   return (
-    <div className="tb-seg" role="group" aria-label={t('Камера на экране')}>
+    <div className="tb-seg" role="group" aria-label={t('Camera on screen')}>
       {segment('main', 'Ctrl+1')}
       {segment('second', 'Ctrl+2')}
     </div>
@@ -107,10 +107,10 @@ function CameraMenuContent({ name, quality, hasModes, second }: { name: string; 
   return (
     <MenuContent align="end">
       <MenuItem icon={<CameraAddIcon />} onSelect={() => ui.set({ showCameraPicker: true })}>
-        {second ? t('Основная камера…') : t('Выбрать камеру…')}
+        {second ? t('Main Camera…') : t('Choose Camera…')}
       </MenuItem>
       <MenuItem icon={<VideoAddIcon />} onSelect={() => openCameraPicker({ target: 'second' })}>
-        {t('Вторая камера…')}
+        {t('Second Camera…')}
       </MenuItem>
       {second && (
         <MenuItem
@@ -120,11 +120,11 @@ function CameraMenuContent({ name, quality, hasModes, second }: { name: string; 
             void call('settings.update', { secondStreamName: '', secondCameraTitle: '' })
           }}
         >
-          {t('Убрать вторую камеру')}
+          {t('Remove Second Camera')}
         </MenuItem>
       )}
       <MenuItem icon={<AccountIcon />} onSelect={() => ui.set({ showXiaomiSignIn: true })}>
-        {app.settings.xiaomiAccountID ? t('Войти в другой аккаунт Xiaomi…') : t('Войти в Xiaomi…')}
+        {app.settings.xiaomiAccountID ? t('Sign In to Another Xiaomi Account…') : t('Sign In to Xiaomi…')}
       </MenuItem>
       <MenuSeparator />
       <MenuItem
@@ -134,23 +134,23 @@ function CameraMenuContent({ name, quality, hasModes, second }: { name: string; 
           if (second) ui.set({ secondCameraReload: ui.get().secondCameraReload + 1 })
         }}
       >
-        {t('Переподключить')}
+        {t('Reconnect')}
       </MenuItem>
       {quality && (
         <>
           <MenuSeparator />
-          <MenuLabel>{second ? t('Качество — %@', name) : t('Качество')}</MenuLabel>
+          <MenuLabel>{second ? t('Quality — %@', name) : t('Quality')}</MenuLabel>
           {QUALITIES.map((value) => (
             <MenuCheckItem key={value} checked={value === quality} onSelect={() => void call('camera.setQuality', value)}>
               {qualityLabel(value, app.camera.xiaomiSource, app.settings.qualityResolutions)}
             </MenuCheckItem>
           ))}
           <MenuNote>
-            {t('Записи — в этом же качестве')}
+            {t('Recordings use this quality too')}
             {app.camera.videoSize && (
               <>
                 <br />
-                {t('Сейчас %lld×%lld', app.camera.videoSize.width, app.camera.videoSize.height)}
+                {t('Current: %lld×%lld', app.camera.videoSize.width, app.camera.videoSize.height)}
               </>
             )}
           </MenuNote>
@@ -164,7 +164,7 @@ function CameraMenuContent({ name, quality, hasModes, second }: { name: string; 
       )}
       <MenuSeparator />
       <MenuItem icon={<SettingsIcon />} onSelect={() => ui.set({ route: 'settings', settingsPane: 'camera' })}>
-        {t('Настройки камеры…')}
+        {t('Camera Settings…')}
       </MenuItem>
     </MenuContent>
   )

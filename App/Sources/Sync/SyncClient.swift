@@ -254,9 +254,9 @@ final class SyncClient {
                                               publicKey: self.privateKey.publicKey.rawRepresentation,
                                               platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model)))
             case .failed(let error):
-                self.lost(String(localized: "Нет связи с \(kind): \(error.localizedDescription)"))
+                self.lost(String(localized: "No connection to the \(kind): \(error.localizedDescription)"))
             case .cancelled:
-                if self.isConnected || self.isBusy { self.lost(String(localized: "\(kind) отключился")) }
+                if self.isConnected || self.isBusy { self.lost(String(localized: "The \(kind) disconnected")) }
             default:
                 break
             }
@@ -302,7 +302,7 @@ final class SyncClient {
             let phoneKey = privateKey.publicKey.rawRepresentation
             guard let handshake = try? SyncCrypto.Handshake(privateKey: privateKey, peerKey: hostKey, phoneKey: phoneKey,
                                                             macKey: hostKey, deviceID: SyncIdentity.deviceID) else {
-                lost(String(localized: "Нет связи с \(host.device.kindTitle)"))
+                lost(String(localized: "No connection to the \(host.device.kindTitle)"))
                 return
             }
             self.handshake = handshake
@@ -326,7 +326,7 @@ final class SyncClient {
                 legacyAutoReconnectName = nil
                 self.channel?.cancel()
                 self.channel = nil
-                reset(to: .failed(String(localized: "«\(host.device.name)» больше не узнаёт этот iPhone. Чтобы подключиться заново, выберите его в списке.")))
+                reset(to: .failed(String(localized: "“\(host.device.name)” no longer recognizes this iPhone. To connect again, choose it in the list.")))
                 return
             }
             // The host did not recognise us (new iPhone, or forgotten there): keys without the old secret.

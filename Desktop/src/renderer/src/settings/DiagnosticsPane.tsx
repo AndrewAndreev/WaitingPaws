@@ -24,46 +24,46 @@ export function DiagnosticsPane() {
     void call('app.diagnostics').then((value) => setInfo((value as DiagnosticsInfo | undefined) ?? {}))
   }, [])
 
-  const go2rtc = app.settings.connectionMode === 'external' ? `${t('свой сервер')} · ${app.settings.serverURL || '—'}` : go2rtcStatusText(app)
+  const go2rtc = app.settings.connectionMode === 'external' ? `${t('own server')} · ${app.settings.serverURL || '—'}` : go2rtcStatusText(app)
   const lines: [string, string][] = [
-    [t('Версия'), app.version],
+    [t('Version'), app.version],
     ['go2rtc', go2rtc],
     ['Electron', info?.electron ? `${info.electron} · Chromium ${info.chrome ?? '?'} · Node ${info.node ?? '?'}` : '…'],
-    [t('Система'), info?.os ?? '…'],
-    [t('Журнал'), info?.logFile ?? '—'],
+    [t('System'), info?.os ?? '…'],
+    [t('Log|diagnostics'), info?.logFile ?? '—'],
   ]
   const copy = async () => {
     await call('clipboard.writeText', ['Waiting Paws', ...lines.map(([key, value]) => `${key}: ${value}`)].join('\n'))
-    toast({ title: t('Скопировано'), kind: 'success' }, 2500)
+    toast({ title: t('Copied'), kind: 'success' }, 2500)
   }
 
   return (
     <>
-      <PaneHeader title={t('Диагностика')} description={t('Если картинка отстаёт или камера не подключается.')} />
+      <PaneHeader title={t('Diagnostics')} description={t('When the picture lags or the camera won’t connect.')} />
       <Group>
-        <Row icon={<DiagnosticsIcon />} title={t('Показывать задержку видео')} description={t('Над камерой: на сколько секунд картинка отстаёт от камеры — сеть и буфер плеера.')}>
-          <Switch checked={app.settings.showPerformance} label={t('Показывать задержку видео')} onChange={(value) => void call('settings.update', { showPerformance: value })} />
+        <Row icon={<DiagnosticsIcon />} title={t('Show video delay')} description={t('Over the camera: how many seconds the picture trails the camera — network and player buffer.')}>
+          <Switch checked={app.settings.showPerformance} label={t('Show video delay')} onChange={(value) => void call('settings.update', { showPerformance: value })} />
         </Row>
         <Row
           icon={<LogIcon />}
-          title={t('Журнал приложения')}
+          title={t('App Log')}
           description={
             <>
-              {t('Пригодится, если камера не подключается или запись оборвалась.')} {t('Сообщения go2rtc тоже пишутся в него.')}
+              {t('Useful if the camera won’t connect or a recording stopped unexpectedly.')} {t('go2rtc’s messages are written to it too.')}
               <span className="srow__path mono selectable" title={app.paths.logs}>
                 {app.paths.logs}
               </span>
             </>
           }
         >
-          <Button onClick={() => void call('shell.showItem', 'logs')}>{t('Показать в проводнике')}</Button>
+          <Button onClick={() => void call('shell.showItem', 'logs')}>{t('Show in Explorer')}</Button>
         </Row>
       </Group>
-      <Group title={t('Сведения о приложении')} footer={t('Приложите их к сообщению о проблеме вместе с журналом.')}>
+      <Group title={t('App Information')} footer={t('Attach them to a problem report together with the log.')}>
         <Card>
           {lines.map(([key, value]) => (
             <Row key={key} title={key} className="srow--compact">
-              <Value mono={key === t('Журнал')} selectable>
+              <Value mono={key === t('Log|diagnostics')} selectable>
                 <span className="ellipsis sdiag__value" title={value}>
                   {value}
                 </span>
@@ -72,7 +72,7 @@ export function DiagnosticsPane() {
           ))}
           <Row title="" className="srow--compact">
             <Button icon={<CopyIcon />} onClick={() => void copy()}>
-              {t('Скопировать сведения')}
+              {t('Copy Information')}
             </Button>
           </Row>
         </Card>

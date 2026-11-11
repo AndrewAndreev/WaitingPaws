@@ -12,7 +12,7 @@ struct DurationField: View {
     var body: some View {
         HStack(spacing: 6) {
             stepButton("minus") { value = max(0, value - stepFor(value - 1)) }
-            TextField("0 с", text: $text)
+            TextField("0 s", text: $text)
                 .multilineTextAlignment(.center)
                 .frame(minWidth: 64)
                 .focused($focused)
@@ -182,17 +182,17 @@ struct DurationEditor: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(title).font(.system(.headline, design: .rounded))
                 Spacer()
-                Button("Готово") { dismiss() }
+                Button("Done") { dismiss() }
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(Theme.accent)
                     .buttonStyle(.plain)
             }
             #if os(iOS)
             HStack(spacing: 0) {
-                wheel(String(localized: "Минуты"), selection: Binding(get: { total / 60 }, set: { value = TimeInterval($0 * 60 + total % 60) }),
-                      options: Array(0...max(30, total / 60)), unit: String(localized: "мин"))
-                wheel(String(localized: "Секунды"), selection: Binding(get: { total % 60 }, set: { value = TimeInterval(total / 60 * 60 + $0) }),
-                      options: secondOptions, unit: String(localized: "с"))
+                wheel(String(localized: "Minutes"), selection: Binding(get: { total / 60 }, set: { value = TimeInterval($0 * 60 + total % 60) }),
+                      options: Array(0...max(30, total / 60)), unit: String(localized: "min"))
+                wheel(String(localized: "Seconds"), selection: Binding(get: { total % 60 }, set: { value = TimeInterval(total / 60 * 60 + $0) }),
+                      options: secondOptions, unit: String(localized: "s"))
             }
             .frame(height: 140)
             #else
@@ -208,7 +208,7 @@ struct DurationEditor: View {
                 }
             }
             if let defaultValue {
-                chip(String(localized: "По умолчанию · \(DurationText.short(defaultValue))"), selected: value == nil) {
+                chip(String(localized: "Default · \(DurationText.short(defaultValue))"), selected: value == nil) {
                     value = nil
                     dismiss()
                 }

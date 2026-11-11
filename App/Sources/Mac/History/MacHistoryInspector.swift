@@ -60,10 +60,10 @@ struct MacHistoryInspector: View {
                 .padding(14)
 
                 if let record = row.record {
-                    InspectorSection(String(localized: "Лог")) { log(record) }
+                    InspectorSection(String(localized: "Log")) { log(record) }
                 }
                 if row.video != nil {
-                    InspectorSection(String(localized: "Видео")) { videoInfo }
+                    InspectorSection(String(localized: "Video")) { videoInfo }
                 }
 
                 // Deleting is the toolbar's 🗑, the row's menu and ⌫: one place, not a button here too.
@@ -108,7 +108,7 @@ struct MacHistoryInspector: View {
                     MacHistoryDelayed {
                         VStack(spacing: 8) {
                             ProgressView().controlSize(.small)
-                            Text("Открываем видео…").font(.callout)
+                            Text("Opening video…").font(.callout)
                         }
                         .foregroundStyle(.white.opacity(0.7))
                     }
@@ -144,7 +144,7 @@ struct MacHistoryInspector: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(notes) { note in
                         let time = MacFormat.time.string(from: note.time)
-                        let when = note.exitNumber.map { String(localized: "\(time), выход \($0)") } ?? time
+                        let when = note.exitNumber.map { String(localized: "\(time), exit \($0)") } ?? time
                         Text("\(Text(when).foregroundStyle(.secondary))  \(note.detail ?? "")")
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -160,29 +160,29 @@ struct MacHistoryInspector: View {
         if let video = row.video {
             Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 5) {
                 GridRow {
-                    label(String(localized: "Файл"))
+                    label(String(localized: "File"))
                     Text(video.fileName)
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .help(video.fileName)
                         .textSelection(.enabled)
                 }
-                info(String(localized: "Длина"), video.duration.map(DurationText.clock)
+                info(String(localized: "Length"), video.duration.map(DurationText.clock)
                      ?? video.estimate.map(PreparationText.estimate) ?? "—")
-                info(String(localized: "Размер"), MacHistoryFormat.bytes(video.bytes))
+                info(String(localized: "Size"), MacHistoryFormat.bytes(video.bytes))
                 if let record = row.record {
                     recordingRow(RecordingReport(record: record, model: model, hasVideo: true))
                 }
             }
             HStack(spacing: 8) {
-                Button("В Finder", systemImage: "folder") { controller.revealInFinder(row, model: model) }
-                    .help("Показать видео в Finder")
-                Button("В Фото", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
+                Button("Show in Finder|short", systemImage: "folder") { controller.revealInFinder(row, model: model) }
+                    .help("Show the video in Finder")
+                Button("Save to Photos|short", systemImage: "photo.badge.plus") { model.saveToPhotos(video.url) }
                     .disabled(awaitingPreparation(video) || model.photosStatus(for: video.fileName).saved)
-                    .help("Сохранить видео в Фото")
+                    .help("Save the video to Photos")
                 MacShareButton(.file(video.url)) { Image(systemName: "square.and.arrow.up") }
                     .disabled(awaitingPreparation(video))
-                    .help("Отправить видео…")
+                    .help("Share Video…")
             }
             .padding(.top, 10)
             videoStatus(video)
@@ -194,7 +194,7 @@ struct MacHistoryInspector: View {
     @ViewBuilder
     private func recordingRow(_ report: RecordingReport) -> some View {
         GridRow(alignment: .firstTextBaseline) {
-            label(String(localized: "Запись"))
+            label(String(localized: "Record"))
             VStack(alignment: .leading, spacing: 2) {
                 Text(report.text)
                 if let detail = report.detail {
@@ -219,13 +219,13 @@ struct MacHistoryInspector: View {
         if preparing {
             MacHistoryDelayed {
                 Label(model.videoPreparations[video.fileName]?.leftover == true
-                      ? PreparationText.leftover : String(localized: "Готовим видео для отправки…"),
+                      ? PreparationText.leftover : String(localized: "Preparing the video for sharing…"),
                       systemImage: "hourglass")
                     .font(.callout).foregroundStyle(.secondary).padding(.top, 8)
                     .fixedSize(horizontal: false, vertical: true)
             }
         } else if let error = model.preparationErrors[video.fileName], video.unfinished {
-            Label(String(localized: "Не удалось подготовить видео: \(error)"), systemImage: "exclamationmark.triangle.fill")
+            Label(String(localized: "Couldn’t prepare the video: \(error)"), systemImage: "exclamationmark.triangle.fill")
                 .font(.callout).foregroundStyle(MacHistoryInk.orange).padding(.top, 8)
                 .fixedSize(horizontal: false, vertical: true)
         } else if let error = status.error {
@@ -233,7 +233,7 @@ struct MacHistoryInspector: View {
                 .font(.callout).foregroundStyle(MacHistoryInk.orange).padding(.top, 8)
                 .fixedSize(horizontal: false, vertical: true)
         } else if status.saved {
-            Label("Сохранено в Фото", systemImage: "checkmark.circle.fill")
+            Label("Saved to Photos", systemImage: "checkmark.circle.fill")
                 .font(.callout).foregroundStyle(MacHistoryInk.green).padding(.top, 8)
         }
     }
@@ -298,7 +298,7 @@ private struct InspectorSection<Content: View>: View {
             .buttonStyle(.plain)
             .padding(.horizontal, 14)
             .padding(.top, 2)
-            .accessibilityLabel(expanded ? "Свернуть «\(title)»" : "Развернуть «\(title)»")
+            .accessibilityLabel(expanded ? "Collapse “\(title)”" : "Expand “\(title)”")
             if expanded {
                 VStack(alignment: .leading, spacing: 0) { content }
                     .padding(.horizontal, 14)
@@ -332,9 +332,9 @@ struct MacHistoryExitLog: View {
             // open which side of the exit it was on), the header wrapped over its column like a spreadsheet's.
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text("№").frame(width: Width.number, alignment: .leading)
-                Text("План").frame(width: Width.planned, alignment: .trailing)
-                Text("Факт").frame(width: Width.actual, alignment: .trailing)
-                Text("Перерыв")
+                Text("Plan").frame(width: Width.planned, alignment: .trailing)
+                Text("Actual").frame(width: Width.actual, alignment: .trailing)
+                Text("Break")
                     .lineLimit(1)
                     .fixedSize()
                     .frame(width: Width.rest, alignment: .trailing)
@@ -419,14 +419,14 @@ struct MacHistoryExitLog: View {
 
     private func help(for result: ExitResult, marks: [String], canJump: Bool) -> String {
         var parts = [result.attempt > 1
-            ? String(localized: "Выход \(result.number), попытка \(result.attempt)")
-            : String(localized: "Выход \(result.number)")]
+            ? String(localized: "Exit \(result.number), attempt \(result.attempt)")
+            : String(localized: "Exit \(result.number)")]
         parts.append(SessionLogFormatter.outcome(of: result))
-        if !isLastResult(result) { parts.append(String(localized: "перерыв \(DurationText.short(result.plannedBreak))")) }
+        if !isLastResult(result) { parts.append(String(localized: "break \(DurationText.short(result.plannedBreak))")) }
         parts += marks
-        if result.untilStanding { parts.append(String(localized: "* план: или до вставания")) }
+        if result.untilStanding { parts.append(String(localized: "* plan: or until the dog stands")) }
         let text = parts.joined(separator: ", ")
-        return canJump ? String(localized: "\(text). Нажмите, чтобы перейти к этому выходу в видео.") : text
+        return canJump ? String(localized: "\(text). Click to jump to this exit in the video.") : text
     }
 }
 #endif

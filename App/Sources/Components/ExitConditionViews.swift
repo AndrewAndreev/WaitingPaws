@@ -40,7 +40,7 @@ extension EarlyEntry {
     /// «0:30»; «сразу» without a delay («ИЛИ до вставания» is «встала сразу»); the trainer's words for a time the
     /// parser couldn't read («через пару минут»).
     var conditionTime: String {
-        delay.flatMap { $0 > 0 ? DurationText.clock($0) : nil } ?? unreadDelay ?? String(localized: "сразу")
+        delay.flatMap { $0 > 0 ? DurationText.clock($0) : nil } ?? unreadDelay ?? String(localized: "right away")
     }
 
     /// «встала и пошла 0:30».
@@ -51,7 +51,7 @@ extension TrainingPlan.Rule {
     /// «тишина» and the quiet the trainer asked for, «0:30»; «ждать тишины» when the rule names no time. After the
     /// red ⊖ (`ConditionsLine.ruleSymbol`).
     var conditionWords: String {
-        quietTime == nil ? String(localized: "ждать тишины") : String(localized: "тишина")
+        quietTime == nil ? String(localized: "wait for quiet") : String(localized: "quiet")
     }
 
     var conditionTime: String? { quietTime.map(DurationText.clock) }
@@ -118,7 +118,7 @@ struct ConditionsLine: View {
 enum CountText {
     /// «фальстарт», «фальстарта», «фальстартов» / "false start", "false starts".
     static func falseStartWord(_ count: Int) -> String {
-        let text = pluralText(count, ru: ("фальстарт", "фальстарта", "фальстартов"), en: ("false start", "false starts"))
+        let text = pluralText(count, en: ("false start", "false starts"), ru: ("фальстарт", "фальстарта", "фальстартов"))
         return String(text.drop(while: { $0 != " " }).dropFirst())
     }
 }
@@ -357,7 +357,7 @@ struct ExitSummaryText: View {
                 .map { $0.replacingOccurrences(of: " ", with: "\u{00A0}") }
             var words = Text(verbatim: summaries.joined(separator: "\u{00A0}· ")).foregroundStyle(bright)
             if plan.usesCommonEarlyEntries(exit) {
-                words = Text("\(words) \(Text("· общие").foregroundStyle(dim))")
+                words = Text("\(words) \(Text("· common").foregroundStyle(dim))")
             }
             parts.append(part("figure.run", Theme.info, words))
         }

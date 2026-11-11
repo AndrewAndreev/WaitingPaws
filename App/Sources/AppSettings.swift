@@ -7,9 +7,9 @@ enum PlayerMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .webrtc: return String(localized: "WebRTC (минимальная задержка)")
+        case .webrtc: return String(localized: "WebRTC (lowest latency)")
         case .mse: return "MSE"
-        case .hls: return String(localized: "HLS (запасной)")
+        case .hls: return String(localized: "HLS (fallback)")
         }
     }
     /// Mode string understood by go2rtc's `video-rtc.js`.
@@ -30,8 +30,8 @@ enum ConnectionMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .embedded: return String(localized: "Встроенный go2rtc")
-        case .external: return String(localized: "Свой сервер go2rtc")
+        case .embedded: return String(localized: "Built-in go2rtc")
+        case .external: return String(localized: "Own go2rtc Server")
         }
     }
 }

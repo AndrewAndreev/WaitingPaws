@@ -42,7 +42,7 @@ export function App() {
   if (!app || !app.ready) {
     return (
       <div className="splash">
-        <span className="spinner spinner--lg" aria-label={t('Загрузка')} />
+        <span className="spinner spinner--lg" aria-label={t('Loading')} />
       </div>
     )
   }

@@ -86,27 +86,27 @@ public enum CameraSetting: String, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .nightShot: return tr("Режим съёмки", "Night vision")
-        case .glimmerFullColor: return tr("Цветная ночная съёмка", "Full-color night vision")
-        case .wdr: return tr("WDR (широкий диапазон)", "WDR (wide dynamic range)")
-        case .distortionCorrection: return tr("Коррекция искажений", "Lens distortion correction")
-        case .imageRollover: return tr("Поворот изображения", "Rotate image")
-        case .timeWatermark: return tr("Время на изображении", "Time stamp on video")
-        case .powerFrequency: return tr("Частота сети", "Power line frequency")
-        case .motionTracking: return tr("Следить за движением", "Motion tracking")
-        case .humanTracking: return tr("Следить за человеком", "Human tracking")
-        case .petTracking: return tr("Следить за питомцем", "Pet tracking")
-        case .indicatorLight: return tr("Индикатор на камере", "Status light")
+        case .nightShot: return tr("Night vision", ru: "Режим съёмки")
+        case .glimmerFullColor: return tr("Full-color night vision", ru: "Цветная ночная съёмка")
+        case .wdr: return tr("WDR (wide dynamic range)", ru: "WDR (широкий диапазон)")
+        case .distortionCorrection: return tr("Lens distortion correction", ru: "Коррекция искажений")
+        case .imageRollover: return tr("Rotate image", ru: "Поворот изображения")
+        case .timeWatermark: return tr("Time stamp on video", ru: "Время на изображении")
+        case .powerFrequency: return tr("Power line frequency", ru: "Частота сети")
+        case .motionTracking: return tr("Motion tracking", ru: "Следить за движением")
+        case .humanTracking: return tr("Human tracking", ru: "Следить за человеком")
+        case .petTracking: return tr("Pet tracking", ru: "Следить за питомцем")
+        case .indicatorLight: return tr("Status light", ru: "Индикатор на камере")
         }
     }
 
     /// One line under the title where the name alone is not obvious.
     public var hint: String? {
         switch self {
-        case .nightShot: return tr("Ночной — ИК-подсветка, чёрно-белая картинка.", "Night uses infrared light and a black-and-white picture.")
-        case .glimmerFullColor: return tr("Цвет при слабом свете вместо ИК.", "Color in low light instead of infrared.")
-        case .powerFrequency: return tr("Убирает мерцание от ламп.", "Removes flicker from lamps.")
-        case .motionTracking, .humanTracking, .petTracking: return tr("Поворотная камера сама ведёт объектив.", "A pan-tilt camera follows on its own.")
+        case .nightShot: return tr("Night uses infrared light and a black-and-white picture.", ru: "Ночной — ИК-подсветка, чёрно-белая картинка.")
+        case .glimmerFullColor: return tr("Color in low light instead of infrared.", ru: "Цвет при слабом свете вместо ИК.")
+        case .powerFrequency: return tr("Removes flicker from lamps.", ru: "Убирает мерцание от ламп.")
+        case .motionTracking, .humanTracking, .petTracking: return tr("A pan-tilt camera follows on its own.", ru: "Поворотная камера сама ведёт объектив.")
         default: return nil
         }
     }
@@ -182,7 +182,7 @@ public struct CameraModeOption: Identifiable, Equatable, Hashable, Sendable {
     public func text(for value: MiotValue?) -> String {
         guard let value else { return "—" }
         switch kind {
-        case .toggle: return value.isOn ? tr("Включено", "On") : tr("Выключено", "Off")
+        case .toggle: return value.isOn ? tr("On", ru: "Включено") : tr("Off", ru: "Выключено")
         case .choice(let choices): return choices.first { $0.value == value.number }?.title ?? "\(value.number)"
         }
     }
@@ -211,7 +211,7 @@ public struct CameraSpec: Equatable, Sendable {
 public enum MiotSpec {
     public enum SpecError: LocalizedError {
         case unreadable
-        public var errorDescription: String? { tr("Не удалось разобрать описание камеры (MIoT spec)", "Couldn't read the camera's description (MIoT spec)") }
+        public var errorDescription: String? { tr("Couldn't read the camera's description (MIoT spec)", ru: "Не удалось разобрать описание камеры (MIoT spec)") }
     }
 
     /// The settings from `CameraSetting` that the spec (`/miot-spec-v2/instance?type=…`) declares as readable
@@ -291,9 +291,9 @@ public enum MiotSpec {
         case .powerFrequency:
             choices = (property.valueList ?? []).map { item in
                 let text = item.description.trimmingCharacters(in: .whitespaces)
-                if text.lowercased().contains("auto") { return .init(value: item.value, title: tr("Авто", "Auto")) }
+                if text.lowercased().contains("auto") { return .init(value: item.value, title: tr("Auto", ru: "Авто")) }
                 let digits = text.filter(\.isNumber)
-                return .init(value: item.value, title: digits.isEmpty ? text : tr("\(digits) Гц", "\(digits) Hz"))
+                return .init(value: item.value, title: digits.isEmpty ? text : tr("\(digits) Hz", ru: "\(digits) Гц"))
             }
         case .imageRollover:
             if let list = property.valueList, !list.isEmpty {
@@ -314,14 +314,14 @@ public enum MiotSpec {
     /// Spec descriptions are English: "Auto", "On", "Off", sometimes "Open"/"Close".
     private static func nightTitle(_ description: String) -> (order: Int, title: String)? {
         let text = description.lowercased().trimmingCharacters(in: .whitespaces)
-        if text.contains("auto") { return (0, tr("Авто", "Auto")) }
-        if text == "on" || text.contains("open") || text.hasSuffix(" on") { return (1, tr("Ночной", "Night")) }
-        if text == "off" || text.contains("close") || text.hasSuffix(" off") { return (2, tr("Обычный", "Day")) }
+        if text.contains("auto") { return (0, tr("Auto", ru: "Авто")) }
+        if text == "on" || text.contains("open") || text.hasSuffix(" on") { return (1, tr("Night", ru: "Ночной")) }
+        if text == "off" || text.contains("close") || text.hasSuffix(" off") { return (2, tr("Day", ru: "Обычный")) }
         return nil
     }
 
     private static func rolloverTitle(_ degrees: Int) -> String {
-        degrees == 0 ? tr("Без поворота", "Not rotated") : "\(degrees)°"
+        degrees == 0 ? tr("Not rotated", ru: "Без поворота") : "\(degrees)°"
     }
 
     // MARK: - Spec JSON
@@ -475,8 +475,8 @@ public enum XiaomiCameraError: LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .offline: return tr("Камера не ответила облаку Xiaomi — она выключена или без интернета", "The camera didn't answer the Xiaomi cloud: it is off or offline")
-        case .failed(let code): return tr("Xiaomi не применил настройку (код \(code))", "Xiaomi didn't apply the setting (code \(code))")
+        case .offline: return tr("The camera didn't answer the Xiaomi cloud: it is off or offline", ru: "Камера не ответила облаку Xiaomi — она выключена или без интернета")
+        case .failed(let code): return tr("Xiaomi didn't apply the setting (code \(code))", ru: "Xiaomi не применил настройку (код \(code))")
         }
     }
 }

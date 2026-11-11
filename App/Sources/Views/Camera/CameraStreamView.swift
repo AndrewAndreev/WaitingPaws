@@ -150,13 +150,13 @@ struct CameraStatusOverlay: View {
                 case .playing, .stalled:
                     EmptyView()
                 case .connecting, .waitingForPicture:
-                    message(title: phase == .connecting ? String(localized: "Подключаемся к камере…")
-                                                        : String(localized: "Камера на связи, ждём первый кадр…"),
-                            detail: slow ? String(localized: "Дольше обычного: камера может быть не в сети или занята другим приложением.") : nil,
+                    message(title: phase == .connecting ? String(localized: "Connecting to the camera…")
+                                                        : String(localized: "Camera connected, waiting for the first frame…"),
+                            detail: slow ? String(localized: "Taking longer than usual: the camera may be offline or busy with another app.") : nil,
                             icon: nil)
                 case .failed(let reason):
-                    message(title: String(localized: "Камера не отвечает"),
-                            detail: String(localized: "\(reason). Пробуем снова…"),
+                    message(title: String(localized: "The camera doesn’t respond"),
+                            detail: String(localized: "\(reason). Trying again…"),
                             icon: "video.slash")
                 }
             }
@@ -206,9 +206,9 @@ struct CameraStatusOverlay: View {
     private var recordingLine: FrozenPicturePill.RecordingLine? {
         switch recordingNow {
         case nil: return nil
-        case .writing: return .init(text: String(localized: "Видео записывается"), isOn: true)
-        case .waiting: return .init(text: String(localized: "Запись ждёт камеру"), isOn: false)
-        case .onHost(let host): return .init(text: String(localized: "\(host) продолжает запись"), isOn: true)
+        case .writing: return .init(text: String(localized: "Recording video"), isOn: true)
+        case .waiting: return .init(text: String(localized: "Recording waits for the camera"), isOn: false)
+        case .onHost(let host): return .init(text: String(localized: "\(host) keeps recording"), isOn: true)
         }
     }
 
@@ -242,10 +242,10 @@ struct CameraStatusOverlay: View {
     /// Why the frame stands still, when the player knows more than that.
     private func frozenDetail(_ phase: PlayerPhase) -> String? {
         switch phase {
-        case .connecting, .waitingForPicture: return String(localized: "Подключаемся снова…")
+        case .connecting, .waitingForPicture: return String(localized: "Reconnecting…")
         case .failed(let reason):
             // A line of its own: «Нет ответа. Пробуем снова…».
-            return String(localized: "\(reason.prefix(1).uppercased() + reason.dropFirst()). Пробуем снова…")
+            return String(localized: "\(reason.prefix(1).uppercased() + reason.dropFirst()). Trying again…")
         case .playing, .stalled: return nil
         }
     }
@@ -301,7 +301,7 @@ private struct FrozenPicturePill: View {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small).tint(.white)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Нет кадра \(Self.age(context.date.timeIntervalSince(since)))")
+                    Text("No picture for \(Self.age(context.date.timeIntervalSince(since)))")
                         .font(.system(.footnote, design: .rounded, weight: .semibold))
                         .monospacedDigit()
                     if let detail {
@@ -828,17 +828,17 @@ struct CameraWebView {
                 // The camera turned the session down: it still serves another one (go2rtc's "the camera closed the
                 // session"; a camera that ignores the newcomer instead leaves "can't send command").
                 if error.contains("closed the session") || error.contains("can't send command") {
-                    return .failed(String(localized: "занята другим подключением"))
+                    return .failed(String(localized: "busy with another connection"))
                 }
                 // Before the timeout: a camera search that timed out says why its sends failed
                 // ("i/o timeout (5 sent, all failed: … no route to host)").
                 if error.contains("unreachable") || error.contains("no route") {
-                    return .failed(String(localized: "камера недоступна по сети"))
+                    return .failed(String(localized: "the camera can’t be reached on the network"))
                 }
-                if error.contains("timeout") { return .failed(String(localized: "нет ответа")) }
-                if error.contains("refused") { return .failed(String(localized: "соединение отклонено")) }
+                if error.contains("timeout") { return .failed(String(localized: "no response")) }
+                if error.contains("refused") { return .failed(String(localized: "connection refused")) }
                 let reason = state.dropFirst(5).split(separator: ":").last.map { $0.trimmingCharacters(in: .whitespaces) }
-                return .failed(reason.flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "нет ответа"))
+                return .failed(reason.flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "no response"))
             }
         }
 

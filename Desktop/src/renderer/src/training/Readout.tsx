@@ -24,7 +24,7 @@ export function Readout({ live }: { live: LiveSession }) {
         <div className="readout__about">
           <div className="readout__title">
             <span>{live.title}</span>
-            {live.session.attempt > 1 && !live.isBreak && <span className="readout__attempt">{t('попытка %lld', live.session.attempt)}</span>}
+            {live.session.attempt > 1 && !live.isBreak && <span className="readout__attempt">{t('attempt %lld', live.session.attempt)}</span>}
             {brief && <ExitCluster plan={live.plan} exit={brief.exit} />}
           </div>
           <Info live={live} />
@@ -71,7 +71,7 @@ function ExitCluster({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit }) 
   const note = PlannedExit.noteText(exit) !== null
   if (!triggers && !entries && !note) return null
   return (
-    <span className="readout__cluster" aria-label={t('Триггеров: %lld, условий раннего входа: %lld', triggers, entries)}>
+    <span className="readout__cluster" aria-label={t('Triggers: %lld, conditions for coming back early: %lld', triggers, entries)}>
       <span className={'cluster-badge' + (triggers ? '' : ' is-empty')}>
         <TriggerIcon />
         {triggers > 0 && triggers}
@@ -99,7 +99,7 @@ function OutsideBrief({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit })
         <section className="brief">
           <h4 className="brief__title">
             <EarlyEntryIcon />
-            {t('Ранний вход')}
+            {t('Coming back early')}
           </h4>
           {entries.map((entry) => (
             <EntryPlate key={entry.id} entry={entry} />
@@ -131,14 +131,14 @@ function EntryPlate({ entry }: { entry: EarlyEntry }) {
       </span>
       {soon ? (
         <span className="plate__then tabular">
-          <small>{t('через')}</small>
+          <small>{t('in')}</small>
           {DurationText.clock(entry.delay ?? 0)}
         </span>
       ) : unread ? (
         // «через пару минут»: the trainer's words, not digits.
         <span className="plate__then plate__then--words ellipsis">{unread}</span>
       ) : (
-        <span className="plate__then plate__then--now">{t('сразу')}</span>
+        <span className="plate__then plate__then--now">{t('right away')}</span>
       )}
     </div>
   )
@@ -156,7 +156,7 @@ function StopPlate({ rule }: { rule: PlanRule }) {
           </span>
         )}
       </span>
-      <span className="plate__then plate__then--stop">{t('ждать тишины')}</span>
+      <span className="plate__then plate__then--stop">{t('wait for quiet')}</span>
     </div>
   )
 }
@@ -168,7 +168,7 @@ function NotePlate({ note }: { note: string }) {
     <button type="button" className={'brief brief--note' + (open ? ' is-open' : '')} aria-expanded={open} onClick={() => setOpen(!open)}>
       <span className="brief__title">
         <ExitNoteIcon />
-        {t('Заметка к выходу')}
+        {t('Note for the exit')}
         <span className="spacer" />
         <ChevronDownIcon className="brief__chevron" />
       </span>
@@ -186,7 +186,7 @@ function PrepareBrief({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit })
     <section className="brief">
       <h4 className="brief__title">
         <TriggerIcon />
-        {t('Подготовить к выходу %lld', exit.number)}
+        {t('Get ready for exit %lld', exit.number)}
       </h4>
       {exit.triggers.map((trigger, index) => (
         <div key={index} className="plate plate--trigger">
@@ -197,7 +197,7 @@ function PrepareBrief({ plan, exit }: { plan: TrainingPlan; exit: PlannedExit })
       {entries.length > 0 && (
         <div className="brief__then">
           <EarlyEntryIcon />
-          <span className="ellipsis">{t('На выходе: %@', entries.map(EarlyEntry.summary).join(' · '))}</span>
+          <span className="ellipsis">{t('On the exit: %@', entries.map(EarlyEntry.summary).join(' · '))}</span>
         </div>
       )}
     </section>
@@ -232,15 +232,15 @@ function ExitStrip({ live }: { live: LiveSession }) {
         const triggers = exit.triggers.length > 0
         const early = TrainingPlan.canEndEarly(live.plan, exit)
         const label = [
-          t('Выход %lld', exit.number),
-          exit.isOpen ? t('без времени') : DurationText.short(exit.duration),
-          ...(triggers ? [t('триггеры')] : []),
-          ...(early ? [t('можно вернуться раньше')] : []),
+          t('Exit %lld', exit.number),
+          exit.isOpen ? t('no set time') : DurationText.short(exit.duration),
+          ...(triggers ? [t('triggers')] : []),
+          ...(early ? [t('may come back early')] : []),
         ].join(', ')
         return (
           <Fragment key={exit.id}>
             <span className={`exit-chip exit-chip--${state} tabular`} aria-label={label}>
-              {exit.isOpen ? t('доп.') : DurationText.compact(exit.duration)}
+              {exit.isOpen ? t('extra') : DurationText.compact(exit.duration)}
               {(triggers || early) && (
                 <span className="exit-chip__badges" aria-hidden>
                   {triggers && (
@@ -274,7 +274,7 @@ function Info({ live }: { live: LiveSession }) {
   if (!exit || live.isFinished) return null
   return (
     <div className="readout__info">
-      <span>{exit.isOpen ? t('Выход %lld · %@', exit.number, live.exitDescription) : t('План %@', live.exitDescription)}</span>
+      <span>{exit.isOpen ? t('Exit %lld · %@', exit.number, live.exitDescription) : t('Plan %@', live.exitDescription)}</span>
     </div>
   )
 }
@@ -290,20 +290,20 @@ function Transport({ live }: { live: LiveSession }) {
   return (
     <div className="transport">
       {phase.kind === 'away' ? (
-        <Step icon={<DoorStepIcon entering />} title={t('Вернулись')} keys="Пробел" tone="rest" onClick={() => void call('session.command', 'endExit')} />
+        <Step icon={<DoorStepIcon entering />} title={t('Back Inside')} keys="Space" tone="rest" onClick={() => void call('session.command', 'endExit')} />
       ) : SessionPhase.canGoOutside(phase) ? (
-        <Step icon={<DoorStepIcon />} title={t('Вышли')} keys="Пробел" tone="primary" onClick={() => void call('session.command', 'markBehindDoor')} />
+        <Step icon={<DoorStepIcon />} title={t('Outside|step')} keys="Space" tone="primary" onClick={() => void call('session.command', 'markBehindDoor')} />
       ) : phase.kind === 'breakTime' ? (
-        <Step icon={<FinishIcon />} title={t('Завершить')} keys="Пробел" tone="primary" onClick={() => void call('session.command', 'finish')} />
+        <Step icon={<FinishIcon />} title={t('Finish')} keys="Space" tone="primary" onClick={() => void call('session.command', 'finish')} />
       ) : null}
       {lastBreak ? (
-        <Step key="more" icon={<DoorStepIcon />} title={t('Ещё выход')} tone="secondary" onClick={() => void call('session.command', 'startOpenExit')} />
+        <Step key="more" icon={<DoorStepIcon />} title={t('Another Exit')} tone="secondary" onClick={() => void call('session.command', 'startOpenExit')} />
       ) : (
         SessionPhase.canFalseStart(phase) && (
           <Step
             key="falseStart"
             icon={<FalseStartIcon />}
-            title={t('Фальстарт')}
+            title={t('False Start')}
             keys="⌫"
             hint="Backspace"
             tone="warn"

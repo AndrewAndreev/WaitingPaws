@@ -29,7 +29,7 @@ struct MacHistoryWindow: View {
 
         NavigationStack {
             content(rows: rows, selected: selected, isEmpty: isEmpty)
-                .navigationTitle("История")
+                .navigationTitle("History")
                 .navigationSubtitle(subtitle)
                 .toolbar { toolbar(selected: selected, isEmpty: isEmpty) }
                 .inspector(isPresented: Binding(get: { controller.showsInspector && !isEmpty },
@@ -38,7 +38,7 @@ struct MacHistoryWindow: View {
                         if let selected {
                             MacHistoryInspector(row: selected)
                         } else {
-                            ContentUnavailableView("Ничего не выбрано", systemImage: "sidebar.trailing")
+                            ContentUnavailableView("Nothing Selected", systemImage: "sidebar.trailing")
                         }
                     }
                     .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .global).minX }) { inspectorMinX = $0 }
@@ -58,11 +58,11 @@ struct MacHistoryWindow: View {
         } message: { pending in
             Text(deleteMessage(pending))
         }
-        .confirmationDialog("Удалить всю историю?", isPresented: $controller.confirmDeleteAll, titleVisibility: .visible) {
+        .confirmationDialog("Delete All History?", isPresented: $controller.confirmDeleteAll, titleVisibility: .visible) {
             Button(deleteAllTitle, role: .destructive) { controller.deleteAll(model) }
-            Button("Отмена", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Логи и видео будут удалены с этого Mac. Копии в Фото останутся.")
+            Text("Logs and videos will be deleted from this Mac. Copies in Photos will remain.")
         }
         .task(id: controller.filesSignature(model)) { await controller.refreshFiles(model) }
         .onChange(of: rows.map(\.id), initial: true) { _, ids in
@@ -98,9 +98,9 @@ struct MacHistoryWindow: View {
     private func content(rows: [MacHistoryRow], selected: MacHistoryRow?, isEmpty: Bool) -> some View {
         if isEmpty {
             ContentUnavailableView {
-                Label("Пока нет тренировок", systemImage: "pawprint")
+                Label("No Trainings Yet", systemImage: "pawprint")
             } actions: {
-                Button("Перейти к тренировке") { openWindow(id: "main") }
+                Button("Go to Training") { openWindow(id: "main") }
             }
         } else {
             let records = controller.records(model)
@@ -121,9 +121,9 @@ struct MacHistoryWindow: View {
         if !controller.search.trimmingCharacters(in: .whitespaces).isEmpty {
             ContentUnavailableView.search(text: controller.search)
         } else if controller.scope == .clips {
-            ContentUnavailableView("Нет записей без тренировки", systemImage: "film")
+            ContentUnavailableView("No Recordings Without a Training", systemImage: "film")
         } else {
-            ContentUnavailableView("Тренировок пока нет", systemImage: "pawprint")
+            ContentUnavailableView("No Trainings Yet|window", systemImage: "pawprint")
         }
     }
 
@@ -145,7 +145,7 @@ struct MacHistoryWindow: View {
     private func toolbar(selected: MacHistoryRow?, isEmpty: Bool) -> some ToolbarContent {
         @Bindable var controller = controller
         ToolbarItem(placement: .principal) {
-            Picker("Показать", selection: $controller.scope) {
+            Picker("Show", selection: $controller.scope) {
                 ForEach(MacHistoryController.Scope.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
@@ -157,18 +157,18 @@ struct MacHistoryWindow: View {
         ToolbarItemGroup(placement: .primaryAction) {
             if let selected, let record = selected.record, let text = selected.logText {
                 MacShareButton(.text(text, title: record.plan.title, subject: record.plan.title)) {
-                    Label("Отправить лог", systemImage: "square.and.arrow.up")
+                    Label("Send Log", systemImage: "square.and.arrow.up")
                 }
-                .help("Отправить лог тренеру")
+                .help("Send the log to the trainer")
             } else {
-                Button("Отправить лог", systemImage: "square.and.arrow.up") {}
+                Button("Send Log", systemImage: "square.and.arrow.up") {}
                     .disabled(true)
-                    .help("Отправить лог тренеру")
+                    .help("Send the log to the trainer")
             }
-            Button("Показать в Finder", systemImage: "folder") {
+            Button("Show in Finder", systemImage: "folder") {
                 if let selected { controller.revealInFinder(selected, model: model) } else { Finder.reveal(model.store.rootDirectory) }
             }
-            .help(selected?.video != nil ? "Показать видео в Finder" : selected?.record != nil ? "Показать лог в Finder" : "Показать папку истории в Finder")
+            .help(selected?.video != nil ? "Show the video in Finder" : selected?.record != nil ? "Show Log in Finder" : "Show the history folder in Finder")
         }
 
         ToolbarSpacer(.fixed, placement: .primaryAction)
@@ -179,23 +179,23 @@ struct MacHistoryWindow: View {
                     MacHistoryDeleteItems(row: selected)
                     Divider()
                 }
-                Button("Удалить всё…", role: .destructive) { controller.confirmDeleteAll = true }
+                Button("Delete All…", role: .destructive) { controller.confirmDeleteAll = true }
             } label: {
-                Label("Удалить", systemImage: "trash")
+                Label("Delete", systemImage: "trash")
             } primaryAction: {
                 if let selected { controller.confirmDelete(selected) }
             }
             .disabled(isEmpty)
-            .help("Удалить выбранное (⌫)")
+            .help("Delete selected (⌫)")
         }
 
         ToolbarSpacer(.fixed, placement: .primaryAction)
 
         ToolbarItem(placement: .primaryAction) {
-            Button("Инспектор", systemImage: "sidebar.trailing") { controller.showsInspector.toggle() }
+            Button("Inspector", systemImage: "sidebar.trailing") { controller.showsInspector.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])
                 .disabled(isEmpty)
-                .help(controller.showsInspector ? "Скрыть инспектор (⌥⌘I)" : "Показать инспектор (⌥⌘I)")
+                .help(controller.showsInspector ? "Hide inspector (⌥⌘I)" : "Show inspector (⌥⌘I)")
         }
 
         ToolbarSpacer(.fixed, placement: .primaryAction)
@@ -203,7 +203,7 @@ struct MacHistoryWindow: View {
         // Last in the toolbar, so at the window's edge: as wide as the inspector it sits on, which puts the buttons
         // above right before the inspector's edge; with the inspector closed, a plain field next to them.
         ToolbarItem(placement: .primaryAction) {
-            MacToolbarSearchField(text: $controller.search, focus: $searchFocused, prompt: "Поиск")
+            MacToolbarSearchField(text: $controller.search, focus: $searchFocused, prompt: "Search")
                 .frame(width: searchWidth)
                 // Follows the inspector frame by frame as it slides or is resized; an animation of its own would
                 // lag behind the toolbar, which places the items at once, and run into the buttons.
@@ -226,12 +226,12 @@ struct MacHistoryWindow: View {
     /// ⇧⌘C works with the inspector closed too; ⌘F goes to the search field.
     private func shortcuts(selected: MacHistoryRow?) -> some View {
         ZStack {
-            Button("Скопировать лог") { if let selected { controller.copyLog(of: selected) } }
+            Button("Copy Log") { if let selected { controller.copyLog(of: selected) } }
                 .keyboardShortcut("c", modifiers: [.command, .shift])
                 .disabled(selected?.record == nil)
-            Button("Поиск") {
+            Button("Search") {
                 searchFocused = true
-                MacToolbarSearchField.focus(in: NSApp.keyWindow, prompt: String(localized: "Поиск"))
+                MacToolbarSearchField.focus(in: NSApp.keyWindow, prompt: String(localized: "Search"))
             }
             .keyboardShortcut("f", modifiers: .command)
         }
@@ -244,8 +244,8 @@ struct MacHistoryWindow: View {
 
     private var deleteTitle: String {
         guard let pending = controller.pendingDelete else { return "" }
-        if pending.row.isClip { return String(localized: "Удалить запись?") }
-        return pending.onlyLog == true ? String(localized: "Удалить лог тренировки?") : String(localized: "Удалить тренировку?")
+        if pending.row.isClip { return String(localized: "Delete Recording?") }
+        return pending.onlyLog == true ? String(localized: "Delete Training Log?") : String(localized: "Delete Training?")
     }
 
     private func deleteMessage(_ pending: MacHistoryController.PendingDelete) -> String {
@@ -253,42 +253,42 @@ struct MacHistoryWindow: View {
         let day = MacHistoryFormat.dayMonth(row.date)
         let time = MacFormat.time.string(from: row.date)
         let what = row.isClip
-            ? String(localized: "Запись \(day), \(time).")
+            ? String(localized: "Recording from \(day), \(time).")
             : String(localized: "«\(row.title)», \(day), \(time).")
-        if pending.onlyLog == true { return String(localized: "\(what) Видео останется в истории как запись без тренировки.") }
-        return row.video == nil ? what : String(localized: "\(what) Копии в Фото не удаляются.")
+        if pending.onlyLog == true { return String(localized: "\(what) The video will stay in History as a recording without a training.") }
+        return row.video == nil ? what : String(localized: "\(what) Copies in Photos aren’t deleted.")
     }
 
     @ViewBuilder
     private func deleteButtons(_ pending: MacHistoryController.PendingDelete, rows: [MacHistoryRow]) -> some View {
         let row = pending.row
         if row.isClip {
-            Button("Удалить запись", role: .destructive) { controller.delete(row, onlyLog: false, model: model, visible: rows) }
+            Button("Delete Recording", role: .destructive) { controller.delete(row, onlyLog: false, model: model, visible: rows) }
         } else {
             if pending.onlyLog != true {
-                Button(row.video == nil ? "Удалить тренировку" : "Удалить тренировку и видео", role: .destructive) {
+                Button(row.video == nil ? "Delete Training" : "Delete Training and Video", role: .destructive) {
                     controller.delete(row, onlyLog: false, model: model, visible: rows)
                 }
             }
             if pending.onlyLog != false {
-                Button(pending.onlyLog == true ? "Удалить лог" : "Удалить только лог, видео оставить") {
+                Button(pending.onlyLog == true ? "Delete Log" : "Delete Log Only, Keep Video") {
                     controller.delete(row, onlyLog: true, model: model, visible: rows)
                 }
             }
         }
-        Button("Отмена", role: .cancel) {}
+        Button("Cancel", role: .cancel) {}
     }
 
     private var deleteAllTitle: String {
         let trainings = controller.records(model).count
         let clips = controller.clips(model).count
         // Accusative: «Удалить 1 тренировку».
-        let trainingsText = pluralText(trainings, ru: ("тренировку", "тренировки", "тренировок"), en: ("training", "trainings"))
+        let trainingsText = pluralText(trainings, en: ("training", "trainings"), ru: ("тренировку", "тренировки", "тренировок"))
         let clipsText = MacHistoryFormat.recordings(clips)
         switch (trainings, clips) {
-        case (_, 0): return String(localized: "Удалить \(trainingsText)")
-        case (0, _): return String(localized: "Удалить \(clipsText)")
-        default: return String(localized: "Удалить \(trainingsText) и \(clipsText)")
+        case (_, 0): return String(localized: "Delete \(trainingsText)")
+        case (0, _): return String(localized: "Delete \(clipsText)")
+        default: return String(localized: "Delete \(trainingsText) and \(clipsText)")
         }
     }
 }
@@ -316,7 +316,7 @@ struct MacToolbarSearchField: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
-                .help("Очистить")
+                .help("Clear")
             }
         }
         .padding(.horizontal, 10)
@@ -347,16 +347,16 @@ struct MacHistoryDeleteItems: View {
     var body: some View {
         switch row.kind {
         case .training:
-            Button(row.video == nil ? "Удалить тренировку…" : "Удалить тренировку и видео…", systemImage: "trash", role: .destructive) {
+            Button(row.video == nil ? "Delete Training…" : "Delete Training and Video…", systemImage: "trash", role: .destructive) {
                 controller.confirmDelete(row, onlyLog: false)
             }
             if row.video != nil {
-                Button("Удалить только лог, видео оставить…", systemImage: "doc.badge.minus") {
+                Button("Delete Log Only, Keep Video…", systemImage: "doc.badge.minus") {
                     controller.confirmDelete(row, onlyLog: true)
                 }
             }
         case .clip:
-            Button("Удалить запись…", systemImage: "trash", role: .destructive) { controller.confirmDelete(row) }
+            Button("Delete Recording…", systemImage: "trash", role: .destructive) { controller.confirmDelete(row) }
         }
     }
 }

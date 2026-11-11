@@ -361,12 +361,12 @@ final class TrainingGlance {
     private func unreachable(_ content: ReadoutContent, status: ReadoutContent.Status,
                              model: AppModel) -> Attributes.ContentState {
         let readout = Attributes.Readout(tone: .orange, glyph: .noLink,
-                                         value: String(localized: "Нет связи с \(model.linkedHostKind)"), isWords: true,
+                                         value: String(localized: "No connection to the \(model.linkedHostKind)"), isWords: true,
                                          endsAt: nil, countsUpFrom: nil,
                                          plus: false, tintsValue: true, progressFrom: nil, progressFull: false,
                                          hidesProgress: true)
         return Attributes.ContentState(title: content.phoneTitle, position: Self.position(content.session), status: readout,
-                                       then: nil, step: nil, openApp: String(localized: "Открыть"))
+                                       then: nil, step: nil, openApp: String(localized: "Open"))
     }
 
     /// «из 5» next to «Выход 3»: outside an exit of the plan and before the first one.
@@ -374,7 +374,7 @@ final class TrainingGlance {
         switch session.phase {
         case .ready, .leaving, .away:
             guard session.currentExit?.isOpen == false else { return nil }
-            return String(localized: "из \(session.plan.exits.count)")
+            return String(localized: "of \(session.plan.exits.count)")
         case .breakTime, .finished:
             return nil
         }
@@ -470,8 +470,8 @@ final class TrainingGlance {
         let kind = model.linkedHostKind
         let at = lastLinked ?? now
         let time = Self.clockTime(at)
-        return Attributes.Updated(text: String(localized: "с \(kind) в \(time)"),
-                                  spoken: String(localized: "Обновлено с \(kind) в \(time)"), at: at)
+        return Attributes.Updated(text: String(localized: "from the \(kind) at \(time)"),
+                                  spoken: String(localized: "Updated from the \(kind) at \(time)"), at: at)
     }
 
     /// The background time left at which the card is told the news will stop: enough for the update to get through

@@ -40,7 +40,7 @@ struct WaitingPawsApp: App {
         .commands { MacCommands(model: model, ui: ui) }
 
         // First launch: sign in to Xiaomi or pick a go2rtc stream (Xcode-style welcome window).
-        Window("Добро пожаловать в Waiting Paws", id: "welcome") {
+        Window("Welcome to Waiting Paws", id: "welcome") {
             MacWelcomeView()
                 .debugRetinaWindow()
                 .environment(model)
@@ -55,7 +55,7 @@ struct WaitingPawsApp: App {
         .defaultLaunchBehavior(.suppressed)
         .restorationBehavior(.disabled)
 
-        Window("История", id: "history") {
+        Window("History", id: "history") {
             MacHistoryWindow()
                 .debugRetinaWindow()
                 .environment(model)

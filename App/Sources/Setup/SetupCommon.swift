@@ -38,8 +38,8 @@ extension AppModel {
 enum SetupText {
     /// "Версия 1.6.10 (9a8e796)" (the version and its commit, see AppInfo), "Версия dev" for a build from Xcode.
     static var appVersion: String {
-        guard let release = AppInfo.release else { return String(localized: "Версия") + " dev" }
-        return String(localized: "Версия \(release.version) (\(release.commit))")
+        guard let release = AppInfo.release else { return String(localized: "Version") + " dev" }
+        return String(localized: "Version \(release.version) (\(release.commit))")
     }
 
     /// "1920×1080". H.265 streams report the coded height (1088 for 1080p): within a macroblock of 16:9 it is rounded.
@@ -55,12 +55,12 @@ enum SetupText {
 
     static func regionTitle(_ region: XiaomiRegion) -> String {
         switch region {
-        case .ru: return String(localized: "Россия")
-        case .de: return String(localized: "Европа")
-        case .cn: return String(localized: "Китай")
-        case .us: return String(localized: "США")
-        case .sg: return String(localized: "Сингапур")
-        case .i2: return String(localized: "Индия")
+        case .ru: return String(localized: "Russia")
+        case .de: return String(localized: "Europe")
+        case .cn: return String(localized: "China")
+        case .us: return String(localized: "United States")
+        case .sg: return String(localized: "Singapore")
+        case .i2: return String(localized: "India")
         }
     }
 
@@ -70,9 +70,9 @@ enum SetupText {
         let parts = (model ?? "").lowercased().split(separator: ".").map(String.init)
         let peephole = parts.count > 1 && parts[1] == "cateye"
         guard let vendor = parts.first.flatMap({ cameraVendors[$0] }) else {
-            return peephole ? String(localized: "Видеоглазок Mi Home") : String(localized: "Камера Mi Home")
+            return peephole ? String(localized: "Mi Home Peephole Camera") : String(localized: "Mi Home Camera")
         }
-        return peephole ? String(localized: "Видеоглазок \(vendor)") : String(localized: "Камера \(vendor)")
+        return peephole ? String(localized: "\(vendor) Peephole Camera") : String(localized: "\(vendor) Camera")
     }
 
     private static let cameraVendors = [
@@ -108,20 +108,20 @@ enum SetupText {
 /// condition so a build without the flag extracts them into the string catalog too.
 enum NoXiaomiText {
     /// An empty camera list: the iPhone's picker, the Mac's welcome window.
-    static var addCamera: String { String(localized: "Добавьте камеру по её адресу RTSP — она появится здесь.") }
+    static var addCamera: String { String(localized: "Add a camera by its RTSP address and it will appear here.") }
     /// The «рядом» card of a computer (iPhone).
-    static var joinTraining: String { String(localized: "iPhone покажет камеру и станет пультом для этой тренировки.") }
+    static var joinTraining: String { String(localized: "iPhone will show the camera and become a remote for this training.") }
     static func joinCamera(_ camera: String, from kind: String) -> String {
-        String(localized: "На нём уже подключена камера «\(camera)». iPhone покажет её и тренировку с \(kind).")
+        String(localized: "It already has the camera “\(camera)”. iPhone will show it and the training from the \(kind).")
     }
-    static var joinSeveral: String { String(localized: "На них уже подключена камера: iPhone покажет её и тренировку.") }
+    static var joinSeveral: String { String(localized: "They already have the camera: iPhone will show it and the training.") }
     /// The Mac's main window before a camera is chosen.
-    static var macNoCamera: String { String(localized: "Выберите поток go2rtc или продолжите без камеры в окне приветствия.") }
+    static var macNoCamera: String { String(localized: "Choose a go2rtc stream or continue without a camera in the welcome window.") }
     /// Mac Settings → Подключение.
-    static var connectionHeader: String { String(localized: "Где работает go2rtc — сервер, который забирает видео с камеры.") }
-    static var configFile: String { String(localized: "Потоки go2rtc. Не пересылайте его: в адресах камер бывают пароли.") }
+    static var connectionHeader: String { String(localized: "Where go2rtc runs — the server that pulls video from the camera.") }
+    static var configFile: String { String(localized: "go2rtc streams. Don’t share it: camera addresses may contain passwords.") }
     /// The Mac's «Свой сервер go2rtc» sheet.
-    static var serverPassword: String { String(localized: "Пароль сервера хранится в связке ключей.") }
+    static var serverPassword: String { String(localized: "The server password is stored in the keychain.") }
 }
 
 
@@ -185,7 +185,7 @@ enum SetupDemo {
 
     #if DEBUG
     /// Demo names in the app's language (screenshots for both App Store languages).
-    private static func tr(_ ru: String, _ en: String) -> String { CoreLanguage.current == .ru ? ru : en }
+    private static func tr(_ en: String, ru: String) -> String { CoreLanguage.current == .ru ? ru : en }
     private static let kitchenDID = "1093845577"
     private static let nurseryDID = "1093845604"
 
@@ -200,10 +200,10 @@ enum SetupDemo {
         return [SetupCameraCatalog.Account(id: accountID, region: region, cameras: [
             camera(cameraName, did: "1093845561", model: cameraModel, ip: "192.168.1.34", stream: cameraStream),
             // Not a stream yet: a preview that came through, one still on its way, one offline (no address).
-            camera(tr("Кухня", "Kitchen"), did: kitchenDID, model: "chuangmi.camera.039a01", ip: "192.168.1.35", stream: nil),
-            camera(tr("Балкон", "Balcony"), did: "1093845590", model: "isa.camera.hlc7", ip: "192.168.1.36", stream: "balkon"),
-            camera(tr("Детская", "Nursery"), did: nurseryDID, model: "chuangmi.camera.ipc019", ip: "192.168.1.37", stream: nil),
-            camera(tr("Дача", "Cottage"), did: "1093845618", model: "mijia.camera.v3", ip: "", stream: nil),
+            camera(tr("Kitchen", ru: "Кухня"), did: kitchenDID, model: "chuangmi.camera.039a01", ip: "192.168.1.35", stream: nil),
+            camera(tr("Balcony", ru: "Балкон"), did: "1093845590", model: "isa.camera.hlc7", ip: "192.168.1.36", stream: "balkon"),
+            camera(tr("Nursery", ru: "Детская"), did: nurseryDID, model: "chuangmi.camera.ipc019", ip: "192.168.1.37", stream: nil),
+            camera(tr("Cottage", ru: "Дача"), did: "1093845618", model: "mijia.camera.v3", ip: "", stream: nil),
         ], error: nil)]
     }
 

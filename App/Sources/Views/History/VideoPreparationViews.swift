@@ -13,20 +13,20 @@ enum PreparationText {
 
     /// «Готовим видео · 42 %»; «Готовим видео…» until the first step is done.
     static func title(_ preparation: AppModel.VideoPreparation?) -> String {
-        guard let fraction = preparation?.fraction, fraction > 0 else { return String(localized: "Готовим видео…") }
-        return String(localized: "Готовим видео · \(percent(fraction))")
+        guard let fraction = preparation?.fraction, fraction > 0 else { return String(localized: "Preparing video…") }
+        return String(localized: "Preparing video · \(percent(fraction))")
     }
 
     /// «ещё ≈ 6 мин», «ещё ≈ 40 с»; `nil` until the pace is clear.
     static func remaining(_ preparation: AppModel.VideoPreparation?) -> String? {
         guard let seconds = preparation?.remaining else { return nil }
         let rounded = seconds < 60 ? max(10, (seconds / 10).rounded() * 10) : (seconds / 60).rounded() * 60
-        return String(localized: "ещё ≈ \(DurationText.short(rounded))")
+        return String(localized: "≈ \(DurationText.short(rounded)) left")
     }
 
     /// Why a recording from before is being prepared now.
     static var leftover: String {
-        String(localized: "Запись не успела подготовиться в прошлый раз. Доделываем в фоне.")
+        String(localized: "This recording wasn’t finished preparing last time. Finishing it in the background.")
     }
 
     /// A raw recording's length, read from its file's times: «≈ 14:25:00».
@@ -77,7 +77,7 @@ struct PreparationPoster: View {
                 ProgressView()
                     .controlSize(compact ? .small : .regular)
                     .tint(.white)
-                Text("Готовим видео…").font(compact ? .callout : .body)
+                Text("Preparing video…").font(compact ? .callout : .body)
             }
         }
         .foregroundStyle(.white.opacity(0.75))

@@ -18,7 +18,7 @@ struct NewTrainingPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Новая тренировка").font(.title2.weight(.semibold))
+            Text("New Training").font(.title2.weight(.semibold))
             if let plan = model.pendingPlan {
                 todayCard(plan)
                 if !plan.rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -26,7 +26,7 @@ struct NewTrainingPanel: View {
                 }
             } else {
                 Button { ui.pasteSchedule(model) } label: {
-                    ShortcutLabel(title: String(localized: "Вставить расписание"), symbol: "doc.on.clipboard",
+                    ShortcutLabel(title: String(localized: "Paste Schedule"), symbol: "doc.on.clipboard",
                                   key: "⌘⇧V", prominent: true, expand: true)
                 }
                 .buttonStyle(MacStartButtonStyle(expand: true))
@@ -61,13 +61,13 @@ struct NewTrainingPanel: View {
     private var withoutTraining: some View {
         Menu {
             Button { model.startRecording() } label: {
-                Label(String(localized: "Записать видео · ⌘R"), systemImage: "record.circle")
+                Label(String(localized: "Record video · ⌘R"), systemImage: "record.circle")
             }
             Button { ui.cameraOnly = true } label: {
-                Label(String(localized: "Только камера · ⇧⌘F"), systemImage: "arrow.up.left.and.arrow.down.right")
+                Label(String(localized: "Camera Only · ⇧⌘F"), systemImage: "arrow.up.left.and.arrow.down.right")
             }
         } label: {
-            Label("Без тренировки", systemImage: "video")
+            Label("No Training", systemImage: "video")
         }
         .menuStyle(.button)
         .menuIndicator(.visible)
@@ -75,7 +75,7 @@ struct NewTrainingPanel: View {
         // As wide as the panel's other rows.
         .frame(maxWidth: .infinity)
         .disabled(!model.settings.isConfigured)
-        .help("Записать видео или смотреть камеру на всё окно — без расписания и лога")
+        .help("Record video or watch the camera full-window — no schedule or log")
     }
 
     /// «Текст тренера ⌃» and the text: an exit line with its number, the lines under it a stem; the pointer over a
@@ -128,10 +128,10 @@ struct NewTrainingPanel: View {
                 Spacer(minLength: 0)
                 // The rest of what can be done with the plan, out of the way of «Начать тренировку».
                 Menu {
-                    Button("Показать разбор", systemImage: "checklist") { ui.reviewingPlan = true }
-                    Button("Другое расписание", systemImage: "doc.on.clipboard") { ui.pasteSchedule(model) }
+                    Button("Show Breakdown", systemImage: "checklist") { ui.reviewingPlan = true }
+                    Button("Another schedule", systemImage: "doc.on.clipboard") { ui.pasteSchedule(model) }
                     Divider()
-                    Button("Убрать", systemImage: "xmark", role: .destructive) { model.setPending(nil) }
+                    Button("Remove", systemImage: "xmark", role: .destructive) { model.setPending(nil) }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -139,15 +139,15 @@ struct NewTrainingPanel: View {
                 .buttonStyle(.borderless)
                 .menuIndicator(.hidden)
                 .fixedSize()
-                .help("Ещё")
+                .help("More")
             }
             Button { ui.startPending(model) } label: {
-                ShortcutLabel(title: String(localized: "Начать тренировку"), symbol: "play.fill", key: "⌘↩", prominent: true, expand: true)
+                ShortcutLabel(title: String(localized: "Start Training"), symbol: "play.fill", key: "⌘↩", prominent: true, expand: true)
             }
             .buttonStyle(MacStartButtonStyle(expand: true))
             .padding(.top, 2)
             if model.settings.isConfigured {
-                Toggle("Записывать видео", isOn: $settings.autoRecord)
+                Toggle("Record video", isOn: $settings.autoRecord)
                     .toggleStyle(.checkbox)
             }
         }
@@ -164,7 +164,7 @@ struct NewTrainingPanel: View {
         var parts: [String] = []
         if !plan.trainers.isEmpty { parts.append(plan.trainers) }
         parts.append("≈ \(DurationText.short((plan.estimatedDuration / 60).rounded() * 60))")
-        parts.append(String(localized: "конец ≈ \(MacFormat.time.string(from: Date().addingTimeInterval(plan.estimatedDuration)))"))
+        parts.append(String(localized: "ends ≈ \(MacFormat.time.string(from: Date().addingTimeInterval(plan.estimatedDuration)))"))
         return parts.joined(separator: " · ")
     }
 }

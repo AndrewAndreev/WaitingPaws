@@ -9,26 +9,26 @@ export function AppearancePane() {
   const app = useApp()
   return (
     <>
-      <PaneHeader title={t('Оформление')} description={t('Тема и язык приложения.')} />
+      <PaneHeader title={t('Appearance')} description={t('The app’s theme and language.')} />
       <Group>
-        <Row icon={<ThemeIcon />} title={t('Тема')} description={t('Светлая или тёмная, или как в Windows.')}>
+        <Row icon={<ThemeIcon />} title={t('Theme')} description={t('Light or dark, or the same as Windows.')}>
           <Select<ThemePreference>
-            label={t('Тема')}
+            label={t('Theme')}
             value={app.settings.theme}
             options={[
-              { value: 'system', label: t('Как в системе') },
-              { value: 'light', label: t('Светлая') },
-              { value: 'dark', label: t('Тёмная') },
+              { value: 'system', label: t('Use system setting') },
+              { value: 'light', label: t('Light') },
+              { value: 'dark', label: t('Dark') },
             ]}
             onChange={(theme) => void call('settings.update', { theme })}
           />
         </Row>
-        <Row icon={<LanguageIcon />} title={t('Язык')} description={t('Интерфейс и тексты логов для тренера.')}>
+        <Row icon={<LanguageIcon />} title={t('Language')} description={t('The interface and the logs for the trainer.')}>
           <Select<LanguagePreference>
-            label={t('Язык')}
+            label={t('Language')}
             value={app.settings.language}
             options={[
-              { value: 'system', label: t('Как в системе') },
+              { value: 'system', label: t('Use system setting') },
               { value: 'ru', label: 'Русский' },
               { value: 'en', label: 'English' },
             ]}

@@ -74,11 +74,11 @@ struct TrainerTextDrawer: View {
                 }
                 Spacer(minLength: 0)
                 IconButton(systemImage: "xmark", action: onClose)
-                    .accessibilityLabel("Закрыть текст тренера")
+                    .accessibilityLabel("Close the trainer’s text")
             }
             // The whole screen or back: by the grabber's drag, and for VoiceOver as an action.
-            .accessibilityAction(named: detent == .full ? Text("Уменьшить текст тренера")
-                                                        : Text("Текст тренера на весь экран")) {
+            .accessibilityAction(named: detent == .full ? Text("Make the trainer’s text smaller")
+                                                        : Text("The trainer’s text full screen")) {
                 withAnimation(.smooth(duration: 0.3)) { detent = detent == .full ? .middle : .full }
             }
         }

@@ -80,7 +80,7 @@ struct SetupXiaomiSignInSheet: View {
         HStack(spacing: 12) {
             SetupAppIcon(size: 44)
             VStack(alignment: .leading, spacing: 2) {
-                Text(step == .account ? "Вход в аккаунт Xiaomi" : "Введите код")
+                Text(step == .account ? "Sign In to Your Xiaomi Account" : "Enter Code")
                     .font(.headline)
                 Text(subtitle)
                     .font(.callout)
@@ -94,11 +94,11 @@ struct SetupXiaomiSignInSheet: View {
     private var subtitle: String {
         switch step {
         case .account:
-            return String(localized: "После входа go2rtc получит список камер Mi Home.")
+            return String(localized: "After you sign in, go2rtc gets the list of your Mi Home cameras.")
         case .code(let phone, let email):
-            if let phone { return String(localized: "Xiaomi отправил код на \(phone).") }
-            if let email { return String(localized: "Xiaomi отправил код на \(email).") }
-            return String(localized: "Xiaomi отправил код по SMS или на почту.")
+            if let phone { return String(localized: "Xiaomi sent a code to \(phone).") }
+            if let email { return String(localized: "Xiaomi sent a code to \(email).") }
+            return String(localized: "Xiaomi sent a code by SMS or email.")
         }
     }
 
@@ -112,16 +112,16 @@ struct SetupXiaomiSignInSheet: View {
             }
         }
         Section {
-            TextField("E-mail или телефон", text: $login, prompt: Text("name@example.com или +7…"))
+            TextField("Email or Phone", text: $login, prompt: Text("name@example.com or phone number"))
                 .textContentType(.username)
                 .plainInput()
                 .focused($focus, equals: .login)
                 .onSubmit { focus = .password }
-            SecureField("Пароль", text: $password, prompt: Text("Пароль Mi Home"))
+            SecureField("Password", text: $password, prompt: Text("Mi Home password"))
                 .textContentType(.password)
                 .focused($focus, equals: .password)
                 .onSubmit(submit)
-            Picker("Регион аккаунта", selection: $region) {
+            Picker("Account Region", selection: $region) {
                 ForEach(SetupText.regions) { Text(SetupText.regionTitle($0)).tag($0) }
             }
         } footer: {
@@ -138,11 +138,11 @@ struct SetupXiaomiSignInSheet: View {
     private var codeSections: some View {
         Section {
             LabeledContent {
-                Button("Изменить…", action: backToAccount)
+                Button("Change…", action: backToAccount)
             } label: {
                 Label {
-                    Text(login.isEmpty ? String(localized: "Аккаунт Xiaomi") : login)
-                    Text("Регион: \(SetupText.regionTitle(region))")
+                    Text(login.isEmpty ? String(localized: "Xiaomi Account") : login)
+                    Text("Region: \(SetupText.regionTitle(region))")
                 } icon: {
                     Image(systemName: "person.crop.circle.fill")
                         .font(.system(size: 22))
@@ -163,7 +163,7 @@ struct SetupXiaomiSignInSheet: View {
         } footer: {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(resent ? "Новый код отправлен." : "Код приходит в течение минуты.")
+                    Text(resent ? "A new code has been sent." : "The code arrives within a minute.")
                         .foregroundStyle(.secondary)
                     Spacer()
                     resendButton
@@ -178,7 +178,7 @@ struct SetupXiaomiSignInSheet: View {
     private var resendButton: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let left = Int(resendAt.timeIntervalSince(context.date).rounded(.up))
-            Button(left > 0 ? "Отправить ещё раз через \(left) с" : "Отправить ещё раз", action: resend)
+            Button(left > 0 ? "Resend in \(left) s" : "Resend", action: resend)
                 .buttonStyle(.borderless)
                 .disabled(left > 0 || busy || password.isEmpty || captchaImage != nil)
                 .monospacedDigit()
@@ -191,14 +191,14 @@ struct SetupXiaomiSignInSheet: View {
         Section {
             HStack(spacing: 14) {
                 SetupCaptchaImage(data: image)
-                Button("Другая картинка", systemImage: "arrow.clockwise", action: newCaptcha)
+                Button("New Picture", systemImage: "arrow.clockwise", action: newCaptcha)
                     .buttonStyle(.borderless)
                     .disabled(busy || password.isEmpty)
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 4)
-            LabeledContent("Символы с картинки") {
-                TextField("", text: $captcha, prompt: Text("Как на картинке"))
+            LabeledContent("Characters in Picture") {
+                TextField("", text: $captcha, prompt: Text("As in the picture"))
                     .labelsHidden()
                     .multilineTextAlignment(.trailing)
                     .plainInput()
@@ -206,7 +206,7 @@ struct SetupXiaomiSignInSheet: View {
                     .onSubmit(submit)
             }
         } header: {
-            Label("Xiaomi попросил подтвердить, что вы не робот", systemImage: "checkmark.shield")
+            Label("Xiaomi wants to make sure you’re not a robot", systemImage: "checkmark.shield")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         } footer: {
@@ -220,8 +220,8 @@ struct SetupXiaomiSignInSheet: View {
     private var passwordNote: some View {
         Label {
             Text(model.settings.connectionMode == .embedded
-                 ? "Пароль уходит только встроенному go2rtc, Waiting Paws его не хранит. Токен входа go2rtc держит у себя, на этом Mac."
-                 : "Пароль уходит только вашему серверу go2rtc, Waiting Paws его не хранит. Токен входа остаётся на сервере.")
+                 ? "The password goes only to the built-in go2rtc; Waiting Paws doesn’t store it. go2rtc keeps the sign-in token on this Mac."
+                 : "The password goes only to your go2rtc server; Waiting Paws doesn’t store it. The sign-in token stays on the server.")
         } icon: {
             Image(systemName: "lock.fill")
         }
@@ -250,7 +250,7 @@ struct SetupXiaomiSignInSheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Отменить") { dismiss() }
+            Button("Cancel|verb") { dismiss() }
                 .keyboardShortcut(.cancelAction)
             Button(primaryTitle, action: submit)
                 .buttonStyle(.borderedProminent)
@@ -260,13 +260,13 @@ struct SetupXiaomiSignInSheet: View {
     }
 
     private var busyText: String {
-        if captchaImage != nil { return String(localized: "Проверяем…") }
-        return step == .account ? String(localized: "Входим…") : String(localized: "Проверяем код…")
+        if captchaImage != nil { return String(localized: "Checking…") }
+        return step == .account ? String(localized: "Signing in…") : String(localized: "Checking the code…")
     }
 
     private var primaryTitle: String {
-        if captchaImage != nil { return String(localized: "Продолжить") }
-        return step == .account ? String(localized: "Войти") : String(localized: "Подтвердить")
+        if captchaImage != nil { return String(localized: "Continue") }
+        return step == .account ? String(localized: "Sign In") : String(localized: "Confirm")
     }
 
     private var canSubmit: Bool {
@@ -357,7 +357,7 @@ struct SetupXiaomiSignInSheet: View {
             accountID = nil
         } else {
             backToAccount()
-            error = String(localized: "Вход прошёл, но go2rtc не вернул аккаунт. Попробуйте ещё раз.")
+            error = String(localized: "Signed in, but go2rtc didn’t return the account. Try again.")
             return
         }
         if let accountID { model.settings.xiaomiAccountID = accountID }

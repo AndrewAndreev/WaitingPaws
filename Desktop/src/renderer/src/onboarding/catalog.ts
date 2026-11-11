@@ -76,7 +76,7 @@ export const Camera = {
   technicalDetails(camera: CatalogCamera): string {
     const model = Camera.model(camera)
     const host = Camera.host(camera)
-    return [model ? t('Модель Mi Home: %@', model) : null, host ? `IP ${host}` : null].filter(Boolean).join(' · ')
+    return [model ? t('Mi Home model: %@', model) : null, host ? `IP ${host}` : null].filter(Boolean).join(' · ')
   },
 }
 
@@ -97,8 +97,8 @@ export function cameraKind(model: string | null): string {
   const parts = (model ?? '').toLowerCase().split('.')
   const peephole = parts.length > 1 && parts[1] === 'cateye'
   const vendor = parts[0] ? cameraVendors[parts[0]] : undefined
-  if (!vendor) return peephole ? t('Видеоглазок Mi Home') : t('Камера Mi Home')
-  return peephole ? t('Видеоглазок %@', vendor) : t('Камера %@', vendor)
+  if (!vendor) return peephole ? t('Mi Home Peephole Camera') : t('Mi Home Camera')
+  return peephole ? t('%@ Peephole Camera', vendor) : t('%@ Camera', vendor)
 }
 
 /// "rtsp://192.168.1.20:554/live" → "RTSP"; Mi Home sources → "Mi Home".
@@ -136,7 +136,7 @@ export function redacted(source: string): string {
 
 /// The first source of a stream as the list shows it.
 export function streamDetail(stream: Go2RTCStream): string {
-  return stream.sources[0] ? redacted(stream.sources[0]) : t('Источник не указан')
+  return stream.sources[0] ? redacted(stream.sources[0]) : t('No source specified')
 }
 
 /// "1920×1080". H.265 streams report the coded height (1088 for 1080p): within a macroblock of 16:9 it is rounded.
@@ -153,17 +153,17 @@ export const REGIONS: XiaomiRegion[] = ['ru', 'de', 'cn', 'us', 'sg', 'i2']
 export function regionTitle(region: XiaomiRegion): string {
   switch (region) {
     case 'ru':
-      return t('Россия')
+      return t('Russia')
     case 'de':
-      return t('Европа')
+      return t('Europe')
     case 'cn':
-      return t('Китай')
+      return t('China')
     case 'us':
-      return t('США')
+      return t('United States')
     case 'sg':
-      return t('Сингапур')
+      return t('Singapore')
     case 'i2':
-      return t('Индия')
+      return t('India')
   }
 }
 
@@ -349,7 +349,7 @@ export function useCatalog(setup: SetupServer, options: { account?: string | nul
       setData(emptyData)
       setPhase({
         kind: 'failed',
-        message: isUnreachable(error) ? `${t('%@ не отвечает', hostText(client.server.baseURL))} (${errorText(error)})` : errorText(error),
+        message: isUnreachable(error) ? `${t('%@ is not responding', hostText(client.server.baseURL))} (${errorText(error)})` : errorText(error),
       })
       return null
     } finally {
@@ -373,7 +373,7 @@ export function useCatalog(setup: SetupServer, options: { account?: string | nul
 export async function prepareChoice(choice: Choice, client: Go2RTCClient): Promise<Partial<Settings>> {
   if (choice.kind === 'stream') {
     const { name } = choice.stream
-    if (isPreviewStream(name)) throw new Error(t('Это временный поток превью, его нельзя выбрать'))
+    if (isPreviewStream(name)) throw new Error(t('This is a temporary preview stream and can’t be chosen'))
     return { streamName: name, cameraTitle: name }
   }
   const { camera } = choice
@@ -403,7 +403,7 @@ export function uniqueStreamName(base: string, taken: Set<string>): string {
 export async function addSourceStream(client: Go2RTCClient, name: string, source: string): Promise<Go2RTCStream> {
   const trimmedName = name.trim()
   const trimmedSource = source.trim()
-  if (isPreviewStream(trimmedName)) throw new Error(t('Имена на «%@» заняты Waiting Paws', PREVIEW_PREFIX))
+  if (isPreviewStream(trimmedName)) throw new Error(t('Names starting with “%@” are reserved for Waiting Paws', PREVIEW_PREFIX))
   await client.addStream(trimmedName, trimmedSource)
   window.wp.log(`[setup] added stream ${trimmedName}`)
   return { name: trimmedName, sources: [trimmedSource] }

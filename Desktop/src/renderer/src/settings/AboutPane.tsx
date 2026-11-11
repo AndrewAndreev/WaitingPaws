@@ -14,25 +14,25 @@ export function AboutPane() {
   const [legal, setLegal] = useState<'privacy' | 'licenses' | null>(null)
   return (
     <>
-      <PaneHeader title={t('О приложении')} />
+      <PaneHeader title={t('About')} />
       <div className="sabout card">
         <img className="sabout__logo" src={logo} alt="" draggable={false} />
         <div className="col" style={{ gap: 2, minWidth: 0 }}>
           <div className="h2">Waiting Paws</div>
           <div className="muted sabout__text">
-            {t('Тренировки коротких выходов из дома: расписание тренера, таймеры выходов и перерывов, лог для тренера. Камера Mi Home или любой поток go2rtc показывает собаку, пока вы за дверью.')}
+            {t('Training for short exits from home: the trainer’s schedule, exit and break timers, a log for the trainer. A Mi Home camera or any go2rtc stream shows your dog while you’re outside.')}
           </div>
-          <div className="faint tabular selectable">{t('Версия %@', app.version)}</div>
+          <div className="faint tabular selectable">{t('Version %@', app.version)}</div>
         </div>
       </div>
-      <Group footer={t('Waiting Paws ничего не собирает и не отправляет разработчику: настройки, логи и видео остаются на ваших устройствах.')}>
-        <Row icon={<PrivacyIcon />} title={t('Политика конфиденциальности')}>
-          <Button onClick={() => setLegal('privacy')}>{t('Открыть…')}</Button>
+      <Group footer={t('Waiting Paws collects nothing and sends nothing to the developer: settings, logs and videos stay on your devices.')}>
+        <Row icon={<PrivacyIcon />} title={t('Privacy Policy')}>
+          <Button onClick={() => setLegal('privacy')}>{t('Open…')}</Button>
         </Row>
-        <Row icon={<CodeIcon />} title={t('Лицензии открытого ПО')} description={t('go2rtc, Electron и другие библиотеки внутри приложения.')}>
-          <Button onClick={() => setLegal('licenses')}>{t('Открыть…')}</Button>
+        <Row icon={<CodeIcon />} title={t('Open-Source Licenses')} description={t('go2rtc, Electron and the other libraries inside the app.')}>
+          <Button onClick={() => setLegal('licenses')}>{t('Open…')}</Button>
         </Row>
-        <Row icon={<HelpIcon />} title={t('Поддержка')} description={t('Вопросы и сообщения о проблемах — на странице проекта на GitHub.')}>
+        <Row icon={<HelpIcon />} title={t('Support')} description={t('Questions and problem reports — on the project’s GitHub page.')}>
           <Button icon={<ExternalLinkIcon />} onClick={() => void call('shell.openExternal', SUPPORT_URL)}>
             GitHub
           </Button>
@@ -55,13 +55,13 @@ function LegalDialog({ kind, onClose }: { kind: 'privacy' | 'licenses'; onClose:
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={kind === 'privacy' ? t('Политика конфиденциальности') : t('Лицензии открытого ПО')}
+      title={kind === 'privacy' ? t('Privacy Policy') : t('Open-Source Licenses')}
       width={760}
       height="min(760px, calc(100vh - 80px))"
       bodyClassName={'slegal' + (kind === 'licenses' ? ' slegal--mono' : '')}
       footer={
         <Button variant="primary" autoFocus onClick={onClose}>
-          {t('Готово')}
+          {t('Done')}
         </Button>
       }
     >
@@ -70,7 +70,7 @@ function LegalDialog({ kind, onClose }: { kind: 'privacy' | 'licenses'; onClose:
           <Spinner large />
         </div>
       ) : text.trim() === '' ? (
-        <div className="empty-state">{t('Текст не найден.')}</div>
+        <div className="empty-state">{t('The text wasn’t found.')}</div>
       ) : kind === 'privacy' ? (
         <Markdown text={text} />
       ) : (

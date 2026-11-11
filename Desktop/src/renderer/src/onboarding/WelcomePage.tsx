@@ -43,7 +43,7 @@ export function WelcomePage() {
 
   const external = app.settings.connectionMode === 'external'
   const hasItems = catalog.phase.kind === 'ready' && (catalog.accounts.length > 0 || otherStreams(catalog).length > 0)
-  const serverSubtitle = external && app.server ? t('Сейчас: %@', hostText(app.server.baseURL)) : t('Например, http://192.168.1.10:1984')
+  const serverSubtitle = external && app.server ? t('Current: %@', hostText(app.server.baseURL)) : t('For example, http://192.168.1.10:1984')
 
   // Keep a valid selection: the camera in use, else the first one.
   useEffect(() => {
@@ -79,7 +79,7 @@ export function WelcomePage() {
       closeCameraPicker()
       await call('streams.select', patch)
     } catch (error) {
-      setOpenError(t('Не удалось добавить камеру: %@', errorText(error)))
+      setOpenError(t('Couldn’t add the camera: %@', errorText(error)))
     } finally {
       setOpening(false)
     }
@@ -91,45 +91,45 @@ export function WelcomePage() {
         <div className="welcome__hero">
           <img className="welcome__logo" src={logo} alt="" draggable={false} />
           <h1 className="welcome__name">Waiting Paws</h1>
-          <div className="welcome__version">{`${t('Версия')} ${app.version}`}</div>
+          <div className="welcome__version">{`${t('Version')} ${app.version}`}</div>
           <ServerStatusLine probe={catalog} />
         </div>
         <div className="welcome__actions">
           <ActionRow
             icon={<SignInIcon />}
-            title={t('Войти в Xiaomi…')}
-            subtitle={t('Камеры из приложения Mi Home')}
+            title={t('Sign In to Xiaomi…')}
+            subtitle={t('Cameras from the Mi Home app')}
             onClick={() => ui.set({ showXiaomiSignIn: true })}
           />
           <ActionRow
             icon={<StreamIcon />}
-            title={t('Выбрать поток go2rtc…')}
-            subtitle={t('RTSP, HTTP и другие источники')}
+            title={t('Choose go2rtc Stream…')}
+            subtitle={t('RTSP, HTTP and other sources')}
             onClick={() => openCameraPicker({ onlyStreams: true })}
           />
-          <ActionRow icon={<ServerIcon />} title={t('Свой сервер go2rtc…')} subtitle={serverSubtitle} onClick={() => ui.set({ showServerSetup: true })} />
+          <ActionRow icon={<ServerIcon />} title={t('Own go2rtc Server…')} subtitle={serverSubtitle} onClick={() => ui.set({ showServerSetup: true })} />
           <ActionRow
             icon={<TimerIcon />}
-            title={t('Продолжить без камеры')}
-            subtitle={t('Таймер, расписание и лог')}
+            title={t('Continue Without Camera')}
+            subtitle={t('Timer, schedule and log')}
             onClick={() => void call('camera.continueWithout')}
           />
         </div>
         <div className="welcome__note">
           <WifiIcon />
-          {t('Камера и компьютер должны быть в одной сети Wi‑Fi')}
+          {t('The camera and the computer must be on the same Wi‑Fi network')}
         </div>
       </section>
 
-      <section className="welcome__found" aria-label={t('Уже есть в go2rtc')}>
+      <section className="welcome__found" aria-label={t('Already in go2rtc')}>
         <div className="welcome__found-header">
-          <h2 className="welcome__found-title">{catalog.accounts.length ? t('Уже авторизованы на сервере') : t('Уже есть в go2rtc')}</h2>
+          <h2 className="welcome__found-title">{catalog.accounts.length ? t('Already Signed In on the Server') : t('Already in go2rtc')}</h2>
           <span className="spacer" />
-          <Tooltip content={t('Обновить список')}>
+          <Tooltip content={t('Refresh the list')}>
             <Button
               variant="subtle"
               iconOnly
-              aria-label={t('Обновить')}
+              aria-label={t('Refresh')}
               disabled={!setup.ready || catalog.refreshing || catalog.phase.kind === 'loading'}
               onClick={() => void refresh()}
             >
@@ -150,12 +150,12 @@ export function WelcomePage() {
             ) : opening ? (
               <span className="row muted welcome__progress">
                 <Spinner />
-                {t('Добавляем камеру…')}
+                {t('Adding the camera…')}
               </span>
             ) : null}
             <span className="spacer" />
             <Button variant="primary" disabled={!findChoice(catalog, selection) || opening} onClick={() => void open(selection)}>
-              {t('Открыть')}
+              {t('Open')}
             </Button>
           </div>
         )}
@@ -227,22 +227,22 @@ function FoundContent({
     return (
       <div className="welcome__empty">
         <Spinner />
-        <span className="muted">{t('Ищем камеры…')}</span>
+        <span className="muted">{t('Looking for cameras…')}</span>
       </div>
     )
   }
   if (phase.kind === 'waiting') {
     if (app.settings.connectionMode === 'external') {
-      return <Empty icon={<ServerIcon />} title={t('Сервер не указан')} text={t('Укажите адрес своего go2rtc: «Свой сервер go2rtc…» слева.')} />
+      return <Empty icon={<ServerIcon />} title={t('No Server Set')} text={t('Enter the address of your go2rtc: “Own go2rtc Server…” on the left.')} />
     }
     if (app.go2rtc.status === 'failed')
-      return <Empty icon={<VideoOffIcon />} title={t('Камер пока нет')} text={t('go2rtc не запустился. Нажмите «Попробовать снова» слева.')} />
+      return <Empty icon={<VideoOffIcon />} title={t('No Cameras Yet')} text={t('go2rtc didn’t start. Click “Try Again” on the left.')} />
     if (app.go2rtc.status === 'unavailable')
-      return <Empty icon={<VideoOffIcon />} title={t('Камер пока нет')} text={t('В этой сборке нет встроенного go2rtc. Укажите свой сервер.')} />
+      return <Empty icon={<VideoOffIcon />} title={t('No Cameras Yet')} text={t('This build has no built-in go2rtc. Enter your own server.')} />
     // go2rtc is on its way: the sign-in dialog waits for it.
     return <SignInEmpty />
   }
-  if (phase.kind === 'failed') return <Empty icon={<WarningIcon />} title={t('Нет связи с go2rtc')} text={phase.message} />
+  if (phase.kind === 'failed') return <Empty icon={<WarningIcon />} title={t('No Connection to go2rtc')} text={phase.message} />
   if (catalog.accounts.length === 0 && others.length === 0) return <SignInEmpty />
 
   const move = (event: KeyboardEvent) => {
@@ -276,12 +276,12 @@ function FoundContent({
           <div className="welcome__section-header">
             <span>{`Mi Home · ID ${account.id}`}</span>
             <span className="spacer" />
-            <span className="faint">{plural(account.cameras.length, ['%d камера', '%d камеры', '%d камер'], ['%d camera', '%d cameras'])}</span>
+            <span className="faint">{plural(account.cameras.length, ['%d camera', '%d cameras'], ['%d камера', '%d камеры', '%d камер'])}</span>
           </div>
           {account.error && (
             <div className="welcome__account-error">
               <WarningIcon />
-              <span>{t('Камеры не загрузились: %@', account.error)}</span>
+              <span>{t('Couldn’t load cameras: %@', account.error)}</span>
             </div>
           )}
           {account.cameras.map((camera) => (
@@ -304,7 +304,7 @@ function FoundContent({
       {others.length > 0 && (
         <div className="welcome__section">
           <div className="welcome__section-header">
-            <span>{t('Потоки go2rtc')}</span>
+            <span>{t('go2rtc Streams')}</span>
           </div>
           {others.map((stream) => (
             <SourceRow
@@ -354,7 +354,7 @@ function SourceRow({
 }) {
   const still = useStill(setup.client, source, setup.ready)
   const failed = still?.kind === 'failed'
-  const text = failed && isCamera ? t('Не в сети') : still?.kind === 'loaded' && isCamera ? `${pixels(still.width, still.height)} · ${detail}` : detail
+  const text = failed && isCamera ? t('Offline') : still?.kind === 'loaded' && isCamera ? `${pixels(still.width, still.height)} · ${detail}` : detail
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -377,7 +377,7 @@ function SourceRow({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onSelect={() => onOpen(id)}>{t('Открыть')}</ContextMenuItem>
+        <ContextMenuItem onSelect={() => onOpen(id)}>{t('Open')}</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -400,13 +400,13 @@ function SignInEmpty() {
       <span className="welcome__empty-icon">
         <VideoAddIcon />
       </span>
-      <div className="empty-state__title">{t('Камер пока нет')}</div>
-      <div className="muted welcome__empty-text">{t('Войдите в аккаунт Xiaomi — камеры из приложения Mi Home появятся здесь.')}</div>
+      <div className="empty-state__title">{t('No Cameras Yet')}</div>
+      <div className="muted welcome__empty-text">{t('Sign in to your Xiaomi account — cameras from the Mi Home app will appear here.')}</div>
       <Button variant="primary" size="lg" className="welcome__empty-action" onClick={() => ui.set({ showXiaomiSignIn: true })}>
-        {t('Войти в Xiaomi…')}
+        {t('Sign In to Xiaomi…')}
       </Button>
       <Button variant="link" onClick={() => openCameraPicker({ onlyStreams: true })}>
-        {t('Или добавьте поток RTSP…')}
+        {t('Or Add an RTSP Stream…')}
       </Button>
     </div>
   )

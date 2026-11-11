@@ -8,7 +8,7 @@ flows follow the Mac app; the *look* deliberately does not. It follows neutral c
 
 ```
 src/core      platform-free TypeScript port of Packages/WaitingPawsCore (parser, engine, log, go2rtc client…)
-src/shared    contract between UI and backend (api.ts), settings, i18n, translations (strings/*.en.json)
+src/shared    contract between UI and backend (api.ts), settings, i18n, translations (strings/*.ru.json)
 src/main      Electron main process = the backend (go2rtc process, recording, files, iPhone link)
 src/preload   window.wp bridge (contextIsolation, sandbox)
 src/renderer  React UI (web-portable: talks only to window.wp)
@@ -48,13 +48,15 @@ picker, Xiaomi sign-in) go through `new Go2RTCClient(server, { fetch: bridgeFetc
 
 ## Texts
 
-- Russian text is the key: `t('Начать выход %lld', n)` (Swift specifiers `%@`, `%lld`, `%.0f`, `%1$@`).
-- Reuse the Mac strings verbatim (they are already translated in `Tools/strings/en.json`). New strings: add the
-  English to `src/shared/strings/<area>.en.json`. Mac wording that does not fit Windows gets a new key
-  ("Показать в Finder" → «Показать в проводнике»).
+- English text is the key: `t('Start Exit %lld', n)` (Swift specifiers `%@`, `%lld`, `%.0f`, `%1$@`).
+- Reuse the Mac strings verbatim (they are already translated in `Tools/strings/ru.json`). New strings: add the
+  Russian to `src/shared/strings/<area>.ru.json`. Mac wording that does not fit Windows gets a new key
+  ("Show in Finder" → "Show in Explorer").
+- One English text with two Russian ones: the second key gets a context after `|` (`t('Cancel|verb')` →
+  «Отменить», while `t('Cancel')` is «Отмена»); English shows the text before the `|`.
 - Dates/times: `formatTime`, `formatShortDate` from `model.ts`, or `Intl` with `coreLocale()` from
   `@core/localization`; durations: `DurationText.clock / short / compact` from `@core/durationText`.
-- Plurals: `plural(n, ['%d выход', '%d выхода', '%d выходов'], ['%d exit', '%d exits'])`.
+- Plurals: `plural(n, ['%d exit', '%d exits'], ['%d выход', '%d выхода', '%d выходов'])`.
 
 ## Keyboard
 

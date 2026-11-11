@@ -28,20 +28,20 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandar
 
         var title: String {
             switch self {
-            case .automatic: return String(localized: "Устанавливать автоматически")
-            case .notify: return String(localized: "Только сообщать")
-            case .manual: return String(localized: "Не проверять")
+            case .automatic: return String(localized: "Install automatically")
+            case .notify: return String(localized: "Notify only")
+            case .manual: return String(localized: "Don't check")
             }
         }
 
         var explanation: String {
             switch self {
             case .automatic:
-                return String(localized: "Загружаются в фоне и ставятся, когда вы выходите из Waiting Paws. Тренировку и запись это не прерывает.")
+                return String(localized: "They download in the background and install when you quit Waiting Paws. A training or a recording is never interrupted.")
             case .notify:
-                return String(localized: "Раз в день приложение проверяет, есть ли новая версия, и показывает «Обновление» в панели. Загрузка — по вашей команде.")
+                return String(localized: "Once a day the app checks for a new version and shows “Update” in the toolbar. It downloads when you say so.")
             case .manual:
-                return String(localized: "Только по «Проверить сейчас» или «Проверить обновления…» в меню.")
+                return String(localized: "Only with “Check Now” or “Check for Updates…” in the menu.")
             }
         }
     }

@@ -14,8 +14,8 @@ struct LinkPill: View {
         if let first = devices.first {
             Pill(text: devices.count == 1 ? first.name : "\(first.kindTitle) × \(devices.count)",
                  systemImage: first.symbolName, tint: Theme.info)
-                .help(devices.count == 1 ? String(localized: "«\(first.name)» видит камеру и ведёт эту тренировку")
-                                         : String(localized: "Камеру видят и ведут тренировку: \(devices.map(\.name).joined(separator: ", "))"))
+                .help(devices.count == 1 ? String(localized: "“\(first.name)” sees the camera and runs this training")
+                                         : String(localized: "Seeing the camera and running the training: \(devices.map(\.name).joined(separator: ", "))"))
         }
         #else
         let client = model.syncClient
@@ -25,7 +25,7 @@ struct LinkPill: View {
                 Section {
                     Text(Self.reconnectingTitle(host))
                 }
-                Button("Отключить синхронизацию", systemImage: "xmark.circle", role: .destructive) {
+                Button("Stop Syncing", systemImage: "xmark.circle", role: .destructive) {
                     client.disconnect()
                 }
             } label: {
@@ -52,7 +52,7 @@ struct LinkPill: View {
     }
 
     static func reconnectingTitle(_ host: SyncDevice) -> String {
-        String(localized: "Нет связи с \(host.kindTitle) — переподключаемся…")
+        String(localized: "No connection to the \(host.kindTitle) — reconnecting…")
     }
 
     @ViewBuilder
@@ -61,13 +61,13 @@ struct LinkPill: View {
         case .connected(let host):
             Menu {
                 Section {
-                    Text("Тренировка синхронизирована с «\(host.name)»")
+                    Text("Training synced with “\(host.name)”")
                     if let hostModel = host.distinctModel { Text(hostModel) }
-                    Text("Камера, запись и лог — на \(host.kindTitle)")
+                    Text("Camera, recording, and log are on the \(host.kindTitle)")
                 }
                 let others = client.compatibleHosts.filter { $0.id != host.id }
                 if model.session == nil, !others.isEmpty {
-                    Section("Переключиться на") {
+                    Section("Switch To") {
                         ForEach(others) { other in
                             Button { client.connect(to: other) } label: {
                                 Text(other.device.name)
@@ -77,7 +77,7 @@ struct LinkPill: View {
                         }
                     }
                 }
-                Button("Отключить синхронизацию", systemImage: "xmark.circle", role: .destructive) {
+                Button("Stop Syncing", systemImage: "xmark.circle", role: .destructive) {
                     client.disconnect()
                 }
             } label: {
@@ -103,16 +103,16 @@ enum HostText {
         var parts: [String] = []
         if let model = host.device.distinctModel { parts.append(model) }
         if host.info.sessionRunning {
-            parts.append(host.info.currentExit.map { String(localized: "идёт тренировка, выход \($0)") }
-                         ?? String(localized: "тренировка идёт"))
+            parts.append(host.info.currentExit.map { String(localized: "training, exit \($0)") }
+                         ?? String(localized: "training in progress"))
         } else if !host.info.cameraTitle.isEmpty {
-            parts.append(host.info.cameraReady ? String(localized: "камера «\(host.info.cameraTitle)»")
-                                               : String(localized: "камера «\(host.info.cameraTitle)» не в сети"))
+            parts.append(host.info.cameraReady ? String(localized: "camera “\(host.info.cameraTitle)”")
+                                               : String(localized: "camera “\(host.info.cameraTitle)” offline"))
         }
         if !host.isCompatible {
-            parts.append(String(localized: "другая версия Waiting Paws"))
+            parts.append(String(localized: "another Waiting Paws version"))
         } else if paired {
-            parts.append(String(localized: "уже подключались"))
+            parts.append(String(localized: "connected before"))
         }
         return parts.joined(separator: " · ")
     }
@@ -126,11 +126,11 @@ struct HostChoiceMenu: View {
         let client = model.syncClient
         let hosts = client.compatibleHosts
         if hosts.count == 1, let host = hosts.first {
-            Button("Синхронизировать с «\(host.device.name)»", systemImage: host.device.symbolName) {
+            Button("Sync with “\(host.device.name)”", systemImage: host.device.symbolName) {
                 client.connect(to: host)
             }
         } else if hosts.count > 1 {
-            Menu("Синхронизировать с…", systemImage: "laptopcomputer.and.iphone") {
+            Menu("Sync With…", systemImage: "laptopcomputer.and.iphone") {
                 ForEach(hosts) { host in
                     Button { client.connect(to: host) } label: {
                         Text(host.device.name)
@@ -159,16 +159,16 @@ struct MacLinkCard: View {
                 HStack(spacing: 14) {
                     ProgressView().tint(Theme.info)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(isWaiting ? "Подтвердите на \(host.kindTitle)" : "Синхронизируем с \(host.kindTitle)")
+                        Text(isWaiting ? "Confirm on the \(host.kindTitle)" : "Syncing with \(host.kindTitle)")
                             .font(Theme.display(18, weight: .bold))
                         // Names both ends: on the computer the prompt shows this iPhone under the same name.
-                        Text(isWaiting ? "На «\(host.name)» появился запрос от «\(model.settings.linkName)» — нажмите «Разрешить». Это нужно один раз для этого iPhone."
+                        Text(isWaiting ? "“\(host.name)” is showing a request from “\(model.settings.linkName)” — click Allow. This is needed once for this iPhone."
                                        : "«\(host.name)»")
                             .font(.system(.subheadline, design: .rounded))
                             .foregroundStyle(.white.opacity(0.6))
                     }
                     Spacer(minLength: 0)
-                    IconButton(systemImage: "xmark", label: String(localized: "Отменить")) { client.disconnect() }
+                    IconButton(systemImage: "xmark", label: String(localized: "Cancel|verb")) { client.disconnect() }
                 }
             }
         case .connected:
@@ -210,17 +210,17 @@ struct MacLinkCard: View {
                         .foregroundStyle(Theme.info)
                         .frame(width: 32)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(host.info.sessionRunning ? "На \(kind) идёт тренировка" : "Рядом \(kind) с Waiting Paws")
+                        Text(host.info.sessionRunning ? "Training in progress on the \(kind)" : "\(kind) with Waiting Paws Nearby")
                             .font(Theme.display(20, weight: .bold))
                         Text(subtitle(host))
                             .font(.system(.subheadline, design: .rounded))
                             .foregroundStyle(.white.opacity(0.6))
                     }
                     Spacer(minLength: 0)
-                    IconButton(systemImage: "xmark", label: String(localized: "Скрыть")) { dismissed.insert(host.id) }
+                    IconButton(systemImage: "xmark", label: String(localized: "Hide")) { dismissed.insert(host.id) }
                 }
                 failure
-                BigButton(title: String(localized: "Синхронизировать тренировку с \(kind)"),
+                BigButton(title: String(localized: "Sync Training with \(kind)"),
                           systemImage: "arrow.triangle.2.circlepath") {
                     model.syncClient.connect(to: host)
                 }
@@ -232,12 +232,12 @@ struct MacLinkCard: View {
         var parts = [String(localized: "«\(host.device.name)»")]
         if let model = host.device.distinctModel { parts.append(model) }
         if !host.info.cameraTitle.isEmpty {
-            parts.append(host.info.cameraReady ? String(localized: "камера «\(host.info.cameraTitle)»")
-                                               : String(localized: "камера «\(host.info.cameraTitle)» не в сети"))
+            parts.append(host.info.cameraReady ? String(localized: "camera “\(host.info.cameraTitle)”")
+                                               : String(localized: "camera “\(host.info.cameraTitle)” offline"))
         }
-        if host.info.sessionRunning, let exit = host.info.currentExit { parts.append(String(localized: "выход \(exit)")) }
+        if host.info.sessionRunning, let exit = host.info.currentExit { parts.append(String(localized: "exit \(exit)")) }
         #if !WP_NO_XIAOMI // a build without Xiaomi (`NoXiaomiText`) doesn't speak of it
-        if !host.info.sessionRunning { parts.append(String(localized: "вход в Xiaomi уже выполнен на \(host.device.kindTitle)")) }
+        if !host.info.sessionRunning { parts.append(String(localized: "already signed in to Xiaomi on the \(host.device.kindTitle)")) }
         #endif
         return parts.joined(separator: " · ")
     }
@@ -251,12 +251,12 @@ struct MacLinkCard: View {
                     Image(systemName: "laptopcomputer.and.iphone")
                         .font(.system(size: 18))
                         .foregroundStyle(Theme.info)
-                    Text("Синхронизировать с…")
+                    Text("Sync With…")
                         .font(Theme.display(18, weight: .bold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
-                    IconButton(systemImage: "xmark", label: String(localized: "Скрыть")) { dismissed.formUnion(hosts.map(\.id)) }
+                    IconButton(systemImage: "xmark", label: String(localized: "Hide")) { dismissed.formUnion(hosts.map(\.id)) }
                 }
                 failure
                 VStack(spacing: 6) {
@@ -320,16 +320,16 @@ struct MacPendingPlanCard: View {
         GlassCard(padding: 18) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
-                    Text("СЕГОДНЯ")
+                    Text("TODAY")
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .tracking(1.2)
                         .foregroundStyle(.white.opacity(0.5))
-                    Label("и на \(model.linkedHostKind)", systemImage: "laptopcomputer.and.iphone")
+                    Label("also on \(model.linkedHostKind)", systemImage: "laptopcomputer.and.iphone")
                         .font(.system(.caption, design: .rounded, weight: .semibold))
                         .foregroundStyle(Theme.info)
                     Spacer()
                     IconButton(systemImage: "xmark") { model.sharePlanWithMac(nil) }
-                        .accessibilityLabel("Убрать расписание")
+                        .accessibilityLabel("Remove Schedule")
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(plan.title)
@@ -339,14 +339,14 @@ struct MacPendingPlanCard: View {
                         .font(.system(.subheadline, design: .rounded).monospacedDigit())
                         .foregroundStyle(.white.opacity(0.6))
                 }
-                BigButton(title: String(localized: "Начать тренировку"), systemImage: "play.fill") {
+                BigButton(title: String(localized: "Start Training"), systemImage: "play.fill") {
                     var final = plan
                     final.renumber()
                     model.startSession(with: final)
                 }
                 HStack(spacing: 8) {
-                    BigButton(title: String(localized: "Изменить"), systemImage: "slider.horizontal.3", style: .secondary, height: 44, action: onEdit)
-                    BigButton(title: String(localized: "Другое"), systemImage: "doc.on.clipboard", style: .secondary, height: 44, action: onPaste)
+                    BigButton(title: String(localized: "Edit"), systemImage: "slider.horizontal.3", style: .secondary, height: 44, action: onEdit)
+                    BigButton(title: String(localized: "Paste Another"), systemImage: "doc.on.clipboard", style: .secondary, height: 44, action: onPaste)
                 }
             }
         }
@@ -355,7 +355,7 @@ struct MacPendingPlanCard: View {
     private var summary: String {
         var parts: [String] = []
         if !plan.trainers.isEmpty { parts.append(plan.trainers) }
-        parts.append(pluralText(plan.exits.count, ru: ("вых.", "вых.", "вых."), en: ("exit", "exits")))
+        parts.append(pluralText(plan.exits.count, en: ("exit", "exits"), ru: ("вых.", "вых.", "вых.")))
         parts.append("≈ \(DurationText.short((plan.estimatedDuration / 60).rounded() * 60))")
         return parts.joined(separator: " · ")
     }
@@ -408,7 +408,7 @@ struct LinkNoticeOverlay: ViewModifier {
     private var reconnectingNotice: LinkNotice? {
         model.syncClient.reconnecting.map { host in
             LinkNotice(title: LinkPill.reconnectingTitle(host),
-                       detail: String(localized: "Тренировка идёт на «\(host.name)». Кнопки заработают, когда связь вернётся."),
+                       detail: String(localized: "The training continues on “\(host.name)”. The buttons will work again once the connection is back."),
                        systemImage: "wifi.exclamationmark", isWarning: true)
         }
     }

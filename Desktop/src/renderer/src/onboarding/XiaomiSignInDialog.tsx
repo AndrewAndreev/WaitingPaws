@@ -76,8 +76,8 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
     return step.kind === 'account' ? login.trim() !== '' && password !== '' : code.length >= 4
   })()
 
-  const primaryTitle = captchaImage ? t('Продолжить') : step.kind === 'account' ? t('Войти') : t('Подтвердить')
-  const busyText = captchaImage ? t('Проверяем…') : step.kind === 'account' ? t('Входим…') : t('Проверяем код…')
+  const primaryTitle = captchaImage ? t('Continue') : step.kind === 'account' ? t('Sign In') : t('Confirm')
+  const busyText = captchaImage ? t('Checking…') : step.kind === 'account' ? t('Signing in…') : t('Checking the code…')
 
   const backToAccount = () => {
     setStep({ kind: 'account' })
@@ -146,7 +146,7 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
       accountID = null
     } else {
       backToAccount()
-      setError(t('Вход прошёл, но go2rtc не вернул аккаунт. Попробуйте ещё раз.'))
+      setError(t('Signed in, but go2rtc didn’t return the account. Try again.'))
       return
     }
     await call('settings.update', accountID ? { xiaomiAccountID: accountID, xiaomiRegion: region } : { xiaomiRegion: region })
@@ -165,8 +165,8 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
       <LockIcon />
       <span>
         {embedded
-          ? t('Пароль уходит только встроенному go2rtc, Waiting Paws его не хранит. Токен входа go2rtc держит у себя, на этом компьютере.')
-          : t('Пароль уходит только вашему серверу go2rtc, Waiting Paws его не хранит. Токен входа остаётся на сервере.')}
+          ? t('The password goes only to the built-in go2rtc; Waiting Paws doesn’t store it. go2rtc keeps the sign-in token on this computer.')
+          : t('The password goes only to your go2rtc server; Waiting Paws doesn’t store it. The sign-in token stays on the server.')}
       </span>
     </div>
   )
@@ -180,18 +180,18 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
 
   const subtitle =
     step.kind === 'account'
-      ? t('После входа go2rtc получит список камер Mi Home.')
+      ? t('After you sign in, go2rtc gets the list of your Mi Home cameras.')
       : step.phone
-        ? t('Xiaomi отправил код на %@.', step.phone)
+        ? t('Xiaomi sent a code to %@.', step.phone)
         : step.email
-          ? t('Xiaomi отправил код на %@.', step.email)
-          : t('Xiaomi отправил код по SMS или на почту.')
+          ? t('Xiaomi sent a code to %@.', step.email)
+          : t('Xiaomi sent a code by SMS or email.')
 
   return (
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={step.kind === 'account' ? t('Вход в аккаунт Xiaomi') : t('Введите код')}
+      title={step.kind === 'account' ? t('Sign In to Your Xiaomi Account') : t('Enter Code')}
       description={subtitle}
       width={500}
       footer={
@@ -203,7 +203,7 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
             </span>
           )}
           <span className="spacer" />
-          <Button onClick={onClose}>{t('Отменить')}</Button>
+          <Button onClick={onClose}>{t('Cancel|verb')}</Button>
           <Button variant="primary" disabled={!canSubmit} onClick={submit}>
             {primaryTitle}
           </Button>
@@ -226,14 +226,14 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
           {step.kind === 'account' ? (
             <>
               <label className="field">
-                <span className="field__label">{t('E-mail или телефон')}</span>
+                <span className="field__label">{t('Email or Phone')}</span>
                 <input
                   className="input"
                   value={login}
                   autoFocus
                   autoComplete="username"
                   spellCheck={false}
-                  placeholder={t('name@example.com или +7…')}
+                  placeholder={t('name@example.com or phone number')}
                   onChange={(event) => setLogin(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && !password) {
@@ -244,19 +244,19 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
                 />
               </label>
               <label className="field">
-                <span className="field__label">{t('Пароль')}</span>
+                <span className="field__label">{t('Password')}</span>
                 <input
                   ref={passwordField}
                   className="input"
                   type="password"
                   value={password}
                   autoComplete="current-password"
-                  placeholder={t('Пароль Mi Home')}
+                  placeholder={t('Mi Home password')}
                   onChange={(event) => setPassword(event.target.value)}
                 />
               </label>
               <label className="field">
-                <span className="field__label">{t('Регион аккаунта')}</span>
+                <span className="field__label">{t('Account Region')}</span>
                 <select className="select" value={region} onChange={(event) => setRegion(event.target.value as XiaomiRegion)}>
                   {REGIONS.map((item) => (
                     <option key={item} value={item}>
@@ -273,11 +273,11 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
               <div className="signin__account">
                 <PersonCircleIcon className="signin__account-icon" />
                 <div className="grow">
-                  <div className="ellipsis">{login || t('Аккаунт Xiaomi')}</div>
-                  <div className="muted signin__account-region">{t('Регион: %@', regionTitle(region))}</div>
+                  <div className="ellipsis">{login || t('Xiaomi Account')}</div>
+                  <div className="muted signin__account-region">{t('Region: %@', regionTitle(region))}</div>
                 </div>
                 <Button variant="subtle" size="sm" onClick={backToAccount}>
-                  {t('Изменить…')}
+                  {t('Change…')}
                 </Button>
               </div>
               <CodeField
@@ -289,7 +289,7 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
                 }}
               />
               <div className="signin__resend">
-                <span className="muted">{resent ? t('Новый код отправлен.') : t('Код приходит в течение минуты.')}</span>
+                <span className="muted">{resent ? t('A new code has been sent.') : t('The code arrives within a minute.')}</span>
                 <span className="spacer" />
                 <ResendButton
                   resendAt={resendAt}
@@ -308,25 +308,25 @@ export function XiaomiSignInDialog({ onClose, onSignedIn }: { onClose: () => voi
             <div className="signin__captcha">
               <div className="signin__captcha-title">
                 <CaptchaIcon />
-                {t('Xiaomi попросил подтвердить, что вы не робот')}
+                {t('Xiaomi wants to make sure you’re not a robot')}
               </div>
               <div className="row signin__captcha-row">
-                <div className="signin__captcha-image" aria-label={t('Капча')}>
-                  <img src={captchaURL} alt={t('Капча')} draggable={false} />
+                <div className="signin__captcha-image" aria-label={t('Captcha')}>
+                  <img src={captchaURL} alt={t('Captcha')} draggable={false} />
                 </div>
                 <Button variant="subtle" size="sm" icon={<ReloadIcon />} disabled={busy || password === ''} onClick={() => void send('login')}>
-                  {t('Другая картинка')}
+                  {t('New Picture')}
                 </Button>
               </div>
               <label className="field">
-                <span className="field__label">{t('Символы с картинки')}</span>
+                <span className="field__label">{t('Characters in Picture')}</span>
                 <input
                   ref={captchaField}
                   className="input"
                   value={captcha}
                   spellCheck={false}
                   autoComplete="off"
-                  placeholder={t('Как на картинке')}
+                  placeholder={t('As in the picture')}
                   onChange={(event) => setCaptcha(event.target.value)}
                 />
               </label>
@@ -347,7 +347,7 @@ function ResendButton({ resendAt, disabled, onResend }: { resendAt: number; disa
   const left = Math.ceil((resendAt - now) / 1000)
   return (
     <Button variant="link" className="tabular" disabled={left > 0 || disabled} onClick={onResend}>
-      {left > 0 ? t('Отправить ещё раз через %lld с', left) : t('Отправить ещё раз')}
+      {left > 0 ? t('Resend in %lld s', left) : t('Resend')}
     </Button>
   )
 }
@@ -391,7 +391,7 @@ function CodeField({
         autoComplete="one-time-code"
         autoFocus
         disabled={disabled}
-        aria-label={t('Код подтверждения')}
+        aria-label={t('Verification Code')}
         maxLength={CODE_LENGTH + 4}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

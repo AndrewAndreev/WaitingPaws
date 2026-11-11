@@ -93,7 +93,7 @@ final class CameraPanTilt {
         }
         #endif
         guard let target else {
-            failure = String(localized: "Камера не на связи")
+            failure = String(localized: "The camera is offline")
             return false
         }
         if client?.server != target.server { client = Go2RTCClient(server: target.server) }
@@ -123,11 +123,11 @@ final class CameraPanTilt {
         switch error as? Go2RTCError {
         case .http(404, _):
             // An external go2rtc, or the linked computer runs a Waiting Paws from before turning.
-            return String(localized: "Этот go2rtc не умеет поворачивать камеру — обновите Waiting Paws на компьютере с камерой")
+            return String(localized: "This go2rtc can’t turn the camera — update Waiting Paws on the computer with the camera")
         case .http(409, _):
-            return String(localized: "Камера сейчас не передаёт видео — подождите картинку")
+            return String(localized: "The camera isn’t sending video right now — wait for the picture")
         case .http(502, _):
-            return String(localized: "Камера не приняла команду")
+            return String(localized: "The camera didn’t take the command")
         default:
             return error.localizedDescription
         }

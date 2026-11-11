@@ -262,11 +262,11 @@ final class TrainingAlerts: NSObject {
         switch after.kind {
         case .overdue:
             guard let exit = session.currentExit, !exit.isOpen else { return nil }
-            title = String(localized: "Выход \(exit.number) — время вышло")
+            title = String(localized: "Exit \(exit.number) — time's up")
             event = .plan
         case .breakOver:
             guard case .breakTime = session.phase else { return nil }
-            title = String(localized: "Перерыв закончился")
+            title = String(localized: "Break's over")
             event = .rest
         default:
             return nil
@@ -300,7 +300,7 @@ struct TrainingAlertsToggle: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        Toggle("Уведомления", isOn: $isOn)
+        Toggle("Notifications", isOn: $isOn)
             .onChange(of: isOn) { _, on in
                 guard on else { return }
                 Task {
@@ -313,7 +313,7 @@ struct TrainingAlertsToggle: View {
                 if phase == .active { Task { await check() } }
             }
         if isOn, status == .denied {
-            Button("Включить в настройках iOS") {
+            Button("Turn On in iOS Settings") {
                 guard let url = URL(string: UIApplication.openNotificationSettingsURLString) else { return }
                 UIApplication.shared.open(url)
             }
