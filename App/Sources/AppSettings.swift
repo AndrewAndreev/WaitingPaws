@@ -36,6 +36,22 @@ enum ConnectionMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// iPhone: how hard the phone vibrates when a training's timer runs out (`TrainingGlance`, `TrainingBuzz`). The same
+/// full-strength buzz rattled one iPhone on a table loud enough for the dog to hear and went unnoticed on a heavier one
+/// (the owner, 2026-11-11), so each phone keeps its own, never synced.
+enum HapticStrength: String, CaseIterable, Identifiable {
+    case off, light, normal, strong
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .off: return String(localized: "Off|vibration")
+        case .light: return String(localized: "Light|vibration")
+        case .normal: return String(localized: "Normal|vibration")
+        case .strong: return String(localized: "Strong|vibration")
+        }
+    }
+}
+
 /// User preferences persisted in UserDefaults (the go2rtc password lives in the keychain).
 @Observable
 final class AppSettings {
@@ -62,7 +78,9 @@ final class AppSettings {
         static let qualityResolutions = "qualityResolutions"
         static let cameraFraming = "cameraFraming"
         static let deviceName = "sync.deviceName"
+        /// Before the strength (1.7.21 and older): on or off.
         static let haptics = "haptics"
+        static let hapticStrength = "hapticStrength"
         static let notifications = "notifications"
     }
 
@@ -90,11 +108,14 @@ final class AppSettings {
     var shareWithIPhone: Bool { didSet { Self.defaults.set(shareWithIPhone, forKey: Key.shareWithIPhone) } }
     /// This device's name for the linked ones; empty = the system's (`SyncIdentity.systemName`).
     var deviceName: String { didSet { Self.defaults.set(deviceName, forKey: Key.deviceName) } }
-    /// iPhone: a short vibration when a training's timer runs out — the exit's plan, the break, a condition's countdown,
-    /// the quiet (`TrainingGlance`).
-    var haptics: Bool { didSet { Self.defaults.set(haptics, forKey: Key.haptics) } }
-    /// iPhone: the same moments as notifications while the app is not in front (`TrainingAlerts`); they vibrate with
-    /// `haptics`, and make no sound.
+    /// iPhone: a vibration when a training's timer runs out — the exit's plan, the break, a condition's countdown, the
+    /// quiet (`TrainingGlance`); how hard the break's end buzzes, or none at all.
+    var hapticStrength: HapticStrength {
+        didSet { Self.defaults.set(hapticStrength.rawValue, forKey: Key.hapticStrength) }
+    }
+    var haptics: Bool { hapticStrength != .off }
+    /// iPhone: the same moments as notifications while the app is not in front (`TrainingAlerts`); they vibrate (as
+    /// iOS does, whatever the strength) unless `hapticStrength` is off, and make no sound.
     var notifications: Bool { didSet { Self.defaults.set(notifications, forKey: Key.notifications) } }
     /// The user chose «Продолжить без камеры»: timer, schedule and log only, the camera can be added later.
     var withoutCamera: Bool { didSet { Self.defaults.set(withoutCamera, forKey: Key.withoutCamera) } }
@@ -147,7 +168,9 @@ final class AppSettings {
         #endif
         shareWithIPhone = d.object(forKey: Key.shareWithIPhone) as? Bool ?? true
         deviceName = d.string(forKey: Key.deviceName) ?? ""
-        haptics = d.object(forKey: Key.haptics) as? Bool ?? true
+        // The old switch turned off stays off; on, it was the strong buzz, now `normal` unless chosen.
+        hapticStrength = HapticStrength(rawValue: d.string(forKey: Key.hapticStrength) ?? "")
+            ?? (d.object(forKey: Key.haptics) as? Bool == false ? .off : .normal)
         notifications = d.object(forKey: Key.notifications) as? Bool ?? true
         withoutCamera = d.bool(forKey: Key.withoutCamera)
         qualityResolutions = d.dictionary(forKey: Key.qualityResolutions) as? [String: [String: String]] ?? [:]

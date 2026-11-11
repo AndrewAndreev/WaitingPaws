@@ -204,7 +204,7 @@ struct SessionScreen: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) { showPlanInput = true }
                 case "camera": showCameraPicker = true
                 case "camera-setup": showCameraSetup = true
-                case "settings", "settings-sync": showSettings = true
+                case "settings", "settings-sync", "settings-training": showSettings = true
                 case "history", "history-last": showHistory = true
                 case "session-plan":
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) { editingSessionPlan = model.session?.plan }

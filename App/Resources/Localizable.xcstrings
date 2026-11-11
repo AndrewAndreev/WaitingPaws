@@ -4325,6 +4325,22 @@
         }
       }
     },
+    "Light|vibration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Слабая"
+          }
+        }
+      }
+    },
     "Live · %@" : {
       "localizations" : {
         "ru" : {
@@ -5177,6 +5193,22 @@
         }
       }
     },
+    "Normal|vibration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Normal"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обычная"
+          }
+        }
+      }
+    },
     "Not Recording" : {
       "localizations" : {
         "ru" : {
@@ -5313,6 +5345,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "выключено"
+          }
+        }
+      }
+    },
+    "Off|vibration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключена"
           }
         }
       }
@@ -7633,6 +7681,22 @@
         }
       }
     },
+    "Strong|vibration" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strong"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сильная"
+          }
+        }
+      }
+    },
     "Switch Back to Built-in" : {
       "localizations" : {
         "ru" : {
@@ -8122,6 +8186,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Начало — в записи %@"
+          }
+        }
+      }
+    },
+    "The strength is for the end of a break, and each iPhone keeps its own: Light is one short buzz, like a notification; Strong is three long ones, felt with the phone on a table. With the screen locked, iOS vibrates its own way." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сила — для конца перерыва, у каждого iPhone своя: слабая — одно короткое жужжание, как у уведомления, сильная — три длинных, заметных и на столе. Когда экран заблокирован, iOS вибрирует по-своему."
           }
         }
       }

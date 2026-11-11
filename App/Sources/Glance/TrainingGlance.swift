@@ -51,8 +51,6 @@ final class TrainingGlance {
     private var pendingUpdate: Task<Void, Never>?
     /// The timers' notifications while the app is not in front.
     private let alerts = TrainingAlerts()
-    /// The break's end, strong enough to be noticed with the phone out of the hand.
-    private let breakOverBuzz = StrongBuzz()
     private var observers: [NSObjectProtocol] = []
 
     nonisolated init() {}
@@ -133,7 +131,9 @@ final class TrainingGlance {
         let inFront = UIApplication.shared.applicationState == .active
         let notifies = notify(session, model: model, inFront: inFront, now: now)
         // Out of the front the notification vibrates instead (in the background the app can't).
-        if let lastStatus, model.settings.haptics, inFront || !notifies { vibrate(from: lastStatus, to: status, at: now) }
+        if let lastStatus, model.settings.haptics, inFront || !notifies {
+            vibrate(from: lastStatus, to: status, at: now, strength: model.settings.hapticStrength)
+        }
         if let lastStatus, lastStatus.kind != status.kind, !inFront { print("[glance] in the background: now \(status.kind)") }
         lastStatus = status
         if Self.showsLiveActivity {
@@ -174,7 +174,8 @@ final class TrainingGlance {
 
     /// A timer of the training has just run out: the exit's plan or the break's. Each has its own feel. A change found
     /// on coming back to the app long after doesn't vibrate.
-    private func vibrate(from previous: ReadoutContent.Status, to status: ReadoutContent.Status, at now: Date) {
+    private func vibrate(from previous: ReadoutContent.Status, to status: ReadoutContent.Status, at now: Date,
+                         strength: HapticStrength) {
         guard status.kind != previous.kind, let ranOut = previous.endsAt,
               now >= ranOut.addingTimeInterval(-1), now.timeIntervalSince(ranOut) < 3 else { return }
         switch status.kind {
@@ -183,12 +184,13 @@ final class TrainingGlance {
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
         case .breakOver:
             // The break's plan is over: time to go out again, and the phone is often on the table or the sofa. Three
-            // soft knocks went unnoticed out of the hand (the owner, 2026-11-06): three long buzzes at full strength.
-            breakOverBuzz.play()
+            // soft knocks went unnoticed out of the hand (the owner, 2026-11-06); three long buzzes at full strength
+            // were heard by the dog from another iPhone on a table (2026-11-11): as strong as the owner chose.
+            TrainingBuzz.shared.play(strength)
         default:
             return
         }
-        print("[glance] vibration: \(status.kind)")
+        print("[glance] vibration: \(status.kind), \(strength.rawValue)")
     }
 
     // MARK: - Live Activity
@@ -520,31 +522,53 @@ private extension TrainingActivityAttributes.Readout {
         return a == b
     }
 }
-/// A vibration felt with the phone on the table or the sofa, not only in the hand: three long buzzes at full strength,
-/// each opened by a sharp knock (Core Haptics, ~1.7 s in all). The impact generator's soft knocks it replaces are only
-/// felt in the hand. Where Core Haptics can't play (no Taptic Engine, the engine failed), the system's own vibration,
-/// twice. Like every haptic, only while the app is in front: out of it the notification vibrates (`TrainingAlerts`).
+/// The break's end as strong as the owner chose (`HapticStrength`), each level with its own shape (Core Haptics): every
+/// buzz opened by a sharp knock, then a low one (low sharpness: the deep buzz that carries through a table top).
+/// - strong: three long buzzes at full strength (~2.2 s), felt with the phone on the table or the sofa;
+/// - normal: two shorter ones, a little softer (~1 s);
+/// - light: one short soft buzz, like a notification's (~0.3 s).
+/// Where Core Haptics can't play (no Taptic Engine, the engine failed), the system's own vibration, twice for strong.
+/// Like every haptic, only while the app is in front: out of it the notification vibrates (`TrainingAlerts`).
 @MainActor
-final class StrongBuzz {
+final class TrainingBuzz {
+    static let shared = TrainingBuzz()
+
+    struct Shape: Equatable {
+        var buzzes: Int
+        var length: TimeInterval
+        var pause: TimeInterval
+        var intensity: Float
+    }
+
     private var engine: CHHapticEngine?
-    static let buzzes = 3
-    static let length: TimeInterval = 0.45
-    static let pause: TimeInterval = 0.2
 
-    nonisolated init() {}
+    private init() {}
 
-    func play() {
-        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return Self.systemVibration(times: 2) }
+    static func shape(_ strength: HapticStrength) -> Shape? {
+        switch strength {
+        case .off: return nil
+        case .light: return Shape(buzzes: 1, length: 0.3, pause: 0, intensity: 0.55)
+        case .normal: return Shape(buzzes: 2, length: 0.4, pause: 0.2, intensity: 0.8)
+        case .strong: return Shape(buzzes: 3, length: 0.6, pause: 0.2, intensity: 1)
+        }
+    }
+
+    func play(_ strength: HapticStrength) {
+        guard let shape = Self.shape(strength) else { return }
+        let fallback = strength == .strong ? 2 : 1
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else {
+            return Self.systemVibration(times: fallback)
+        }
         do {
             let engine = try self.engine ?? makeEngine()
             self.engine = engine
             // Stopped by the system meanwhile (the app was in the background, an interruption): started again.
             try engine.start()
-            try engine.makePlayer(with: Self.pattern()).start(atTime: CHHapticTimeImmediate)
+            try engine.makePlayer(with: Self.pattern(shape)).start(atTime: CHHapticTimeImmediate)
         } catch {
             print("[glance] haptics failed (\(error.localizedDescription)): the system vibration instead")
             engine = nil
-            Self.systemVibration(times: 2)
+            Self.systemVibration(times: fallback)
         }
     }
 
@@ -559,19 +583,18 @@ final class StrongBuzz {
         return engine
     }
 
-    private static func pattern() throws -> CHHapticPattern {
+    private static func pattern(_ shape: Shape) throws -> CHHapticPattern {
         var events: [CHHapticEvent] = []
-        for index in 0..<buzzes {
-            let start = Double(index) * (length + pause)
+        for index in 0..<shape.buzzes {
+            let start = Double(index) * (shape.length + shape.pause)
             events.append(CHHapticEvent(eventType: .hapticTransient, parameters: [
-                CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: shape.intensity),
                 CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.8),
             ], relativeTime: start))
-            // Low sharpness: the deep buzz that carries through a table top.
             events.append(CHHapticEvent(eventType: .hapticContinuous, parameters: [
-                CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: shape.intensity),
                 CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.35),
-            ], relativeTime: start, duration: length))
+            ], relativeTime: start, duration: shape.length))
         }
         return try CHHapticPattern(events: events, parameters: [])
     }

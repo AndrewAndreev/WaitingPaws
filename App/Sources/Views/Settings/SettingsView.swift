@@ -112,7 +112,11 @@ struct SettingsView: View {
                     Toggle("Start recording with the training", isOn: $settings.autoRecord)
                     Toggle("Save videos to Photos", isOn: $settings.saveToPhotos)
                     #if os(iOS)
-                    Toggle("Haptics", isOn: $settings.haptics)
+                    Picker("Haptics", selection: $settings.hapticStrength) {
+                        ForEach(HapticStrength.allCases) { strength in Text(strength.title).tag(strength) }
+                    }
+                    // Chosen, it is felt at once: put the phone where it lies during a training and listen.
+                    .onChange(of: settings.hapticStrength) { _, strength in TrainingBuzz.shared.play(strength) }
                     TrainingAlertsToggle(isOn: $settings.notifications)
                     #endif
                 } header: {
@@ -122,9 +126,11 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("A short vibration when time is up: the exit's plan, the break, a condition's countdown or the quiet. It's a timer signal, not a sign that it's OK to go in.")
                         Text("When the app is in the background or the screen is locked, a notification tells you the same — silently, so the dog doesn't hear it.")
+                        Text("The strength is for the end of a break, and each iPhone keeps its own: Light is one short buzz, like a notification; Strong is three long ones, felt with the phone on a table. With the screen locked, iOS vibrates its own way.")
                     }
                     #endif
                 }
+                .id("training")
 
                 #if os(iOS)
                 macSection
@@ -180,10 +186,13 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             #if DEBUG && os(iOS)
-            // `--demo-screen settings-sync`: opens scrolled to «Синхронизация» (UI checks without scrolling).
+            // `--demo-screen settings-sync` / `settings-training`: opens scrolled to «Синхронизация» / «Тренировка» (UI
+            // checks without scrolling).
             .onAppear {
-                guard CommandLine.arguments.contains("settings-sync") else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { proxy.scrollTo("sync", anchor: .top) }
+                let target = CommandLine.arguments.contains("settings-sync") ? "sync"
+                    : CommandLine.arguments.contains("settings-training") ? "training" : nil
+                guard let target else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { proxy.scrollTo(target, anchor: .top) }
             }
             #endif
             }
