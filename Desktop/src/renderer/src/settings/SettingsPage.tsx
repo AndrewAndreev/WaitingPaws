@@ -74,7 +74,7 @@ const PANES: PaneInfo[] = [
     id: 'about',
     title: () => t('About'),
     icon: <InfoIcon />,
-    keywords: ['версия', 'политика', 'конфиденциальность', 'лицензии', 'поддержка', 'version', 'privacy', 'licenses', 'about', 'policy', 'support', 'github'],
+    keywords: ['версия', 'политика', 'конфиденциальность', 'лицензии', 'поддержка', 'обновления', 'обновить', 'тестовые', 'version', 'privacy', 'licenses', 'about', 'policy', 'support', 'github', 'updates', 'update', 'nightly'],
   },
 ]
 
@@ -125,6 +125,8 @@ export function SettingsPage() {
             <button key={item.id} role="listitem" className="snav__item" aria-current={item.id === pane ? 'page' : undefined} onClick={() => select(item.id)}>
               {item.icon}
               <span className="ellipsis">{item.title()}</span>
+              {/* A new version waits (the app from GitHub): «О приложении» has «Перезапустить». */}
+              {item.id === 'about' && app.updates?.pending && <span className="snav__badge">1</span>}
             </button>
           ))}
           {visible.length === 0 && <div className="snav__empty">{t('No Results')}</div>}

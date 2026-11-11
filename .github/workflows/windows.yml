@@ -1,17 +1,27 @@
 # Windows app (Desktop/): tests on every push that touches it; on a release tag `v<major>.<minor>.<build>` (one tag for
 # iPhone, Mac and Windows, made by Tools/release.sh) it builds the installer and the portable zip with the tag's version
-# and attaches them to that tag's GitHub release (created as a draft if it does not exist yet).
+# and attaches them to that tag's GitHub release (created as a draft if it does not exist yet). The installer's
+# `latest.yml` is what the installed apps check for updates (src/main/updater.ts).
+#
+# The `nightly` tag (moved by `Tools/release.sh publish-nightly` with each Mac test build) builds a Windows test build
+# of that commit, `<X.Y>.<N+1>-nightly.<YYMMDDHHMM>` after release `vX.Y.N`, and puts its files into the «nightly»
+# pre-release next to the Mac ones: Settings → About «Тестовые сборки» reads its `latest.yml`.
 name: Windows
 
 on:
   push:
     branches: [main]
     paths: ['Desktop/**', 'GoMobile/**', 'Tools/strings/**', 'App/Resources/Legal/**', '.github/workflows/windows.yml']
-    tags: ['v*']
+    tags: ['v*', 'nightly']
   workflow_dispatch:
 
 permissions:
   contents: write
+
+# A nightly tag moved again makes the build of the old commit pointless.
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/tags/nightly' }}
 
 jobs:
   build:
@@ -21,6 +31,9 @@ jobs:
         working-directory: Desktop
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The tags: a nightly's version and notes come from the last release tag.
+          fetch-depth: 0
 
       - uses: actions/setup-go@v6
         with:
@@ -36,15 +49,29 @@ jobs:
       - name: Install
         run: npm ci
 
-      # The version lives only in the tag: package.json keeps 0.0.0, which the app shows as "dev". The commit is taken
-      # first, while the checkout is clean (electron.vite.config.ts reads WP_GIT_COMMIT).
+      # The version lives only in the tag: package.json keeps 0.0.0, which the app shows as "dev" (and which never
+      # updates itself). The commit is taken first, while the checkout is clean (electron.vite.config.ts reads
+      # WP_GIT_COMMIT). What is new goes into latest.yml (build/release-notes.md): the «Обновление» popover shows it.
       - name: Version from the tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "$GITHUB_REF_NAME is not v<major>.<minor>.<build>"; exit 1; }
+          if [ "$GITHUB_REF_NAME" = nightly ]; then
+            last="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)"
+            [ -n "$last" ] || { echo "no release tag before the nightly"; exit 1; }
+            minor="${last#v}"; minor="${minor%.*}"; build="${last##*.}"
+            # Semver: no leading zeros in a number, so the year comes first. Newer than vX.Y.N, older than vX.Y.(N+1).
+            version="$minor.$((build + 1))-nightly.$(TZ=UTC git log -1 --format=%cd --date=format-local:%y%m%d%H%M)"
+            changes="$(git log --format='- %s' --no-merges "$last..HEAD" | head -4)"
+            echo "${changes:-- A test build of ${last#v} itself: the same code}" > build/release-notes.md
+          else
+            version="${GITHUB_REF_NAME#v}"
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "$GITHUB_REF_NAME is not v<major>.<minor>.<build>"; exit 1; }
+            notes="../Tools/release-notes/$version.md"
+            if [ -f "$notes" ]; then cp "$notes" build/release-notes.md; else echo "No $notes: the update has no description"; fi
+          fi
           echo "WP_GIT_COMMIT=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
+          echo "Version $version"
           npm version "$version" --no-git-tag-version --allow-same-version
 
       - name: go2rtc.exe (patched like GoMobile/build.sh)
@@ -76,6 +103,29 @@ jobs:
             gh release create "$tag" --draft --title "Waiting Paws ${tag#v} for Windows" --notes-file RELEASE_NOTES.md
           fi
           gh release upload "$tag" "${files[@]}" --clobber
+
+      # The «nightly» pre-release (made by Tools/release.sh publish-nightly with the Mac build): this build's Windows
+      # files replace the previous nightly's, latest.yml last, so that the feed never names a file not there yet.
+      - name: Attach to the nightly pre-release
+        if: github.ref == 'refs/tags/nightly'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view nightly > /dev/null 2>&1 ||
+            gh release create nightly --prerelease --verify-tag --title "Waiting Paws nightly" \
+              --notes "Test builds: Settings → About → Updates → «Тестовые сборки»."
+          old="$(gh release view nightly --json assets --jq '.assets[].name')"
+          files=(dist/*-Setup.exe dist/*-Setup.exe.blockmap dist/*-win-x64.zip)
+          gh release upload nightly "${files[@]}" --clobber
+          gh release upload nightly dist/latest.yml --clobber
+          keep="$(for file in "${files[@]}" dist/latest.yml; do basename "$file"; done)"
+          while IFS= read -r asset; do
+            case "$asset" in
+              *-Setup.exe | *-Setup.exe.blockmap | *-win-x64.zip)
+                grep -qxF "$asset" <<< "$keep" || gh release delete-asset nightly "$asset" --yes ;;
+            esac
+          done <<< "$old"
 
       - uses: actions/upload-artifact@v4
         with:

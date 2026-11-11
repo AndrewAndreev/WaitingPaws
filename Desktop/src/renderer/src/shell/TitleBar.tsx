@@ -7,6 +7,7 @@ import { FinishIcon, PhoneIcon, RecordIcon, SoundOffIcon, SoundOnIcon } from '..
 import { Tooltip } from '../ui/kit'
 import { CameraMenu } from '../training/CameraMenu'
 import { finishTitle, toggleRecording } from '../actions'
+import { UpdateButton } from './UpdateButton'
 
 /// The window's title bar: identity on the left, the camera's status and the training's global commands on the
 /// right, then the system caption buttons (drawn by Windows: Snap Layouts keep working).
@@ -56,6 +57,8 @@ function TrainingCommands() {
   return (
     <div className="titlebar__commands">
       {configured && <CameraMenu />}
+      {/* A new version waits: outside a training or a recording only, as on the Mac. */}
+      {!app.session && !isRecording(app) && <UpdateButton />}
       {configured && <RecordButton />}
       {configured && (
         <Tooltip content={audio ? t('Turn off camera sound in the app (recordings always include sound)') : t('Turn on camera sound in the app (recordings always include sound)')}>

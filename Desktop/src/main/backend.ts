@@ -23,6 +23,8 @@ import { argValue, paths, isUIPreview } from './paths'
 import { demoHistory, demoPlan, demoReplay } from './demo'
 import { legalText } from './legal'
 import { appVersion } from './version'
+import { AppUpdater, updatesAvailability } from './updater'
+import packageInfo from '../../package.json'
 
 /// One part of a recording: the file and when it was requested (a new part starts each time the camera stream
 /// breaks off and comes back).
@@ -51,6 +53,7 @@ export class AppBackend {
   readonly recorder = new StreamRecorder()
   readonly cameraModes: CameraModesController
   readonly sync: SyncHost
+  readonly updater: AppUpdater
 
   private session: TrainingSession | null = null
   private sessionUnsubscribe: (() => void) | null = null
@@ -120,10 +123,31 @@ export class AppBackend {
       }
       this.emit()
     })
-    this.settings.onChange(() => {
+    const demoUpdate = process.argv.includes('--demo-update') ? (process.argv[process.argv.indexOf('--demo-update') + 1] === 'found' ? 'found' : 'downloaded') : null
+    this.updater = new AppUpdater({
+      currentVersion: packageInfo.version,
+      unavailable: updatesAvailability(packageInfo.version),
+      settings: () => this.settings.publicValue,
+      isBusy: () => this.hasWorkBeforeQuit,
+      onChange: () => this.emit(),
+      stateFile: join(paths.userData, 'updates.json'),
+      log,
+      demo: demoUpdate,
+    })
+    let updateSettings = { updateMode: this.settings.value.updateMode, updateNightly: this.settings.value.updateNightly }
+    this.settings.onChange((value) => {
       this.applyLanguage()
+      const previous = updateSettings
+      updateSettings = { updateMode: value.updateMode, updateNightly: value.updateNightly }
+      if (previous.updateMode !== value.updateMode || previous.updateNightly !== value.updateNightly) this.updater.settingsChanged(previous)
       this.emit()
     })
+  }
+
+  /// A training, a recording (also one waiting for the camera to come back) or a video being finished: no
+  /// background update check, and a restart into a new version waits (the Mac's `hasWorkBeforeQuit`).
+  get hasWorkBeforeQuit(): boolean {
+    return this.session !== null || this.isRecordingLocally || this.finalizing.size > 0
   }
 
   async start(): Promise<void> {
@@ -140,6 +164,7 @@ export class AppBackend {
     }
     if (this.settings.value.shareWithIPhone && !isUIPreview) this.sync.start()
     this.startStreamDiagnostics()
+    this.updater.start()
   }
 
   /// Launch arguments for checks and screenshots (nothing is written): `--demo-history` (sample trainings),
@@ -189,6 +214,7 @@ export class AppBackend {
       await this.stopRecording(false)
     }
     await Promise.allSettled([...this.finalizeTasks.values()])
+    this.updater.stop()
     this.sync.stop()
     await this.go2rtc.stop()
   }
@@ -242,6 +268,7 @@ export class AppBackend {
       cameraModes: this.cameraModes.view(),
       sync: { ...this.sync.view(), hostName: this.sync.name },
       errorMessage: this.errorMessage,
+      updates: this.updater.view(),
       paths: {
         documents: paths.documentsRoot,
         recordings: this.store.recordingsDirectory,
@@ -1234,6 +1261,8 @@ export class AppBackend {
       if (file) shell.showItemInFolder(file)
     },
     'recordings.size': () => this.recordingsSize(),
+    'updates.check': () => this.updater.check(true),
+    'updates.install': () => this.updater.install(),
   }
 
   private recordingsSize(): { files: number; bytes: number } {

@@ -1,10 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { t } from '@shared/i18n'
+import { RELEASES_PAGE, UPDATE_MODES, type UpdateMode, type UpdatesState } from '@shared/updates'
 import logo from '../assets/logo.svg'
-import { call, callStrict, useApp } from '../store'
-import { Button, Dialog, Spinner } from '../ui/kit'
-import { CodeIcon, ExternalLinkIcon, HelpIcon, PrivacyIcon } from '../ui/icons'
-import { Group, PaneHeader, Row } from './rows'
+import { call, callStrict, toast, useApp, useNow } from '../store'
+import { isRecording } from '../model'
+import { relativeTime } from '../format'
+import { Button, Dialog, Spinner, Switch } from '../ui/kit'
+import { CodeIcon, DownloadIcon, ExternalLinkIcon, HelpIcon, LastCheckIcon, PortableIcon, PrivacyIcon, TestBuildsIcon, UpdateIcon } from '../ui/icons'
+import { ProgressBar } from '../shell/UpdateButton'
+import { Group, PaneHeader, Row, Select } from './rows'
 
 const SUPPORT_URL = 'https://github.com/AndrewAndreev/WaitingPaws'
 
@@ -38,8 +42,120 @@ export function AboutPane() {
           </Button>
         </Row>
       </Group>
+      {app.updates && <UpdatesGroup updates={app.updates} />}
       {legal && <LegalDialog kind={legal} onClose={() => setLegal(null)} />}
     </>
+  )
+}
+
+function modeTitle(mode: UpdateMode): string {
+  switch (mode) {
+    case 'automatic':
+      return t('Install automatically')
+    case 'notify':
+      return t('Notify only')
+    case 'manual':
+      return t("Don't check")
+  }
+}
+
+function modeExplanation(mode: UpdateMode): string {
+  switch (mode) {
+    case 'automatic':
+      return t('They download in the background and install when you quit Waiting Paws. A training or a recording is never interrupted.')
+    case 'notify':
+      return t('Once a day the app checks for a new version and shows “Update” in the toolbar. It downloads when you say so.')
+    case 'manual':
+      return t('Only with “Check Now”.')
+  }
+}
+
+/// «Обновления» (the app installed from GitHub; Design/updates-lab, S2 — the Mac's `SettingsUpdatesSection`): the
+/// mode, test builds, a waiting version with its button, the last check and «Проверить сейчас».
+function UpdatesGroup({ updates }: { updates: UpdatesState }) {
+  const app = useApp()
+  const now = useNow(30_000)
+  if (updates.unavailable === 'dev') {
+    return (
+      <Group title={t('Updates')}>
+        <Row icon={<UpdateIcon />} title={t('Updates are off in a development build.')} />
+      </Group>
+    )
+  }
+  if (updates.unavailable === 'portable') {
+    return (
+      <Group title={t('Updates')}>
+        <Row icon={<PortableIcon />} title={t('Portable version')} description={t('A copy from the zip archive doesn’t update itself. Install Waiting Paws with the installer from GitHub, and new versions will come by themselves.')}>
+          <Button icon={<ExternalLinkIcon />} onClick={() => void call('shell.openExternal', RELEASES_PAGE)}>
+            GitHub
+          </Button>
+        </Row>
+      </Group>
+    )
+  }
+  const settings = app.settings
+  const pending = updates.pending
+  const busy = app.session !== null || isRecording(app) || app.finalizing.length > 0
+  const downloading = pending !== null && !pending.downloaded && pending.progress !== null
+  const check = async () => {
+    const result = await call('updates.check')
+    if (result && !result.found) toast({ title: t('You’re up to date'), detail: result.newest ? t('Waiting Paws %@ is the newest version available.', result.newest) : undefined, kind: 'success' })
+  }
+  return (
+    <Group title={t('Updates')} footer={t('Windows asks for administrator permission: the app is installed for all users.')}>
+      <Row icon={<UpdateIcon />} title={t('New versions')} description={modeExplanation(settings.updateMode)}>
+        <Select<UpdateMode>
+          label={t('New versions')}
+          value={settings.updateMode}
+          options={UPDATE_MODES.map((mode) => ({ value: mode, label: modeTitle(mode) }))}
+          onChange={(updateMode) => void call('settings.update', { updateMode })}
+        />
+      </Row>
+      <Row
+        icon={<TestBuildsIcon />}
+        title={t('Test builds (nightly)')}
+        description={t('New things before the regular versions, with possible bugs. After turning this off, the test build stays until the next regular version.')}
+      >
+        <Switch checked={settings.updateNightly} label={t('Test builds (nightly)')} onChange={(updateNightly) => void call('settings.update', { updateNightly })} />
+      </Row>
+      {pending && (
+        <Row
+          icon={<DownloadIcon />}
+          title={<span className="supdate__ready">{pending.downloaded ? t('Version %@ downloaded', pending.version) : t('Version %@ available', pending.version)}</span>}
+          description={
+            pending.installing && busy
+              ? t('Installs after the training or the recording.')
+              : downloading
+                ? t('Downloading… %lld%%', pending.progress)
+                : pending.downloaded
+                  ? t('Installs when you quit Waiting Paws.')
+                  : t('Downloads and installs when you click the button.')
+          }
+          below={downloading ? <ProgressBar value={pending.progress ?? 0} /> : undefined}
+        >
+          <Button variant="primary" disabled={downloading || (pending.installing && pending.downloaded)} onClick={() => void call('updates.install')}>
+            {pending.installing && pending.downloaded ? t('Installing…') : pending.downloaded ? t('Restart') : t('Download and Install')}
+          </Button>
+        </Row>
+      )}
+      <Row
+        icon={<LastCheckIcon />}
+        title={t('Last check')}
+        description={
+          updates.error ? (
+            <span className="supdate__error">{t('Couldn’t check: %@', updates.error)}</span>
+          ) : updates.lastCheck ? (
+            relativeTime(updates.lastCheck, now)
+          ) : (
+            t('not yet')
+          )
+        }
+      >
+        <Button disabled={updates.checking} icon={updates.checking ? <Spinner /> : undefined} onClick={() => void check()}>
+          {t('Check Now')}
+        </Button>
+      </Row>
+    </Group>
   )
 }
 

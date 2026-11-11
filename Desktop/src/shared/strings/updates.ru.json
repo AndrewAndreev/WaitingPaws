@@ -1,0 +1,12 @@
+{
+  "Downloading… %lld%%": "Загружается… %lld %%",
+  "Only with “Check Now”.": "Только по кнопке «Проверить сейчас».",
+  "Installs after the training or the recording.": "Установится после тренировки или записи.",
+  "Installing…": "Устанавливается…",
+  "Couldn’t check: %@": "Не удалось проверить: %@",
+  "You’re up to date": "У вас самая новая версия",
+  "Waiting Paws %@ is the newest version available.": "Waiting Paws %@ — новейшая доступная версия.",
+  "Portable version": "Портативная версия",
+  "A copy from the zip archive doesn’t update itself. Install Waiting Paws with the installer from GitHub, and new versions will come by themselves.": "Копия из zip-архива сама не обновляется. Поставьте Waiting Paws установщиком с GitHub — тогда новые версии будут приходить сами.",
+  "Windows asks for administrator permission: the app is installed for all users.": "Windows попросит разрешение администратора: приложение установлено для всех пользователей."
+}

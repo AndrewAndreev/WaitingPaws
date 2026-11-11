@@ -1,7 +1,7 @@
 // Small UI kit on top of Radix primitives, styled by styles/base.css. One place for the look of buttons,
 // menus, dialogs, tooltips and switches so screens stay consistent (Fluent-like, not macOS-like).
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
-import { Dialog as RDialog, DropdownMenu as RMenu, Tooltip as RTooltip, ContextMenu as RContext } from 'radix-ui'
+import { Dialog as RDialog, DropdownMenu as RMenu, Popover as RPopover, Tooltip as RTooltip, ContextMenu as RContext } from 'radix-ui'
 import { Checkmark16Regular as Check, ChevronRight16Regular as ChevronRight, Dismiss20Regular as X } from '@fluentui/react-icons'
 import { t } from '@shared/i18n'
 
@@ -153,6 +153,21 @@ export function SubMenu({ icon, label, children }: { icon?: ReactNode; label: Re
         </RMenu.SubContent>
       </RMenu.Portal>
     </RMenu.Sub>
+  )
+}
+
+// ---------- Popover (a flyout with content, not a menu: «Обновление» in the title bar) ----------
+
+export const Popover = RPopover.Root
+export const PopoverTrigger = RPopover.Trigger
+
+export function PopoverContent({ children, align = 'end', side = 'bottom', width, className, label }: { children: ReactNode; align?: 'start' | 'center' | 'end'; side?: 'top' | 'bottom' | 'left' | 'right'; width?: number; className?: string; label?: string }) {
+  return (
+    <RPopover.Portal>
+      <RPopover.Content className={'popover' + (className ? ' ' + className : '')} align={align} side={side} sideOffset={6} collisionPadding={8} style={width ? { width } : undefined} aria-label={label}>
+        {children}
+      </RPopover.Content>
+    </RPopover.Portal>
   )
 }
 

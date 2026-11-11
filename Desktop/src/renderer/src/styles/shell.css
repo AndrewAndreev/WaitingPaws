@@ -444,3 +444,87 @@ html.mini #root {
   padding: 0;
   justify-content: center;
 }
+
+/* «Обновление» in the title bar (the app from GitHub): a pink dot on the icon's corner, like the Mac's capsule. */
+.tb-update__icon {
+  position: relative;
+  display: inline-flex;
+}
+.tb-update__dot {
+  position: absolute;
+  top: -1px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-text);
+}
+.tb-update svg {
+  color: var(--text-primary);
+}
+
+/* Its popover: the version, what is new, when to install. */
+.uppop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.uppop__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.uppop__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex: none;
+}
+.uppop__title {
+  font-size: var(--text-body);
+  font-weight: 600;
+  line-height: 20px;
+}
+.uppop__status {
+  font-size: var(--text-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.uppop__notes {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--text-small);
+  line-height: 18px;
+}
+.uppop__notes li::marker {
+  color: var(--text-tertiary);
+}
+.btn.uppop__more {
+  align-self: flex-start;
+  margin-top: -4px;
+  font-size: var(--text-small);
+}
+.uppop__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+}
+
+/* A thin determinate progress bar (Fluent ProgressBar). */
+.progressbar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-surface-3);
+  overflow: hidden;
+}
+.progressbar__value {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-text);
+  transition: width var(--duration-normal) var(--ease);
+}

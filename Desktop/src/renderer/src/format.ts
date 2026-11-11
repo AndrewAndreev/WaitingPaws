@@ -12,3 +12,14 @@ export function formatBytes(bytes: number): string {
   const digits = unit >= 2 && value < 100 ? 1 : 0
   return `${value.toLocaleString(language() === 'ru' ? 'ru-RU' : 'en-US', { maximumFractionDigits: digits })} ${units[unit]}`
 }
+
+/// «2 часа назад» / "2 hours ago", «сейчас» under a minute (the Mac's `.relative(presentation: .named)`).
+export function relativeTime(time: number, now: number): string {
+  const format = new Intl.RelativeTimeFormat(language() === 'ru' ? 'ru' : 'en', { numeric: 'auto' })
+  const seconds = Math.round((time - now) / 1000)
+  const size = Math.abs(seconds)
+  if (size < 60) return format.format(0, 'second')
+  if (size < 3600) return format.format(Math.round(seconds / 60), 'minute')
+  if (size < 86400) return format.format(Math.round(seconds / 3600), 'hour')
+  return format.format(Math.round(seconds / 86400), 'day')
+}

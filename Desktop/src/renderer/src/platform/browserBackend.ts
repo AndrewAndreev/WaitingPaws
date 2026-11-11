@@ -7,6 +7,7 @@ import { TrainingSession } from '@core/trainingSession'
 import { TrainingPlan } from '@core/models'
 import { SessionLogFormatter, TrainingRecord } from '@core/sessionLog'
 import { DISK_DATES } from '@core/codable'
+import { RELEASES_PAGE, updateNotes, type UpdatesState } from '@shared/updates'
 
 const SETTINGS_KEY = 'wp.settings'
 const HISTORY_KEY = 'wp.history'
@@ -22,6 +23,26 @@ export function createBrowserBridge(): PlatformBridge {
   let errorMessage: string | null = null
   let historyRevision = 1
   let tick: number | null = null
+  // `?demo-update` (downloaded) or `?demo-update=found`: the updates UI with a waiting 1.7.21, as `--demo-update` in
+  // the app. Without it the web has no updates at all.
+  const demoUpdate = new URLSearchParams(location.search).get('demo-update')
+  let updates: UpdatesState | null =
+    demoUpdate === null
+      ? null
+      : {
+          unavailable: null,
+          checking: false,
+          lastCheck: Date.now() - 2 * 60 * 60 * 1000,
+          error: null,
+          pending: {
+            version: '1.7.21',
+            notes: updateNotes('- Обновления прямо из приложения\n- Камера быстрее подключается после перезапуска\n- Недоделанная ночная запись больше не грузит процессор'),
+            downloaded: demoUpdate !== 'found',
+            progress: null,
+            installing: false,
+            releasePage: RELEASES_PAGE,
+          },
+        }
 
   const state = (): AppState => ({
     ready: true,
@@ -43,6 +64,7 @@ export function createBrowserBridge(): PlatformBridge {
     cameraModes: { state: 'none', reason: null, error: null, options: [] },
     sync: { enabled: false, connectedDevices: [], pairedDevices: [], pairingRequests: [], error: null },
     errorMessage,
+    updates,
     paths: { documents: '', recordings: '', sessions: '', logs: '' },
   })
 
@@ -132,6 +154,33 @@ export function createBrowserBridge(): PlatformBridge {
     },
     'app.legal': () => '',
     'recordings.size': () => ({ files: 0, bytes: 0 }),
+    'updates.check': async () => {
+      if (!updates) return { found: false, newest: null }
+      updates = { ...updates, checking: true }
+      emit()
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      updates = { ...updates, checking: false, lastCheck: Date.now() }
+      return { found: updates.pending !== null, newest: updates.pending?.version ?? '1.7.20' }
+    },
+    'updates.install': () => {
+      const pending = updates?.pending
+      if (!updates || !pending) return
+      if (pending.downloaded) {
+        console.info('[updates] demo: would install', pending.version, 'and restart')
+        return
+      }
+      // A download in three seconds.
+      let progress = 0
+      const step = () => {
+        progress += 10
+        const done = progress >= 100
+        updates = updates && { ...updates, pending: { ...pending, progress: done ? null : progress, downloaded: done, installing: !done } }
+        emit()
+        if (!done) window.setTimeout(step, 300)
+      }
+      updates = { ...updates, pending: { ...pending, progress: 0, installing: true } }
+      window.setTimeout(step, 300)
+    },
   }
 
   return {

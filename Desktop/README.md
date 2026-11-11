@@ -91,6 +91,20 @@ private networks).
 The build is not code-signed: the first launch shows SmartScreen ("Windows protected your PC" → More info → Run
 anyway).
 
+## Updates
+
+An installed release updates itself from GitHub (electron-updater, `src/main/updater.ts`), like the Mac app from
+GitHub (Sparkle): once a day, never during a training or a recording, it reads `latest.yml` of the Latest release
+(and, with «Тестовые сборки», of the `nightly` pre-release — the newer one wins). A new version shows as «Обновление»
+in the title bar; Settings → About → «Обновления» has the mode (install automatically / notify only / don't check),
+test builds, the waiting version and «Проверить сейчас». It installs on quit or with «Перезапустить» (one UAC
+prompt: the app is installed for all users). The portable zip and development builds (version 0.0.0) don't update.
+CI puts `latest.yml`, the installer and its blockmap into each release, and a test build into `nightly` whenever
+`Tools/release.sh publish-nightly` moves that tag.
+
+`--demo-update` (a downloaded 1.7.21) or `--demo-update found` shows the UI without GitHub;
+`--eval="__wpUI.set({showUpdatePopover:true})"` opens the popover. In the web preview: `?demo-update[=found]`.
+
 ## Checks without a camera
 
 ```bash

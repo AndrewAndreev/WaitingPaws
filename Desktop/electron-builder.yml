@@ -47,6 +47,9 @@ nsis:
   uninstallerIcon: build/icon.ico
   deleteAppDataOnUninstall: false
   runAfterFinish: true
+  # Updates (src/main/updater.ts): latest.yml says the installer needs administrator rights, so electron-updater starts
+  # it through elevate.exe — one UAC prompt — instead of failing first without them.
+  packElevateHelper: true
 publish:
   provider: github
   owner: AndrewAndreev

@@ -28,6 +28,8 @@ interface UIStore {
   confirmFinish: boolean
   /// «Остановить запись?»: a stop by mistake (Ctrl+R, REC in the title bar) cut many recordings short.
   confirmStopRecording: boolean
+  /// The popover of «Обновление» in the title bar (`--eval="__wpUI.set({showUpdatePopover:true})"` for checks).
+  showUpdatePopover: boolean
   /// History: the record or clip selected in the table (opened from the summary dialog, "jump to exit"…).
   historySelection: { kind: 'record' | 'clip'; id: string } | null
   /// Seek request for the history player (seconds into the selected recording).
@@ -57,6 +59,7 @@ export const useStore = create<UIStore>((set) => ({
   showServerSetup: false,
   confirmFinish: false,
   confirmStopRecording: false,
+  showUpdatePopover: false,
   historySelection: null,
   historySeek: null,
   toasts: [],

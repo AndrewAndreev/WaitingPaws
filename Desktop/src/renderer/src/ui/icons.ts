@@ -133,5 +133,14 @@ export {
   Warning20Filled as WarningFilledIcon,
 } from '@fluentui/react-icons'
 
+// Updates: «Обновление» in the title bar, Settings → About «Обновления».
+export {
+  ArrowDownload20Regular as DownloadIcon,
+  ArrowSync20Regular as UpdateIcon,
+  Beaker20Regular as TestBuildsIcon,
+  Clock20Regular as LastCheckIcon,
+  FolderZip20Regular as PortableIcon,
+} from '@fluentui/react-icons'
+
 // An exit's triggers, conditions for coming back early and note (drawn in conditionIcons.tsx).
 export { DoNotEnterIcon, EarlyEntryIcon, ExitNoteIcon, ExpandIcon, PrepIcon, TriggerIcon } from './conditionIcons'

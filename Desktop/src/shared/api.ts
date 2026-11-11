@@ -2,6 +2,7 @@
 /// next to go2rtc in a web build). The UI never touches files, go2rtc's process or the network beyond the
 /// camera player: it gets `AppState` snapshots and calls `BackendMethods` through `window.wp.call`.
 import type { Settings } from './settings'
+import type { UpdatesState } from './updates'
 
 /// Core types travel as plain JSON (dates as epoch milliseconds, durations in seconds).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,6 +96,8 @@ export interface AppState {
     hostName?: string
   }
   errorMessage: string | null
+  /// The app installed from GitHub updates itself (src/main/updater.ts); null where there is no updater (the web).
+  updates: UpdatesState | null
   /// Paths for "Show in Explorer" texts.
   paths: { documents: string; recordings: string; sessions: string; logs: string }
 }
@@ -169,6 +172,10 @@ export interface BackendMethods {
   'app.diagnostics'(): Json
   'app.openLogFile'(): void
   'recordings.size'(): { files: number; bytes: number }
+  /// «Проверить сейчас»: whether a newer version was found, and the newest one on GitHub.
+  'updates.check'(): { found: boolean; newest: string | null }
+  /// «Перезапустить» / «Загрузить и установить».
+  'updates.install'(): void
   /// Brings the main window back (from the compact strip).
   'window.restore'(): void
 }

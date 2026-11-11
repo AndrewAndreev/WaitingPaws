@@ -1,5 +1,6 @@
 /// User preferences shared by the backend (Electron main, or a server in a web build) and the UI.
 /// Same keys and defaults as the Mac app's `AppSettings`.
+import type { UpdateMode } from './updates'
 
 export type PlayerMode = 'webrtc' | 'mse' | 'hls'
 export type ConnectionMode = 'embedded' | 'external'
@@ -36,6 +37,11 @@ export interface Settings {
   language: LanguagePreference
   /// Windows only: keep the computer awake while a training or a recording runs.
   keepAwake: boolean
+  /// The app installed from GitHub (Settings → About «Обновления»): what happens with a new version. The Mac's
+  /// Sparkle defaults: checks daily, downloads and installs on quit.
+  updateMode: UpdateMode
+  /// «Тестовые сборки (nightly)»: the rolling «nightly» pre-release too (the Mac's `WPUpdatesNightly`).
+  updateNightly: boolean
 }
 
 export const defaultSettings: Settings = {
@@ -61,6 +67,8 @@ export const defaultSettings: Settings = {
   theme: 'system',
   language: 'system',
   keepAwake: true,
+  updateMode: 'automatic',
+  updateNightly: false,
 }
 
 /// MSE is the safe default for the bundled go2rtc; WebRTC gives the lowest latency with a real server.

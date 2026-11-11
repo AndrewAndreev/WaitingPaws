@@ -583,10 +583,12 @@ cmd_publish_nightly() {
   read -r version build commit _ < "$dir/manifest.txt"
   local sha; sha="$(git rev-parse "$commit^{commit}")"
   git branch -r --contains "$sha" | grep -q 'origin/' || die "$commit is not pushed to GitHub"
-  local notes="Test build of the Mac app from $commit: newer than the last release, possibly with bugs.
+  local notes="Test build of the Mac and Windows apps from $commit: newer than the last release, possibly with bugs.
 
-Settings → About → Updates → «Тестовые сборки» gets these builds through the app's updates. The apps read
-\`appcast.xml\` of this pre-release; it lists the newest release too, so a newer release still arrives."
+Settings → About → Updates → «Тестовые сборки» gets these builds through the app's updates. The Mac apps read
+\`appcast.xml\` of this pre-release (it lists the newest release too), the Windows apps its \`latest.yml\` next to
+the Latest release's, so a newer release still arrives. GitHub Actions adds the Windows files a few minutes after
+the Mac ones (.github/workflows/windows.yml, on this tag)."
   if gh release view "$NIGHTLY" --repo "$REPO" > /dev/null 2>&1; then
     git push -q --force origin "$sha:refs/tags/$NIGHTLY"
     gh release edit "$NIGHTLY" --repo "$REPO" --prerelease --title "Waiting Paws nightly $version" --notes "$notes"
@@ -595,10 +597,12 @@ Settings → About → Updates → «Тестовые сборки» gets these 
       --notes "$notes"
   fi
   gh release upload "$NIGHTLY" "$dir"/github/* --repo "$REPO" --clobber
-  # Only this build's files stay: older zips and deltas would only take room.
+  # Only this build's files stay: older zips and deltas would only take room. The Windows ones are GitHub Actions':
+  # the tag pushed above makes it build this commit and replace them.
   local keep asset
   keep="$(ls "$dir/github")"
   gh release view "$NIGHTLY" --repo "$REPO" --json assets --jq '.assets[].name' | while IFS= read -r asset; do
+    case "$asset" in *-Setup.exe | *-Setup.exe.blockmap | *-win-x64.zip | latest.yml) continue ;; esac
     grep -qxF "$asset" <<< "$keep" || gh release delete-asset "$NIGHTLY" "$asset" --repo "$REPO" --yes
   done
   echo "«$NIGHTLY» is $version ($commit): $REPO_URL/releases/tag/$NIGHTLY"
