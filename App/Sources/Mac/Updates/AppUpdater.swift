@@ -6,25 +6,95 @@ import Sparkle
 /// Updates of the Mac app downloaded from GitHub (target WaitingPaws-macOS-Direct, Developer ID) through Sparkle.
 /// The App Store app has none: the App Store updates it.
 ///
-/// Sparkle checks the appcast once a day, downloads a new version in the background and installs it when the app quits
-/// (Info-Direct.plist; both can be turned off in Settings → About). A training or a recording is never interrupted:
-/// background checks wait for it to end, and «Install and Relaunch» relaunches only after it.
+/// A new version found in the background never opens a window: it shows as «Обновление» in the toolbar
+/// (`UpdateGroup`), outside a training or a recording. «Проверить обновления…» and the toolbar's «Загрузить и
+/// установить» use Sparkle's own window. Settings → About has the mode, the nightly switch and «Проверить сейчас».
 @MainActor
 @Observable
-final class AppUpdater: NSObject, SPUUpdaterDelegate {
+final class AppUpdater: NSObject, SPUUpdaterDelegate, @preconcurrency SPUStandardUserDriverDelegate {
     /// Made at launch (`start(model:)`); nil in the App Store app, which has no `AppUpdater` at all.
     private(set) static var shared: AppUpdater?
+
+    /// Settings → About «Новые версии».
+    enum Mode: String, CaseIterable, Identifiable {
+        /// Download in the background, install when the app quits (or at «Перезапустить»).
+        case automatic
+        /// Show «Обновление» for a new version, download it only when asked.
+        case notify
+        /// Only «Проверить сейчас» / «Проверить обновления…».
+        case manual
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .automatic: return String(localized: "Устанавливать автоматически")
+            case .notify: return String(localized: "Только сообщать")
+            case .manual: return String(localized: "Не проверять")
+            }
+        }
+
+        var explanation: String {
+            switch self {
+            case .automatic:
+                return String(localized: "Загружаются в фоне и ставятся, когда вы выходите из Waiting Paws. Тренировку и запись это не прерывает.")
+            case .notify:
+                return String(localized: "Раз в день приложение проверяет, есть ли новая версия, и показывает «Обновление» в панели. Загрузка — по вашей команде.")
+            case .manual:
+                return String(localized: "Только по «Проверить сейчас» или «Проверить обновления…» в меню.")
+            }
+        }
+    }
+
+    /// A version waiting for the user: shown as «Обновление» in the toolbar and in Settings → About.
+    struct Pending: Equatable {
+        var version: String
+        /// The release's first lines («что нового»), at most four.
+        var notes: [String]
+        /// Downloaded and installed on quit; «Перезапустить» installs it at once. Otherwise only found.
+        var downloaded: Bool
+        var releasePage: URL
+    }
 
     /// False in a build from Xcode (version 0.0.0, "dev"): it has no version to compare, so it never checks.
     let isAvailable: Bool
     /// Sparkle can start a check now (not while one is running).
     private(set) var canCheck = false
     private(set) var lastCheck: Date?
+    private(set) var pending: Pending?
 
     @ObservationIgnored private var controller: SPUStandardUpdaterController!
     @ObservationIgnored private weak var model: AppModel?
     @ObservationIgnored private var observations: [NSKeyValueObservation] = []
     @ObservationIgnored private var postponedRelaunch: Task<Void, Never>?
+    /// From `willInstallUpdateOnQuit`: installs the downloaded version and relaunches, without Sparkle's window.
+    @ObservationIgnored private var installNowHandler: (() -> Void)?
+
+    private static let nightlyKey = "WPUpdatesNightly"
+
+    /// DEBUG `--demo-update [found]`: a waiting 1.7.21 without Sparkle (downloaded, or with `found` only found), for UI
+    /// checks of «Обновление» and Settings → About. `--demo-update-popover` opens the popover too (`UpdateGroup`).
+    private static var demoPending: Pending? {
+        #if DEBUG
+        let arguments = CommandLine.arguments
+        guard let index = arguments.firstIndex(of: "--demo-update") else { return nil }
+        let found = arguments.indices.contains(index + 1) && arguments[index + 1] == "found"
+        let notes = "- Обновления прямо из приложения\n- Камера быстрее подключается после перезапуска\n"
+            + "- Недоделанная ночная запись больше не грузит процессор"
+        return Pending(version: "1.7.21", notes: UpdateNotes.lines(notes), downloaded: !found, releasePage: releasesPage)
+        #else
+        return nil
+        #endif
+    }
+
+    static var demoOpensPopover: Bool {
+        #if DEBUG
+        return CommandLine.arguments.contains("--demo-update-popover")
+        #else
+        return false
+        #endif
+    }
+    static let releasesPage = URL(string: "https://github.com/AndrewAndreev/WaitingPaws/releases")!
 
     static func start(model: AppModel) {
         guard shared == nil else { return }
@@ -33,9 +103,12 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
 
     private init(model: AppModel) {
         self.model = model
-        isAvailable = AppInfo.release != nil
+        isAvailable = AppInfo.release != nil || Self.demoPending != nil
+        nightly = UserDefaults.standard.bool(forKey: Self.nightlyKey)
         super.init()
-        controller = SPUStandardUpdaterController(startingUpdater: isAvailable, updaterDelegate: self, userDriverDelegate: nil)
+        controller = SPUStandardUpdaterController(startingUpdater: AppInfo.release != nil, updaterDelegate: self,
+                                                  userDriverDelegate: self)
+        pending = Self.demoPending
         let updater = controller.updater
         observations = [
             updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] updater, _ in
@@ -49,48 +122,89 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         ]
     }
 
-    /// Settings → About «Проверять автоматически».
-    var checksAutomatically: Bool {
+    var mode: Mode {
         get {
-            access(keyPath: \.checksAutomatically)
-            return controller.updater.automaticallyChecksForUpdates
+            access(keyPath: \.mode)
+            let updater = controller.updater
+            guard updater.automaticallyChecksForUpdates else { return .manual }
+            return updater.automaticallyDownloadsUpdates ? .automatic : .notify
         }
         set {
-            withMutation(keyPath: \.checksAutomatically) { controller.updater.automaticallyChecksForUpdates = newValue }
+            withMutation(keyPath: \.mode) {
+                let updater = controller.updater
+                updater.automaticallyChecksForUpdates = newValue != .manual
+                updater.automaticallyDownloadsUpdates = newValue == .automatic
+            }
         }
     }
 
-    /// Settings → About «Загружать и устанавливать автоматически».
-    var installsAutomatically: Bool {
-        get {
-            access(keyPath: \.installsAutomatically)
-            return controller.updater.automaticallyDownloadsUpdates
-        }
-        set {
-            withMutation(keyPath: \.installsAutomatically) { controller.updater.automaticallyDownloadsUpdates = newValue }
+    /// Settings → About «Тестовые сборки»: the nightly appcast (`WPNightlyFeedURL`) instead of the releases one. It
+    /// lists the latest release too, so a newer release still arrives; switching back keeps the nightly until then.
+    var nightly: Bool {
+        didSet {
+            guard nightly != oldValue else { return }
+            UserDefaults.standard.set(nightly, forKey: Self.nightlyKey)
+            pending = nil
+            installNowHandler = nil
+            if isAvailable, controller.updater.automaticallyChecksForUpdates {
+                controller.updater.checkForUpdatesInBackground()
+            }
         }
     }
 
-    /// «Проверить обновления…»: Sparkle's own window shows the result (a new version, or "up to date").
+    /// «Проверить обновления…» / «Проверить сейчас»: Sparkle's own window shows the result.
     func checkForUpdates() {
         guard isAvailable else { return }
         controller.checkForUpdates(nil)
     }
 
+    /// «Перезапустить» (downloaded) or «Загрузить и установить» (only found: Sparkle's window takes it from here).
+    func installPending() {
+        if let installNowHandler, !isBusy {
+            installNowHandler()
+        } else {
+            checkForUpdates()
+        }
+    }
+
+    /// The toolbar shows «Обновление»: something waits and no training or recording runs.
+    var showsInToolbar: Bool {
+        guard pending != nil, let model else { return false }
+        return model.session == nil && !model.isRecordingNow
+    }
+
     private var isBusy: Bool { model?.hasWorkBeforeQuit ?? false }
+
+    private func remember(_ item: SUAppcastItem, downloaded: Bool) {
+        pending = Pending(version: item.displayVersionString, notes: UpdateNotes.lines(item.itemDescription),
+                          downloaded: downloaded, releasePage: item.fullReleaseNotesURL ?? Self.releasesPage)
+    }
 
     // MARK: SPUUpdaterDelegate
 
-    /// No background check during a training or a recording: its window would pop up over the session. The next daily
-    /// check comes later; one the user asks for («Проверить обновления…») always runs.
+    func feedURLString(for updater: SPUUpdater) -> String? {
+        guard UserDefaults.standard.bool(forKey: Self.nightlyKey) else { return nil }
+        return Bundle.main.object(forInfoDictionaryKey: "WPNightlyFeedURL") as? String
+    }
+
+    /// No background check during a training or a recording. The next daily check comes later; one the user asks for
+    /// («Проверить обновления…») always runs.
     func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
         guard updateCheck == .updatesInBackground, isBusy else { return }
         throw NSError(domain: "WaitingPaws.AppUpdater", code: 1,
                       userInfo: [NSLocalizedDescriptionKey: "A training or a recording is running"])
     }
 
-    /// «Install and Relaunch» pressed during a training or a recording: the relaunch waits until it has ended (and the
-    /// video is finished), then the update installs.
+    /// Downloaded in the background: «Обновление» in the toolbar; installed on quit, or at once by «Перезапустить».
+    func updater(_ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
+                 immediateInstallationBlock immediateInstallHandler: @escaping () -> Void) -> Bool {
+        remember(item, downloaded: true)
+        installNowHandler = immediateInstallHandler
+        return true
+    }
+
+    /// «Install and Relaunch» in Sparkle's window during a training or a recording: the relaunch waits until it has
+    /// ended (and the video is finished), then the update installs.
     func updater(_ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem,
                  untilInvokingBlock installHandler: @escaping () -> Void) -> Bool {
         guard isBusy else { return false }
@@ -103,6 +217,61 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
             installHandler()
         }
         return true
+    }
+
+    // MARK: SPUStandardUserDriverDelegate (gentle reminders)
+
+    var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    /// A version found by a background check: the toolbar shows it, not Sparkle's window.
+    func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem, andInImmediateFocus immediateFocus: Bool) -> Bool {
+        false
+    }
+
+    func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem,
+                                                   state: SPUUserUpdateState) {
+        guard !handleShowingUpdate else { return }
+        remember(update, downloaded: state.stage != .notDownloaded)
+    }
+
+    /// Sparkle's window took over (shown, installed, skipped): «Обновление» goes away.
+    func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
+        if installNowHandler == nil { pending = nil }
+    }
+
+    func standardUserDriverWillFinishUpdateSession() {
+        if installNowHandler == nil { pending = nil }
+    }
+}
+
+/// The first lines of a release's description in the appcast (HTML `<li>`s or markdown `- ` lines).
+enum UpdateNotes {
+    static func lines(_ description: String?, limit: Int = 4) -> [String] {
+        guard let description, !description.isEmpty else { return [] }
+        var items: [String]
+        if description.range(of: "<li", options: .caseInsensitive) != nil {
+            items = description.components(separatedBy: "<li").dropFirst().map { part in
+                let body = part.drop(while: { $0 != ">" }).dropFirst()
+                return String(body.components(separatedBy: "</li").first ?? "")
+            }
+        } else {
+            let lines = description.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
+            items = lines.compactMap { line in
+                for marker in ["- ", "* ", "• "] where line.hasPrefix(marker) { return String(line.dropFirst(marker.count)) }
+                return nil
+            }
+        }
+        return items.map(plain).filter { !$0.isEmpty }.prefix(limit).map { $0 }
+    }
+
+    /// Tags and the common entities out, spaces folded.
+    private static func plain(_ html: String) -> String {
+        var text = html.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        for (entity, char) in [("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"), ("&quot;", "\""), ("&#39;", "'"), ("&nbsp;", " ")] {
+            text = text.replacingOccurrences(of: entity, with: char)
+        }
+        return text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
     }
 }
 #endif

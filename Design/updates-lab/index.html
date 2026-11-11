@@ -217,6 +217,7 @@ figcaption b { color: #ececef; }
 
   <section class="choose" id="pick">
     <h3>Выбор</h3>
+    <p style="margin:0 0 8px;color:var(--green)">Выбрано 11 нояб.: меню + B (иконка — круговые стрелки) + S2 с тестовыми сборками.</p>
     <h4>Как сообщать о новой версии</h4>
     <div id="optsV"></div>
     <h4>Раздел в настройках</h4>
@@ -231,7 +232,7 @@ figcaption b { color: #ececef; }
 <script>
 const icon = '<img src="img/icon.png" alt="">';
 const I = {
-  up: '<svg viewBox="0 0 24 24"><path d="M12 19V6M6.5 11.5 12 6l5.5 5.5"/></svg>',
+  up: '<svg viewBox="0 0 24 24"><path d="M19.5 9.5A8 8 0 0 0 5.2 7.6M4.5 14.5a8 8 0 0 0 14.3 1.9"/><path d="M19.8 4.6v5h-5M4.2 19.4v-5h5"/></svg>',
 };
 const notes = ['Обновления прямо из приложения', 'Камера быстрее подключается после перезапуска', 'Недоделанная ночная запись больше не грузит процессор'];
 
@@ -269,7 +270,7 @@ const popB = `<div class="pop" style="${at(X0, Y0, 1470, 160)};--arrow:160px">
   <ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul>
   <div class="more" style="margin:-6px 0 12px">Все изменения…</div>
   <div class="row"><span class="btn">При выходе</span><span class="btn pink">Перезапустить</span></div>
-  <div class="note">Перезапуск займёт пару секунд, камера переподключится сама. Во время тренировки и записи капсулы нет.</div></div>`;
+</div>`;
 
 const whatsNew = `<div class="dim"></div><div class="sheet"><div class="hd">${icon}<div><h5>Waiting Paws обновлена до 1.7.21</h5><span>Было 1.7.20</span></div></div>
   <ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul><div class="row"><span class="btn">Все изменения…</span><span class="btn pink">Готово</span></div></div>`;
@@ -343,12 +344,13 @@ const s1 = (ready) => `<div class="grp">
   ${ready ? readyRow : lastRow}</div>`;
 const s2 = (ready) => `<div class="grp">
   <div class="r"><span class="l">Новые версии<small>Загружаются в фоне и ставятся, когда вы выходите из Waiting Paws. Тренировку и запись это не прерывает.</small></span><span class="popup">Устанавливать автоматически</span></div>
+  <div class="r"><span class="l">Тестовые сборки (nightly)<small>Новое раньше, чем в обычных версиях, но возможны ошибки. После выключения останется тестовая сборка, пока не выйдет следующая обычная версия.</small></span><span class="sw"></span></div>
   ${ready ? readyRow : lastRow}</div>
   <div class="foot">Другие режимы: «Только сообщать» — показать новую версию и спросить; «Не проверять» — только по «Проверить сейчас».</div>`;
 
 document.getElementById('settingsMocks').innerHTML = `
   <figure>${settings(s1(false))}<figcaption><b>S1, обычное состояние.</b> Два переключателя, последняя проверка и «Проверить сейчас».</figcaption></figure>
-  <figure>${settings(s2(true), { badge: true })}<figcaption><b>S2, новая версия загружена.</b> Один выбор режима. Строка «Версия 1.7.21 загружена» и значок у «О приложении» появляются в любом варианте S, пока обновление ждёт установки.</figcaption></figure>`;
+  <figure>${settings(s2(true), { badge: true })}<figcaption><b>S2 + тестовые сборки, новая версия загружена.</b> Один выбор режима и переключатель nightly. Строка «Версия 1.7.21 загружена» и значок у «О приложении» появляются в любом варианте S, пока обновление ждёт установки.</figcaption></figure>`;
 
 document.getElementById('optsV').innerHTML = Object.entries(V).map(([id, v]) =>
   `<label><input type="radio" name="v" value="${id}"${v.rec ? ' checked' : ''}> ${id} · ${v.title}</label>`).join('');

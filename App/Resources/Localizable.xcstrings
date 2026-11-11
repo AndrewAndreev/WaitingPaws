@@ -1263,6 +1263,22 @@
         }
       }
     },
+    "Waiting Paws %@: что нового и установка" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws %@: what’s new and installing"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws %@: что нового и установка"
+          }
+        }
+      }
+    },
     "Waiting Paws ничего не собирает и не отправляет разработчику: настройки, логи и видео остаются на ваших устройствах." : {
       "localizations" : {
         "en" : {
@@ -1746,6 +1762,22 @@
         }
       }
     },
+    "В сборке для разработки обновления выключены." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updates are off in a development build."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В сборке для разработки обновления выключены."
+          }
+        }
+      }
+    },
     "В скопированном тексте не нашлось ни одного выхода («1 выход - 30 секунд»)." : {
       "localizations" : {
         "en" : {
@@ -2094,6 +2126,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Версия %@ (%@)"
+          }
+        }
+      }
+    },
+    "Версия %@ загружена" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@ downloaded"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия %@ загружена"
           }
         }
       }
@@ -2798,6 +2846,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Все выходы — до конца плана, в среднем +%@"
+          }
+        }
+      }
+    },
+    "Все изменения…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Changes…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все изменения…"
           }
         }
       }
@@ -4242,6 +4306,38 @@
         }
       }
     },
+    "Доступна версия %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@ available"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступна версия %@"
+          }
+        }
+      }
+    },
+    "Доступна новая версия" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new version is available"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступна новая версия"
+          }
+        }
+      }
+    },
     "другая версия Waiting Paws" : {
       "localizations" : {
         "en" : {
@@ -4510,6 +4606,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ещё выход"
+          }
+        }
+      }
+    },
+    "ещё не было" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not yet"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ещё не было"
           }
         }
       }
@@ -4798,6 +4910,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Завершить тренировку?"
+          }
+        }
+      }
+    },
+    "Загружаются в фоне и ставятся, когда вы выходите из Waiting Paws. Тренировку и запись это не прерывает." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They download in the background and install when you quit Waiting Paws. A training or a recording is never interrupted."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загружаются в фоне и ставятся, когда вы выходите из Waiting Paws. Тренировку и запись это не прерывает."
+          }
+        }
+      }
+    },
+    "Загружена и готова к установке" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloaded and ready to install"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загружена и готова к установке"
+          }
+        }
+      }
+    },
+    "Загрузится и установится по кнопке." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloads and installs when you click the button."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузится и установится по кнопке."
+          }
+        }
+      }
+    },
+    "Загрузить и установить" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download and Install"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузить и установить"
           }
         }
       }
@@ -7746,6 +7922,22 @@
         }
       }
     },
+    "Не проверять" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don't check"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не проверять"
+          }
+        }
+      }
+    },
     "Не удалось выйти из аккаунта Xiaomi: %@" : {
       "localizations" : {
         "en" : {
@@ -8370,6 +8562,38 @@
         }
       }
     },
+    "Новое раньше, чем в обычных версиях, но возможны ошибки. После выключения останется тестовая сборка, пока не выйдет следующая обычная версия." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New things before the regular versions, with possible bugs. After turning this off, the test build stays until the next regular version."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новое раньше, чем в обычных версиях, но возможны ошибки. После выключения останется тестовая сборка, пока не выйдет следующая обычная версия."
+          }
+        }
+      }
+    },
+    "Новые версии" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New versions"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новые версии"
+          }
+        }
+      }
+    },
     "Новый код отправлен" : {
       "localizations" : {
         "en" : {
@@ -8558,6 +8782,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обновить список"
+          }
+        }
+      }
+    },
+    "Обновление" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновление"
+          }
+        }
+      }
+    },
+    "Обновления" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updates"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновления"
           }
         }
       }
@@ -9490,6 +9746,22 @@
         }
       }
     },
+    "Перезапустить" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перезапустить"
+          }
+        }
+      }
+    },
     "Перейти к тренировке" : {
       "localizations" : {
         "en" : {
@@ -10418,6 +10690,22 @@
         }
       }
     },
+    "Позже" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Позже"
+          }
+        }
+      }
+    },
     "Поиск" : {
       "localizations" : {
         "en" : {
@@ -10946,6 +11234,22 @@
         }
       }
     },
+    "Последняя проверка" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last check"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последняя проверка"
+          }
+        }
+      }
+    },
     "Поток" : {
       "localizations" : {
         "en" : {
@@ -11074,6 +11378,22 @@
         }
       }
     },
+    "При выходе" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On Quit"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При выходе"
+          }
+        }
+      }
+    },
     "Приблизить" : {
       "localizations" : {
         "en" : {
@@ -11154,6 +11474,22 @@
         }
       }
     },
+    "Проверить обновления…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить обновления…"
+          }
+        }
+      }
+    },
     "Проверить подключение" : {
       "localizations" : {
         "en" : {
@@ -11166,6 +11502,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверить подключение"
+          }
+        }
+      }
+    },
+    "Проверить сейчас" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check Now"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить сейчас"
           }
         }
       }
@@ -11342,6 +11694,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "работает, go2rtc %@"
+          }
+        }
+      }
+    },
+    "Раз в день приложение проверяет, есть ли новая версия, и показывает «Обновление» в панели. Загрузка — по вашей команде." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Once a day the app checks for a new version and shows “Update” in the toolbar. It downloads when you say so."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Раз в день приложение проверяет, есть ли новая версия, и показывает «Обновление» в панели. Загрузка — по вашей команде."
           }
         }
       }
@@ -13058,6 +13426,22 @@
         }
       }
     },
+    "Тестовые сборки (nightly)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test builds (nightly)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тестовые сборки (nightly)"
+          }
+        }
+      }
+    },
     "Тихо" : {
       "localizations" : {
         "en" : {
@@ -13214,6 +13598,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Только камера · ⇧⌘F"
+          }
+        }
+      }
+    },
+    "Только по «Проверить сейчас» или «Проверить обновления…» в меню." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only with “Check Now” or “Check for Updates…” in the menu."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только по «Проверить сейчас» или «Проверить обновления…» в меню."
+          }
+        }
+      }
+    },
+    "Только сообщать" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notify only"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только сообщать"
           }
         }
       }
@@ -14238,6 +14654,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Условия, которые тренер написал для всей тренировки"
+          }
+        }
+      }
+    },
+    "Устанавливать автоматически" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install automatically"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устанавливать автоматически"
+          }
+        }
+      }
+    },
+    "Установится, когда вы выйдете из Waiting Paws." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installs when you quit Waiting Paws."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установится, когда вы выйдете из Waiting Paws."
           }
         }
       }

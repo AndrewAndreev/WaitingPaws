@@ -58,5 +58,7 @@
 	<true/>
 	<key>WPGitCommit</key>
 	<string>$(WP_GIT_COMMIT)</string>
+	<key>WPNightlyFeedURL</key>
+	<string>$(WP_UPDATE_NIGHTLY_FEED_URL)</string>
 </dict>
 </plist>

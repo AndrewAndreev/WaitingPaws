@@ -636,26 +636,29 @@ private struct PanTiltSegment: View {
 
 // MARK: - The panel's groups
 
-/// The panel's words that drop, one at a time, when the groups don't fit over the panel: «Завершить» → «История» →
-/// iPhone → «Звук» (→ «Запись»).
+/// The panel's words that drop, one at a time, when the groups don't fit over the panel: «Обновление» → «Завершить» →
+/// «История» → iPhone → «Звук» (→ «Запись»).
 enum HeaderWord: Int, CaseIterable, Comparable {
-    case finish, history, device, sound, record
+    case update, finish, history, device, sound, record
 
     static func < (a: HeaderWord, b: HeaderWord) -> Bool { a.rawValue < b.rawValue }
 }
 
-/// What the panel's groups hold, and how wide they are with some words dropped. The groups as before: recording and
-/// sound · the linked iPhone · history and finishing.
+/// What the panel's groups hold, and how wide they are with some words dropped. The groups as before: a new version
+/// (the app from GitHub) · recording and sound · the linked iPhone · history and finishing.
 struct PanelButtons: Equatable {
     var recording: Bool
     var session: Bool
     /// The linked devices' names, nil when none is linked.
     var devices: String?
+    /// «Обновление»: a new version waits (`AppUpdater.showsInToolbar`, only in the app from GitHub).
+    var update = false
 
     /// The words there are, in the order they drop.
     var words: [HeaderWord] {
         HeaderWord.allCases.filter { word in
             switch word {
+            case .update: return update
             case .finish: return session
             case .device: return devices != nil
             case .record: return session && !recording
@@ -681,6 +684,7 @@ struct PanelButtons: Equatable {
         }
         first += segment(.sound, Self.soundWord, alone: first == 0)
         var total = first
+        if update { total += segment(.update, Self.updateWord, alone: true) }
         if let devices { total += segment(.device, devices, alone: true) }
         total += session ? segment(.history, Self.historyWord) + 1 + segment(.finish, Self.finishWord)
                          : segment(.history, Self.historyWord, alone: true)
@@ -691,7 +695,102 @@ struct PanelButtons: Equatable {
     static var soundWord: String { String(localized: "Звук") }
     static var historyWord: String { String(localized: "История") }
     static var finishWord: String { String(localized: "Завершить") }
+    static var updateWord: String { String(localized: "Обновление") }
+
+    /// The groups in the toolbar: recording and sound and history always, a new version and the iPhone when there.
+    var groupCount: Int { 2 + (devices == nil ? 0 : 1) + (update ? 1 : 0) }
 }
+
+#if WP_DIRECT
+/// «Обновление» (the app from GitHub): a new version waits. A click shows what is new, «Перезапустить» (downloaded) or
+/// «Загрузить и установить» (only found), and «При выходе». Not shown in a training or a recording.
+struct UpdateGroup: View {
+    let updater: AppUpdater
+    var folded: Set<HeaderWord>
+    var floating: Double
+    var sweep: Animation?
+    @State private var showsPopover = false
+
+    var body: some View {
+        let showsWord = !folded.contains(.update)
+        HeaderCapsule(floating: floating, sweep: sweep) {
+            Button { showsPopover.toggle() } label: {
+                HeaderSegmentLabel(title: PanelButtons.updateWord, systemImage: "arrow.triangle.2.circlepath",
+                                   showsWord: showsWord, tint: nil, alone: true)
+                    .overlay(alignment: .topLeading) {
+                        // The dot at the icon's corner: the same place with and without the word.
+                        Circle().fill(MacPalette.pink).frame(width: 6, height: 6)
+                            .offset(x: (showsWord ? HeaderLook.wordLead : (HeaderLook.height - HeaderLook.iconBox) / 2)
+                                        + HeaderLook.iconBox - 3, y: 8)
+                            .allowsHitTesting(false)
+                    }
+            }
+            .buttonStyle(HeaderSegmentStyle(isOn: showsPopover))
+            .help(updater.pending.map { String(localized: "Waiting Paws \($0.version): что нового и установка") } ?? "")
+        }
+        .task {
+            guard AppUpdater.demoOpensPopover else { return }
+            try? await Task.sleep(for: .seconds(1.5))
+            showsPopover = true
+        }
+        .popover(isPresented: $showsPopover, arrowEdge: .bottom) {
+            if let pending = updater.pending {
+                UpdatePopover(pending: pending, install: {
+                    showsPopover = false
+                    updater.installPending()
+                }, later: { showsPopover = false })
+            }
+        }
+    }
+}
+
+/// What is new in the waiting version, and when to install it.
+private struct UpdatePopover: View {
+    let pending: AppUpdater.Pending
+    var install: () -> Void
+    var later: () -> Void
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 32, height: 32)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: "Waiting Paws \(pending.version)").font(.headline)
+                    Text(pending.downloaded ? "Загружена и готова к установке" : "Доступна новая версия")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if !pending.notes.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(pending.notes, id: \.self) { line in
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(verbatim: "•").foregroundStyle(.secondary)
+                            Text(verbatim: line).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .font(.callout)
+            }
+            Button("Все изменения…") { openURL(pending.releasePage) }
+                .buttonStyle(.link)
+                .font(.callout)
+            HStack(spacing: 8) {
+                Spacer()
+                Button(pending.downloaded ? "При выходе" : "Позже", action: later)
+                Button(pending.downloaded ? "Перезапустить" : "Загрузить и установить", action: install)
+                    .buttonStyle(.borderedProminent)
+                    .tint(MacPalette.pinkDeep)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 320)
+        // Solid: through the glass the panel's pink «Начать тренировку» showed under the text.
+        .presentationBackground(Color(nsColor: .windowBackgroundColor))
+    }
+}
+#endif
 
 /// «● REC» (or «Запись» in a training not recorded, ⌘R) and «Звук».
 struct RecordSoundGroup: View {

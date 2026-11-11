@@ -90,6 +90,7 @@ struct MacSettingsView: View {
                             } icon: {
                                 SetupIconTile(symbol: pane.symbol, color: pane.color)
                             }
+                            .badge(pane == .about && Self.updateWaits ? 1 : 0)
                             .tag(pane)
                         }
                     }
@@ -104,6 +105,15 @@ struct MacSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// A new version waits (the app from GitHub): «О приложении» carries a badge, its pane has «Перезапустить».
+    private static var updateWaits: Bool {
+        #if WP_DIRECT
+        return AppUpdater.shared?.pending != nil
+        #else
+        return false
+        #endif
     }
 
     private func matches(_ pane: MacSettingsPane) -> Bool {

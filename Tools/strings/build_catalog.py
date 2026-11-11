@@ -7,7 +7,8 @@ Russian value is the key itself.
 
   1. Build both apps with SWIFT_EMIT_LOC_STRINGS=YES (the project's default), e.g.
        xcodebuild -scheme WaitingPaws-iOS   -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/wp-dd build
-       xcodebuild -scheme WaitingPaws-macOS -destination 'generic/platform=macOS'         -derivedDataPath /tmp/wp-dd build
+       xcodebuild -scheme WaitingPaws-macOS-Direct -destination 'generic/platform=macOS'  -derivedDataPath /tmp/wp-dd build
+     (the Direct Mac target: the same sources plus the updates under `#if WP_DIRECT`; keys no build uses are dropped)
   2. Tools/strings/build_catalog.py /tmp/wp-dd            → writes the catalog, lists keys without English
      Tools/strings/build_catalog.py /tmp/wp-dd --missing  → only prints the untranslated keys as JSON (with sources)
 """

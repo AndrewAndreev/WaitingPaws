@@ -384,11 +384,15 @@ struct MacConsoleView: View {
     /// What the panel's groups hold.
     private var panelButtons: PanelButtons {
         let devices = model.syncHost.connectedDevices
-        return PanelButtons(recording: model.isRecordingNow, session: model.session != nil,
-                            devices: devices.isEmpty ? nil : devices.map(\.name).joined(separator: ", "))
+        var buttons = PanelButtons(recording: model.isRecordingNow, session: model.session != nil,
+                                   devices: devices.isEmpty ? nil : devices.map(\.name).joined(separator: ", "))
+        #if WP_DIRECT
+        buttons.update = AppUpdater.shared?.showsInToolbar ?? false
+        #endif
+        return buttons
     }
 
-    private var groupCount: Int { panelButtons.devices == nil ? 2 : 3 }
+    private var groupCount: Int { panelButtons.groupCount }
 
     /// How much of the toolbar the panel's groups take from the window's edge at `level`.
     private func buttonsWidth(level: Int) -> CGFloat {
@@ -498,7 +502,8 @@ struct MacConsoleView: View {
     #endif
 
     /// The session's capsule at the window's buttons; the camera's island right before the panel's edge; the panel's
-    /// groups over the panel at the window's edge: recording and sound · the linked iPhone · history and finishing.
+    /// groups over the panel at the window's edge: a new version (the app from GitHub) · recording and sound · the linked
+    /// iPhone · history and finishing.
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
@@ -538,14 +543,25 @@ struct MacConsoleView: View {
         .sharedBackgroundVisibility(.hidden)
         let folded = clipMode ? [] : panelButtons.folded(foldLevel)
         let floating: Double = clipMode ? 1 : 0
+        // «Обновление» (the app from GitHub) comes first, so the other groups keep their places when it goes.
+        let first = panelButtons.update ? 1 : 0
+        #if WP_DIRECT
+        if panelButtons.update, let updater = AppUpdater.shared {
+            ToolbarItem {
+                UpdateGroup(updater: updater, folded: folded, floating: floating, sweep: sweep(0))
+            }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarSpacer(.fixed)
+        }
+        #endif
         ToolbarItem {
-            RecordSoundGroup(folded: folded, floating: floating, sweep: sweep(0))
+            RecordSoundGroup(folded: folded, floating: floating, sweep: sweep(first))
         }
         .sharedBackgroundVisibility(.hidden)
         if panelButtons.devices != nil {
             ToolbarSpacer(.fixed)
             ToolbarItem {
-                LinkedDeviceGroup(folded: folded, floating: floating, sweep: sweep(1))
+                LinkedDeviceGroup(folded: folded, floating: floating, sweep: sweep(first + 1))
             }
             .sharedBackgroundVisibility(.hidden)
         }

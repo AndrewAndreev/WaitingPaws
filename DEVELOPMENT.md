@@ -7,7 +7,8 @@ Windows — в [Desktop/README.md](Desktop/README.md).
 ## Структура
 
 ```
-project.yml                      — спецификация xcodegen (два таргета: WaitingPaws-iOS, WaitingPaws-macOS)
+project.yml                      — спецификация xcodegen: WaitingPaws-iOS, WaitingPaws-macOS (App Store) и
+                                   WaitingPaws-macOS-Direct (с GitHub, обновления через Sparkle)
 App/Sources                      — общий SwiftUI-код для обеих платформ
   AppModel.swift                 — состояние приложения: сессия, запись, история
   AppSettings.swift              — настройки (UserDefaults + Keychain для пароля go2rtc)
@@ -81,9 +82,12 @@ Design/app-icon                  — исходники иконки прило�
 
 ```bash
 xcodebuild -scheme WaitingPaws-iOS -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/wp-dd build
-xcodebuild -scheme WaitingPaws-macOS -destination 'generic/platform=macOS' -derivedDataPath /tmp/wp-dd build
+xcodebuild -scheme WaitingPaws-macOS-Direct -destination 'generic/platform=macOS' -derivedDataPath /tmp/wp-dd build
 Tools/strings/build_catalog.py /tmp/wp-dd   # пересобирает каталог и перечисляет ключи без перевода
 ```
+
+Mac собирают схемой `WaitingPaws-macOS-Direct`: в ней те же исходники плюс обновления (`#if WP_DIRECT`), а
+строки, которых нет в сборке, каталог выбрасывает.
 
 Переводы — `Tools/strings/en.json` (русский ключ → английский текст). Строки `Info.plist` по-русски —
 `App/Resources/InfoPlist.xcstrings`.

@@ -881,22 +881,33 @@ private struct SettingsAboutPane: View {
 }
 
 #if WP_DIRECT
-/// The app from GitHub: Sparkle's switches and «Проверить сейчас». The App Store app has no such section.
+/// The app from GitHub (lab Design/updates-lab, S2): the mode, nightly builds, a waiting version, «Проверить сейчас».
+/// The App Store app has no such section.
 private struct SettingsUpdatesSection: View {
     @Bindable var updater: AppUpdater
 
     var body: some View {
         Section("Обновления") {
             if updater.isAvailable {
-                Toggle(isOn: $updater.checksAutomatically) {
-                    Text("Проверять автоматически")
-                    Text("Раз в день, пока приложение открыто. Во время тренировки и записи проверка ждёт.")
+                Picker(selection: $updater.mode) {
+                    ForEach(AppUpdater.Mode.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    Text("Новые версии")
+                    Text(updater.mode.explanation)
                 }
-                Toggle(isOn: $updater.installsAutomatically) {
-                    Text("Загружать и устанавливать автоматически")
-                    Text("Новая версия загружается в фоне и устанавливается, когда вы выходите из Waiting Paws.")
+                Toggle(isOn: $updater.nightly) {
+                    Text("Тестовые сборки (nightly)")
+                    Text("Новое раньше, чем в обычных версиях, но возможны ошибки. После выключения останется тестовая сборка, пока не выйдет следующая обычная версия.")
                 }
-                .disabled(!updater.checksAutomatically)
+                if let pending = updater.pending {
+                    LabeledContent {
+                        Button(pending.downloaded ? "Перезапустить" : "Загрузить и установить") { updater.installPending() }
+                    } label: {
+                        Text(pending.downloaded ? "Версия \(pending.version) загружена" : "Доступна версия \(pending.version)")
+                            .foregroundStyle(MacPalette.accent)
+                        Text(pending.downloaded ? "Установится, когда вы выйдете из Waiting Paws." : "Загрузится и установится по кнопке.")
+                    }
+                }
                 LabeledContent {
                     Button("Проверить сейчас") { updater.checkForUpdates() }
                         .disabled(!updater.canCheck)

@@ -145,6 +145,8 @@ targets:
       path: App/macOS/Info-Direct.plist
       properties:
         SUFeedURL: $(WP_UPDATE_FEED_URL)
+        # Settings → About «Тестовые сборки» (AppUpdater.nightly) checks this one instead.
+        WPNightlyFeedURL: $(WP_UPDATE_NIGHTLY_FEED_URL)
         SUPublicEDKey: $(WP_UPDATE_PUBLIC_KEY)
         SUEnableInstallerLauncherService: true
         # Daily checks without Sparkle's "check automatically?" question; new versions download in the background and
@@ -160,6 +162,8 @@ targets:
         # The appcast of the latest published GitHub release: an update reaches people when its release is published
         # as Latest. Test builds point it elsewhere (WP_UPDATE_FEED_URL=… on the xcodebuild line).
         WP_UPDATE_FEED_URL: https://github.com/AndrewAndreev/WaitingPaws/releases/latest/download/appcast.xml
+        # Nightly builds: the rolling pre-release «nightly»; its appcast lists the latest release too.
+        WP_UPDATE_NIGHTLY_FEED_URL: https://github.com/AndrewAndreev/WaitingPaws/releases/download/nightly/appcast.xml
         # EdDSA public key of the update signatures; the private key is in the release Mac's login keychain
         # (Sparkle's generate_keys --account waitingpaws), never in the repository.
         WP_UPDATE_PUBLIC_KEY: 52ISgaJz9fxa9oiLgBTS4J+FOWATY8vRloUJRDijf94=

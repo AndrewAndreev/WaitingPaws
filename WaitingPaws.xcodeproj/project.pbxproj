@@ -1538,6 +1538,7 @@
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WP_DIRECT";
 				WP_UPDATE_FEED_URL = "https://github.com/AndrewAndreev/WaitingPaws/releases/latest/download/appcast.xml";
+				WP_UPDATE_NIGHTLY_FEED_URL = "https://github.com/AndrewAndreev/WaitingPaws/releases/download/nightly/appcast.xml";
 				WP_UPDATE_PUBLIC_KEY = "52ISgaJz9fxa9oiLgBTS4J+FOWATY8vRloUJRDijf94=";
 			};
 			name = Debug;
@@ -1582,6 +1583,7 @@
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WP_DIRECT";
 				WP_UPDATE_FEED_URL = "https://github.com/AndrewAndreev/WaitingPaws/releases/latest/download/appcast.xml";
+				WP_UPDATE_NIGHTLY_FEED_URL = "https://github.com/AndrewAndreev/WaitingPaws/releases/download/nightly/appcast.xml";
 				WP_UPDATE_PUBLIC_KEY = "52ISgaJz9fxa9oiLgBTS4J+FOWATY8vRloUJRDijf94=";
 			};
 			name = Release;
