@@ -12,6 +12,8 @@
 #                                                  export-mac/Waiting Paws.pkg
 #   Tools/release.sh direct v1.6.10              the Mac app for GitHub: Developer ID, notarized, with Sparkle updates
 #                                                → DerivedData/Release/v1.6.10/github/ (zip, appcast.xml, deltas)
+#   Tools/release.sh nightly [<ref>]             a nightly of origin/main (or <ref>) for «Тестовые сборки»
+#   Tools/release.sh publish-nightly [refresh]   it to the «nightly» pre-release (refresh: its appcast only)
 #   WP_NO_XIAOMI=1 Tools/release.sh build|export …  no Xiaomi sign-in → DerivedData/Release/v1.6.10-no-xiaomi/
 #
 # Uploading is a separate step by hand (Transporter or xcrun altool): DEVELOPMENT.md «В App Store».
@@ -104,7 +106,7 @@ copy_tag() {
     die "Frameworks/Go2RTC.xcframework was not built from $tag's GoMobile/, and GoMobile/ here differs from it too" \
       "(git diff $tag -- GoMobile): rebuild the framework from the tag's GoMobile/"
   fi
-  local copy="/tmp/wp-release-$tag$VARIANT"
+  local copy="/tmp/wp-release-${tag//\//-}$VARIANT"
   git worktree remove --force "$copy" 2> /dev/null || rm -rf "$copy"
   git worktree add --detach "$copy" "$tag" > /dev/null
   COPY="$copy"
@@ -335,31 +337,37 @@ DIRECT_EXPORT_OPTIONS="$ROOT/Tools/ExportOptions-DeveloperID.plist"
 NOTARY_PROFILE="${WP_NOTARY_PROFILE:-WaitingPaws}"
 # The Sparkle EdDSA key in the login keychain (generate_keys --account waitingpaws); its public half is in project.yml.
 SPARKLE_ACCOUNT=waitingpaws
-REPO_URL=https://github.com/AndrewAndreev/WaitingPaws
+REPO=AndrewAndreev/WaitingPaws
+REPO_URL=https://github.com/$REPO
 # Every GitHub build's zip with the appcast that grows with them: generate_appcast adds the new version to it and makes
-# deltas from the previous zips here. Local only; lost, it starts again from the next version.
+# deltas from the previous zips here. Local only; lost, it starts again from the next version. Nightlies: their own.
 UPDATES="$ROOT/DerivedData/Updates"
+NIGHTLY_UPDATES="$ROOT/DerivedData/Updates-nightly"
+# The rolling pre-release of the nightly builds (Settings → About «Тестовые сборки»): its tag moves to each new one.
+NIGHTLY=nightly
+NIGHTLY_OUT="$ROOT/DerivedData/Release/nightly"
 
-cmd_direct() {
-  local tag="${1:-}"
-  [[ "$tag" =~ $TAG_RE ]] || die "usage: Tools/release.sh direct v<major>.<minor>.<build>"
-  [ -z "$VARIANT" ] || die "the GitHub Mac app is the standard build only (leave WP_NO_XIAOMI out)"
-  git rev-parse -q --verify "refs/tags/$tag" > /dev/null || die "no tag $tag (Tools/release.sh tag <major>.<minor>)"
+# Before a GitHub build: the certificate, notarytool and the export options are there.
+direct_ready() {
   plutil -lint -s "$DIRECT_EXPORT_OPTIONS" || die "Tools/ExportOptions-DeveloperID.plist is broken"
-  local team; team="$(plist "$DIRECT_EXPORT_OPTIONS" teamID)"
-  security find-identity -v -p codesigning | grep -q "\"Developer ID Application: .*($team)\"" ||
-    die "no Developer ID Application certificate of team $team in the keychain (DEVELOPMENT.md «С GitHub»)"
+  TEAM="$(plist "$DIRECT_EXPORT_OPTIONS" teamID)"
+  security find-identity -v -p codesigning | grep -q "\"Developer ID Application: .*($TEAM)\"" ||
+    die "no Developer ID Application certificate of team $TEAM in the keychain (DEVELOPMENT.md «С GitHub»)"
   xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" > /dev/null 2>&1 ||
     die "notarytool has no working profile $NOTARY_PROFILE (DEVELOPMENT.md «С GitHub»)"
+}
 
-  local version="${tag#v}" build="${tag##*.}" commit
-  commit="$(git rev-parse --short=7 "$tag^{commit}")"
-  local out="$ROOT/DerivedData/Release/$tag" derived="$ROOT/DerivedData/Release/build"
-  local archive="$out/WaitingPaws-$version-mac-direct.xcarchive" export="$out/export-direct" github="$out/github"
-  copy_tag "$tag"
+# The GitHub Mac app of commit $1 as version $2 ($3 = CFBundleVersion), in $4: archived from a clean copy, exported with
+# Developer ID, checked, notarized and stapled. Sets DIRECT_APP and NOTARY_ID.
+direct_app() {
+  local ref="$1" version="$2" build="$3" out="$4" commit
+  commit="$(git rev-parse --short=7 "$ref^{commit}")"
+  local derived="$ROOT/DerivedData/Release/build"
+  local archive="$out/WaitingPaws-$version-mac-direct.xcarchive" export="$out/export-direct"
+  copy_tag "$ref"
   mkdir -p "$out"
 
-  echo "Archiving WaitingPaws-macOS-Direct $version ($commit)…"
+  echo "Archiving WaitingPaws-macOS-Direct $version ($build, $commit)…"
   rm -rf "$archive"
   xcodebuild archive -project "$COPY/WaitingPaws.xcodeproj" -scheme WaitingPaws-macOS-Direct -configuration Release \
     -destination 'generic/platform=macOS' -derivedDataPath "$derived" -archivePath "$archive" \
@@ -385,10 +393,11 @@ cmd_direct() {
   expect "signature" "$got" valid
   authority="$(codesign -dvv "$app" 2>&1 | sed -n 's/^Authority=//p' | head -1 || true)"
   expect "signed by" "${authority%%:*}" "Developer ID Application"
-  expect "signing team" "$(codesign -dvv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p' || true)" "$team"
+  expect "signing team" "$(codesign -dvv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p' || true)" "$TEAM"
   expect "version" "$(plist "$app/Contents/Info.plist" CFBundleShortVersionString) ($(plist "$app/Contents/Info.plist" CFBundleVersion))" "$version ($build)"
   expect "commit" "$(plist "$app/Contents/Info.plist" WPGitCommit)" "$commit"
   expect "update feed" "$(plist "$app/Contents/Info.plist" SUFeedURL)" "$REPO_URL/releases/latest/download/appcast.xml"
+  expect "nightly feed" "$(plist "$app/Contents/Info.plist" WPNightlyFeedURL)" "$REPO_URL/releases/download/$NIGHTLY/appcast.xml"
   got="$(plist "$app/Contents/Info.plist" SUPublicEDKey)"
   expect "update key" "${got:+set}" set
   codesign -d --entitlements - --xml "$app" > "$ent" 2> /dev/null || true
@@ -424,19 +433,65 @@ cmd_direct() {
   got="$(spctl -a -t exec -vv "$app" 2>&1 | sed -n 's/^source=//p')"
   [ "$got" = "Notarized Developer ID" ] || die "Gatekeeper says \"$got\", not \"Notarized Developer ID\""
   echo "  ok    stapled, Gatekeeper: $got"
+  DIRECT_APP="$app" NOTARY_ID="$id"
+}
 
-  local zip="WaitingPaws-$version-mac.zip" notes="$ROOT/Tools/release-notes/$version.md"
+# generate_appcast from this build's Sparkle package: $1 the updates folder, $2 the download URL prefix, then options.
+appcast() {
+  local dir="$1" prefix="$2"
+  shift 2
+  local generate="$ROOT/DerivedData/Release/build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast"
+  [ -x "$generate" ] || die "no Sparkle's generate_appcast in DerivedData/Release/build/SourcePackages"
+  echo "Writing the appcast…"
+  "$generate" --account "$SPARKLE_ACCOUNT" --download-url-prefix "$prefix" --full-release-notes-url "$REPO_URL/releases" \
+    --link "$REPO_URL" --embed-release-notes "$@" "$dir"
+}
+
+# The nightly appcast ($1) as the apps get it ($2): the nightlies plus the newest release, so that one still arrives
+# when it is newer than the last nightly. The release comes from the published Latest appcast (or this Mac's).
+nightly_appcast() {
+  local nightlies="$1" out="$2"
+  [ -n "$SCRATCH" ] && [ -d "$SCRATCH" ] || SCRATCH="$(mktemp -d)"
+  local stable="$SCRATCH/stable-appcast.xml"
+  curl -fsSL -o "$stable" "$REPO_URL/releases/latest/download/appcast.xml" 2> /dev/null ||
+    cp "$UPDATES/appcast.xml" "$stable" 2> /dev/null ||
+    die "no release appcast to add to the nightly one (the published Latest one or $UPDATES/appcast.xml)"
+  python3 -I - "$nightlies" "$stable" "$out" <<'PY'
+import re, sys
+nightly_path, stable_path, out_path = sys.argv[1:4]
+nightly = open(nightly_path, encoding="utf-8").read()
+stable = open(stable_path, encoding="utf-8").read()
+item = re.compile(r"[ \t]*<item>.*?</item>\n?", re.S)
+def version(block):
+    found = re.search(r"<sparkle:version>([^<]+)</sparkle:version>", block)
+    return tuple(int(part) for part in re.findall(r"\d+", found.group(1))) if found else ()
+releases = item.findall(stable)
+if not releases:
+    sys.exit("the release appcast has no items")
+newest = max(releases, key=version)
+# Only the nightlies stay (a release added by an earlier run gives way to the newest one), then that release.
+nightly = item.sub(lambda m: m.group(0) if "/releases/download/nightly/" in m.group(0) else "", nightly)
+nightly = re.sub(r"[ \t]*</channel>", lambda m: "        " + newest.strip() + "\n    </channel>", nightly, count=1)
+open(out_path, "w", encoding="utf-8").write(nightly)
+PY
+}
+
+cmd_direct() {
+  local tag="${1:-}"
+  [[ "$tag" =~ $TAG_RE ]] || die "usage: Tools/release.sh direct v<major>.<minor>.<build>"
+  [ -z "$VARIANT" ] || die "the GitHub Mac app is the standard build only (leave WP_NO_XIAOMI out)"
+  git rev-parse -q --verify "refs/tags/$tag" > /dev/null || die "no tag $tag (Tools/release.sh tag <major>.<minor>)"
+  direct_ready
+  local version="${tag#v}" build="${tag##*.}" out="$ROOT/DerivedData/Release/$tag"
+  local github="$out/github" zip="WaitingPaws-${tag#v}-mac.zip" notes="$ROOT/Tools/release-notes/${tag#v}.md"
+  direct_app "$tag" "$version" "$build" "$out"
+
   mkdir -p "$UPDATES"
   rm -f "$UPDATES/$zip"
-  ditto -c -k --keepParent "$app" "$UPDATES/$zip"
+  ditto -c -k --keepParent "$DIRECT_APP" "$UPDATES/$zip"
   # What is new, in the appcast (the toolbar's «Обновление» shows its first lines): Tools/release-notes/<version>.md.
   if [ -f "$notes" ]; then cp "$notes" "$UPDATES/${zip%.zip}.md"; else echo "  note  no $notes: the update has no description"; fi
-  local generate="$derived/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast"
-  [ -x "$generate" ] || die "no Sparkle's generate_appcast in $derived/SourcePackages"
-  echo "Writing the appcast…"
-  "$generate" --account "$SPARKLE_ACCOUNT" --download-url-prefix "$REPO_URL/releases/download/$tag/" \
-    --full-release-notes-url "$REPO_URL/releases" --link "$REPO_URL" --embed-release-notes --maximum-versions 3 \
-    "$UPDATES"
+  appcast "$UPDATES" "$REPO_URL/releases/download/$tag/" --maximum-versions 3
 
   # For the release: the zip, the appcast, and the deltas to this version.
   rm -rf "$github"
@@ -445,7 +500,7 @@ cmd_direct() {
   find "$UPDATES" -maxdepth 1 -name "*$build-*.delta" -exec cp {} "$github/" \;
   grep -q "<sparkle:version>$build</sparkle:version>" "$github/appcast.xml" || die "the appcast has no build $build"
   {
-    echo "github    $version ($build) $commit, Developer ID, notarized ($id)"
+    echo "github    $version ($build) $(git rev-parse --short=7 "$tag^{commit}"), Developer ID, notarized ($NOTARY_ID)"
     echo "          sha256 $(shasum -a 256 "$github/$zip" | cut -d' ' -f1)  $zip"
   } >> "$out/manifest.txt"
 
@@ -457,8 +512,96 @@ Ready in $github. The appcast reaches the apps when its release is published as 
   1. git push origin $tag                       Windows: GitHub Actions makes the draft release with its files
   2. gh release upload $tag $github/* --clobber   after that draft exists (otherwise Actions keeps its files out)
   3. gh release edit $tag --draft=false --latest
+  4. Tools/release.sh publish-nightly refresh   the nightly appcast gets this release too
 Every release published as Latest needs this appcast.xml too: the Mac apps read the Latest release's.
 EOF
+}
+
+# A nightly of <ref> (default origin/main): version <X.Y of the last release>.<its build + 1>-nightly.<MMDD>, build
+# <last release's build>.<YYMMDD>.<HHMM> — newer than that release, older than the next one, in Sparkle's comparison.
+cmd_nightly() {
+  local ref="${1:-origin/main}"
+  [ -z "$VARIANT" ] || die "the GitHub Mac app is the standard build only (leave WP_NO_XIAOMI out)"
+  [ "$ref" != origin/main ] || git fetch -q origin main
+  git rev-parse -q --verify "$ref^{commit}" > /dev/null || die "no commit $ref"
+  direct_ready
+  local last; last="$(release_tags | tail -1)"
+  [ -n "$last" ] || die "no release tag yet"
+  local minor="${last#v}" lastbuild="${last##*.}"
+  minor="${minor%.*}"
+  local version="$minor.$(( lastbuild + 1 ))-nightly.$(date +%m%d)" build="$lastbuild.$(date +%y%m%d).$(date +%H%M)"
+  local commit; commit="$(git rev-parse --short=7 "$ref^{commit}")"
+  local out="$NIGHTLY_OUT/$build" zip="WaitingPaws-$version-mac.zip"
+  direct_app "$ref" "$version" "$build" "$out"
+
+  # The previous nightly stays for a delta (--maximum-versions 2 moves older ones to old_updates/).
+  mkdir -p "$NIGHTLY_UPDATES"
+  ditto -c -k --keepParent "$DIRECT_APP" "$NIGHTLY_UPDATES/$zip"
+  {
+    local changes; changes="$(git log --format='- %s' --no-merges "$last..$ref" | head -4)"
+    if [ -n "$changes" ]; then echo "$changes"; else echo "- A test build of ${last#v} itself: the same code"; fi
+  } > "$NIGHTLY_UPDATES/${zip%.zip}.md"
+  appcast "$NIGHTLY_UPDATES" "$REPO_URL/releases/download/$NIGHTLY/" --maximum-versions 2 --maximum-deltas 1
+
+  local github="$out/github"
+  rm -rf "$github"
+  mkdir -p "$github"
+  cp "$NIGHTLY_UPDATES/$zip" "$github/"
+  find "$NIGHTLY_UPDATES" -maxdepth 1 -name "*$build-*.delta" -exec cp {} "$github/" \;
+  nightly_appcast "$NIGHTLY_UPDATES/appcast.xml" "$github/appcast.xml"
+  grep -q "<sparkle:version>$build</sparkle:version>" "$github/appcast.xml" || die "the appcast has no build $build"
+  # version build commit notarization: read back by publish-nightly.
+  echo "$version $build $commit $NOTARY_ID" > "$out/manifest.txt"
+  ln -sfn "$out" "$NIGHTLY_OUT/latest"
+
+  echo
+  ls -l "$github"
+  cat <<EOF
+
+Nightly $version ($build) from $commit is ready in $github.
+  Tools/release.sh publish-nightly     moves the «$NIGHTLY» pre-release to $commit and replaces its files
+EOF
+}
+
+# The «nightly» pre-release gets the last `nightly` build (its tag moves to that commit, the old files go); with
+# `refresh`, only its appcast, again with the newest published release (after a release is published).
+cmd_publish_nightly() {
+  local mode="${1:-}" dir="$NIGHTLY_OUT/latest"
+  if [ "$mode" = refresh ]; then
+    gh release view "$NIGHTLY" --repo "$REPO" > /dev/null 2>&1 || { echo "No «$NIGHTLY» pre-release: nothing to refresh."; return; }
+    SCRATCH="$(mktemp -d)"
+    curl -fsSL -o "$SCRATCH/nightly-appcast.xml" "$REPO_URL/releases/download/$NIGHTLY/appcast.xml" ||
+      die "could not download the «$NIGHTLY» appcast"
+    nightly_appcast "$SCRATCH/nightly-appcast.xml" "$SCRATCH/appcast.xml"
+    gh release upload "$NIGHTLY" "$SCRATCH/appcast.xml" --repo "$REPO" --clobber
+    echo "The «$NIGHTLY» appcast now lists the newest release too."
+    return
+  fi
+  [ -z "$mode" ] || die "usage: Tools/release.sh publish-nightly [refresh]"
+  [ -f "$dir/manifest.txt" ] || die "no nightly build yet: Tools/release.sh nightly"
+  local version build commit
+  read -r version build commit _ < "$dir/manifest.txt"
+  local sha; sha="$(git rev-parse "$commit^{commit}")"
+  git branch -r --contains "$sha" | grep -q 'origin/' || die "$commit is not pushed to GitHub"
+  local notes="Test build of the Mac app from $commit: newer than the last release, possibly with bugs.
+
+Settings → About → Updates → «Тестовые сборки» gets these builds through the app's updates. The apps read
+\`appcast.xml\` of this pre-release; it lists the newest release too, so a newer release still arrives."
+  if gh release view "$NIGHTLY" --repo "$REPO" > /dev/null 2>&1; then
+    git push -q --force origin "$sha:refs/tags/$NIGHTLY"
+    gh release edit "$NIGHTLY" --repo "$REPO" --prerelease --title "Waiting Paws nightly $version" --notes "$notes"
+  else
+    gh release create "$NIGHTLY" --repo "$REPO" --prerelease --target "$sha" --title "Waiting Paws nightly $version" \
+      --notes "$notes"
+  fi
+  gh release upload "$NIGHTLY" "$dir"/github/* --repo "$REPO" --clobber
+  # Only this build's files stay: older zips and deltas would only take room.
+  local keep asset
+  keep="$(ls "$dir/github")"
+  gh release view "$NIGHTLY" --repo "$REPO" --json assets --jq '.assets[].name' | while IFS= read -r asset; do
+    grep -qxF "$asset" <<< "$keep" || gh release delete-asset "$NIGHTLY" "$asset" --repo "$REPO" --yes
+  done
+  echo "«$NIGHTLY» is $version ($commit): $REPO_URL/releases/tag/$NIGHTLY"
 }
 
 case "${1:-}" in
@@ -466,5 +609,7 @@ case "${1:-}" in
   build) shift; cmd_build "$@" ;;
   export) shift; cmd_export "$@" ;;
   direct) shift; cmd_direct "$@" ;;
-  *) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  nightly) shift; cmd_nightly "$@" ;;
+  publish-nightly) shift; cmd_publish_nightly "$@" ;;
+  *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
