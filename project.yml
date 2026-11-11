@@ -14,6 +14,10 @@ options:
 packages:
   WaitingPawsCore:
     path: Packages/WaitingPawsCore
+  # Updates of the direct-download Mac app (WaitingPaws-macOS-Direct only).
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.10.1
 
 settings:
   base:
@@ -116,7 +120,52 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
 
+  # The Mac App Store app (TestFlight, App Store): updates come from the App Store only.
   WaitingPaws-macOS:
+    templates: [MacApp]
+    entitlements:
+      path: App/macOS/WaitingPaws.entitlements
+    info:
+      path: App/macOS/Info.plist
+
+  # The same Mac app downloaded from GitHub: Developer ID, notarized, updates itself through Sparkle
+  # (Tools/release.sh direct). Sparkle is linked only here: the App Store rejects an app with its own updater.
+  WaitingPaws-macOS-Direct:
+    templates: [MacApp]
+    dependencies:
+      - package: Sparkle
+    entitlements:
+      path: App/macOS/WaitingPaws-Direct.entitlements
+      properties:
+        # Sparkle's installer runs outside the sandbox and talks to the app over these two XPC names.
+        com.apple.security.temporary-exception.mach-lookup.global-name:
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spks
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spki
+    info:
+      path: App/macOS/Info-Direct.plist
+      properties:
+        SUFeedURL: $(WP_UPDATE_FEED_URL)
+        SUPublicEDKey: $(WP_UPDATE_PUBLIC_KEY)
+        SUEnableInstallerLauncherService: true
+        # Daily checks without Sparkle's "check automatically?" question; new versions download in the background and
+        # install when the app quits (both can be turned off in Settings → About).
+        SUEnableAutomaticChecks: true
+        SUAutomaticallyUpdate: true
+        SUVerifyUpdateBeforeExtraction: true
+    settings:
+      base:
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) WP_DIRECT
+        # Required for notarization.
+        ENABLE_HARDENED_RUNTIME: YES
+        # The appcast of the latest published GitHub release: an update reaches people when its release is published
+        # as Latest. Test builds point it elsewhere (WP_UPDATE_FEED_URL=… on the xcodebuild line).
+        WP_UPDATE_FEED_URL: https://github.com/AndrewAndreev/WaitingPaws/releases/latest/download/appcast.xml
+        # EdDSA public key of the update signatures; the private key is in the release Mac's login keychain
+        # (Sparkle's generate_keys --account waitingpaws), never in the repository.
+        WP_UPDATE_PUBLIC_KEY: 52ISgaJz9fxa9oiLgBTS4J+FOWATY8vRloUJRDijf94=
+
+targetTemplates:
+  MacApp:
     type: application
     platform: macOS
     sources:
@@ -129,14 +178,12 @@ targets:
       - framework: Frameworks/Go2RTC.xcframework
         embed: false
     entitlements:
-      path: App/macOS/WaitingPaws.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
         com.apple.security.network.server: true
         com.apple.security.personal-information.photos-library: true
     info:
-      path: App/macOS/Info.plist
       properties:
         CFBundleDisplayName: Waiting Paws
         CFBundleName: Waiting Paws
@@ -175,5 +222,11 @@ schemes:
     build:
       targets:
         WaitingPaws-macOS: all
+    run:
+      config: Debug
+  WaitingPaws-macOS-Direct:
+    build:
+      targets:
+        WaitingPaws-macOS-Direct: all
     run:
       config: Debug

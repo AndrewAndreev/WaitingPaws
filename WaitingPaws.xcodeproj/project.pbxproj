@@ -7,7 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01F9389B98EC2AC062383FE3 /* KeyboardPrewarmer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5D87597A0F52F2D42B6E6F /* KeyboardPrewarmer.swift */; };
+		026354975B39C905A9F249D1 /* MacHistoryWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA410D4D979D88D298BC0DC8 /* MacHistoryWindow.swift */; };
 		04C5CD81483DCE220A8538CF /* TrainingGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7215EFEBA5E10D48634455 /* TrainingGlance.swift */; };
+		04CD48687EA5DC836F322988 /* PlanInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */; };
+		0688491CCE18C3FB7AB2B855 /* SetupCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A837352B67FA611D8111C00 /* SetupCommon.swift */; };
 		09615CC5776F3A3C61CA1FDE /* MacWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785D1BAD352BFFA46C471742 /* MacWelcomeView.swift */; };
 		0A0DD7CE1EBB1CB0FFD36709 /* SetupKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363380F0C18A871DAEBE09A7 /* SetupKit.swift */; };
 		0A6F5ABF623344A7262E9307 /* CameraPanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A126E5AF78BEE277CC91B1A6 /* CameraPanTilt.swift */; };
@@ -15,6 +19,7 @@
 		0AD1CD73A6DD1C01A2B7C695 /* SessionHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A543FFBD67D604BF950292 /* SessionHUD.swift */; };
 		0CF17D71AB159A90FED95885 /* SetupKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363380F0C18A871DAEBE09A7 /* SetupKit.swift */; };
 		0EC2986C7F1ABF5F2A6E6F18 /* PanTiltPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12AA8AD184DFA81BBF19749 /* PanTiltPad.swift */; };
+		0F27B707150DF71743612E5E /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB1326D5D8D229C6136BA8C /* AppUpdater.swift */; };
 		0F7486DEFC2CA4BFD0376160 /* MacUIState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */; };
 		1195428CB49F8D9B997EF706 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8E692C88D60C366CFA7A12 /* Theme.swift */; };
 		12191F3C92C8990AC320BE32 /* NewTrainingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */; };
@@ -26,8 +31,11 @@
 		18D4B68FFC0F6DF28E606F20 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
 		1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */; };
 		1B45915553565FDD60456B02 /* LogMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07E8A420FED84FE8A782BFB /* LogMirror.swift */; };
+		1C25F6FB2BD472D814E57404 /* MacHistoryPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C07E802F9907CDE6B691038 /* MacHistoryPlayer.swift */; };
 		1CDF1781E48F963F97F7C8FD /* AboutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB09408266FBD3CE9B6B8826 /* AboutViews.swift */; };
+		1FE3FE4EBA9AB3F4FA1A312F /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */; };
 		1FE577D1926CC3C43CDC4417 /* WaitingPawsCore in Frameworks */ = {isa = PBXBuildFile; productRef = B4F844F9CD08AA8BC56C790D /* WaitingPawsCore */; };
+		1FF5C62D3ABAE2AFF7ABE9E3 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB1326D5D8D229C6136BA8C /* AppUpdater.swift */; };
 		208F37B20D6D8061D7CEDC6C /* MacHistoryProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AF487EFFE6D2FB22AA400BB /* MacHistoryProgress.swift */; };
 		20E8EDD765F0753142D9040E /* SyncIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5E56CC601BE031A3D48DF0 /* SyncIdentity.swift */; };
 		21288095E2A1499040A448BD /* CameraPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB15E742A63332D0305C49E /* CameraPickerView.swift */; };
@@ -37,15 +45,22 @@
 		26A1C0AAB8EB7842077F5F44 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
 		2714877A88FFA1789FE4C331 /* RecordingDurations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49838F7F8AEB1A5269FC45A /* RecordingDurations.swift */; };
 		2721F56420F33D188967378C /* MacHistoryTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = E284DBC656F72086C4AECDC8 /* MacHistoryTable.swift */; };
+		27D856F74C5D3369FE5EA884 /* ExitConditionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11EADBDF0032628198F53CE /* ExitConditionViews.swift */; };
 		28A346170C064EB5D770A44C /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
+		297FC7A426CBCAF5A8DD60EF /* TrainingGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7215EFEBA5E10D48634455 /* TrainingGlance.swift */; };
+		2990022A4A326425B01612AB /* MacHistoryThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EDD0FE37A4518887FC57D0 /* MacHistoryThumbnail.swift */; };
 		29AFE32CE6BEF6C2D45E65A1 /* Acknowledgements.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5EC3D18A3329671AE524D52A /* Acknowledgements.txt */; };
 		29E1EE966430E935616E1C61 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
 		2AC851DC82C729B326FF24C2 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
+		2B03E27F478E691E260682D2 /* SyncChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98694143DBF7C1033313F1E6 /* SyncChannel.swift */; };
 		2B5C02356ABEB628D2DC4F51 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
+		2BDA3FA7584FAA926D590AE8 /* SyncIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5E56CC601BE031A3D48DF0 /* SyncIdentity.swift */; };
 		2C447B33CA2D830A66F6AD60 /* MacSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */; };
 		2CE60CA72D70FA539B4A2166 /* ConsolePanelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B0B27C2AA0D56A62AF30F6 /* ConsolePanelLayout.swift */; };
 		2DF245D25B64FD43DE4DDD79 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38A20951026E43C64982CCD7 /* Localizable.xcstrings */; };
+		2E7C425FFEBD2CD3ECE248E0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8E692C88D60C366CFA7A12 /* Theme.swift */; };
 		2EC6AA5D676BB527E1183DE2 /* ConsoleReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA761F28A420093D2740492F /* ConsoleReadout.swift */; };
+		2FEA38AB49D8C507831D4903 /* MacUIState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */; };
 		30DA9B7C10D3A01F1A1A0AF0 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
 		312542C67DA22BF708B936FB /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
 		3141DF20BF7ABA82749E2B7C /* PrivacyPolicy-ru.md in Resources */ = {isa = PBXBuildFile; fileRef = CEA5D093822E9CAD83CAB5D2 /* PrivacyPolicy-ru.md */; };
@@ -55,70 +70,116 @@
 		33BA36B51071FF4F0A42230F /* MacPlanReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */; };
 		33E75F82080284406C2D48A4 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		34D011B69D7D63FABCC1EB71 /* Go2RTC.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; };
+		36E179EFF4B643BC8734A2AD /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
+		37A35BE245FE8E8A61A6758F /* Acknowledgements.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5EC3D18A3329671AE524D52A /* Acknowledgements.txt */; };
+		38048302C7C286187CB0F576 /* AboutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB09408266FBD3CE9B6B8826 /* AboutViews.swift */; };
+		3827503EDD3396DD1D56CE5D /* MacPlanReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */; };
 		38C28DF7359EA3529CF915AA /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6B39818DB94C898964AF2 /* MacRootView.swift */; };
 		38D6C97B6C7E48BAF2ABDE3D /* VideoPreparationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC4824E50726B55F2CABBDA /* VideoPreparationViews.swift */; };
 		38FD25FEBDF1B3E69F80FA12 /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
+		3928845E22EE0A17CC7CEA92 /* MacHistoryInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CB4D1AB5CEC631AB79AAF8 /* MacHistoryInspector.swift */; };
 		39F5CF6E49596FCA8A1844DA /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
 		3AAB259914B532D278F8D7AF /* RecordingDurations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49838F7F8AEB1A5269FC45A /* RecordingDurations.swift */; };
+		3B2A78BF71DBB9B8A8C1AEB9 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FA2645E678A49495282A8E8B /* InfoPlist.xcstrings */; };
+		3B4B1DC461981111E3239B38 /* Go2RTC.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; };
 		3C2C291FDBDB142AA9910F71 /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
+		3C53162F281B2355143A7B9A /* SetupXiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED967B787875E075AB3B309 /* SetupXiaomiSignInSheet.swift */; };
+		3CC7DBD3D6CC1F5C37A13521 /* MacUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */; };
+		3CE6BE0550737779EE08C1D2 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDA8ACA4F9B1F210B85715C4 /* WelcomeView.swift */; };
 		3D02A0EC6348B36CDB24C029 /* MacCameraArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */; };
 		3DB175BC9BAF747705E71F92 /* PanTiltPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12AA8AD184DFA81BBF19749 /* PanTiltPad.swift */; };
 		402CC4C9EB23741F56D70616 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BC4F2D63E281B08766B2C4 /* RootView.swift */; };
 		40F2F685381D7F13DC20C13D /* LiveSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C46490ED793F437A72C93B /* LiveSessionModel.swift */; };
 		411CEC96E56962966008B0A3 /* MacExitInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8C5F4E831A35FF0297FD46 /* MacExitInspector.swift */; };
+		4202EDB0B3A165BA78EFB4AB /* LogMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07E8A420FED84FE8A782BFB /* LogMirror.swift */; };
 		427AB731D226280986A118E3 /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
+		427C29A4ED6CA6F0D7D62DC8 /* MacHistoryTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = E284DBC656F72086C4AECDC8 /* MacHistoryTable.swift */; };
+		431F4803B41CA4950BC15324 /* SessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */; };
 		444A17A4B882112D7710F7EA /* TrainerTextDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44218A70D8BAA2006E927B77 /* TrainerTextDrawer.swift */; };
+		444A6C64D471FC2E66205D4D /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420C79201591C3471BA3CC6 /* DemoData.swift */; };
 		447EF8DD5C25C3C621440184 /* TrainingGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7215EFEBA5E10D48634455 /* TrainingGlance.swift */; };
 		457F514281F5D00C669262F4 /* MacWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785D1BAD352BFFA46C471742 /* MacWelcomeView.swift */; };
 		457FA2EEF8C2AA3CFCB15AA7 /* MacPlanTimelineEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */; };
+		46626291DBD773205CFAAB2C /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BC4F2D63E281B08766B2C4 /* RootView.swift */; };
+		46CCFA11B6A90EF4C34CDFE0 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		473AD97AF9885AECBAEF0BC8 /* MacCameraArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */; };
 		48A49F5916B01481E753DBFF /* SetupCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A837352B67FA611D8111C00 /* SetupCommon.swift */; };
 		4C6BF20CCA83990B65EDC7AB /* MacHistoryDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734F99F279AB3B2058745E72 /* MacHistoryDemo.swift */; };
+		4CE658FD20C682417E0BA2D4 /* ConsoleHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F6134E664A520C207993553 /* ConsoleHeader.swift */; };
 		4E01288012421CBF7841EF6C /* StepIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4D07D1D62842451078C3B3 /* StepIcon.swift */; };
 		4E2ACC2223573B440A9C6BCF /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */; };
 		4F91CFE9C2454313C4B9C21B /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDA8ACA4F9B1F210B85715C4 /* WelcomeView.swift */; };
+		50C54A68A09AE8A156343FAD /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BAD79086692AA64BD6514C /* AppSettings.swift */; };
 		516DCE8FF55A08351E1730BC /* MacHistoryInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CB4D1AB5CEC631AB79AAF8 /* MacHistoryInspector.swift */; };
+		519A100BFD0DB3E5AA2D792A /* StepIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4D07D1D62842451078C3B3 /* StepIcon.swift */; };
+		5292BFF3280E3C1CE09AA6EE /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C67571FE1A685FF1E89C85 /* GlassCard.swift */; };
+		53E050F689CD9C6E8BEECB90 /* MacCameraArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84494DFC6AC283F6067B98A5 /* MacCameraArea.swift */; };
 		5480C571E543F9862F46C8B3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D74383E2FDB68560D6A4A287 /* Assets.xcassets */; };
 		580F4712E7221F688A06DB41 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */; };
 		58452A3D42C1DFB7460D2D0C /* WaitingPaws-Widgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8CE7D2E87737863E87D78254 /* WaitingPaws-Widgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		59B9A6D75E43BA6D00482A3C /* MacCameraPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49544DC08EFCB32F58FEBD3C /* MacCameraPickerSheet.swift */; };
+		59D680CDCE743CD1D4E38DEA /* SyncHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA209D43CA8963E3C71A7B14 /* SyncHost.swift */; };
 		5A2150E42293E4512371DA05 /* MacExitInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8C5F4E831A35FF0297FD46 /* MacExitInspector.swift */; };
 		5A5EC8E45BBB24449A26278C /* MacPlanTimelineEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */; };
+		5B4A45BD0A499506DFAC6EF6 /* TrainerTextDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44218A70D8BAA2006E927B77 /* TrainerTextDrawer.swift */; };
 		5BEEA029021BC39EE7CF1B22 /* MacPairingPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */; };
+		5C74C2AE3697E4BA27CAC9FE /* SetupCameraCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AC996EE4675C6FE0C8B635 /* SetupCameraCatalog.swift */; };
+		5C8CEE781914226F41E9D15B /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34E57CF6328D1F36D2C8BB29 /* MacSettingsView.swift */; };
 		5F311EC55BB5C9535C42AF30 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */; };
 		5F41A4B2A6D07C968B890BCB /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
+		5F6759ADF9D59DB437CAA459 /* RecordingDurations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49838F7F8AEB1A5269FC45A /* RecordingDurations.swift */; };
+		5F752950B39970F84F6EC0DD /* LinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E82FB404801D9CB6095FA0E /* LinkViews.swift */; };
 		60D1400A545153EC1CFBBBFA /* MacPairingPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */; };
 		61C282CC287EA600A07E5C31 /* SyncHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA209D43CA8963E3C71A7B14 /* SyncHost.swift */; };
 		61EC7BF3EF5BE1313C320D91 /* SetupXiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED967B787875E075AB3B309 /* SetupXiaomiSignInSheet.swift */; };
+		63C97F9CE3407CD8BA246696 /* MacPlanTimelineEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */; };
 		640C5DD542567CEA878C5886 /* SessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */; };
+		6535EAAB683B810DD09A8ACE /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF078E66FEB0548DFDA1B148 /* HistoryView.swift */; };
+		6585A642271CFB978C16FA1D /* SessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85DCB661B7AD5031EC737BA /* SessionScreen.swift */; };
 		65C9F5799E765462068C577F /* MacHistoryThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EDD0FE37A4518887FC57D0 /* MacHistoryThumbnail.swift */; };
 		65FB4571AC493789B3CD4903 /* ClipCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653F818994AB2BEE3174F824 /* ClipCards.swift */; };
+		66CB3592094C6A11E01A6B6A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
 		686FD7176B315D02D7CD92DC /* TrainingActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F112C1E49E8107C091532E /* TrainingActivity.swift */; };
 		68955F775B4AC4C8BB29EB26 /* Go2RTC.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; };
+		692A59018D536EDEC2A1901F /* MacConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82D001539C92D7959753385 /* MacConsoleView.swift */; };
 		6BB3B6E5CEB872ED61A7CBB7 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C67571FE1A685FF1E89C85 /* GlassCard.swift */; };
 		6BE9A7979831E72AC39EF9C6 /* SessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */; };
+		6EC1B197FF467B88DF7DA342 /* SessionHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A543FFBD67D604BF950292 /* SessionHUD.swift */; };
+		7065414F7FFDA417DDDDE3B2 /* MacWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785D1BAD352BFFA46C471742 /* MacWelcomeView.swift */; };
+		71DFF5F0D6C473711D49456B /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
 		729C4E6F362987B7E34AFFBD /* SyncChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98694143DBF7C1033313F1E6 /* SyncChannel.swift */; };
 		73B7BE5633DB1673E5C5D813 /* MacUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */; };
 		7467AB7B4B5BE90B6E4EAEAC /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34E57CF6328D1F36D2C8BB29 /* MacSettingsView.swift */; };
 		74F718646D57D8FA0FA85FAD /* MacHistoryInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CB4D1AB5CEC631AB79AAF8 /* MacHistoryInspector.swift */; };
+		752FA620AB9037863557996C /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
+		7535516DD11E53F77DB85B00 /* CameraModeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE70FC878886DBB4722CDA4 /* CameraModeControls.swift */; };
+		75536560E7A7CCC30EB364E8 /* LiveSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C46490ED793F437A72C93B /* LiveSessionModel.swift */; };
 		763399D65BA031D177BED44F /* ZoomableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6961CED894D4487A9C9977 /* ZoomableView.swift */; };
+		769763C9EE68369D7A156E95 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = B1A0BC5C2CD53DC9159BD367 /* Sparkle */; };
+		78BF45E64EBACD72BD8E7112 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
 		792907206B28D4D6A58F99D0 /* SetupServerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */; };
 		7ADEB6214CBE9D22BDA3921F /* SetupCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A837352B67FA611D8111C00 /* SetupCommon.swift */; };
 		7AE4B75A5F0B841DA37CA766 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */; };
 		7AF1FC9CE7DF588C42176EF3 /* AppModel+PanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346A8A39B13E33AAF999D38E /* AppModel+PanTilt.swift */; };
+		7C5E844445801042A84D4CD7 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB1326D5D8D229C6136BA8C /* AppUpdater.swift */; };
 		7DAE02536A3B4738ECA07D06 /* SyncIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5E56CC601BE031A3D48DF0 /* SyncIdentity.swift */; };
+		7DEF204DF55B922C66463EBB /* CameraPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB15E742A63332D0305C49E /* CameraPickerView.swift */; };
 		7F5CA5C97017F6F9E02F9A21 /* PlanInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */; };
 		80A7DF3FFDD448ED63301DF0 /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
 		827E5E6B41B910A1D067202B /* SetupXiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED967B787875E075AB3B309 /* SetupXiaomiSignInSheet.swift */; };
 		82D1E6FAF1E1A0C58E42005E /* TrainingStepIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9702D9CB4F610A794357ADA4 /* TrainingStepIntent.swift */; };
 		83CC8AB16746B0F7583C4DD6 /* MacHistoryTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = E284DBC656F72086C4AECDC8 /* MacHistoryTable.swift */; };
 		84F904EFE9492E462B8B9EFB /* MinimizedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */; };
+		859D8EE771E0BFDD415BC924 /* MacSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */; };
+		869B26BE3B5CC2FCF2370345 /* ConsolePanelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B0B27C2AA0D56A62AF30F6 /* ConsolePanelLayout.swift */; };
 		89853A4D5CB70C0B6AF8DE80 /* SessionHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A543FFBD67D604BF950292 /* SessionHUD.swift */; };
 		89EAA2472728E0086AECC7CA /* TrainingStepIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9702D9CB4F610A794357ADA4 /* TrainingStepIntent.swift */; };
 		8A6587B9B49363A5B15CD02B /* LinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E82FB404801D9CB6095FA0E /* LinkViews.swift */; };
 		8AC8AF364CF28433D15F9CF8 /* SessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85DCB661B7AD5031EC737BA /* SessionScreen.swift */; };
 		8AEC529897F318743067E9D1 /* NewTrainingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */; };
 		8BCB2874058D432CE589F09F /* MacSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */; };
+		8BF60210600B83F9949C8C31 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */; };
+		8D4153847E32F57005BF7E49 /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
 		8FB589A2749D0898E29A808F /* TrainingActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F112C1E49E8107C091532E /* TrainingActivity.swift */; };
 		8FFE05025837B6EB9C8EFC24 /* MacCameraPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49544DC08EFCB32F58FEBD3C /* MacCameraPickerSheet.swift */; };
 		905E3E3F3505BD2CDA40767B /* SessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85DCB661B7AD5031EC737BA /* SessionScreen.swift */; };
@@ -126,27 +187,38 @@
 		91C95E3050FCF89EDCE8A83A /* MacHistoryWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA410D4D979D88D298BC0DC8 /* MacHistoryWindow.swift */; };
 		961F827DD79C9AB71FFE54D4 /* MacUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6A82A48DDE5C69EEC2D9E8 /* MacUI.swift */; };
 		97425938A3637C039FF6AB0D /* TrainingAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6473E973E22D1D8DB9B42C96 /* TrainingAlerts.swift */; };
+		97D0AF53ACCBF4A400B60B79 /* MacHistoryDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734F99F279AB3B2058745E72 /* MacHistoryDemo.swift */; };
+		97D176622D7758B84743018A /* MinimizedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */; };
 		98EE1CA8B2785089A9125B32 /* ExitEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E78C547737A2B8A55511BE9A /* ExitEditorView.swift */; };
 		994096C919CDEC6DFA01A7FD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D74383E2FDB68560D6A4A287 /* Assets.xcassets */; };
+		9CA9258808C820E44111FB6A /* CameraModesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A9E12D5DF46378F7F1F746E /* CameraModesModel.swift */; };
 		9D36C65C9CB5D362FA6219F3 /* AboutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB09408266FBD3CE9B6B8826 /* AboutViews.swift */; };
 		9D6CA3836B21203254FCA69B /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
+		9FB07CAD80AF267D447C99D8 /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
 		A01E860E261BB0E769DF78C8 /* RecordingFinalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */; };
 		A10E65061FEF9135B2623883 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BC4F2D63E281B08766B2C4 /* RootView.swift */; };
 		A40DF581BDCB3562A7A306B3 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF078E66FEB0548DFDA1B148 /* HistoryView.swift */; };
 		A4F5865DCD85736A07D8AD85 /* XiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917E0135CCFA32C93D806365 /* XiaomiSignInSheet.swift */; };
 		A4F78882C9283AA2617EA268 /* SetupServerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */; };
+		A55F364E7C9173066F4F1FEF /* ConsoleReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA761F28A420093D2740492F /* ConsoleReadout.swift */; };
 		A56DA8369E589B98950B0375 /* MacHistoryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA7FDF9F3698A259C351CEE /* MacHistoryDebug.swift */; };
 		A5C40A1822FA9C7E4E2C072A /* ZoomableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6961CED894D4487A9C9977 /* ZoomableView.swift */; };
 		A67ECCF4744BF543547EDCA7 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C67571FE1A685FF1E89C85 /* GlassCard.swift */; };
 		A72CB26DA4805BB474E1FA94 /* MacHistoryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6FD9E1E7F9DFB08BC251BF /* MacHistoryModel.swift */; };
+		A7BB85F2AFD5DC099CB3C19C /* WaitingPawsCore in Frameworks */ = {isa = PBXBuildFile; productRef = B307BF1B5A7E2173412CC002 /* WaitingPawsCore */; };
 		A7F7F948585A61BC53AC6F04 /* MacHistoryProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AF487EFFE6D2FB22AA400BB /* MacHistoryProgress.swift */; };
+		A7F87679F35F59F6E8C58775 /* MacHistoryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA7FDF9F3698A259C351CEE /* MacHistoryDebug.swift */; };
 		A90B8E31C84A7B8A92DE0493 /* PlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01FB3F4D076095A1AA0D6891 /* PlanEditorView.swift */; };
 		A9E23A66DFAD9DC85EA65415 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BAD79086692AA64BD6514C /* AppSettings.swift */; };
 		A9F0165F3842663E1B5482B5 /* MacHistoryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6FD9E1E7F9DFB08BC251BF /* MacHistoryModel.swift */; };
+		AA1D8F69C69F8D45DC2B16ED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D74383E2FDB68560D6A4A287 /* Assets.xcassets */; };
 		ABB0ADCC009B8E4D2C7B5AFB /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FA2645E678A49495282A8E8B /* InfoPlist.xcstrings */; };
 		ABB2844BE67E7FC1A37E44A0 /* CameraModeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE70FC878886DBB4722CDA4 /* CameraModeControls.swift */; };
 		ADB42AECC2E9F6D642EFED1C /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6B39818DB94C898964AF2 /* MacRootView.swift */; };
+		AE58F832FE3CDEC804726AAE /* MacHistoryProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AF487EFFE6D2FB22AA400BB /* MacHistoryProgress.swift */; };
 		AE7119296703BF1EB2556ADB /* MacHistoryThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EDD0FE37A4518887FC57D0 /* MacHistoryThumbnail.swift */; };
+		AEABB0D57A14163AADA3F63D /* PanTiltPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12AA8AD184DFA81BBF19749 /* PanTiltPad.swift */; };
+		AFD7F0527EE4B3C3C0EDF404 /* XiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917E0135CCFA32C93D806365 /* XiaomiSignInSheet.swift */; };
 		B166198A847F3E9D6C687367 /* LinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E82FB404801D9CB6095FA0E /* LinkViews.swift */; };
 		B19A3D434CB11C172C521185 /* MacShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A10316003D7B9694E2D64 /* MacShare.swift */; };
 		B4375582930106AE2E15D9C5 /* MacSettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F500699389109EAB319D6074 /* MacSettingsPanes.swift */; };
@@ -161,24 +233,43 @@
 		BEC1B4D73443949A80B5EA03 /* MacHistoryPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C07E802F9907CDE6B691038 /* MacHistoryPlayer.swift */; };
 		BFCFA720EACD69B0994D268F /* ExitEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E78C547737A2B8A55511BE9A /* ExitEditorView.swift */; };
 		C18BCC23D5701721C47E8372 /* ConsoleReadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA761F28A420093D2740492F /* ConsoleReadout.swift */; };
+		C1906E0BC635D594147D5F58 /* MacSettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F500699389109EAB319D6074 /* MacSettingsPanes.swift */; };
 		C1F46358A171EB6D52A34E73 /* MacHistoryPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C07E802F9907CDE6B691038 /* MacHistoryPlayer.swift */; };
+		C1F75AC3B527FDCB32F31B8A /* PrivacyPolicy-ru.md in Resources */ = {isa = PBXBuildFile; fileRef = CEA5D093822E9CAD83CAB5D2 /* PrivacyPolicy-ru.md */; };
+		C477A62C12853EE513B4C2DF /* ExitEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E78C547737A2B8A55511BE9A /* ExitEditorView.swift */; };
 		C5E579EAF0078CCE60F09112 /* MinimizedPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249CF6CF669C5EA3A48664E9 /* MinimizedPanel.swift */; };
+		C60D8BD7C31FF689938E2DC6 /* MacShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A10316003D7B9694E2D64 /* MacShare.swift */; };
 		C6F8A14CEF96ACEB79F43A91 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38A20951026E43C64982CCD7 /* Localizable.xcstrings */; };
 		C764961258D6DDC76B304F40 /* CameraStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B514B872913BC77102D71 /* CameraStreamView.swift */; };
+		C7F04FD181057F8B156EDBBA /* CameraStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B514B872913BC77102D71 /* CameraStreamView.swift */; };
 		C804316A04BEBB357E0E132E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B8E692C88D60C366CFA7A12 /* Theme.swift */; };
+		C81784B79F4A0E356A64854E /* NewTrainingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5C4FEB10CFAA68A162274F /* NewTrainingPanel.swift */; };
 		C82BDFE4BCBE7EE10DF9670E /* RecordingFinalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */; };
+		C8C9974A42EC386386CFCAEB /* SetupKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363380F0C18A871DAEBE09A7 /* SetupKit.swift */; };
+		CB13E8451B89D6B0F4E2DBB4 /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6B39818DB94C898964AF2 /* MacRootView.swift */; };
+		CB941919ED574548C05FD827 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A913AC418420CABE8DF39A9 /* OnboardingFlow.swift */; };
 		CB9F39E531F2E976136C552F /* CameraStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B514B872913BC77102D71 /* CameraStreamView.swift */; };
 		CC14EEED21DA943AAB34993E /* TrainingAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6473E973E22D1D8DB9B42C96 /* TrainingAlerts.swift */; };
 		CD446916425199904EA7EED1 /* WaitingPawsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D0C87180CA46C7DD34A40B /* WaitingPawsApp.swift */; };
 		CEFD2B021B7A8CBD372D7088 /* MacShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A10316003D7B9694E2D64 /* MacShare.swift */; };
+		CF8F50FB65EC998E28F4E8F6 /* ClipCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653F818994AB2BEE3174F824 /* ClipCards.swift */; };
 		D0F0581E479A071794513BA0 /* TimerRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF657A0F361124C3C62F22AA /* TimerRing.swift */; };
+		D19549CD5778D6A64B52B600 /* PlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01FB3F4D076095A1AA0D6891 /* PlanEditorView.swift */; };
 		D2C6638D3CFDD5DD0A793BE3 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		D44E1C57BE0D09AEAB895A98 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
 		D47A9084A840646B26305955 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
 		D4C2D61C102957390A2E8914 /* MacSettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F500699389109EAB319D6074 /* MacSettingsPanes.swift */; };
 		D5E78C91DD327F17A3BBE4A6 /* LiveSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C46490ED793F437A72C93B /* LiveSessionModel.swift */; };
+		D9014AC08ADDDD8F7CB84E48 /* AppModel+PanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346A8A39B13E33AAF999D38E /* AppModel+PanTilt.swift */; };
+		D9184D276F723BF00C0DAF9D /* SetupServerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */; };
 		DA7232AB2D7B28082EB2C53A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */; };
+		DB3D3AC56DBA5EAB958C2243 /* VideoPreparationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC4824E50726B55F2CABBDA /* VideoPreparationViews.swift */; };
+		DBF4668E5888FA93DEA29DA8 /* GlassStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB61697BF2273ACAA76C184E /* GlassStyles.swift */; };
+		DE2802CCAC890B6DB0E26ED5 /* RecordingFinalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211DB8FF998A35A50DDD6C12 /* RecordingFinalizer.swift */; };
+		DEC473442783D7F670499B3E /* ZoomableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6961CED894D4487A9C9977 /* ZoomableView.swift */; };
 		DF2FC5B4E28ABAE8706B2772 /* ConsoleHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F6134E664A520C207993553 /* ConsoleHeader.swift */; };
+		DF33AD1503448BB6176D0A5F /* MacPairingPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */; };
+		E117838967686D96D2EDEB59 /* MacExitInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8C5F4E831A35FF0297FD46 /* MacExitInspector.swift */; };
 		E1EC4B95D44D25C76E9C4B59 /* SetupCameraCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AC996EE4675C6FE0C8B635 /* SetupCameraCatalog.swift */; };
 		E4435664098DA804BE99F31A /* SetupCameraCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AC996EE4675C6FE0C8B635 /* SetupCameraCatalog.swift */; };
 		E46395BB26193600E9D4378F /* StepIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4D07D1D62842451078C3B3 /* StepIcon.swift */; };
@@ -191,16 +282,23 @@
 		F044697D60DFE32737B4DA27 /* SyncHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA209D43CA8963E3C71A7B14 /* SyncHost.swift */; };
 		F0452A6545C600FFAEB6043C /* MacPlanReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */; };
 		F04A65AEBADBAFDDB622AD2F /* ExitConditionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11EADBDF0032628198F53CE /* ExitConditionViews.swift */; };
+		F133C0F35A2AA5D054F3B36B /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38A20951026E43C64982CCD7 /* Localizable.xcstrings */; };
+		F28CC87135AC76E481AD5E32 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1261108E95A90E5810FED4AD /* PrivacyInfo.xcprivacy */; };
 		F58BAECE36FF7C289DEF3BA1 /* StepIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4D07D1D62842451078C3B3 /* StepIcon.swift */; };
+		F5D95F9011DEE08BD89B6048 /* MacHistoryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6FD9E1E7F9DFB08BC251BF /* MacHistoryModel.swift */; };
 		F6014534F7B547988B28A1EC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
 		F6FA3B31527FB5E795C47C41 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FA2645E678A49495282A8E8B /* InfoPlist.xcstrings */; };
+		F8474A9694A1545255DF52DC /* CameraPanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A126E5AF78BEE277CC91B1A6 /* CameraPanTilt.swift */; };
 		F8579DD16D5D4609CBAECB93 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDA8ACA4F9B1F210B85715C4 /* WelcomeView.swift */; };
 		F9A9D8A162FE0834C92CF5CC /* VideoPreparationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC4824E50726B55F2CABBDA /* VideoPreparationViews.swift */; };
 		F9CB40DEBE1D55181631B49F /* ClipCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653F818994AB2BEE3174F824 /* ClipCards.swift */; };
+		FB539166C66575C7140C6A49 /* EmbeddedGo2RTC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C20313821B04EF21909CEF2 /* EmbeddedGo2RTC.swift */; };
 		FBDACEDE4C8F4CBA44FA6058 /* CameraModeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE70FC878886DBB4722CDA4 /* CameraModeControls.swift */; };
 		FC25D48B82F22E7E4541C0E6 /* TrainerTextDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44218A70D8BAA2006E927B77 /* TrainerTextDrawer.swift */; };
 		FC811389A6642F8613388903 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34E57CF6328D1F36D2C8BB29 /* MacSettingsView.swift */; };
+		FD82A5203933C0995E4F71C7 /* TrainingAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6473E973E22D1D8DB9B42C96 /* TrainingAlerts.swift */; };
 		FE9E782764F4007B64EB8050 /* PlanInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAF6C64C1CF02AF0DE25770A /* PlanInputView.swift */; };
+		FEFD6E6763997E2936FFAE24 /* MacCameraPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49544DC08EFCB32F58FEBD3C /* MacCameraPickerSheet.swift */; };
 		FF09E0C7841537F847238D38 /* PlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01FB3F4D076095A1AA0D6891 /* PlanEditorView.swift */; };
 /* End PBXBuildFile section */
 
@@ -231,6 +329,7 @@
 /* Begin PBXFileReference section */
 		01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibrarySaver.swift; sourceTree = "<group>"; };
 		01FB3F4D076095A1AA0D6891 /* PlanEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanEditorView.swift; sourceTree = "<group>"; };
+		0CB1326D5D8D229C6136BA8C /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
 		0E5D87597A0F52F2D42B6E6F /* KeyboardPrewarmer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardPrewarmer.swift; sourceTree = "<group>"; };
 		0FA7FDF9F3698A259C351CEE /* MacHistoryDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryDebug.swift; sourceTree = "<group>"; };
 		100B514B872913BC77102D71 /* CameraStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraStreamView.swift; sourceTree = "<group>"; };
@@ -314,6 +413,7 @@
 		D8F112C1E49E8107C091532E /* TrainingActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingActivity.swift; sourceTree = "<group>"; };
 		DA410D4D979D88D298BC0DC8 /* MacHistoryWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryWindow.swift; sourceTree = "<group>"; };
 		DA761F28A420093D2740492F /* ConsoleReadout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleReadout.swift; sourceTree = "<group>"; };
+		DE988B91DCEE50FD28709CCD /* WaitingPaws-macOS-Direct.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WaitingPaws-macOS-Direct.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF078E66FEB0548DFDA1B148 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		E0B0B27C2AA0D56A62AF30F6 /* ConsolePanelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsolePanelLayout.swift; sourceTree = "<group>"; };
 		E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceMonitor.swift; sourceTree = "<group>"; };
@@ -347,6 +447,16 @@
 			files = (
 				1FE577D1926CC3C43CDC4417 /* WaitingPawsCore in Frameworks */,
 				34D011B69D7D63FABCC1EB71 /* Go2RTC.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C3A52A045D1A64387DD5C578 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A7BB85F2AFD5DC099CB3C19C /* WaitingPawsCore in Frameworks */,
+				3B4B1DC461981111E3239B38 /* Go2RTC.xcframework in Frameworks */,
+				769763C9EE68369D7A156E95 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -391,6 +501,14 @@
 			path = Camera;
 			sourceTree = "<group>";
 		};
+		20456D5FBA5D1D39EF04402E /* Updates */ = {
+			isa = PBXGroup;
+			children = (
+				0CB1326D5D8D229C6136BA8C /* AppUpdater.swift */,
+			);
+			path = Updates;
+			sourceTree = "<group>";
+		};
 		3A2AE329CC0EDB23C284843F /* Glance */ = {
 			isa = PBXGroup;
 			children = (
@@ -418,6 +536,7 @@
 				8393D24E04957FEAE526646B /* Plan */,
 				AEA143A6BF2BC827EAEF2DBE /* Settings */,
 				9F1202181AFACD355CBF4688 /* Shared */,
+				20456D5FBA5D1D39EF04402E /* Updates */,
 				6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */,
 				81A6B39818DB94C898964AF2 /* MacRootView.swift */,
 				A38CC2A2EA3B1BD8219D9154 /* MacUIState.swift */,
@@ -669,6 +788,7 @@
 			isa = PBXGroup;
 			children = (
 				10E8CD97BB4254A1CFFB61D3 /* WaitingPaws-iOS.app */,
+				DE988B91DCEE50FD28709CCD /* WaitingPaws-macOS-Direct.app */,
 				60FBD37155574780BB2CE260 /* WaitingPaws-macOS.app */,
 				8CE7D2E87737863E87D78254 /* WaitingPaws-Widgets.appex */,
 			);
@@ -710,6 +830,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		1A92549D79C0390F32647EC9 /* WaitingPaws-macOS-Direct */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F692AF1A7247029FC2EB7092 /* Build configuration list for PBXNativeTarget "WaitingPaws-macOS-Direct" */;
+			buildPhases = (
+				AE23C6D5B6E45EBF8E13E388 /* Sources */,
+				2C0DD21B8C0C87FD2DA3AE64 /* Resources */,
+				C3A52A045D1A64387DD5C578 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "WaitingPaws-macOS-Direct";
+			packageProductDependencies = (
+				B307BF1B5A7E2173412CC002 /* WaitingPawsCore */,
+				B1A0BC5C2CD53DC9159BD367 /* Sparkle */,
+			);
+			productName = "WaitingPaws-macOS-Direct";
+			productReference = DE988B91DCEE50FD28709CCD /* WaitingPaws-macOS-Direct.app */;
+			productType = "com.apple.product-type.application";
+		};
 		5E434C10CE2745618C78835E /* WaitingPaws-Widgets */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 658CEA59C4657DE51DE8D38D /* Build configuration list for PBXNativeTarget "WaitingPaws-Widgets" */;
@@ -778,6 +919,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					1A92549D79C0390F32647EC9 = {
+						DevelopmentTeam = 849CANCD26;
+						ProvisioningStyle = Automatic;
+					};
 					5E434C10CE2745618C78835E = {
 						DevelopmentTeam = 849CANCD26;
 						ProvisioningStyle = Automatic;
@@ -803,6 +948,7 @@
 			mainGroup = 96685E8E14E4C926CBAF2E0E;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				018D91B8FA13AE1B08699E3C /* XCRemoteSwiftPackageReference "Sparkle" */,
 				2EBD3DEE085F184FBD6D3EE7 /* XCLocalSwiftPackageReference "Packages/WaitingPawsCore" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -813,11 +959,26 @@
 				D6AF42AFA1CA41A19846AC80 /* WaitingPaws-iOS */,
 				5E434C10CE2745618C78835E /* WaitingPaws-Widgets */,
 				72B782AF9515E225339DEDF6 /* WaitingPaws-macOS */,
+				1A92549D79C0390F32647EC9 /* WaitingPaws-macOS-Direct */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		2C0DD21B8C0C87FD2DA3AE64 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37A35BE245FE8E8A61A6758F /* Acknowledgements.txt in Resources */,
+				AA1D8F69C69F8D45DC2B16ED /* Assets.xcassets in Resources */,
+				3B2A78BF71DBB9B8A8C1AEB9 /* InfoPlist.xcstrings in Resources */,
+				F133C0F35A2AA5D054F3B36B /* Localizable.xcstrings in Resources */,
+				F28CC87135AC76E481AD5E32 /* PrivacyInfo.xcprivacy in Resources */,
+				46CCFA11B6A90EF4C34CDFE0 /* PrivacyPolicy-en.md in Resources */,
+				C1F75AC3B527FDCB32F31B8A /* PrivacyPolicy-ru.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		78DE4587F8438B08B1BCF45D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -857,6 +1018,7 @@
 				7AF1FC9CE7DF588C42176EF3 /* AppModel+PanTilt.swift in Sources */,
 				5F311EC55BB5C9535C42AF30 /* AppModel.swift in Sources */,
 				BC8954C82632662A2A250FF9 /* AppSettings.swift in Sources */,
+				7C5E844445801042A84D4CD7 /* AppUpdater.swift in Sources */,
 				ABB2844BE67E7FC1A37E44A0 /* CameraModeControls.swift in Sources */,
 				B8AF3D7E6F3119FB13242691 /* CameraModesModel.swift in Sources */,
 				0A6F5ABF623344A7262E9307 /* CameraPanTilt.swift in Sources */,
@@ -941,6 +1103,99 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AE23C6D5B6E45EBF8E13E388 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				38048302C7C286187CB0F576 /* AboutViews.swift in Sources */,
+				D9014AC08ADDDD8F7CB84E48 /* AppModel+PanTilt.swift in Sources */,
+				8BF60210600B83F9949C8C31 /* AppModel.swift in Sources */,
+				50C54A68A09AE8A156343FAD /* AppSettings.swift in Sources */,
+				1FF5C62D3ABAE2AFF7ABE9E3 /* AppUpdater.swift in Sources */,
+				7535516DD11E53F77DB85B00 /* CameraModeControls.swift in Sources */,
+				9CA9258808C820E44111FB6A /* CameraModesModel.swift in Sources */,
+				F8474A9694A1545255DF52DC /* CameraPanTilt.swift in Sources */,
+				7DEF204DF55B922C66463EBB /* CameraPickerView.swift in Sources */,
+				C7F04FD181057F8B156EDBBA /* CameraStreamView.swift in Sources */,
+				CF8F50FB65EC998E28F4E8F6 /* ClipCards.swift in Sources */,
+				4CE658FD20C682417E0BA2D4 /* ConsoleHeader.swift in Sources */,
+				869B26BE3B5CC2FCF2370345 /* ConsolePanelLayout.swift in Sources */,
+				A55F364E7C9173066F4F1FEF /* ConsoleReadout.swift in Sources */,
+				444A6C64D471FC2E66205D4D /* DemoData.swift in Sources */,
+				36E179EFF4B643BC8734A2AD /* DurationField.swift in Sources */,
+				FB539166C66575C7140C6A49 /* EmbeddedGo2RTC.swift in Sources */,
+				27D856F74C5D3369FE5EA884 /* ExitConditionViews.swift in Sources */,
+				C477A62C12853EE513B4C2DF /* ExitEditorView.swift in Sources */,
+				5292BFF3280E3C1CE09AA6EE /* GlassCard.swift in Sources */,
+				DBF4668E5888FA93DEA29DA8 /* GlassStyles.swift in Sources */,
+				6535EAAB683B810DD09A8ACE /* HistoryView.swift in Sources */,
+				01F9389B98EC2AC062383FE3 /* KeyboardPrewarmer.swift in Sources */,
+				5F752950B39970F84F6EC0DD /* LinkViews.swift in Sources */,
+				75536560E7A7CCC30EB364E8 /* LiveSessionModel.swift in Sources */,
+				4202EDB0B3A165BA78EFB4AB /* LogMirror.swift in Sources */,
+				53E050F689CD9C6E8BEECB90 /* MacCameraArea.swift in Sources */,
+				FEFD6E6763997E2936FFAE24 /* MacCameraPickerSheet.swift in Sources */,
+				692A59018D536EDEC2A1901F /* MacConsoleView.swift in Sources */,
+				E117838967686D96D2EDEB59 /* MacExitInspector.swift in Sources */,
+				A7F87679F35F59F6E8C58775 /* MacHistoryDebug.swift in Sources */,
+				97D0AF53ACCBF4A400B60B79 /* MacHistoryDemo.swift in Sources */,
+				3928845E22EE0A17CC7CEA92 /* MacHistoryInspector.swift in Sources */,
+				F5D95F9011DEE08BD89B6048 /* MacHistoryModel.swift in Sources */,
+				1C25F6FB2BD472D814E57404 /* MacHistoryPlayer.swift in Sources */,
+				AE58F832FE3CDEC804726AAE /* MacHistoryProgress.swift in Sources */,
+				427C29A4ED6CA6F0D7D62DC8 /* MacHistoryTable.swift in Sources */,
+				2990022A4A326425B01612AB /* MacHistoryThumbnail.swift in Sources */,
+				026354975B39C905A9F249D1 /* MacHistoryWindow.swift in Sources */,
+				DF33AD1503448BB6176D0A5F /* MacPairingPrompt.swift in Sources */,
+				3827503EDD3396DD1D56CE5D /* MacPlanReviewSheet.swift in Sources */,
+				78BF45E64EBACD72BD8E7112 /* MacPlanSupport.swift in Sources */,
+				63C97F9CE3407CD8BA246696 /* MacPlanTimelineEditor.swift in Sources */,
+				CB13E8451B89D6B0F4E2DBB4 /* MacRootView.swift in Sources */,
+				C1906E0BC635D594147D5F58 /* MacSettingsPanes.swift in Sources */,
+				5C8CEE781914226F41E9D15B /* MacSettingsView.swift in Sources */,
+				C60D8BD7C31FF689938E2DC6 /* MacShare.swift in Sources */,
+				859D8EE771E0BFDD415BC924 /* MacSummarySheet.swift in Sources */,
+				3CC7DBD3D6CC1F5C37A13521 /* MacUI.swift in Sources */,
+				2FEA38AB49D8C507831D4903 /* MacUIState.swift in Sources */,
+				7065414F7FFDA417DDDDE3B2 /* MacWelcomeView.swift in Sources */,
+				97D176622D7758B84743018A /* MinimizedPanel.swift in Sources */,
+				C81784B79F4A0E356A64854E /* NewTrainingPanel.swift in Sources */,
+				CB941919ED574548C05FD827 /* OnboardingFlow.swift in Sources */,
+				AEABB0D57A14163AADA3F63D /* PanTiltPad.swift in Sources */,
+				71DFF5F0D6C473711D49456B /* PerformanceMonitor.swift in Sources */,
+				1FE3FE4EBA9AB3F4FA1A312F /* PhotoLibrarySaver.swift in Sources */,
+				D19549CD5778D6A64B52B600 /* PlanEditorView.swift in Sources */,
+				04CD48687EA5DC836F322988 /* PlanInputView.swift in Sources */,
+				5F6759ADF9D59DB437CAA459 /* RecordingDurations.swift in Sources */,
+				DE2802CCAC890B6DB0E26ED5 /* RecordingFinalizer.swift in Sources */,
+				46626291DBD773205CFAAB2C /* RootView.swift in Sources */,
+				6EC1B197FF467B88DF7DA342 /* SessionHUD.swift in Sources */,
+				6585A642271CFB978C16FA1D /* SessionScreen.swift in Sources */,
+				431F4803B41CA4950BC15324 /* SessionTimelineView.swift in Sources */,
+				66CB3592094C6A11E01A6B6A /* SettingsView.swift in Sources */,
+				5C74C2AE3697E4BA27CAC9FE /* SetupCameraCatalog.swift in Sources */,
+				0688491CCE18C3FB7AB2B855 /* SetupCommon.swift in Sources */,
+				C8C9974A42EC386386CFCAEB /* SetupKit.swift in Sources */,
+				D9184D276F723BF00C0DAF9D /* SetupServerSheet.swift in Sources */,
+				3C53162F281B2355143A7B9A /* SetupXiaomiSignInSheet.swift in Sources */,
+				519A100BFD0DB3E5AA2D792A /* StepIcon.swift in Sources */,
+				2B03E27F478E691E260682D2 /* SyncChannel.swift in Sources */,
+				8D4153847E32F57005BF7E49 /* SyncClient.swift in Sources */,
+				59D680CDCE743CD1D4E38DEA /* SyncHost.swift in Sources */,
+				2BDA3FA7584FAA926D590AE8 /* SyncIdentity.swift in Sources */,
+				2E7C425FFEBD2CD3ECE248E0 /* Theme.swift in Sources */,
+				9FB07CAD80AF267D447C99D8 /* TimerRing.swift in Sources */,
+				5B4A45BD0A499506DFAC6EF6 /* TrainerTextDrawer.swift in Sources */,
+				FD82A5203933C0995E4F71C7 /* TrainingAlerts.swift in Sources */,
+				297FC7A426CBCAF5A8DD60EF /* TrainingGlance.swift in Sources */,
+				DB3D3AC56DBA5EAB958C2243 /* VideoPreparationViews.swift in Sources */,
+				752FA620AB9037863557996C /* WaitingPawsApp.swift in Sources */,
+				3CE6BE0550737779EE08C1D2 /* WelcomeView.swift in Sources */,
+				AFD7F0527EE4B3C3C0EDF404 /* XiaomiSignInSheet.swift in Sources */,
+				DEC473442783D7F670499B3E /* ZoomableView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AE413D92F37D790CE400C4B9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -960,6 +1215,7 @@
 				18BD9FD3B2FAFC05632A2E93 /* AppModel+PanTilt.swift in Sources */,
 				4E2ACC2223573B440A9C6BCF /* AppModel.swift in Sources */,
 				A9E23A66DFAD9DC85EA65415 /* AppSettings.swift in Sources */,
+				0F27B707150DF71743612E5E /* AppUpdater.swift in Sources */,
 				FBDACEDE4C8F4CBA44FA6058 /* CameraModeControls.swift in Sources */,
 				EFEAE081094C1BD9607722C5 /* CameraModesModel.swift in Sources */,
 				3350CD3906CF86E00AF5E29E /* CameraPanTilt.swift in Sources */,
@@ -1259,6 +1515,33 @@
 			};
 			name = Release;
 		};
+		A2779BC409B447A03A1AA5E9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "App/macOS/WaitingPaws-Direct.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Frameworks\"",
+				);
+				INFOPLIST_FILE = "App/macOS/Info-Direct.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = su.comrade.waitingpaws;
+				PRODUCT_NAME = WaitingPaws;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WP_DIRECT";
+				WP_UPDATE_FEED_URL = "https://github.com/AndrewAndreev/WaitingPaws/releases/latest/download/appcast.xml";
+				WP_UPDATE_PUBLIC_KEY = "52ISgaJz9fxa9oiLgBTS4J+FOWATY8vRloUJRDijf94=";
+			};
+			name = Debug;
+		};
 		BC50A6E8DE4F72C3E0729A54 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1273,6 +1556,33 @@
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		D1170769E4BDF4618CAC811C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "App/macOS/WaitingPaws-Direct.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Frameworks\"",
+				);
+				INFOPLIST_FILE = "App/macOS/Info-Direct.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = su.comrade.waitingpaws;
+				PRODUCT_NAME = WaitingPaws;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WP_DIRECT";
+				WP_UPDATE_FEED_URL = "https://github.com/AndrewAndreev/WaitingPaws/releases/latest/download/appcast.xml";
+				WP_UPDATE_PUBLIC_KEY = "52ISgaJz9fxa9oiLgBTS4J+FOWATY8vRloUJRDijf94=";
 			};
 			name = Release;
 		};
@@ -1363,6 +1673,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		F692AF1A7247029FC2EB7092 /* Build configuration list for PBXNativeTarget "WaitingPaws-macOS-Direct" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2779BC409B447A03A1AA5E9 /* Debug */,
+				D1170769E4BDF4618CAC811C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -1372,8 +1691,28 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		018D91B8FA13AE1B08699E3C /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.10.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		9C9680E83C89D28AB3F3B99D /* WaitingPawsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WaitingPawsCore;
+		};
+		B1A0BC5C2CD53DC9159BD367 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 018D91B8FA13AE1B08699E3C /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+		B307BF1B5A7E2173412CC002 /* WaitingPawsCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = WaitingPawsCore;
 		};

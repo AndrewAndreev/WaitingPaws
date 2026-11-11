@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — обновления Mac-версии (Sparkle)</title>
+<style>
+:root {
+  color-scheme: dark;
+  --pink: #FFB8CC; --pink-deep: #E35487; --blue: #8CBFFF; --yellow: #FFB84D; --red: #FF6B6B; --green: #6EE7A0;
+  --t2: rgba(235,235,245,.62); --t3: rgba(235,235,245,.32);
+  --sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 var(--sf); background: #131315; color: #ececef; }
+code { background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 5px; font-size: .92em; }
+header.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  padding: 12px 24px; background: rgba(19,19,21,.9); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); }
+header.top h1 { font-size: 16px; margin: 0 10px 0 0; }
+header.top nav { display: flex; gap: 6px; flex-wrap: wrap; }
+header.top nav a { border: 1px solid rgba(127,127,127,.35); border-radius: 999px; padding: 4px 11px; font-size: 13px; color: inherit; text-decoration: none; }
+main { padding: 0 24px 90px; max-width: 1760px; }
+.intro { padding: 26px 0 6px; max-width: 1080px; }
+.intro h2 { font-size: 22px; margin: 0 0 8px; }
+.intro p { color: #cfcfd4; margin: 6px 0; }
+.common { background: rgba(140,191,255,.06); border: 1px solid rgba(140,191,255,.2); border-radius: 16px; padding: 12px 18px; max-width: 1080px; margin: 14px 0 6px; font-size: 14.5px; }
+.common h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--blue); }
+.common ul { margin: 0; padding-left: 18px; color: #d4d4da; }
+.common li { margin: 3px 0; }
+.block { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07); border-radius: 22px; padding: 18px 20px 24px; margin: 22px 0; scroll-margin-top: 70px; }
+.block.rec { border-color: rgba(110,231,160,.45); box-shadow: 0 0 0 1px rgba(110,231,160,.2) inset; }
+.vhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.vid { font: 800 15px/1 var(--rounded); background: #ececef; color: #111; padding: 7px 10px; border-radius: 9px; }
+.vhead h3 { margin: 0; font-size: 19px; }
+.tag { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 9px; color: #000; }
+.tag.rec { background: var(--green); }
+.tag.when { background: #c8c8cc; }
+.why { display: grid; grid-template-columns: minmax(280px, 1.15fr) minmax(280px, 1fr); gap: 8px 28px; margin: 10px 0 16px; max-width: 1180px; color: #d6d6db; font-size: 14.5px; }
+.why p { margin: 0; }
+.why ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.why li { padding-left: 20px; position: relative; }
+.why li::before { position: absolute; left: 0; top: 0; font-weight: 800; }
+.why li.pro::before { content: "+"; color: var(--green); }
+.why li.con::before { content: "−"; color: var(--red); }
+@media (max-width: 800px) { .why { grid-template-columns: 1fr; } }
+.mocks { display: flex; flex-wrap: wrap; gap: 26px 30px; align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+figcaption { font-size: 13px; color: var(--t2); max-width: 420px; line-height: 1.4; }
+figcaption b { color: #ececef; }
+
+/* ───── crops of the real app screenshots (2000-px-wide coordinates, like the App Store shots) ───── */
+.crop { position: relative; overflow: hidden; background-repeat: no-repeat; background-size: 2000px auto; flex: none;
+  border-radius: 0 12px 12px 0; box-shadow: 0 0 0 .5px rgba(255,255,255,.16), 0 18px 50px rgba(0,0,0,.5); font: 13px/1.35 var(--sf); color: #e9e9ec; }
+.crop .dim { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+.cap { position: absolute; height: 38px; display: flex; align-items: center; gap: 7px; padding: 0 14px; border-radius: 19px;
+  background: #2c2c2f; box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; color: #dadade; font: 600 14px/1 var(--sf); white-space: nowrap; }
+.cap .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pink); margin-left: -2px; }
+.cap svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cap.ring { box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset, 0 0 0 2px rgba(255,184,204,.75); }
+.pop { position: absolute; width: 330px; padding: 14px 16px 14px; border-radius: 14px; background: rgba(44,44,48,.97);
+  box-shadow: 0 0 0 .5px rgba(255,255,255,.2), 0 16px 40px rgba(0,0,0,.6); font-size: 13px; }
+.pop::before { content: ""; position: absolute; top: -7px; left: var(--arrow, 50%); width: 14px; height: 14px; background: rgba(44,44,48,.97);
+  transform: translateX(-50%) rotate(45deg); box-shadow: -.5px -.5px 0 rgba(255,255,255,.2); }
+.pop h5 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.pop h5 img { width: 26px; height: 26px; }
+.pop .sub { color: var(--t2); margin: 2px 0 8px 34px; font-size: 12px; }
+.pop ul { margin: 0 0 12px; padding-left: 18px; color: #dcdce0; }
+.pop li { margin: 2px 0; }
+.pop .row { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.pop .more { margin-right: auto; color: var(--pink); font-size: 12.5px; }
+.pop .note { color: var(--t2); font-size: 11.5px; margin-top: 10px; line-height: 1.35; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 26px; padding: 0 12px; border-radius: 7px; background: rgba(255,255,255,.13);
+  color: #f2f2f4; font-size: 13px; box-shadow: 0 .5px 0 rgba(255,255,255,.12) inset; white-space: nowrap; }
+.btn.pri { background: #0a84ff; color: #fff; }
+.btn.pink { background: var(--pink-deep); color: #fff; }
+.btn.full { width: 100%; height: 30px; }
+.sheet { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); width: 430px; border-radius: 16px; background: #2d2d31;
+  box-shadow: 0 0 0 .5px rgba(255,255,255,.2), 0 22px 60px rgba(0,0,0,.65); padding: 18px 20px 16px; font-size: 13px; }
+.sheet .hd { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.sheet .hd img { width: 48px; height: 48px; }
+.sheet h5 { margin: 0; font-size: 15px; }
+.sheet .hd span { color: var(--t2); font-size: 12px; }
+.sheet ul { margin: 0 0 14px; padding-left: 18px; color: #dcdce0; }
+.sheet li { margin: 3px 0; }
+.sheet .row { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ───── generic Mac window ───── */
+.win { border-radius: 12px; background: #262729; box-shadow: 0 0 0 .5px rgba(255,255,255,.18), 0 22px 60px rgba(0,0,0,.6); font: 13px/1.4 var(--sf); color: #e9e9ec; overflow: hidden; flex: none; }
+.win .tbar { height: 28px; display: flex; align-items: center; padding: 0 10px; gap: 8px; color: var(--t2); font-size: 12.5px; }
+.lights { display: flex; gap: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #4a4b4f; display: block; }
+.lights.on i:nth-child(1) { background: #ff5f57; } .lights.on i:nth-child(2) { background: #febc2e; } .lights.on i:nth-child(3) { background: #28c840; }
+.win .tbar .t { margin: 0 auto; transform: translateX(-26px); }
+
+/* Sparkle's standard window (dark) */
+.sp { width: 620px; }
+.sp .body { display: flex; gap: 16px; padding: 10px 20px 0; }
+.sp .body > img { width: 64px; height: 64px; flex: none; }
+.sp h4 { margin: 0 0 4px; font-size: 14px; }
+.sp p { margin: 0 0 12px; color: #dcdce0; }
+.sp .lbl { font-weight: 600; font-size: 12px; margin-bottom: 5px; }
+.sp .notes { height: 168px; overflow: hidden; border-radius: 6px; background: #1d1d1f; box-shadow: 0 0 0 .5px rgba(255,255,255,.14) inset; padding: 10px 14px; font-size: 12.5px; color: #dcdce0; }
+.sp .notes b { display: block; margin-bottom: 4px; font-size: 13px; color: #fff; }
+.sp .notes ul { margin: 0; padding-left: 18px; }
+.sp .notes li { margin: 3px 0; }
+.sp .chk { display: flex; gap: 7px; align-items: center; margin: 10px 0 0; font-size: 12.5px; }
+.box { width: 14px; height: 14px; border-radius: 4px; background: #0a84ff; display: grid; place-items: center; color: #fff; font-size: 10px; font-weight: 800; flex: none; }
+.box.off { background: rgba(255,255,255,.12); }
+.sp .btns { display: flex; gap: 10px; padding: 16px 20px 18px; }
+.sp .btns .sp-gap { flex: 1; }
+.sp .bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.14); overflow: hidden; margin: 8px 0 4px; }
+.sp .bar i { display: block; height: 100%; width: 64%; background: #0a84ff; }
+
+/* macOS 26 alert */
+.alert { width: 260px; border-radius: 22px; background: #2b2b2e; box-shadow: 0 0 0 .5px rgba(255,255,255,.18), 0 22px 60px rgba(0,0,0,.6); padding: 20px 16px 16px; text-align: center; font: 13px/1.35 var(--sf); flex: none; }
+.alert img { width: 64px; height: 64px; }
+.alert b { display: block; margin: 8px 0 4px; font-size: 13.5px; }
+.alert p { margin: 0 0 14px; color: #d4d4d8; font-size: 11.5px; }
+.alert .btn { border-radius: 999px; }
+
+/* menu bar + menu */
+.menuwrap { width: 420px; font: 13px/1 var(--sf); flex: none; }
+.mbar { height: 26px; display: flex; align-items: center; gap: 18px; padding: 0 12px; background: rgba(30,30,32,.9); border-radius: 8px 8px 0 0; color: #e8e8ea; }
+.mbar b { font-weight: 700; }
+.mbar .sel { background: rgba(255,255,255,.18); padding: 4px 8px; margin: 0 -8px; border-radius: 5px; }
+.menu { width: 260px; margin: 2px 0 0 4px; padding: 5px; border-radius: 10px; background: rgba(42,42,46,.96); box-shadow: 0 0 0 .5px rgba(255,255,255,.2), 0 14px 36px rgba(0,0,0,.55); }
+.menu div { display: flex; justify-content: space-between; padding: 5px 9px; border-radius: 5px; color: #ececef; }
+.menu div span { color: var(--t2); }
+.menu div.hl { background: #0a6cdf; color: #fff; }
+.menu div.hl span { color: rgba(255,255,255,.8); }
+.menu hr { border: 0; height: 1px; background: rgba(255,255,255,.1); margin: 5px 9px; }
+
+/* Settings window (System Settings style, as in the app) */
+.set { width: 900px; height: 600px; display: flex; zoom: .78; background: #262729; }
+.set .side { width: 240px; padding: 8px 10px; background: #2b2c2f; border-radius: 12px; margin: 6px 0 6px 6px; display: flex; flex-direction: column; gap: 2px; }
+.set .side .search { height: 30px; border-radius: 9px; background: rgba(255,255,255,.07); color: var(--t2); display: flex; align-items: center; padding: 0 10px; margin: 34px 0 6px; }
+.set .side .cam { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 9px; margin-bottom: 10px; }
+.set .side .cam i { width: 34px; height: 34px; border-radius: 50%; background: url(img/plan.jpg) 46% 50% / 640px auto; flex: none; }
+.set .side .cam small { display: block; color: var(--t2); font-size: 11.5px; }
+.set .side .it { display: flex; align-items: center; gap: 9px; padding: 5px 8px; border-radius: 8px; color: #d9d9dd; }
+.set .side .it.sel { background: rgba(255,255,255,.12); color: #fff; }
+.set .side .it i { width: 20px; height: 20px; border-radius: 6px; flex: none; display: grid; place-items: center; color: #fff; font: 700 11px var(--sf); font-style: normal; }
+.set .side .gap { height: 10px; }
+.set .side .badge { margin-left: auto; min-width: 18px; height: 18px; border-radius: 9px; background: #ff453a; color: #fff; font: 700 11px/18px var(--sf); text-align: center; padding: 0 5px; }
+.set .detail { flex: 1; padding: 10px 22px; overflow: hidden; }
+.set .dtb { height: 36px; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.set .dtb .nav { display: flex; gap: 2px; background: rgba(255,255,255,.06); border-radius: 18px; padding: 4px 8px; color: var(--t2); }
+.set .dtb b { font-size: 15px; }
+.set .phead { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0 14px; text-align: center; }
+.set .phead i { width: 46px; height: 46px; border-radius: 12px; background: #8e8e93; display: grid; place-items: center; font: 700 24px var(--sf); font-style: normal; color: #fff; }
+.set .phead b { font-size: 17px; }
+.set .phead span { color: var(--t2); font-size: 12.5px; }
+.grp-t { font-weight: 700; font-size: 13px; margin: 14px 4px 6px; }
+.grp { background: #303134; border-radius: 10px; }
+.grp .r { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 8px 12px; }
+.grp .r + .r { border-top: 1px solid rgba(255,255,255,.07); }
+.grp .r .l { flex: 1; min-width: 0; }
+.grp .r .l small { display: block; color: var(--t2); font-size: 11.5px; line-height: 1.35; margin-top: 1px; }
+.grp .r .v { color: var(--t2); }
+.foot { color: var(--t2); font-size: 11.5px; margin: 6px 4px 0; }
+.sw { width: 32px; height: 19px; border-radius: 10px; background: rgba(255,255,255,.2); position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #f4f4f6; }
+.sw.on { background: var(--pink); }
+.sw.on::after { left: 15px; }
+.popup { display: inline-flex; align-items: center; gap: 8px; height: 24px; padding: 0 6px 0 10px; border-radius: 6px; background: rgba(255,255,255,.1); white-space: nowrap; }
+.popup::after { content: "⌃⌄"; font-size: 9px; letter-spacing: -1px; color: var(--t2); writing-mode: horizontal-tb; }
+.ready { color: var(--pink); }
+
+/* choice */
+.choose { background: rgba(255,184,204,.07); border: 1px solid rgba(255,184,204,.3); border-radius: 18px; padding: 16px 20px; max-width: 900px; margin-top: 30px; }
+.choose h3 { margin: 0 0 10px; }
+.choose h4 { margin: 10px 0 4px; font-size: 13px; color: var(--t2); font-weight: 600; }
+.choose label { display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 8px 0; font-size: 15px; }
+.choose textarea { width: 100%; min-height: 70px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: #1d1d20; color: inherit; font: 14px var(--sf); padding: 8px 10px; margin: 6px 0 10px; }
+.choose button { background: var(--pink); color: #000; border: 0; border-radius: 10px; padding: 8px 16px; font: 600 15px var(--sf); cursor: pointer; }
+.choose .saved { margin-left: 12px; color: var(--green); font-size: 14px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Обновления Mac-версии с GitHub</h1>
+  <nav><a href="#common">Общее</a><a href="#A">A · окно Sparkle</a><a href="#B">B · капсула</a><a href="#C">C · тихо + «Что нового»</a><a href="#S">Настройки</a><a href="#pick">Выбрать</a></nav>
+</header>
+<main>
+  <section class="intro">
+    <h2>Что согласуем</h2>
+    <p>Mac-версия, скачанная с GitHub (подпись Developer ID), будет обновляться сама через Sparkle. Версия из App Store
+      обновляется через App Store, и ничего из этой страницы в ней нет.</p>
+    <p>Нужно выбрать две вещи: <b>как приложение сообщает о новой версии</b>, найденной в фоне (варианты A, B, C), и <b>как выглядит раздел
+      «Обновления» в настройках</b> (S1 или S2). Версии на макетах условные: стоит 1.7.20, вышла 1.7.21.</p>
+    <div class="common" id="common">
+      <h4>Во всех вариантах одинаково</h4>
+      <ul>
+        <li>Пункт <b>«Проверить обновления…»</b> в меню «Waiting Paws», под «О Waiting Paws». По нему открывается стандартное окно Sparkle:
+          «У вас самая новая версия» или новая версия с описанием и кнопкой установки.</li>
+        <li>Проверка раз в день, в фоне. <b>Во время тренировки и записи ничего не всплывает</b>: фоновая проверка ждёт, пока они закончатся.</li>
+        <li>Перезапуск никогда не прерывает тренировку или запись. Если нажать «Установить» во время тренировки, приложение перезапустится, когда она закончится и видео будет сохранено.</li>
+        <li>По умолчанию новая версия загружается в фоне и ставится, когда вы выходите из приложения (как у Telegram и ChatGPT). Это можно выключить в настройках.</li>
+        <li>Тексты окон Sparkle — его собственный русский перевод. На макете они приблизительные.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="mocks" id="commonMocks"></div>
+  </section>
+
+  <div id="variants"></div>
+
+  <section class="block" id="S">
+    <div class="vhead"><span class="vid">S</span><h3>Раздел «Обновления» в «Настройки → О приложении»</h3></div>
+    <div class="why"><p>Раздел есть только у версии с GitHub. Когда новая версия уже загружена, в нём появляется строка с кнопкой «Перезапустить»
+      (в вариантах B и C это главное место, где её видно, кроме капсулы).</p><ul><li class="pro">S1 — как в большинстве приложений на Sparkle: два переключателя.</li><li class="pro">S2 — один выбор из трёх режимов: проще понять, что будет происходить.</li></ul></div>
+    <div class="mocks" id="settingsMocks"></div>
+  </section>
+
+  <section class="choose" id="pick">
+    <h3>Выбор</h3>
+    <h4>Как сообщать о новой версии</h4>
+    <div id="optsV"></div>
+    <h4>Раздел в настройках</h4>
+    <div id="optsS"></div>
+    <h4>Дополнительно</h4>
+    <label><input type="checkbox" id="whatsNew"> После обновления один раз показывать «Что нового» (в варианте C это и есть основной способ)</label>
+    <textarea id="note" placeholder="Комментарий: что поменять или смешать (например «B, но без кнопки „При выходе“»)"></textarea>
+    <button id="save">Сохранить выбор</button><span class="saved" id="saved"></span>
+  </section>
+</main>
+
+<script>
+const icon = '<img src="img/icon.png" alt="">';
+const I = {
+  up: '<svg viewBox="0 0 24 24"><path d="M12 19V6M6.5 11.5 12 6l5.5 5.5"/></svg>',
+};
+const notes = ['Обновления прямо из приложения', 'Камера быстрее подключается после перезапуска', 'Недоделанная ночная запись больше не грузит процессор'];
+
+// A crop of a real App Store screenshot of the main window: x0/y0/w/h in the screenshot's 2000-px-wide coordinates.
+function crop(img, x0, y0, w, h, overlay = '') {
+  return `<div class="crop" style="width:${w}px;height:${h}px;background-image:url(img/${img}.jpg);background-position:-${x0}px -${y0}px">${overlay}</div>`;
+}
+const at = (x0, y0, x, y) => `left:${x - x0}px;top:${y - y0}px`;
+// The right half of the main window: toolbar, panel. Idle = before a training (plan.jpg), session = during one.
+const X0 = 1200, Y0 = 97, W = 723, H = 560;
+const idle = (overlay) => crop('plan', X0, Y0, W, H, overlay);
+const session = (overlay) => crop('session', X0, Y0, W, H, overlay);
+
+function sparkleWindow({ progress = false } = {}) {
+  return `<div class="win sp"><div class="tbar"><div class="lights on"><i></i><i></i><i></i></div><span class="t">Обновление программы</span></div>
+    <div class="body">${icon}<div style="flex:1">
+      <h4>Доступна новая версия Waiting Paws!</h4>
+      <p>Waiting Paws 1.7.21 доступна — у вас 1.7.20. Хотите загрузить её сейчас?</p>
+      <div class="lbl">Описание обновления:</div>
+      <div class="notes"><b>Новое в 1.7.21</b><ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul>
+        <b style="margin-top:10px">В 1.7.20</b><ul><li>Расписание можно вставить прямо из Telegram</li></ul></div>
+      <div class="chk"><span class="box">✓</span>Автоматически загружать и устанавливать обновления в будущем</div>
+    </div></div>
+    <div class="btns"><span class="btn">Пропустить эту версию</span><span class="sp-gap"></span><span class="btn">Напомнить позже</span><span class="btn pri">Установить обновление</span></div></div>`;
+}
+const upToDate = `<div class="alert">${icon}<b>У вас самая новая версия!</b><p>Waiting Paws 1.7.21 — новейшая доступная версия.</p><span class="btn pri full">OK</span></div>`;
+const menu = `<div class="menuwrap"><div class="mbar"><span></span><b class="sel">Waiting Paws</b><span>Правка</span><span>Вид</span><span>Тренировка</span><span>Окно</span></div>
+  <div class="menu"><div>О Waiting Paws</div><div class="hl">Проверить обновления…</div><hr><div>Настройки… <span>⌘,</span></div><hr><div>Службы <span>›</span></div><hr>
+  <div>Скрыть Waiting Paws <span>⌘H</span></div><div>Скрыть остальные <span>⌥⌘H</span></div><div>Показать все</div><hr><div>Завершить Waiting Paws <span>⌘Q</span></div></div></div>`;
+
+// B: the capsule left of «Звук» (idle toolbar: «Звук» 1696…1782, «История» 1800…1912, y 107…145).
+const capB = (ring) => `<div class="cap${ring ? ' ring' : ''}" style="${at(X0, Y0, 1568, 107)}">${I.up}Обновить<span class="dot"></span></div>`;
+const popB = `<div class="pop" style="${at(X0, Y0, 1470, 160)};--arrow:160px">
+  <h5>${icon}Waiting Paws 1.7.21</h5><div class="sub">Загружена и готова к установке</div>
+  <ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul>
+  <div class="more" style="margin:-6px 0 12px">Все изменения…</div>
+  <div class="row"><span class="btn">При выходе</span><span class="btn pink">Перезапустить</span></div>
+  <div class="note">Перезапуск займёт пару секунд, камера переподключится сама. Во время тренировки и записи капсулы нет.</div></div>`;
+
+const whatsNew = `<div class="dim"></div><div class="sheet"><div class="hd">${icon}<div><h5>Waiting Paws обновлена до 1.7.21</h5><span>Было 1.7.20</span></div></div>
+  <ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul><div class="row"><span class="btn">Все изменения…</span><span class="btn pink">Готово</span></div></div>`;
+
+document.getElementById('commonMocks').innerHTML = `
+  <figure>${menu}<figcaption><b>Меню «Waiting Paws».</b> Пункт есть только у версии с GitHub.</figcaption></figure>
+  <figure>${upToDate}<figcaption><b>Ручная проверка, новой версии нет.</b> Окно Sparkle.</figcaption></figure>
+  <figure>${sparkleWindow()}<figcaption><b>Ручная проверка, есть новая версия.</b> Окно Sparkle с описанием из релиза. Галочка внизу — тот же переключатель, что в настройках.</figcaption></figure>
+  <figure>${session()}<figcaption><b>Во время тренировки или записи</b> во всех вариантах ничего не появляется: ни окна, ни капсулы. Фоновая проверка ждёт конца.</figcaption></figure>`;
+
+const V = {
+  A: {
+    title: 'Окно Sparkle', tag: 'без своего интерфейса',
+    lead: 'Только стандартное поведение Sparkle. Если автоустановка включена, новая версия молча ставится при выходе, и пользователь ничего не видит. Если выключена — раз в день может всплыть окно Sparkle (не во время тренировки).',
+    pros: ['Ничего своего: меньше кода и мест, где что-то сломается', 'Окно знакомо по многим Mac-приложениям'],
+    cons: ['При автоустановке не видно, что вышло и что поменялось', 'Без автоустановки — окно поверх камеры, отдельно от приложения', 'Если приложение не закрывают неделю, Sparkle всё равно покажет окно'],
+    mocks: () => `
+      <figure>${idle()}<figcaption><b>Новая версия загружена, автоустановка включена.</b> В окне ничего не меняется, обновление поставится при выходе.</figcaption></figure>
+      <figure>${sparkleWindow()}<figcaption><b>Автоустановка выключена.</b> Раз в день, если есть новая версия, всплывает это окно (только вне тренировки).</figcaption></figure>`,
+  },
+  B: {
+    title: 'Капсула «Обновить» в тулбаре', tag: 'как кнопка-ракета у T3 Code', rec: true,
+    lead: 'Когда новая версия загружена, слева от «Звук» появляется капсула «Обновить». По клику — поповер: что нового и две кнопки. Окна не всплывают никогда; перезапуск — только когда вы сами нажмёте, или при выходе.',
+    pros: ['Видно, что есть обновление, но ничего не мешает и не перекрывает камеру', 'Вы сами выбираете момент: сейчас или при выходе', 'Тот же стиль капсул, что у «Звук» и «История»'],
+    cons: ['Ещё один элемент в тулбаре (пока обновление не поставлено)', 'Больше кода, чем в A: своё отображение вместо окна Sparkle (≈ полдня)'],
+    mocks: () => `
+      <figure>${idle(capB(false))}<figcaption><b>Новая версия загружена.</b> Капсула появляется вне тренировки и исчезает после установки.</figcaption></figure>
+      <figure>${idle(capB(true) + popB)}<figcaption><b>Клик по капсуле.</b> «Перезапустить» — сразу, «При выходе» — убрать поповер, обновление поставится при закрытии приложения.</figcaption></figure>`,
+  },
+  C: {
+    title: 'Тихо, при выходе + «Что нового»', tag: 'минимум внимания',
+    lead: 'Пока приложение открыто, о новой версии ничего не говорится. Она ставится при выходе, а при следующем запуске один раз показывается лист «Что нового». В настройках видно, что версия загружена, и есть «Перезапустить».',
+    pros: ['Ничего не отвлекает, пока приложение работает', 'После обновления понятно, что поменялось'],
+    cons: ['Если не закрывать приложение, о готовом обновлении можно не узнать', 'Лист «Что нового» — ещё одно окно при запуске'],
+    mocks: () => `
+      <figure>${idle()}<figcaption><b>Новая версия загружена.</b> В окне ничего не меняется (видно только в настройках).</figcaption></figure>
+      <figure>${idle(whatsNew)}<figcaption><b>Первый запуск после обновления.</b> Лист «Что нового» поверх главного окна, один раз.</figcaption></figure>`,
+  },
+};
+
+document.getElementById('variants').innerHTML = Object.entries(V).map(([id, v]) => `
+  <section class="block${v.rec ? ' rec' : ''}" id="${id}">
+    <div class="vhead"><span class="vid">${id}</span><h3>${v.title}</h3><span class="tag when">${v.tag}</span>${v.rec ? '<span class="tag rec">советую</span>' : ''}</div>
+    <div class="why"><p>${v.lead}</p><ul>${v.pros.map(p => `<li class="pro">${p}</li>`).join('')}${v.cons.map(p => `<li class="con">${p}</li>`).join('')}</ul></div>
+    <div class="mocks">${v.mocks()}</div>
+  </section>`).join('');
+
+// Settings → О приложении.
+function settings(section, { badge = false } = {}) {
+  const side = [['#34c759', '⌁', 'Подключение'], null, ['#ff4f8b', '🐾', 'Тренировка'], ['#0a84ff', '▤', 'Запись и файлы'], null,
+    ['#5e5ce6', '▯', 'iPhone'], ['#ff9f0a', '◔', 'Диагностика'], null, ['#8e8e93', 'i', 'О приложении', true]];
+  return `<div class="win set"><div class="side"><div class="lights" style="margin:8px 4px"><i></i><i></i><i></i></div>
+      <div class="search">⌕&nbsp; Поиск</div>
+      <div class="cam"><i></i><div>Прихожая<small>Камера Xiaomi · в сети</small></div></div>
+      ${side.map(s => s ? `<div class="it${s[3] ? ' sel' : ''}"><i style="background:${s[0]}">${s[1]}</i>${s[2]}${s[3] && badge ? '<span class="badge">1</span>' : ''}</div>` : '<div class="gap"></div>').join('')}
+    </div>
+    <div class="detail"><div class="dtb"><span class="nav">‹ &nbsp; ›</span><b>О приложении</b></div>
+      <div class="phead"><i>i</i><b>О приложении</b><span>Версия, политика конфиденциальности и лицензии.</span></div>
+      <div class="grp"><div class="r"><span class="l">Версия</span><span class="v">1.7.20 (a59e99b)</span></div>
+        <div class="r"><span class="l">Политика конфиденциальности</span><span class="btn">Открыть…</span></div>
+        <div class="r"><span class="l">Лицензии открытого ПО</span><span class="btn">Открыть…</span></div></div>
+      <div class="foot">Waiting Paws ничего не собирает и не отправляет разработчику: настройки, логи и видео остаются на ваших устройствах.</div>
+      <div class="grp-t">Обновления</div>${section}
+    </div></div>`;
+}
+const readyRow = `<div class="r"><span class="l"><span class="ready">Версия 1.7.21 загружена</span><small>Установится, когда вы выйдете из Waiting Paws.</small></span><span class="btn pink">Перезапустить</span></div>`;
+const lastRow = `<div class="r"><span class="l">Последняя проверка<small>2 часа назад</small></span><span class="btn">Проверить сейчас</span></div>`;
+const s1 = (ready) => `<div class="grp">
+  <div class="r"><span class="l">Проверять автоматически<small>Раз в день, пока приложение открыто. Во время тренировки и записи проверка ждёт.</small></span><span class="sw on"></span></div>
+  <div class="r"><span class="l">Загружать и устанавливать автоматически<small>Новая версия загружается в фоне и устанавливается, когда вы выходите из Waiting Paws.</small></span><span class="sw on"></span></div>
+  ${ready ? readyRow : lastRow}</div>`;
+const s2 = (ready) => `<div class="grp">
+  <div class="r"><span class="l">Новые версии<small>Загружаются в фоне и ставятся, когда вы выходите из Waiting Paws. Тренировку и запись это не прерывает.</small></span><span class="popup">Устанавливать автоматически</span></div>
+  ${ready ? readyRow : lastRow}</div>
+  <div class="foot">Другие режимы: «Только сообщать» — показать новую версию и спросить; «Не проверять» — только по «Проверить сейчас».</div>`;
+
+document.getElementById('settingsMocks').innerHTML = `
+  <figure>${settings(s1(false))}<figcaption><b>S1, обычное состояние.</b> Два переключателя, последняя проверка и «Проверить сейчас».</figcaption></figure>
+  <figure>${settings(s2(true), { badge: true })}<figcaption><b>S2, новая версия загружена.</b> Один выбор режима. Строка «Версия 1.7.21 загружена» и значок у «О приложении» появляются в любом варианте S, пока обновление ждёт установки.</figcaption></figure>`;
+
+document.getElementById('optsV').innerHTML = Object.entries(V).map(([id, v]) =>
+  `<label><input type="radio" name="v" value="${id}"${v.rec ? ' checked' : ''}> ${id} · ${v.title}</label>`).join('');
+document.getElementById('optsS').innerHTML = [['S1', 'два переключателя'], ['S2', 'один выбор режима']].map(([id, t], i) =>
+  `<label><input type="radio" name="s" value="${id}"${i === 1 ? ' checked' : ''}> ${id} · ${t}</label>`).join('');
+document.getElementById('save').onclick = async () => {
+  const variant = document.querySelector('input[name=v]:checked')?.value;
+  const settingsVariant = document.querySelector('input[name=s]:checked')?.value;
+  const r = await fetch('/choice', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ variant, settings: settingsVariant, whatsNew: document.getElementById('whatsNew').checked, note: document.getElementById('note').value }) });
+  document.getElementById('saved').textContent = r.ok ? `Сохранено: ${variant} + ${settingsVariant}` : 'Не сохранилось';
+};
+</script>
+</body>
+</html>

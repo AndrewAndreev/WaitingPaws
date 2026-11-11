@@ -872,8 +872,50 @@ private struct SettingsAboutPane: View {
         }
         .sheet(isPresented: $showPrivacy) { AboutSheet { PrivacyPolicyView() } }
         .sheet(isPresented: $showLicenses) { AboutSheet { LicensesView() } }
+        #if WP_DIRECT
+        if let updater = AppUpdater.shared {
+            SettingsUpdatesSection(updater: updater)
+        }
+        #endif
     }
 }
+
+#if WP_DIRECT
+/// The app from GitHub: Sparkle's switches and «Проверить сейчас». The App Store app has no such section.
+private struct SettingsUpdatesSection: View {
+    @Bindable var updater: AppUpdater
+
+    var body: some View {
+        Section("Обновления") {
+            if updater.isAvailable {
+                Toggle(isOn: $updater.checksAutomatically) {
+                    Text("Проверять автоматически")
+                    Text("Раз в день, пока приложение открыто. Во время тренировки и записи проверка ждёт.")
+                }
+                Toggle(isOn: $updater.installsAutomatically) {
+                    Text("Загружать и устанавливать автоматически")
+                    Text("Новая версия загружается в фоне и устанавливается, когда вы выходите из Waiting Paws.")
+                }
+                .disabled(!updater.checksAutomatically)
+                LabeledContent {
+                    Button("Проверить сейчас") { updater.checkForUpdates() }
+                        .disabled(!updater.canCheck)
+                } label: {
+                    Text("Последняя проверка")
+                    if let lastCheck = updater.lastCheck {
+                        Text(lastCheck, format: .relative(presentation: .named))
+                    } else {
+                        Text("ещё не было")
+                    }
+                }
+            } else {
+                Text("В сборке для разработки обновления выключены.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+#endif
 
 /// The privacy policy or the licenses over Settings, with «Готово».
 private struct AboutSheet<Content: View>: View {

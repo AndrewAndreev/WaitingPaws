@@ -1233,5 +1233,15 @@
  "Не удалось подготовить видео: %@": "Couldn’t prepare the video: %@",
  "звук перестал читаться": "reading the sound stalled",
  "экспорт завис": "the export stalled",
- "не удалось прочитать звук": "couldn’t read the sound"
+ "не удалось прочитать звук": "couldn’t read the sound",
+ "Проверить обновления…": "Check for Updates…",
+ "Обновления": "Updates",
+ "Проверять автоматически": "Check automatically",
+ "Раз в день, пока приложение открыто. Во время тренировки и записи проверка ждёт.": "Once a day while the app is open. During a training or a recording the check waits.",
+ "Загружать и устанавливать автоматически": "Download and install automatically",
+ "Новая версия загружается в фоне и устанавливается, когда вы выходите из Waiting Paws.": "A new version downloads in the background and installs when you quit Waiting Paws.",
+ "Последняя проверка": "Last check",
+ "ещё не было": "not yet",
+ "Проверить сейчас": "Check Now",
+ "В сборке для разработки обновления выключены.": "Updates are off in a development build."
 }

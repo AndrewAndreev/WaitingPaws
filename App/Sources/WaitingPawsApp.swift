@@ -14,6 +14,9 @@ struct WaitingPawsApp: App {
         _model = State(initialValue: model)
         #if os(macOS)
         MacAppDelegate.model = model
+        #if WP_DIRECT
+        AppUpdater.start(model: model)
+        #endif
         #endif
     }
 

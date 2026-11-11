@@ -157,6 +157,15 @@ struct MacCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        #if WP_DIRECT
+        // The app from GitHub updates itself (Sparkle); the App Store one has no such item.
+        CommandGroup(after: .appInfo) {
+            if let updater = AppUpdater.shared {
+                Button("Проверить обновления…") { updater.checkForUpdates() }
+                    .disabled(!updater.isAvailable || !updater.canCheck)
+            }
+        }
+        #endif
         CommandGroup(replacing: .newItem) {}
         CommandGroup(before: .toolbar) {
             let zoomKeys = !ui.showsPlanEditor(model)
