@@ -132,9 +132,8 @@ Mac собирают схемой `WaitingPaws-macOS-Direct`: в ней те ж�
   любой правки в `GoMobile/` перед выпуском — `GoMobile/build.sh`.
 * Пересобрать тот же код (например, загрузка в App Store не прошла) — ещё один тег на тот же коммит: номер сборки
   новый, правило «версия = коммит» сохраняется.
-* Mac-zip — подпись Apple Development, без нотаризации: на другом Mac первый запуск — «Открыть всё равно» в
-  «Конфиденциальность и безопасность» (или `xattr -dr com.apple.quarantine /Applications/WaitingPaws.app`). В App
-  Store идут не архивы и не zip, а файлы из `release.sh export` (ниже).
+* Mac для GitHub — отдельная сборка `release.sh direct` (ниже, «С GitHub»): Developer ID, нотаризация, обновления
+  через Sparkle. В App Store идут не архивы и не zip, а файлы из `release.sh export` (ниже).
 * Выпуски до 1.6 — теги `ios-v*`, `mac-v*`, `windows-v*` (у каждой платформы своя версия; последняя сборка iPhone и
   Mac — 9).
 
@@ -184,6 +183,41 @@ Mac собирают схемой `WaitingPaws-macOS-Direct`: в ней те ж�
   бы ad hoc и теряла разрешения локальной сети при каждой пересборке (у iPhone xcodegen ставит такую же сам). На App
   Store она не влияет: экспорт переподписывает приложение Apple Distribution с профилем App Store — это и проверяет
   `export`.
+
+### С GitHub
+
+Mac-приложение для GitHub — цель `WaitingPaws-macOS-Direct`: те же исходники, что у App Store-версии, плюс
+обновления через Sparkle (`#if WP_DIRECT`, `App/Sources/Mac/Updates/AppUpdater.swift`). В App Store-сборке Sparkle
+нет: App Store не принимает приложения со своим обновлятором.
+
+Один раз, владелец (всё хранится в связке ключей «Вход»):
+
+* Сертификат Developer ID Application команды `849CANCD26`. Его может выпустить только Account Holder, и Xcode 27
+  ему отказывает (показывает роль Admin), поэтому выпускают на developer.apple.com → Certificates → Developer ID
+  Application (G2 Sub-CA) по CSR этого Mac. Резервная копия — `.p12` с паролем. Сертификат действует ~13 месяцев:
+  новый выпускают до истечения старого, отзывать старый нельзя (сломает выпущенные сборки).
+* Профиль нотаризации `WaitingPaws`: `xcrun notarytool store-credentials WaitingPaws --key
+  ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8 --key-id <KEY_ID> --issuer <ISSUER_ID>` (ключ App Store
+  Connect API; Apple ID с паролем приложения отвечал 401).
+* Ключ EdDSA обновлений: `generate_keys --account waitingpaws` из Sparkle (`…/SourcePackages/artifacts/sparkle/
+  Sparkle/bin/`). Открытая половина — `WP_UPDATE_PUBLIC_KEY` в `project.yml`.
+
+Каждый выпуск (после `release.sh tag`):
+
+1. `git push origin vX.Y.N` — GitHub Actions собирает Windows и создаёт черновик выпуска со своими файлами.
+2. `Tools/release.sh direct vX.Y.N` — архив Direct-цели из чистой копии тега, экспорт с Developer ID
+   (`Tools/ExportOptions-DeveloperID.plist`), проверки (подпись, команда, версия, лента, ключ, песочница, hardened
+   runtime у Sparkle), нотаризация, staple, Gatekeeper, затем `generate_appcast`. Описание версии для appcast и
+   поповера «Обновление» — `Tools/release-notes/X.Y.N.md` (строки `- …`, первые четыре видны в поповере).
+   Все zip и растущий `appcast.xml` лежат в `DerivedData/Updates/` (оттуда же дельты); для выпуска —
+   `DerivedData/Release/vX.Y.N/github/`.
+3. `gh release upload vX.Y.N DerivedData/Release/vX.Y.N/github/* --clobber` — только когда черновик Actions уже
+   есть: если у выпуска уже есть файлы, Actions свои не прикрепляет.
+4. Опубликовать как Latest. Mac-приложения читают `releases/latest/download/appcast.xml`, поэтому `appcast.xml`
+   нужен в каждом выпуске, который становится Latest (и в выпуске только для Windows — тот же файл).
+
+Тестовые сборки (переключатель в «О приложении») читают `releases/download/nightly/appcast.xml` — выпуск-пререлиз
+`nightly`, которого пока нет. Его лента должна содержать и последнюю обычную версию.
 
 ### Тесты
 

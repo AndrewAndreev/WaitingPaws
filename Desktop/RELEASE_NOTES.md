@@ -1,6 +1,11 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.7.17**
+**New in 1.7.20**
+
+* The same version as iPhone and Mac 1.7.20, built from the same code. The Windows app itself has not changed since
+  1.7.17. 1.7.20 brings the Mac app to GitHub: notarized, it updates itself from these releases.
+
+**In 1.7.17**
 
 * The same version as iPhone and Mac 1.7.17, built from the same code (1.7.16 was a Mac-only build).
 * Xiaomi cameras: a camera serves one session at a time, and go2rtc now tells it when a session ends instead of just

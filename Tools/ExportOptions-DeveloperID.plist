@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Tools/release.sh direct: the Mac app for GitHub, signed with the team's Developer ID Application certificate
+	     from the login keychain (no provisioning profile: none of its entitlements needs one). -->
+	<key>method</key>
+	<string>developer-id</string>
+	<key>teamID</key>
+	<string>849CANCD26</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Developer ID Application</string>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>
