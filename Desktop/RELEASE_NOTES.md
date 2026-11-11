@@ -1,6 +1,15 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.7.20**
+**New in 1.7.21**
+
+* Installed with the installer, the app updates itself from GitHub releases, like the Mac app: a new version downloads
+  in the background and installs when you quit. «Обновление» (Update) in the title bar shows what is new and can
+  restart into it right away; nothing pops up during a training or a recording. Windows asks for administrator
+  permission for each update: the app is installed for all users.
+* Settings → About → Updates: install automatically, only notify, or don't check; test builds (nightly); Check Now.
+* 1.7.20 and older can't update themselves: install 1.7.21 over them once. The portable zip doesn't update itself.
+
+**In 1.7.20**
 
 * The same version as iPhone and Mac 1.7.20, built from the same code. The Windows app itself has not changed since
   1.7.17. 1.7.20 brings the Mac app to GitHub: notarized, it updates itself from these releases.
