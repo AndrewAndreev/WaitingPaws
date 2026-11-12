@@ -335,6 +335,17 @@ EOF
 # The Mac app for GitHub (target WaitingPaws-macOS-Direct): Developer ID, notarized, updates itself through Sparkle.
 DIRECT_EXPORT_OPTIONS="$ROOT/Tools/ExportOptions-DeveloperID.plist"
 NOTARY_PROFILE="${WP_NOTARY_PROFILE:-WaitingPaws}"
+# The profile lives in the data protection keychain, which macOS hides while the screen is locked ("No Keychain
+# password item found"). WP_NOTARY_KEY_ID=<id> WP_NOTARY_ISSUER=<issuer> use the App Store Connect API key
+# ~/.appstoreconnect/private_keys/AuthKey_<id>.p8 instead.
+if [ -n "${WP_NOTARY_KEY_ID:-}" ]; then
+  [ -n "${WP_NOTARY_ISSUER:-}" ] || die "WP_NOTARY_KEY_ID needs WP_NOTARY_ISSUER"
+  NOTARY_AUTH=(--key "$HOME/.appstoreconnect/private_keys/AuthKey_$WP_NOTARY_KEY_ID.p8" --key-id "$WP_NOTARY_KEY_ID"
+               --issuer "$WP_NOTARY_ISSUER")
+  NOTARY_PROFILE="API key $WP_NOTARY_KEY_ID"
+else
+  NOTARY_AUTH=(--keychain-profile "$NOTARY_PROFILE")
+fi
 # The Sparkle EdDSA key in the login keychain (generate_keys --account waitingpaws); its public half is in project.yml.
 SPARKLE_ACCOUNT=waitingpaws
 REPO=AndrewAndreev/WaitingPaws
@@ -353,7 +364,7 @@ direct_ready() {
   TEAM="$(plist "$DIRECT_EXPORT_OPTIONS" teamID)"
   security find-identity -v -p codesigning | grep -q "\"Developer ID Application: .*($TEAM)\"" ||
     die "no Developer ID Application certificate of team $TEAM in the keychain (DEVELOPMENT.md «С GitHub»)"
-  xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" > /dev/null 2>&1 ||
+  xcrun notarytool history "${NOTARY_AUTH[@]}" > /dev/null 2>&1 ||
     die "notarytool has no working profile $NOTARY_PROFILE (DEVELOPMENT.md «С GitHub»)"
 }
 
@@ -419,12 +430,12 @@ direct_app() {
   echo
   echo "Notarizing (a few minutes)…"
   ditto -c -k --keepParent "$app" "$SCRATCH/notarize.zip"
-  xcrun notarytool submit "$SCRATCH/notarize.zip" --keychain-profile "$NOTARY_PROFILE" --wait --output-format plist \
+  xcrun notarytool submit "$SCRATCH/notarize.zip" "${NOTARY_AUTH[@]}" --wait --output-format plist \
     > "$SCRATCH/notary.plist" || true
   local status id
   status="$(plist "$SCRATCH/notary.plist" status)" id="$(plist "$SCRATCH/notary.plist" id)"
   if [ "$status" != Accepted ]; then
-    [ "$id" = "?" ] || xcrun notarytool log "$id" --keychain-profile "$NOTARY_PROFILE" >&2 || true
+    [ "$id" = "?" ] || xcrun notarytool log "$id" "${NOTARY_AUTH[@]}" >&2 || true
     die "notarization: \"$status\" (submission $id)"
   fi
   echo "  ok    notarized (submission $id)"

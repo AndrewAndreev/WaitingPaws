@@ -205,7 +205,9 @@ Mac-приложение для GitHub — цель `WaitingPaws-macOS-Direct`: 
   новый выпускают до истечения старого, отзывать старый нельзя (сломает выпущенные сборки).
 * Профиль нотаризации `WaitingPaws`: `xcrun notarytool store-credentials WaitingPaws --key
   ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8 --key-id <KEY_ID> --issuer <ISSUER_ID>` (ключ App Store
-  Connect API; Apple ID с паролем приложения отвечал 401).
+  Connect API; Apple ID с паролем приложения отвечал 401). Профиль лежит в защищённой связке ключей, которую macOS
+  прячет, пока экран заблокирован («No Keychain password item found»); тогда `WP_NOTARY_KEY_ID=<KEY_ID>
+  WP_NOTARY_ISSUER=<ISSUER_ID> Tools/release.sh …` нотаризует тем же ключом напрямую.
 * Ключ EdDSA обновлений: `generate_keys --account waitingpaws` из Sparkle (`…/SourcePackages/artifacts/sparkle/
   Sparkle/bin/`). Открытая половина — `WP_UPDATE_PUBLIC_KEY` в `project.yml`.
 
