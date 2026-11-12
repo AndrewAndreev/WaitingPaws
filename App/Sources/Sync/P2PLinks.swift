@@ -78,13 +78,23 @@ final class P2PLinks {
 
     // MARK: - iPhone: offering side
 
-    /// Linked to `peer` over sync (that host understands p2p): starts each link that isn't alive.
+    /// Linked to `peer` over sync (that host understands p2p): starts each link that doesn't answer now — never made,
+    /// failed, or silent (Wi-Fi was off, the app was away): the sync link can carry a new offer again.
     func startLinks(to peer: String) {
         if let lastPeer, lastPeer != peer { closeLinks(peer: lastPeer) } // another Mac now
         lastPeer = peer
+        // Just back from the background: whether the links come back by themselves is being watched
+        // (`didBecomeActive`), which then sets up the dead ones.
+        let watching = lastResume != nil && lastResume?.survived == nil
         for kind in P2PLinkKind.allCases {
             let key = Key(peer: peer, kind: kind)
-            if let status = statuses[key], status.isAlive || status.outcome() == .checking, links[key] != nil { continue }
+            if links[key] != nil, let status = statuses[key] {
+                if watching && status.everConnected { continue }
+                switch status.outcome() {
+                case .checking, .direct(stale: false): continue
+                case .direct(stale: true), .failed, .lost: break
+                }
+            }
             start(key)
         }
     }
