@@ -93,14 +93,14 @@ type Status struct {
 	Local  *Candidate `json:"local,omitempty"`
 	Remote *Candidate `json:"remote,omitempty"`
 	// Round trip of the data channel's pings, ms: the last one, the smallest, a moving average.
-	RTT    float64 `json:"rtt"`
-	RTTMin float64 `json:"rttMin"`
-	RTTAvg float64 `json:"rttAvg"`
+	RTT    float64 `json:"rtt,omitempty"`
+	RTTMin float64 `json:"rttMin,omitempty"`
+	RTTAvg float64 `json:"rttAvg,omitempty"`
 	Pings  int     `json:"pings"`
 	Pongs  int     `json:"pongs"`
-	// The last pong (Unix ms), and when the link first connected.
-	LastPong    int64 `json:"lastPong"`
-	ConnectedAt int64 `json:"connectedAt"`
+	// The last pong (Unix ms), and when the link first connected; left out until they happen.
+	LastPong    int64 `json:"lastPong,omitempty"`
+	ConnectedAt int64 `json:"connectedAt,omitempty"`
 	// The candidates in this side's and the peer's description, by type.
 	LocalTypes  map[string]int `json:"localTypes,omitempty"`
 	RemoteTypes map[string]int `json:"remoteTypes,omitempty"`
@@ -114,6 +114,8 @@ type Status struct {
 	Restarting bool   `json:"restarting,omitempty"`
 	SignalPath string `json:"signalPath,omitempty"`
 	Error      string `json:"error,omitempty"`
+	// Grows with every status sent: two sent at once may reach the app in either order, and the older one is dropped.
+	Seq uint64 `json:"seq"`
 }
 
 // The data channel's messages.
@@ -614,6 +616,14 @@ func (l *Link) received(s *session, data []byte) {
 			}
 		}
 	case "bye":
+		l.mu.Lock()
+		restarting, current := l.next != nil, s == l.cur
+		l.mu.Unlock()
+		if restarting || !current {
+			// The peer replaced the link it had for a restart's offer that reached it another way (the apps' link):
+			// the restart session takes over or times out.
+			return
+		}
 		go func() {
 			l.mu.Lock()
 			l.status.Error = "the peer closed the link"
@@ -683,6 +693,7 @@ func (l *Link) iceChanged(s *session, state webrtc.ICEConnectionState) {
 				if l.status.Error == "" {
 					l.status.Error = "ICE failed"
 				}
+				go func() { _ = s.pc.Close() }()
 			}
 		}
 	} else if state == webrtc.ICEConnectionStateFailed {
@@ -784,6 +795,7 @@ func (l *Link) sessionFailed(s *session, err error) error {
 		return err
 	}
 	l.mu.Unlock()
+	go func() { _ = s.pc.Close() }()
 	return l.fail(err)
 }
 
@@ -847,6 +859,7 @@ func (l *Link) statusJSONLocked() string {
 
 func (l *Link) emit() {
 	l.mu.Lock()
+	l.status.Seq++
 	status := l.statusJSONLocked()
 	l.mu.Unlock()
 	l.events.State(status)

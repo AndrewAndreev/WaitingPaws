@@ -75,6 +75,26 @@ final class SyncP2PTests: XCTestCase {
         XCTAssertNil(P2PLinkStatus.decode("not json"))
     }
 
+    func testZerosFromGoMeanNotYet() throws {
+        // What the first build's Go side sent for a link that never connected (0 for "not yet")…
+        let zeros = #"{"label":"out","state":"failed","since":1794521000000,"rtt":0,"lastPong":0,"connectedAt":0,"pings":0,"pongs":0,"error":"no direct path","seq":4}"#
+        let failed = try XCTUnwrap(P2PLinkStatus.decode(zeros))
+        XCTAssertEqual(failed.outcome(), .failed, "never connected: not «lost»")
+        XCTAssertFalse(failed.everConnected)
+        XCTAssertNil(failed.silence())
+        XCTAssertEqual(failed.seq, 4)
+        // …and one that has just connected, before its first pong: working, not «no answer for 56 years».
+        let now = Date(timeIntervalSince1970: 1_794_521_003)
+        let fresh = #"{"label":"lan","state":"connected","since":1794521002000,"rtt":0,"lastPong":0,"connectedAt":1794521002000,"pongs":0}"#
+        let connected = try XCTUnwrap(P2PLinkStatus.decode(fresh))
+        XCTAssertEqual(connected.outcome(now: now), .direct(stale: false))
+        XCTAssertEqual(connected.silence(now: now) ?? -1, 1, accuracy: 0.01)
+        XCTAssertFalse(connected.answered)
+        // The current Go side leaves them out.
+        let omitted = try XCTUnwrap(P2PLinkStatus.decode(#"{"label":"out","state":"failed","error":"no direct path","seq":2}"#))
+        XCTAssertEqual(omitted.outcome(), .failed)
+    }
+
     func testIPv6PairIsSaid() {
         var status = P2PLinkStatus(label: "out", state: "connected")
         status.local = P2PCandidate(type: "host", address: "2a00:1fa0::1", port: 5)

@@ -147,8 +147,10 @@ final class P2PLinks {
         guard let kind = P2PLinkKind(rawValue: signal.link) else { return }
         let key = Key(peer: peer, kind: kind)
         #if os(macOS)
-        // An offer over the sync link is always a new link (a restart of a live one comes over its own channel).
-        if signal.payload.contains(#""type":"offer""#) {
+        // An offer over the sync link is a new link, unless it is a restart of the live one whose channel was down
+        // (gen > 0): that one sets its new session up next to the current one.
+        if let head = try? JSONDecoder().decode(SignalHead.self, from: Data(signal.payload.utf8)), head.type == "offer",
+           !(head.gen > 0 && links[key] != nil && statuses[key].map { $0.isAlive || $0.outcome() == .checking } == true) {
             var options = Options(role: "answer", label: kind.rawValue, stun: Self.stunServers)
             options.interface = network.lanInterface ?? ""
             options.interfaces = ["en", "bridge"]
@@ -224,10 +226,11 @@ final class P2PLinks {
         log(key, status)
         if !reported.contains(key) {
             switch status.outcome() {
-            case .direct, .failed:
+            // Works once a ping came back (its round trip goes into the bubble).
+            case .direct where status.answered, .failed:
                 reported.insert(key)
                 onFirstResult?(key, status)
-            case .checking, .lost:
+            case .direct, .checking, .lost:
                 break
             }
         }
@@ -347,6 +350,12 @@ final class P2PLinks {
 
     // MARK: - Go
 
+    /// What Swift reads of a signal (`GoMobile/p2p` Signal).
+    private struct SignalHead: Decodable {
+        var type: String
+        var gen: Int
+    }
+
     /// The Go side's options (`GoMobile/p2p` Options).
     struct Options: Encodable {
         var role: String
@@ -416,8 +425,15 @@ private final class Handle {
     func take(_ payload: String) {}
     #endif
 
+    /// The newest status taken: one sent earlier but arriving later is dropped.
+    private var lastSeq: UInt64 = 0
+
     fileprivate func received(state json: String) {
         guard let status = P2PLinkStatus.decode(json) else { return }
+        if let seq = status.seq {
+            guard seq > lastSeq else { return }
+            lastSeq = seq
+        }
         owner?.received(status, from: self)
     }
 

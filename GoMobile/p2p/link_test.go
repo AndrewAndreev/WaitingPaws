@@ -141,6 +141,20 @@ func TestCloseTellsThePeer(t *testing.T) {
 	ae.waitFor(t, "close", 5*time.Second, func(s Status) bool { return s.State == "closed" })
 }
 
+func TestStatusLeavesOutWhatHasNotHappened(t *testing.T) {
+	data, err := json.Marshal(Status{Label: "out", State: "failed", Error: "no direct path"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"rtt", "lastPong", "connectedAt"} {
+		var fields map[string]any
+		_ = json.Unmarshal(data, &fields)
+		if _, ok := fields[key]; ok {
+			t.Fatalf("%s sent before it happened: %s", key, data)
+		}
+	}
+}
+
 func TestNoPathFailsInTime(t *testing.T) {
 	// Every host candidate is private and NoPrivateHost drops them: no STUN, so there is no candidate at all.
 	opts := Options{Label: "out", NoPrivateHost: true, ConnectTimeout: 2, Interfaces: []string{"lo", "en", "bridge"}}

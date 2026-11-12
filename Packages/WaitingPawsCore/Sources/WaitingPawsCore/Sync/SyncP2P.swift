@@ -207,6 +207,8 @@ public struct P2PLinkStatus: Codable, Equatable, Sendable {
     public var restarting: Bool?
     public var signalPath: String?
     public var error: String?
+    /// Grows with every status the Go side sends (an older one arriving late is dropped).
+    public var seq: UInt64?
 
     public init(label: String, state: String) {
         self.label = label
@@ -236,18 +238,28 @@ public struct P2PLinkStatus: Codable, Equatable, Sendable {
         case "new", "gathering", "connecting":
             return .checking
         case "connected", "disconnected":
-            let last = (lastPong ?? connectedAt ?? since ?? 0) / 1000
+            // Before the first pong the link counts from when it connected.
+            let last = (Self.set(lastPong) ?? Self.set(connectedAt) ?? Self.set(since) ?? now.timeIntervalSince1970 * 1000) / 1000
             let stale = state == "disconnected" || now.timeIntervalSince1970 - last > staleAfter
             return .direct(stale: stale)
         default:
-            return connectedAt != nil ? .lost : .failed
+            return everConnected ? .lost : .failed
         }
+    }
+
+    /// A time the Go side has set (builds before `omitempty` sent 0 for "not yet").
+    private static func set(_ value: Double?) -> Double? {
+        guard let value, value > 0 else { return nil }
+        return value
     }
 
     /// Whether this link can still carry pings (connected, or ICE waiting for a path that may come back).
     public var isAlive: Bool { state == "connected" || state == "disconnected" }
 
-    public var everConnected: Bool { connectedAt != nil }
+    public var everConnected: Bool { Self.set(connectedAt) != nil }
+
+    /// Answered at least one ping.
+    public var answered: Bool { (pongs ?? 0) > 0 }
 
     /// "srflx ↔ prflx" (this side's candidate first).
     public var pairText: String? {
@@ -258,6 +270,7 @@ public struct P2PLinkStatus: Codable, Equatable, Sendable {
 
     /// Seconds since the last pong (nil before the first).
     public func silence(now: Date = Date()) -> TimeInterval? {
-        lastPong.map { now.timeIntervalSince1970 - $0 / 1000 }
+        guard let last = Self.set(lastPong) ?? Self.set(connectedAt) else { return nil }
+        return now.timeIntervalSince1970 - last / 1000
     }
 }

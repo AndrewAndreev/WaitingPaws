@@ -2164,7 +2164,7 @@ extension AppModel {
         }
         // The home one only when it fails: the one that matters is the outside one.
         guard key.kind == .out || !works else { return }
-        let rtt = status.rtt.map { String(localized: "\(Int($0.rounded())) ms") } ?? ""
+        let rtt = status.rtt.flatMap { $0 > 0 ? String(localized: "\(Int($0.rounded())) ms") : nil } ?? "—"
         switch (key.kind, works) {
         case (.out, true):
             linkNotice = LinkNotice(title: String(localized: "Direct link works outside home too"),
