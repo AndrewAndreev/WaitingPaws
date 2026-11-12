@@ -104,6 +104,11 @@ public struct P2PRouterResult: Codable, Equatable, Sendable {
     public struct PMP: Codable, Equatable, Sendable {
         public var external: String?
         public var error: String?
+
+        public init(external: String? = nil, error: String? = nil) {
+            self.external = external
+            self.error = error
+        }
     }
 
     public struct UPnP: Codable, Equatable, Sendable {
@@ -111,6 +116,13 @@ public struct P2PRouterResult: Codable, Equatable, Sendable {
         public var service: String?
         public var external: String?
         public var error: String?
+
+        public init(device: String? = nil, service: String? = nil, external: String? = nil, error: String? = nil) {
+            self.device = device
+            self.service = service
+            self.external = external
+            self.error = error
+        }
     }
 
     public var gateway: String?
