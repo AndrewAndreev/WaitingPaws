@@ -231,6 +231,7 @@ final class SetupCameraCatalog {
             try await chooseSecond(choice, model: model)
             return
         }
+        let previous = (stream: model.settings.streamName, title: model.settings.cameraTitle)
         switch choice {
         case .stream(let stream):
             guard !Self.isPreviewStream(stream.name) else { throw SetupError(String(localized: "This is a temporary preview stream and can’t be chosen")) }
@@ -253,8 +254,10 @@ final class SetupCameraCatalog {
             model.settings.cameraTitle = camera.name
             model.settings.streamName = name ?? ""
         }
-        // The second camera made the first one: no second one left.
-        if model.settings.secondStreamName == model.settings.streamName { model.removeSecondCamera() }
+        // The second camera made the first one: the two swap places, the old first one is the second now.
+        if model.settings.secondStreamName == model.settings.streamName {
+            model.secondCameraBecameMain(previousStream: previous.stream, previousTitle: previous.title)
+        }
         model.videoSize = nil
         model.followShownCameraInRecording()
         Task { await model.refreshXiaomiQuality() }

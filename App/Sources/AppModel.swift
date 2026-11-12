@@ -1730,6 +1730,23 @@ extension AppModel {
         followShownCameraInRecording()
     }
 
+    /// The second camera was chosen as the camera (the main one), e.g. «Выбрать камеру…» to bring back a stalled one:
+    /// the old main one takes its place, so choosing one camera never drops the other. The chosen one is on screen
+    /// (and recorded), here and on a linked iPhone. Called with the new main camera already in the settings.
+    func secondCameraBecameMain(previousStream: String, previousTitle: String) {
+        guard !previousStream.isEmpty, previousStream != settings.streamName else {
+            removeSecondCamera()
+            return
+        }
+        panTilt.stop()
+        settings.secondStreamName = previousStream
+        settings.secondCameraTitle = previousTitle
+        showsSecondCamera = false
+        secondVideoSize = nil
+        print("[setup] cameras swapped: \(settings.streamName) is the main camera, \(previousStream) the second one")
+        followShownCameraInRecording()
+    }
+
     /// The linked computer has a camera but gives this iPhone no video: it works with its own go2rtc server (its state
     /// has the camera's name and no stream then).
     var isLinkedCameraNotShared: Bool {

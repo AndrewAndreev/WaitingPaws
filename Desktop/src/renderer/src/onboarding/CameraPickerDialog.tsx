@@ -117,6 +117,8 @@ export function CameraPickerDialog({ onClose }: { onClose: () => void }) {
       }
       // Closed before the settings change: the page behind may switch (welcome → training) right away.
       onClose()
+      // The second camera made the main one swaps places with it (`secondAfterChoosing`): the chosen one stays on screen.
+      if (patch.streamName && patch.streamName === app.settings.secondStreamName) ui.set({ camera: 'main' })
       await call('streams.select', patch)
     } catch (caught) {
       setError(t('Couldn’t add the camera: %@', errorText(caught)))

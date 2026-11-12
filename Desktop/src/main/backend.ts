@@ -9,7 +9,7 @@ import { SessionLogFormatter, type TrainingRecord } from '@core/sessionLog'
 import { SessionStore } from '@core/sessionStore'
 import { setCoreLanguage, setCoreRegion, tr } from '@core/localization'
 import type { AppState, RecordingClip, XiaomiQuality } from '@shared/api'
-import type { Settings } from '@shared/settings'
+import { secondAfterChoosing, type Settings } from '@shared/settings'
 import { EmbeddedGo2RTC, LAN_USERNAME } from './go2rtc'
 import { StreamRecorder } from './recorder'
 import { MediaFinalizer } from './finalizer'
@@ -876,10 +876,9 @@ export class AppBackend {
   }
 
   /// The camera chosen in the picker: settings, then quality and modes of the new camera. The second camera, made the
-  /// main one, is no longer a second camera.
+  /// main one, swaps places with the old main one: choosing one camera never drops the other.
   async selectStream(patch: Partial<Settings>): Promise<void> {
-    const second = patch.streamName && patch.streamName === this.settings.value.secondStreamName ? { secondStreamName: '', secondCameraTitle: '' } : {}
-    this.settings.update({ ...patch, ...second, withoutCamera: false })
+    this.settings.update({ ...patch, ...secondAfterChoosing(this.settings.value, patch), withoutCamera: false })
     this.videoSize = null
     this.playerGeneration += 1
     this.emit()

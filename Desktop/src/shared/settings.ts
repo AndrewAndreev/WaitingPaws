@@ -100,3 +100,11 @@ export function cameraDisplayName(settings: Settings): string {
 export function secondCameraDisplayName(settings: Settings): string {
   return settings.secondCameraTitle || settings.secondStreamName
 }
+
+/// The second camera's fields after `patch` makes a camera the main one: the second camera chosen as the main one swaps
+/// places with the old main one (choosing one camera never drops the other); any other choice leaves them as they are.
+export function secondAfterChoosing(settings: Settings, patch: Partial<Settings>): Partial<Settings> {
+  if (!patch.streamName || patch.streamName !== settings.secondStreamName) return {}
+  if (!settings.streamName || settings.streamName === patch.streamName) return { secondStreamName: '', secondCameraTitle: '' }
+  return { secondStreamName: settings.streamName, secondCameraTitle: settings.cameraTitle }
+}
