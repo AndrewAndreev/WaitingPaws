@@ -32,8 +32,10 @@ if [ ! -d "$SRC/.git" ]; then
   git clone --depth 1 --branch "$GO2RTC_VERSION" https://github.com/AlexxIT/go2rtc "$SRC"
 fi
 
-mkdir -p "$SRC/mobile"
+mkdir -p "$SRC/mobile" "$SRC/pkg/p2p"
 cp "$HERE"/mobile/*.go "$SRC/mobile/"
+# The direct iPhone ↔ Mac link (an experiment, GoMobile/p2p): a WebRTC data channel on go2rtc's pion, public STUN only.
+cp "$HERE"/p2p/*.go "$SRC/pkg/p2p/"
 # Additions to go2rtc's own packages: camera settings via Mi Cloud (/api/xiaomi/miot), forgetting an
 # account (/api/xiaomi/logout), cameras of shared homes (/api/xiaomi/cameras), turning a pan/tilt camera
 # (/api/xiaomi/motor, which reaches the stream's camera session through internal/streams/waitingpaws.go), the API

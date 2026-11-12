@@ -117,15 +117,18 @@ public struct SyncHello: Codable, Equatable {
     public var platform: String?
     /// "iPhone 16 Pro": iOS gives apps only "iPhone" as the device name, so the model is what tells two apart.
     public var model: String?
+    /// What this build understands beyond protocol v2 (`SyncFeature`); nil from builds before it.
+    public var features: [String]?
 
     public init(deviceID: String, deviceName: String, publicKey: Data, protocolVersion: Int = SyncProtocol.version,
-                platform: String? = nil, model: String? = nil) {
+                platform: String? = nil, model: String? = nil, features: [String]? = nil) {
         self.deviceID = deviceID
         self.deviceName = deviceName
         self.publicKey = publicKey
         self.protocolVersion = protocolVersion
         self.platform = platform
         self.model = model
+        self.features = features
     }
 
     public var device: SyncDevice {
@@ -147,9 +150,11 @@ public struct SyncWelcome: Codable, Equatable {
     public var hostID: String?
     public var platform: String?
     public var model: String?
+    /// What the host understands beyond protocol v2 (`SyncFeature`): the iPhone sends only those extra messages.
+    public var features: [String]?
 
     public init(hostName: String, go2rtcPort: Int, username: String, password: String, addresses: [String],
-                hostID: String? = nil, platform: String? = nil, model: String? = nil) {
+                hostID: String? = nil, platform: String? = nil, model: String? = nil, features: [String]? = nil) {
         self.hostName = hostName
         self.go2rtcPort = go2rtcPort
         self.username = username
@@ -158,6 +163,7 @@ public struct SyncWelcome: Codable, Equatable {
         self.hostID = hostID
         self.platform = platform
         self.model = model
+        self.features = features
     }
 }
 
@@ -293,11 +299,14 @@ public enum SyncMessage: Codable, Equatable {
     case welcome(SyncWelcome)
     case state(SyncState)
     case command(SyncCommand)
+    /// Either way: an offer or answer of the direct link (`SyncP2PSignal`). Only to a side that lists
+    /// `SyncFeature.p2p`: an older build fails to decode it and closes the link.
+    case p2p(SyncP2PSignal)
 
     /// Messages that only ever travel sealed.
     public var needsSealing: Bool {
         switch self {
-        case .welcome, .state, .command: return true
+        case .welcome, .state, .command, .p2p: return true
         default: return false
         }
     }
