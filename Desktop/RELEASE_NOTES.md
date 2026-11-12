@@ -1,6 +1,12 @@
 **Waiting Paws for Windows** — the training console of the Mac app as a Windows desktop app.
 
-**New in 1.7.21**
+**New in 1.7.24**
+
+* Choosing the second camera as the main one (Choose Camera…) swaps the two cameras: the old main camera becomes the
+  second one instead of disappearing, and the chosen one stays on screen. Before, picking the second camera to bring
+  it back after it stalled dropped the other camera.
+
+**In 1.7.21**
 
 * Installed with the installer, the app updates itself from GitHub releases, like the Mac app: a new version downloads
   in the background and installs when you quit. «Обновление» (Update) in the title bar shows what is new and can
