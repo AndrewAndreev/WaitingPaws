@@ -327,6 +327,81 @@ final class SyncTests: XCTestCase {
         XCTAssertNil(old.showsSecondCamera)
     }
 
+    /// The switch as Macs and iPhones before the camera's name have it: the place only.
+    private enum CommandBeforeTheName: Codable, Equatable {
+        case showCamera(second: Bool)
+    }
+
+    /// The camera's name rides along with the place: a Mac from before skips it, an iPhone from before sends none.
+    func testCameraSwitchNamesTheCameraAndOldBuildsStillUnderstandIt() throws {
+        let named = SyncCommand.showCamera(second: true, stream: "room")
+        XCTAssertEqual(try SyncMessage.decode(SyncMessage.command(named).encoded()), .command(named))
+        // An old Mac decodes the place and goes on (an unknown command would close the link).
+        let toOldMac = try SyncProtocol.encoder().encode(named)
+        XCTAssertEqual(try SyncProtocol.decoder().decode(CommandBeforeTheName.self, from: toOldMac), .showCamera(second: true))
+        // An old iPhone's switch: no name.
+        let fromOldPhone = try SyncProtocol.encoder().encode(CommandBeforeTheName.showCamera(second: false))
+        XCTAssertEqual(try SyncProtocol.decoder().decode(SyncCommand.self, from: fromOldPhone), .showCamera(second: false, stream: nil))
+        // Without a name nothing new goes out: what old Macs got before.
+        XCTAssertEqual(try SyncProtocol.encoder().encode(SyncCommand.showCamera(second: true)),
+                       try SyncProtocol.encoder().encode(CommandBeforeTheName.showCamera(second: true)))
+    }
+
+    /// The host shows the camera named wherever it is now, nothing for one that's gone, and the place when unnamed.
+    func testHostShowsTheCameraNamed() {
+        func shown(_ second: Bool, _ stream: String?, first: String = "c302", secondStream: String? = "c200") -> Bool? {
+            SyncCommand.shownSecondCamera(second: second, stream: stream, first: first, secondStream: secondStream)
+        }
+        XCTAssertEqual(shown(true, "c200"), true)
+        XCTAssertEqual(shown(false, "c302"), false)
+        // Tapped as the second camera, but the Mac made it the first meanwhile.
+        XCTAssertEqual(shown(true, "c302"), false)
+        // Removed on the Mac meanwhile: not the other one in its place.
+        XCTAssertNil(shown(true, "c200", secondStream: nil))
+        XCTAssertNil(shown(false, "kitchen"))
+        // An iPhone from before the name: the place.
+        XCTAssertEqual(shown(true, nil), true)
+        XCTAssertEqual(shown(false, nil, secondStream: nil), false)
+    }
+
+    private func cameras(_ first: String, _ second: String?, showsSecond: Bool) -> SyncState {
+        SyncState(session: nil, recordingSince: nil, cameraReady: true, cameraTitle: first, streamName: first, lastRecord: nil,
+                  secondStreamName: second, showsSecondCamera: showsSecond)
+    }
+
+    /// The race: the Mac swaps its cameras (C302 chosen as the main one) while the iPhone, before hearing of it, taps
+    /// C302 where it still saw it — second. Both end up on C302; by the place alone the Mac would show C200.
+    func testSwitchDuringASwapOnTheMacEndsOnTheCameraTapped() {
+        let before = cameras("c200", "c302", showsSecond: false)
+        let swapped = cameras("c302", "c200", showsSecond: false)
+        // The iPhone shows its tap at once and names the camera it saw there.
+        var phone = true
+        let tapped = before.secondStreamName
+        // Whichever comes first, the Mac's swap reaches the iPhone…
+        if let adopted = swapped.shownSecondCamera(after: before, local: phone, firstOfLink: false) { phone = adopted }
+        // …and the tap reaches the Mac, which has nothing to change.
+        let mac = SyncCommand.shownSecondCamera(second: true, stream: tapped, first: swapped.streamName,
+                                                secondStream: swapped.secondStreamName)
+        XCTAssertEqual(mac, false)
+        let phoneStream = phone ? swapped.secondStreamName : swapped.streamName
+        XCTAssertEqual(phoneStream, "c302")
+        XCTAssertEqual(mac == true ? swapped.secondStreamName : swapped.streamName, "c302")
+        // An old iPhone's tap goes by the place: the camera there now.
+        XCTAssertEqual(SyncCommand.shownSecondCamera(second: true, stream: nil, first: swapped.streamName,
+                                                     secondStream: swapped.secondStreamName), true)
+    }
+
+    /// A tap here still shows at once: a state the Mac sent before it got the tap (same cameras) doesn't undo it, and
+    /// the Mac's own switch, a new link and changed cameras do win.
+    func testOwnSwitchStaysUntilTheMacDecidesOtherwise() {
+        let state = cameras("c200", "c302", showsSecond: false)
+        XCTAssertNil(state.shownSecondCamera(after: state, local: true, firstOfLink: false))
+        XCTAssertEqual(state.shownSecondCamera(after: cameras("c200", "c302", showsSecond: true), local: true, firstOfLink: false), false)
+        XCTAssertEqual(state.shownSecondCamera(after: state, local: true, firstOfLink: true), false)
+        XCTAssertEqual(cameras("c200", nil, showsSecond: false).shownSecondCamera(after: state, local: true, firstOfLink: false), false)
+        XCTAssertNil(state.shownSecondCamera(after: nil, local: false, firstOfLink: false))
+    }
+
     func testHostInfoTXTRoundTrip() {
         let info = SyncHostInfo(name: "MacBook Марка", cameraTitle: "Прихожая", cameraReady: true, sessionRunning: true, currentExit: 6)
         XCTAssertEqual(SyncHostInfo(name: info.name, txt: info.txt), info)

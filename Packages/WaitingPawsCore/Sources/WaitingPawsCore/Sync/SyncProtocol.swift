@@ -248,8 +248,35 @@ public enum SyncCommand: Codable, Equatable {
     case startRecording
     case stopRecording
     /// The switcher on the iPhone: the Mac shows (and records) that camera too. Only to a Mac whose state has
-    /// `showsSecondCamera`.
-    case showCamera(second: Bool)
+    /// `showsSecondCamera`. `stream` names the camera tapped (its stream in the last state the iPhone had): the cameras
+    /// may have been swapped or changed on the Mac while the tap was on its way, and the place alone would then bring
+    /// another one (`shownSecondCamera`). Nil from iPhones before it; Macs before it skip it and go by the place.
+    case showCamera(second: Bool, stream: String? = nil)
+}
+
+extension SyncCommand {
+    /// Where a host with these cameras puts the one `showCamera` asks for: false — its first camera, true — the
+    /// second, nil — nowhere. Named, it is that camera wherever it is now, and none once it is gone (not another one in
+    /// its place); unnamed (an iPhone from before the name), the place tapped.
+    public static func shownSecondCamera(second: Bool, stream: String?, first: String, secondStream: String?) -> Bool? {
+        guard let stream else { return second }
+        if stream == first { return false }
+        if let secondStream, stream == secondStream { return true }
+        return nil
+    }
+}
+
+extension SyncState {
+    /// The camera on screen an iPhone takes from this state over its own (`local`), or nil to keep its own: when it
+    /// changed on the host, on a new link (also after a drop, whatever was switched here meanwhile), and when the host's
+    /// cameras themselves changed — swapped, another one chosen, the second removed — so a place switched to here may
+    /// hold another camera now. Otherwise its own stays: a switch here shows at once, and a state the host sent before
+    /// it got the switch must not undo it.
+    public func shownSecondCamera(after previous: SyncState?, local: Bool, firstOfLink: Bool) -> Bool? {
+        guard let shown = showsSecondCamera, shown != local else { return nil }
+        let camerasChanged = previous.map { $0.streamName != streamName || $0.secondStreamName != secondStreamName } ?? false
+        return firstOfLink || shown != previous?.showsSecondCamera || camerasChanged ? shown : nil
+    }
 }
 
 public enum SyncMessage: Codable, Equatable {

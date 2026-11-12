@@ -1789,7 +1789,9 @@ extension AppModel {
         // The linked Mac shows — and records — the same camera. A Mac from before that would drop the link on the
         // command: its state has no camera in it.
         if syncClient.isConnected, syncClient.state?.showsSecondCamera != nil {
-            syncClient.send(.showCamera(second: second))
+            // By its name too: a Mac that knows it shows this camera even if the two changed places there meanwhile.
+            let stream = second ? activeSecondStreamName : activeStreamName
+            syncClient.send(.showCamera(second: second, stream: stream.isEmpty ? nil : stream))
             print("[sync] \(second ? "second" : "first") camera on screen, on the \(linkedHostKind) too")
         }
         #endif
@@ -2010,8 +2012,13 @@ extension AppModel {
             if !isRecordingLocally { startRecording() }
         case .stopRecording:
             stopRecording(deleteFile: false)
-        case .showCamera(let second):
-            showCamera(second: second)
+        case .showCamera(let second, let stream):
+            if let shown = SyncCommand.shownSecondCamera(second: second, stream: stream, first: settings.streamName,
+                                                         secondStream: settings.hasSecondCamera ? settings.secondStreamName : nil) {
+                showCamera(second: shown)
+            } else {
+                print("[sync] the camera the iPhone chose (\(stream ?? "?")) is no longer here")
+            }
         }
     }
     #endif
@@ -2040,9 +2047,10 @@ extension AppModel {
         let kind = linkedHostKind
         let firstOfLink = syncClient.links != lastSyncLink
         lastSyncLink = syncClient.links
-        // The camera on the Mac's screen (the one it records) is the one here: when it changes there, or on linking —
-        // also back after a drop, whatever was switched here meanwhile.
-        if let shown = state.showsSecondCamera, shown != showsSecondCamera, firstOfLink || shown != previous?.showsSecondCamera {
+        // The camera on the Mac's screen (the one it records) is the one here: when it changes there, on linking — also
+        // back after a drop, whatever was switched here meanwhile — and when the Mac's cameras changed
+        // (`SyncState.shownSecondCamera`).
+        if let shown = state.shownSecondCamera(after: previous, local: showsSecondCamera, firstOfLink: firstOfLink) {
             panTilt.stop()
             showsSecondCamera = shown
             print("[sync] \(shown ? "second" : "first") camera on screen, as on the \(kind)")

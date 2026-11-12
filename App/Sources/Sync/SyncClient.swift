@@ -468,7 +468,9 @@ final class SyncClient {
             case .session(let command, let time): command.apply(to: mac.session, at: time)
             case .startRecording: demoMac?.recordingSince = mac.recordingSince ?? Date()
             case .stopRecording: demoMac?.recordingSince = nil
-            case .showCamera(let second): demoMac?.showsSecondCamera = second
+            case .showCamera(let second, let stream):
+                demoMac?.showsSecondCamera = SyncCommand.shownSecondCamera(second: second, stream: stream, first: "",
+                                                                           secondStream: "room") ?? mac.showsSecondCamera
             default: break
             }
             demoMacPublish()
