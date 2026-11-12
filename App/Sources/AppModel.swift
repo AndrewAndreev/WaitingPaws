@@ -218,6 +218,25 @@ final class AppModel {
                 }
             }
         }
+        // `--demo-camera-steps 10:main:camC,20:main:camB,30:second:camA,40:remove`: «Выбрать камеру…», «Вторая
+        // камера…» and «Убрать вторую камеру» that many seconds after launch, through the pickers' own code — cameras
+        // changed in the middle of a training or a recording. `restream:camA=rtsp://…` registers a stream again under
+        // its name, as a quality change does. Not with `--ui-preview`: its picker never writes settings.
+        if let index = CommandLine.arguments.firstIndex(of: "--demo-camera-steps"), index + 1 < CommandLine.arguments.count {
+            let steps = CommandLine.arguments[index + 1].split(separator: ",").compactMap { step -> (at: Double, action: String, stream: String)? in
+                let parts = step.split(separator: ":", maxSplits: 2).map(String.init)
+                guard parts.count >= 2, let at = Double(parts[0]) else { return nil }
+                return (at, parts[1], parts.count > 2 ? parts[2] : "")
+            }
+            Task { [weak self] in
+                let start = Date()
+                for step in steps {
+                    try? await Task.sleep(for: .seconds(max(0, step.at - Date().timeIntervalSince(start))))
+                    guard let self else { return }
+                    await self.demoCameraStep(step.action, stream: step.stream)
+                }
+            }
+        }
         #if os(iOS)
         // `--demo-rotate`: the screen turns to landscape and back, 3 s apart, like a phone turned in the hand (the
         // player must not load again: «[player] … load» in the log).
@@ -916,6 +935,28 @@ final class AppModel {
         print("[rec] \(stream) on screen: part \(number) starts with its next keyframe")
     }
 
+    /// `stream` was registered again under its name (another quality, another address): go2rtc made a new stream, and
+    /// the old one, with its own connection to the camera, lives as long as the recorder reads it. The recording would
+    /// go on from it — in the old quality, and a camera that allows one connection would keep the new stream, and the
+    /// picture on screen, out until the recording ends. So the part ends here and the next one reads the new stream: a
+    /// camera reconnect's pause, joined like the parts of any other break.
+    func recordedStreamReplaced(_ stream: String) {
+        guard isRecordingLocally else { return }
+        if let incomingPart, incomingPart.stream == stream {
+            // Still waiting for its first keyframe: it starts again from the new stream.
+            dropIncomingPart()
+            followShownCameraInRecording()
+            return
+        }
+        // Waiting for the camera to come back (`recordingResuming`): the next part reads the new stream anyway.
+        guard recordingStream == stream, recorder.isRecording else { return }
+        recorder.stop()
+        noteSegmentEnded()
+        recordingResuming = true
+        print("[rec] \(stream) was registered again: the next part reads the new stream")
+        startNextRecordingPart()
+    }
+
     /// The new camera's first keyframe: its part becomes the recording's current one, the old camera stops.
     private func takeOverRecording(by next: StreamRecorder) {
         guard let incoming = incomingPart, incoming.recorder === next else { return }
@@ -1263,6 +1304,37 @@ final class AppModel {
     }
 
     #if DEBUG
+    /// One `--demo-camera-steps` step: `main` / `second` choose that go2rtc stream as the pickers do (the second one then
+    /// comes on screen, as after «Вторая камера…»), `remove` takes the second camera away.
+    private func demoCameraStep(_ action: String, stream: String) async {
+        let choice = SetupCameraCatalog.Choice.stream(Go2RTCStream(name: stream, sources: []))
+        do {
+            switch action {
+            case "main":
+                try await SetupCameraCatalog().choose(choice, model: self)
+            case "second":
+                try await SetupCameraCatalog().choose(choice, model: self, target: .second)
+                showCamera(second: true)
+            case "remove":
+                removeSecondCamera()
+            case "restream":
+                // `camA=rtsp://…`: what `setXiaomiQuality` does with its new `subtype`, for any source.
+                let pair = stream.split(separator: "=", maxSplits: 1).map(String.init)
+                guard pair.count == 2, let client else { return }
+                try await client.addStream(name: pair[0], source: pair[1])
+                if pair[0] == settings.streamName { videoSize = nil; playerGeneration += 1 }
+                if pair[0] == settings.secondStreamName { secondVideoSize = nil; secondPlayerGeneration += 1 }
+                recordedStreamReplaced(pair[0])
+            default:
+                print("[demo] unknown camera step «\(action)»")
+                return
+            }
+            print("[demo] camera step \(action) \(stream): main \(settings.streamName), second \(settings.secondStreamName), on screen \(shownStreamName)")
+        } catch {
+            print("[demo] camera step \(action) \(stream) failed: \(error.localizedDescription)")
+        }
+    }
+
     /// `--demo-quality` (with `--demo-second-camera`): Mi Home sources for both cameras, the first at SD and the
     /// second at HD, without go2rtc; a quality change stays in memory.
     private static func demoXiaomiSource(second: Bool) -> String? {
@@ -1326,6 +1398,8 @@ final class AppModel {
                 playerGeneration += 1
             }
             print("[camera] \(second ? "second camera " : "")quality \(quality.rawValue): \(updated)")
+            // «Recordings use this quality too»: also a recording going on now, from its next part.
+            recordedStreamReplaced(stream)
         } catch {
             errorMessage = String(localized: "Couldn’t change quality: \(error.localizedDescription)")
         }
