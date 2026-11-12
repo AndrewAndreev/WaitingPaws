@@ -447,6 +447,26 @@ appcast() {
     --link "$REPO_URL" --embed-release-notes "$@" "$dir"
 }
 
+# The release appcast $1 with each version's files in its own release: generate_appcast gives every zip still in the
+# updates folder the new release's prefix, but an older version's zip and deltas went up with that version's release
+# (v<its version>), so its item points there again (otherwise its full download is a 404). The EdDSA signatures cover
+# the files, not their URLs.
+own_release_urls() {
+  python3 -I - "$1" "$REPO_URL/releases/download/" <<'PY'
+import re, sys
+path, base = sys.argv[1:3]
+feed = open(path, encoding="utf-8").read()
+def own_release(match):
+    item = match.group(0)
+    version = re.search(r"<sparkle:shortVersionString>([^<]+)</sparkle:shortVersionString>", item)
+    if not version:
+        sys.exit("an appcast item has no sparkle:shortVersionString")
+    folder = base + "v" + version.group(1) + "/"
+    return re.sub(r'url="' + re.escape(base) + r'[^/"]+/([^/"]+)"', lambda url: 'url="' + folder + url.group(1) + '"', item)
+open(path, "w", encoding="utf-8").write(re.sub(r"<item>.*?</item>", own_release, feed, flags=re.S))
+PY
+}
+
 # The nightly appcast ($1) as the apps get it ($2): the nightlies plus the newest release, so that one still arrives
 # when it is newer than the last nightly. The release comes from the published Latest appcast (or this Mac's).
 nightly_appcast() {
@@ -492,6 +512,7 @@ cmd_direct() {
   # What is new, in the appcast (the toolbar's «Обновление» shows its first lines): Tools/release-notes/<version>.md.
   if [ -f "$notes" ]; then cp "$notes" "$UPDATES/${zip%.zip}.md"; else echo "  note  no $notes: the update has no description"; fi
   appcast "$UPDATES" "$REPO_URL/releases/download/$tag/" --maximum-versions 3
+  own_release_urls "$UPDATES/appcast.xml"
 
   # For the release: the zip, the appcast, and the deltas to this version.
   rm -rf "$github"
@@ -499,6 +520,7 @@ cmd_direct() {
   cp "$UPDATES/$zip" "$UPDATES/appcast.xml" "$github/"
   find "$UPDATES" -maxdepth 1 -name "*$build-*.delta" -exec cp {} "$github/" \;
   grep -q "<sparkle:version>$build</sparkle:version>" "$github/appcast.xml" || die "the appcast has no build $build"
+  grep -q "url=\"$REPO_URL/releases/download/$tag/$zip\"" "$github/appcast.xml" || die "the appcast has no $tag/$zip"
   {
     echo "github    $version ($build) $(git rev-parse --short=7 "$tag^{commit}"), Developer ID, notarized ($NOTARY_ID)"
     echo "          sha256 $(shasum -a 256 "$github/$zip" | cut -d' ' -f1)  $zip"
