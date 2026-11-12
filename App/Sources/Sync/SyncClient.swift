@@ -63,6 +63,14 @@ final class SyncClient {
 
     /// Called with every state from the host, and with nil when the link is gone (not while `reconnecting`).
     @ObservationIgnored var onState: ((SyncState?) -> Void)?
+    /// Joined a host (also again after a drop) that understands the direct link (`SyncFeature.p2p`): its id.
+    @ObservationIgnored var onP2PHost: ((String) -> Void)?
+    /// A direct link's signal from the host (its id).
+    @ObservationIgnored var onP2PSignal: ((SyncP2PSignal, String) -> Void)?
+    /// The user stopped syncing with this host, or forgot it (its id): its direct links go too.
+    @ObservationIgnored var onStopped: ((String) -> Void)?
+    /// What the host joined understands beyond protocol v2 (its welcome's `features`).
+    @ObservationIgnored private var hostFeatures: [String] = []
     /// This iPhone's name for the hosts (Settings, or the model).
     @ObservationIgnored var nameProvider: () -> String = { SyncIdentity.systemName }
 
@@ -252,7 +260,8 @@ final class SyncClient {
             case .ready:
                 channel.send(.hello(SyncHello(deviceID: SyncIdentity.deviceID, deviceName: self.nameProvider(),
                                               publicKey: self.privateKey.publicKey.rawRepresentation,
-                                              platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model)))
+                                              platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model,
+                                              features: [SyncFeature.p2p])))
             case .failed(let error):
                 self.lost(String(localized: "No connection to the \(kind): \(error.localizedDescription)"))
             case .cancelled:
@@ -270,6 +279,7 @@ final class SyncClient {
 
     /// "Отключиться": stop mirroring and don't reconnect on our own.
     func disconnect() {
+        if let id = host?.id ?? reconnecting?.id { onStopped?(id) }
         autoReconnectID = nil
         legacyAutoReconnectName = nil
         channel?.cancel()
@@ -280,6 +290,7 @@ final class SyncClient {
     /// «Забыть»: drop the pairing secret, so joining this host again needs «Разрешить» there.
     func forget(_ hostID: String) {
         if host?.id == hostID || reconnecting?.id == hostID { disconnect() }
+        onStopped?(hostID)
         KeychainStore.set("", for: Self.secretKey(hostID))
         if let name = pairedHosts.first(where: { $0.id == hostID })?.name { KeychainStore.set("", for: Self.legacySecretKey(name)) }
         pairedHosts.removeAll { $0.id == hostID }
@@ -293,6 +304,14 @@ final class SyncClient {
         if demoMac != nil { return demoMacReceive(command) }
         #endif
         channel?.send(.command(command))
+    }
+
+    /// A direct link's signal to the host `hostID`, if it is the one joined now and understands it.
+    func sendP2P(_ signal: SyncP2PSignal, to hostID: String) -> Bool {
+        guard case .connected(let device) = status, device.id == hostID, hostFeatures.contains(SyncFeature.p2p),
+              let channel else { return false }
+        channel.send(.p2p(signal))
+        return true
     }
 
     private func handle(_ message: SyncMessage, from host: DiscoveredHost, channel: SyncChannel) {
@@ -370,11 +389,16 @@ final class SyncClient {
             reconnecting = nil
             reconnectTimeout?.cancel()
             status = .connected(device)
+            hostFeatures = welcome.features ?? []
             print("[sync] joined \(device.name) (\(device.modelTitle)), go2rtc at \(address):\(welcome.go2rtcPort)")
+            if hostFeatures.contains(SyncFeature.p2p) { onP2PHost?(id) }
         case .state(let state):
             if let sentAt = state.sentAt { clock.sample(hostTime: sentAt, receivedAt: Date()) }
             self.state = state
             onState?(state)
+        case .p2p(let signal):
+            guard case .connected(let device) = status else { return }
+            onP2PSignal?(signal, device.id)
         case .hello, .proof, .sealed, .command:
             break
         }

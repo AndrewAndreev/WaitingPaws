@@ -134,6 +134,7 @@ struct SettingsView: View {
 
                 #if os(iOS)
                 macSection
+                P2PSettingsSection()
                 #endif
 
                 #if os(macOS)

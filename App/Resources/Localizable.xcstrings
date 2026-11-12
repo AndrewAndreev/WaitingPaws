@@ -467,6 +467,16 @@
         }
       }
     },
+    "%lld ms" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld мс"
+          }
+        }
+      }
+    },
     "%lld of %@" : {
       "localizations" : {
         "ru" : {
@@ -876,6 +886,16 @@
         }
       }
     },
+    "After %lld s in the background: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После %lld с в фоне: %@"
+          }
+        }
+      }
+    },
     "After Forget, syncing with that computer needs Allow on it again." : {
       "localizations" : {
         "ru" : {
@@ -1046,6 +1066,16 @@
         }
       }
     },
+    "An iPhone checks whether it can reach this Mac directly, without any server: at home and over cellular, as away from home. Only test pings travel. The router is only asked for its address; nothing in it changes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone проверяет, может ли он связаться с этим Mac напрямую, без всякого сервера: дома и через сотовую сеть — как вне дома. Идут только проверочные пинги. У роутера только спрашиваем его адрес, в нём ничего не меняется."
+          }
+        }
+      }
+    },
     "An iPhone on the same network shows this Mac’s camera and runs the training." : {
       "localizations" : {
         "ru" : {
@@ -1176,6 +1206,26 @@
         }
       }
     },
+    "at home" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "дома"
+          }
+        }
+      }
+    },
+    "At home (Wi‑Fi)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дома (Wi‑Fi)"
+          }
+        }
+      }
+    },
     "At launch and every 6 hours the app checks for a new version and shows “Update” in the toolbar. It downloads when you say so." : {
       "localizations" : {
         "ru" : {
@@ -1202,6 +1252,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Авто"
+          }
+        }
+      }
+    },
+    "Away from the home network, the link can’t be set up again: that needs a server (planned). Connect at home and check again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вне домашней сети связь заново не настроить: для этого нужен сервер (он в планах). Подключитесь дома и проверьте ещё раз."
           }
         }
       }
@@ -1726,6 +1786,36 @@
         }
       }
     },
+    "can open a port (%@) and has the public address" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "может открыть порт (%@), и его адрес — публичный"
+          }
+        }
+      }
+    },
+    "can open a port (%@), but the provider has its own NAT on top" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "может открыть порт (%@), но у провайдера сверху свой NAT"
+          }
+        }
+      }
+    },
+    "can’t open a port (no NAT-PMP or UPnP answer)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "открыть порт не может (нет ответа NAT-PMP и UPnP)"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "ru" : {
@@ -1782,6 +1872,26 @@
         }
       }
     },
+    "Carrier NAT" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NAT оператора"
+          }
+        }
+      }
+    },
+    "Cellular data is off for Waiting Paws" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сотовые данные выключены для Waiting Paws"
+          }
+        }
+      }
+    },
     "Change exits and breaks right during the training · ⌘E" : {
       "localizations" : {
         "ru" : {
@@ -1818,6 +1928,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "изменён"
+          }
+        }
+      }
+    },
+    "changes the port for each address — a direct link is unlikely" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "меняет порт для каждого адреса — прямая связь вряд ли получится"
           }
         }
       }
@@ -1862,6 +1982,16 @@
         }
       }
     },
+    "Check Again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить ещё раз"
+          }
+        }
+      }
+    },
     "Check Connection" : {
       "localizations" : {
         "ru" : {
@@ -1888,6 +2018,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверить сейчас"
+          }
+        }
+      }
+    },
+    "Check Router" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить роутер"
           }
         }
       }
@@ -2544,6 +2684,16 @@
         }
       }
     },
+    "couldn’t tell (one server answered)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не определить (ответил один сервер)"
+          }
+        }
+      }
+    },
     "CPU %lld %%" : {
       "shouldTranslate" : false
     },
@@ -2979,6 +3129,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Диагностика"
+          }
+        }
+      }
+    },
+    "Didn’t work" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не получилось"
+          }
+        }
+      }
+    },
+    "Direct Link (Test)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прямая связь (тест)"
+          }
+        }
+      }
+    },
+    "Direct link (test): %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прямая связь (тест): %@"
+          }
+        }
+      }
+    },
+    "Direct link works outside home too" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прямая связь работает и вне дома"
+          }
+        }
+      }
+    },
+    "direct: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "напрямую: %@"
           }
         }
       }
@@ -4056,6 +4256,26 @@
         }
       }
     },
+    "home" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "дома"
+          }
+        }
+      }
+    },
+    "Home NAT" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NAT дома"
+          }
+        }
+      }
+    },
     "http://192.168.1.10:1984" : {
       "shouldTranslate" : false
     },
@@ -4241,6 +4461,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Оставить расписание на пульте и поправить его на таймлайне · Esc"
+          }
+        }
+      }
+    },
+    "keeps the port — good for a direct link" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сохраняет порт — подходит для прямой связи"
+          }
+        }
+      }
+    },
+    "kept" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "уцелела"
           }
         }
       }
@@ -4471,6 +4711,26 @@
         }
       }
     },
+    "lost" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "оборвалась"
+          }
+        }
+      }
+    },
+    "Lost" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь потеряна"
+          }
+        }
+      }
+    },
     "main thread %lld%%" : {
       "localizations" : {
         "ru" : {
@@ -4574,6 +4834,16 @@
         }
       }
     },
+    "min %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "мин. %@"
+          }
+        }
+      }
+    },
     "Minutes" : {
       "localizations" : {
         "ru" : {
@@ -4670,6 +4940,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рядом"
+          }
+        }
+      }
+    },
+    "Needs a server to come back" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без сервера не восстановить"
           }
         }
       }
@@ -4787,6 +5067,16 @@
         }
       }
     },
+    "No answer for %lld s" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет ответа %lld с"
+          }
+        }
+      }
+    },
     "no camera" : {
       "localizations" : {
         "ru" : {
@@ -4867,6 +5157,16 @@
         }
       }
     },
+    "No cellular data" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет сотовых данных"
+          }
+        }
+      }
+    },
     "No color" : {
       "localizations" : {
         "ru" : {
@@ -4927,6 +5227,26 @@
         }
       }
     },
+    "No direct link at home" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прямой связи дома нет"
+          }
+        }
+      }
+    },
+    "No direct link outside home" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прямой связи вне дома нет"
+          }
+        }
+      }
+    },
     "No exits found in the copied text (“Exit 1 - 30 seconds”)." : {
       "localizations" : {
         "ru" : {
@@ -4967,6 +5287,16 @@
         }
       }
     },
+    "No iPhone has checked a direct link yet." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ни один iPhone ещё не проверял прямую связь."
+          }
+        }
+      }
+    },
     "No iPhone has connected yet." : {
       "localizations" : {
         "ru" : {
@@ -4983,6 +5313,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В этой сети нет Mac с открытым Waiting Paws"
+          }
+        }
+      }
+    },
+    "no NAT, a public address" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "без NAT, свой публичный адрес"
           }
         }
       }
@@ -5053,6 +5393,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "без плана"
+          }
+        }
+      }
+    },
+    "no public address from STUN" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "STUN не дал публичного адреса"
           }
         }
       }
@@ -5215,6 +5565,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обычная"
+          }
+        }
+      }
+    },
+    "Not checked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не проверена"
+          }
+        }
+      }
+    },
+    "Not in this build" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет в этой сборке"
           }
         }
       }
@@ -5625,6 +5995,32 @@
         }
       }
     },
+    "Outside (cellular)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вне дома (сотовая сеть)"
+          }
+        }
+      }
+    },
+    "outside|away from home" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "outside"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вне дома"
+          }
+        }
+      }
+    },
     "Outside|step" : {
       "localizations" : {
         "en" : {
@@ -5637,6 +6033,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вышли"
+          }
+        }
+      }
+    },
+    "Over cellular the Mac couldn’t be reached directly: a server will be needed. Details are in Settings." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через сотовую сеть до Mac напрямую не достучаться: понадобится сервер. Подробности — в настройках."
+          }
+        }
+      }
+    },
+    "Over cellular, without a server: %@, %@. It will keep working once you leave, while the app is open." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через сотовую сеть, без сервера: %@, %@. Связь сохранится, когда вы выйдете из дома, пока приложение открыто."
           }
         }
       }
@@ -6160,6 +6576,26 @@
     "REC" : {
       "shouldTranslate" : false
     },
+    "rechecked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "перепроверена"
+          }
+        }
+      }
+    },
+    "rechecked over the link itself" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "перепроверена по самой связи"
+          }
+        }
+      }
+    },
     "Reconnect" : {
       "localizations" : {
         "ru" : {
@@ -6656,6 +7092,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Комната"
+          }
+        }
+      }
+    },
+    "Router" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Роутер"
           }
         }
       }
@@ -7697,6 +8143,16 @@
         }
       }
     },
+    "STUN servers didn’t answer" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "STUN-серверы не ответили"
+          }
+        }
+      }
+    },
     "Switch Back to Built-in" : {
       "localizations" : {
         "ru" : {
@@ -7793,6 +8249,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Синхронизируем с %@"
+          }
+        }
+      }
+    },
+    "Syncing works as usual. Details are in Settings." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синхронизация работает как обычно. Подробности — в настройках."
           }
         }
       }
@@ -8086,6 +8552,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Список появится, когда go2rtc запустится."
+          }
+        }
+      }
+    },
+    "the NATs let no packet through" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NAT не пропустили ни одного пакета"
           }
         }
       }
@@ -8606,6 +9082,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Чтобы снова подключиться, iPhone попросит разрешения на этом Mac."
+          }
+        }
+      }
+    },
+    "To make sure, turn off Wi‑Fi for a minute: the cellular link should keep answering. It lasts while the app is open." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для верности выключите Wi‑Fi на минуту: связь через сотовую сеть должна продолжать отвечать. Она держится, пока приложение открыто."
           }
         }
       }
@@ -9355,6 +9841,16 @@
         }
       }
     },
+    "Waiting Paws checks whether this iPhone can reach the Mac directly, without any server: at home over Wi‑Fi, and over cellular — the way it goes away from home. Only test pings travel; syncing works as before either way." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting Paws проверяет, может ли этот iPhone связаться с Mac напрямую, без всякого сервера: дома по Wi‑Fi и через сотовую сеть — так, как связь пойдёт вне дома. Идут только проверочные пинги, синхронизация в любом случае работает как раньше."
+          }
+        }
+      }
+    },
     "Waiting Paws collects nothing and sends nothing to the developer: settings, logs and videos stay on your devices." : {
       "localizations" : {
         "ru" : {
@@ -9531,6 +10027,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без связи с «%@» её здесь не видно."
+          }
+        }
+      }
+    },
+    "Works directly" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работает напрямую"
           }
         }
       }

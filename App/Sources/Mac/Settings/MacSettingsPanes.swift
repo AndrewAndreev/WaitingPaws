@@ -785,6 +785,7 @@ private struct SettingsIPhonePane: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+        MacP2PSection()
         .alert(forgetDevice.map { String(localized: "Forget “\($0.name)”?") } ?? "",
                isPresented: Binding(get: { forgetDevice != nil }, set: { if !$0 { forgetDevice = nil } }),
                presenting: forgetDevice) { paired in
@@ -807,7 +808,49 @@ private struct SettingsIPhonePane: View {
         } else {
             parts.append(String(localized: "Connection allowed"))
         }
+        if let direct = P2PText.summary(model.p2p, peer: paired.deviceID) {
+            parts.append(String(localized: "direct: \(direct)"))
+        }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// «Прямая связь (тест)» on the Mac: each iPhone's two links as this Mac answers them, the NATs, and the router (could
+/// it give this Mac a stable address for an iPhone away from home?).
+private struct MacP2PSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let links = model.p2p
+        let devices = model.syncHost.pairedDevices.filter { links.hasAny($0.deviceID) }
+        let homeNAT = devices.lazy.compactMap { links.status($0.deviceID, .lan)?.nat ?? links.status($0.deviceID, .out)?.nat }.first
+        Section {
+            if devices.isEmpty {
+                Text("No iPhone has checked a direct link yet.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(devices) { paired in
+                Text(paired.name).font(.headline)
+                ForEach(P2PLinkKind.allCases, id: \.self) { kind in
+                    P2PLinkRow(kind: kind, status: links.status(paired.deviceID, kind))
+                }
+                P2PNATRow(title: String(localized: "Carrier NAT"), nat: links.status(paired.deviceID, .out)?.peerNat)
+            }
+            P2PNATRow(title: String(localized: "Home NAT"), nat: homeNAT)
+            LabeledContent {
+                Button("Check Router") { links.probeRouter() }
+                    .disabled(links.isProbingRouter)
+            } label: {
+                Text("Router")
+                Text(P2PText.router(links.router, checking: links.isProbingRouter, publicIP: homeNAT?.publicIP))
+            }
+        } header: {
+            Text("Direct Link (Test)")
+        } footer: {
+            Text("An iPhone checks whether it can reach this Mac directly, without any server: at home and over cellular, as away from home. Only test pings travel. The router is only asked for its address; nothing in it changes.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

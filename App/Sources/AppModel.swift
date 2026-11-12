@@ -25,6 +25,8 @@ final class AppModel {
     /// The plan as the trainer sent it, for «Как у тренера» after edits on the timeline.
     var pendingOriginal: TrainingPlan?
     #endif
+    /// The direct iPhone ↔ Mac links next to the sync link (an experiment: `P2PLinks`).
+    let p2p = P2PLinks()
     #if os(macOS)
     /// Lets an iPhone on the same network watch the camera and drive the training running on this Mac.
     let syncHost = SyncHost()
@@ -161,12 +163,20 @@ final class AppModel {
                 self?.finishSession()
             }
         }
+        // `--demo-p2p[=failed|away|checking]` with `--demo-mac-link`: the direct links' results, without any network.
+        if let p2pDemo = args.first(where: { $0.hasPrefix("--demo-p2p") }) {
+            p2p.demo(peer: "demo-mac", variant: p2pDemo.split(separator: "=").dropFirst().first.map(String.init) ?? "")
+        }
         // `--demo-hosts`: several computers with Waiting Paws nearby (the choice on the main screen and in Settings).
         if args.contains("--demo-hosts") { syncClient.demoHosts() }
         // `--demo-host`: one Mac nearby, never joined (the «рядом» card on the first-launch welcome screen).
         if args.contains("--demo-host") { syncClient.demoHosts(single: true) }
         #endif
         #if os(macOS)
+        // `--demo-p2p[=failed]` with `--demo-iphone`: the direct links' results for the demo iPhone.
+        if let p2pDemo = CommandLine.arguments.first(where: { $0.hasPrefix("--demo-p2p") }) {
+            p2p.demo(peer: "demo-iphone", variant: p2pDemo.split(separator: "=").dropFirst().first.map(String.init) ?? "")
+        }
         // `--demo-plan`: a parsed schedule waiting on the «Пульт» (no paste needed); `--demo-review` also opens its sheet.
         // `-demoPlanText <text>` puts that trainer's text there instead of the sample.
         if CommandLine.arguments.contains("--demo-plan") || CommandLine.arguments.contains("--demo-review") {
@@ -1596,7 +1606,8 @@ final class AppModel {
     /// of it still there. When the grace runs out a recording is closed cleanly and goes on when the app is back;
     /// the training keeps time by the clock and catches up on return.
     func didEnterBackground() {
-        let worthKeeping = session != nil || isRecordingLocally || isLinkedToMac || settings.isConfigured
+        p2p.didEnterBackground()
+        let worthKeeping = session != nil || isRecordingLocally || isLinkedToMac || settings.isConfigured || p2p.hasAliveLinks
         guard worthKeeping, backgroundTask == .invalid else { return }
         print("[app] in the background: keeping the camera and the link for a while")
         backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Keep the camera") { [weak self] in
@@ -1640,6 +1651,10 @@ final class AppModel {
     /// Back in the foreground: reopen go2rtc's API if iOS closed it, and resume a recording cut by the suspension.
     func didBecomeActive() async {
         endBackgroundTask()
+        p2p.didBecomeActive(peer: p2p.lastPeer) { [weak self] in
+            guard let self, case .connected(let host) = syncClient.status else { return false }
+            return host.id == p2p.lastPeer
+        }
         if await embedded.recoverIfNeeded() { playerGeneration += 1 }
         syncClient.autoConnectIfPossible()
         guard recordingCutByBackground else { return }
@@ -1955,12 +1970,23 @@ extension AppModel {
             syncHost.refreshAccess()
         }
         syncHost.nameProvider = { [unowned self] in settings.linkName }
+        // The direct links answer the iPhones' offers; their signals ride the sync link.
+        syncHost.onP2PSignal = { [unowned self] signal, peer in p2p.handle(signal, from: peer) }
+        syncHost.onForget = { [unowned self] peer in p2p.closeLinks(peer: peer) }
+        p2p.sendSignal = { [unowned self] peer, signal in syncHost.sendP2P(signal, to: peer) }
         if settings.shareWithIPhone { syncHost.start() }
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }
         syncClient.nameProvider = { [unowned self] in settings.linkName }
         // Not over a training or recording of this iPhone's own; a mirror kept while reconnecting is the host's.
         syncClient.canAutoConnect = { [unowned self] in (session == nil || isMirroringSession) && !isRecordingLocally }
+        // The direct links start once a host that knows them is joined, and stay when the sync link drops (away from
+        // home that is the point); «Отключить синхронизацию» and «Забыть» end them.
+        syncClient.onP2PHost = { [unowned self] host in p2p.startLinks(to: host) }
+        syncClient.onP2PSignal = { [unowned self] signal, host in p2p.handle(signal, from: host) }
+        syncClient.onStopped = { [unowned self] host in p2p.closeLinks(peer: host) }
+        p2p.sendSignal = { [unowned self] peer, signal in syncClient.sendP2P(signal, to: peer) }
+        p2p.onFirstResult = { [unowned self] key, status in showP2PResult(key, status) }
         syncClient.startBrowsing()
         #if DEBUG
         // `--demo-share-plan`: once linked, «paste» the sample schedule here (it should appear on the Mac).
@@ -2126,6 +2152,36 @@ extension AppModel {
 
 #if os(iOS)
 /// What the tooltip under the Mac link pill (or the banner at the top without one) says.
+extension AppModel {
+    /// The direct link's first result, once per link (the bubble under the «Mac» pill): whether it works, and
+    /// for the cellular one whether it will work away from home.
+    func showP2PResult(_ key: P2PLinks.Key, _ status: P2PLinkStatus) {
+        let works: Bool
+        switch status.outcome() {
+        case .direct: works = true
+        case .failed: works = false
+        case .checking, .lost: return
+        }
+        // The home one only when it fails: the one that matters is the outside one.
+        guard key.kind == .out || !works else { return }
+        let rtt = status.rtt.map { String(localized: "\(Int($0.rounded())) ms") } ?? ""
+        switch (key.kind, works) {
+        case (.out, true):
+            linkNotice = LinkNotice(title: String(localized: "Direct link works outside home too"),
+                                    detail: String(localized: "Over cellular, without a server: \(status.pairText ?? ""), \(rtt). It will keep working once you leave, while the app is open."),
+                                    systemImage: "point.3.connected.trianglepath.dotted")
+        case (.out, false):
+            linkNotice = LinkNotice(title: String(localized: "No direct link outside home"),
+                                    detail: String(localized: "Over cellular the Mac couldn’t be reached directly: a server will be needed. Details are in Settings."),
+                                    systemImage: "point.3.connected.trianglepath.dotted", isWarning: true)
+        default:
+            linkNotice = LinkNotice(title: String(localized: "No direct link at home"),
+                                    detail: String(localized: "Syncing works as usual. Details are in Settings."),
+                                    systemImage: "point.3.connected.trianglepath.dotted", isWarning: true)
+        }
+    }
+}
+
 struct LinkNotice: Equatable, Identifiable {
     let id = UUID()
     var title: String

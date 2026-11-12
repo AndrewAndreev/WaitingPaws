@@ -12,10 +12,12 @@ struct LinkPill: View {
         #if os(macOS)
         let devices = model.syncHost.connectedDevices
         if let first = devices.first {
+            let direct = devices.compactMap { P2PText.summary(model.p2p, peer: $0.id) }.first
             Pill(text: devices.count == 1 ? first.name : "\(first.kindTitle) × \(devices.count)",
                  systemImage: first.symbolName, tint: Theme.info)
-                .help(devices.count == 1 ? String(localized: "“\(first.name)” sees the camera and runs this training")
-                                         : String(localized: "Seeing the camera and running the training: \(devices.map(\.name).joined(separator: ", "))"))
+                .help((devices.count == 1 ? String(localized: "“\(first.name)” sees the camera and runs this training")
+                                          : String(localized: "Seeing the camera and running the training: \(devices.map(\.name).joined(separator: ", "))"))
+                      + (direct.map { "\n" + String(localized: "Direct link (test): \($0)") } ?? ""))
         }
         #else
         let client = model.syncClient
@@ -64,6 +66,11 @@ struct LinkPill: View {
                     Text("Training synced with “\(host.name)”")
                     if let hostModel = host.distinctModel { Text(hostModel) }
                     Text("Camera, recording, and log are on the \(host.kindTitle)")
+                }
+                if model.p2p.lastPeer == host.id, let summary = P2PText.summary(model.p2p, peer: host.id) {
+                    Section("Direct Link (Test)") {
+                        Text(summary)
+                    }
                 }
                 let others = client.compatibleHosts.filter { $0.id != host.id }
                 if model.session == nil, !others.isEmpty {

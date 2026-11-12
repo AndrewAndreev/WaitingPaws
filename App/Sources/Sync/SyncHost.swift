@@ -57,6 +57,10 @@ final class SyncHost {
     @ObservationIgnored var onPairingCancelled: ((PairingRequest) -> Void)?
     /// An iPhone was forgotten: the go2rtc password it knew must change (then `refreshAccess()`).
     @ObservationIgnored var onDeviceForgotten: (() -> Void)?
+    /// A direct link's signal from an approved iPhone (its device id).
+    @ObservationIgnored var onP2PSignal: ((SyncP2PSignal, String) -> Void)?
+    /// That iPhone was forgotten (its device id): its direct links go too.
+    @ObservationIgnored var onForget: ((String) -> Void)?
     /// This Mac's name for the iPhones (Settings, or the computer name), read on every tick: a new one is advertised
     /// and sent to the connected iPhones once it settles (`hostName`).
     @ObservationIgnored var nameProvider: () -> String = { SyncIdentity.systemName }
@@ -241,10 +245,19 @@ final class SyncHost {
     }
 
     func forget(_ device: PairedDevice) {
+        onForget?(device.deviceID)
         pairedDevices.removeAll { $0.deviceID == device.deviceID }
         savePairings()
         for (id, client) in clients where client.hello?.deviceID == device.deviceID { drop(id) }
         onDeviceForgotten?()
+    }
+
+    /// A direct link's signal to the iPhone `deviceID` (its approved connection), if it understands it.
+    func sendP2P(_ signal: SyncP2PSignal, to deviceID: String) -> Bool {
+        guard let client = clients.values.first(where: { $0.approved && $0.hello?.deviceID == deviceID }),
+              client.hello?.features?.contains(SyncFeature.p2p) == true else { return false }
+        client.channel.send(.p2p(signal))
+        return true
     }
 
     /// Sends the current go2rtc access again to every connected iPhone (after the password changed).
@@ -340,6 +353,9 @@ final class SyncHost {
             print("[sync] command \(command)")
             commandHandler?(command)
             broadcastIfChanged()
+        case .p2p(let signal):
+            guard client.approved, let hello = client.hello else { return }
+            onP2PSignal?(signal, hello.deviceID)
         case .challenge, .pending, .rejected, .sealed, .welcome, .state:
             break
         }
@@ -446,7 +462,8 @@ final class SyncHost {
         let access = accessProvider?() ?? SyncWelcomeAccess(port: EmbeddedGo2RTC.apiPort, username: "", password: "")
         return SyncWelcome(hostName: hostName, go2rtcPort: access.port, username: access.username,
                            password: access.password, addresses: Self.ipv4Addresses(), hostID: SyncIdentity.deviceID,
-                           platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model)
+                           platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model,
+                           features: [SyncFeature.p2p])
     }
 
     /// LAN IPv4 addresses of this Mac (Wi-Fi / Ethernet), for the iPhone's go2rtc URL.

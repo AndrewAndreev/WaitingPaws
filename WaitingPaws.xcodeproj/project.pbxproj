@@ -29,6 +29,7 @@
 		18BD9FD3B2FAFC05632A2E93 /* AppModel+PanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346A8A39B13E33AAF999D38E /* AppModel+PanTilt.swift */; };
 		18C89902BAA438D690A2F50F /* GlassStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB61697BF2273ACAA76C184E /* GlassStyles.swift */; };
 		18D4B68FFC0F6DF28E606F20 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */; };
+		1B1114750A0385E16DF2AC8C /* P2PViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CD658D1F46B34D06AAB8879 /* P2PViews.swift */; };
 		1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01122BD8A48CF9189911C5CE /* PhotoLibrarySaver.swift */; };
 		1B45915553565FDD60456B02 /* LogMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07E8A420FED84FE8A782BFB /* LogMirror.swift */; };
 		1C25F6FB2BD472D814E57404 /* MacHistoryPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C07E802F9907CDE6B691038 /* MacHistoryPlayer.swift */; };
@@ -70,7 +71,9 @@
 		33BA36B51071FF4F0A42230F /* MacPlanReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */; };
 		33E75F82080284406C2D48A4 /* PrivacyPolicy-en.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CEC358ED723951901B7D99C /* PrivacyPolicy-en.md */; };
 		34D011B69D7D63FABCC1EB71 /* Go2RTC.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4FFFE728A683F1EC5F5F20 /* Go2RTC.xcframework */; };
+		35D5BC6DDD412365A8CA7483 /* P2PViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CD658D1F46B34D06AAB8879 /* P2PViews.swift */; };
 		36E179EFF4B643BC8734A2AD /* DurationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1A8877B9AD4ACCCA9AE763 /* DurationField.swift */; };
+		379FEF78676F1C36374E7D91 /* P2PViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CD658D1F46B34D06AAB8879 /* P2PViews.swift */; };
 		37A35BE245FE8E8A61A6758F /* Acknowledgements.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5EC3D18A3329671AE524D52A /* Acknowledgements.txt */; };
 		38048302C7C286187CB0F576 /* AboutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB09408266FBD3CE9B6B8826 /* AboutViews.swift */; };
 		3827503EDD3396DD1D56CE5D /* MacPlanReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDC5895F54428AAD643933 /* MacPlanReviewSheet.swift */; };
@@ -180,6 +183,7 @@
 		8BCB2874058D432CE589F09F /* MacSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F16378C9DA381A1251DAB1F /* MacSummarySheet.swift */; };
 		8BF60210600B83F9949C8C31 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6589AC3EB97C4EAF7387AC7 /* AppModel.swift */; };
 		8D4153847E32F57005BF7E49 /* SyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC3612DF5625E044251C2ABF /* SyncClient.swift */; };
+		8D9205E397E610FF8BD81B70 /* P2PLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37F626BDF06DC1237EC8F94 /* P2PLinks.swift */; };
 		8FB589A2749D0898E29A808F /* TrainingActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F112C1E49E8107C091532E /* TrainingActivity.swift */; };
 		8FFE05025837B6EB9C8EFC24 /* MacCameraPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49544DC08EFCB32F58FEBD3C /* MacCameraPickerSheet.swift */; };
 		905E3E3F3505BD2CDA40767B /* SessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85DCB661B7AD5031EC737BA /* SessionScreen.swift */; };
@@ -221,6 +225,7 @@
 		AFD7F0527EE4B3C3C0EDF404 /* XiaomiSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917E0135CCFA32C93D806365 /* XiaomiSignInSheet.swift */; };
 		B166198A847F3E9D6C687367 /* LinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E82FB404801D9CB6095FA0E /* LinkViews.swift */; };
 		B19A3D434CB11C172C521185 /* MacShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A10316003D7B9694E2D64 /* MacShare.swift */; };
+		B23E3B2BBF4360DFB3B3A4F9 /* P2PLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37F626BDF06DC1237EC8F94 /* P2PLinks.swift */; };
 		B4375582930106AE2E15D9C5 /* MacSettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F500699389109EAB319D6074 /* MacSettingsPanes.swift */; };
 		B5667475471B3E49CD11609A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF078E66FEB0548DFDA1B148 /* HistoryView.swift */; };
 		B8AF3D7E6F3119FB13242691 /* CameraModesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A9E12D5DF46378F7F1F746E /* CameraModesModel.swift */; };
@@ -259,6 +264,7 @@
 		D44E1C57BE0D09AEAB895A98 /* MacPlanSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA427D094B66E7898F582153 /* MacPlanSupport.swift */; };
 		D47A9084A840646B26305955 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */; };
 		D4C2D61C102957390A2E8914 /* MacSettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F500699389109EAB319D6074 /* MacSettingsPanes.swift */; };
+		D582D16B14D243AC73A9F266 /* P2PLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37F626BDF06DC1237EC8F94 /* P2PLinks.swift */; };
 		D5E78C91DD327F17A3BBE4A6 /* LiveSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C46490ED793F437A72C93B /* LiveSessionModel.swift */; };
 		D9014AC08ADDDD8F7CB84E48 /* AppModel+PanTilt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346A8A39B13E33AAF999D38E /* AppModel+PanTilt.swift */; };
 		D9184D276F723BF00C0DAF9D /* SetupServerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B8926C868E48F0B98130EB /* SetupServerSheet.swift */; };
@@ -370,6 +376,7 @@
 		653F818994AB2BEE3174F824 /* ClipCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipCards.swift; sourceTree = "<group>"; };
 		67C46490ED793F437A72C93B /* LiveSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionModel.swift; sourceTree = "<group>"; };
 		6A8C5F4E831A35FF0297FD46 /* MacExitInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacExitInspector.swift; sourceTree = "<group>"; };
+		6CD658D1F46B34D06AAB8879 /* P2PViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = P2PViews.swift; sourceTree = "<group>"; };
 		6EB15E742A63332D0305C49E /* CameraPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPickerView.swift; sourceTree = "<group>"; };
 		6EDF9E318EC914C3927DFDAE /* MacPairingPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPairingPrompt.swift; sourceTree = "<group>"; };
 		734F99F279AB3B2058745E72 /* MacHistoryDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryDemo.swift; sourceTree = "<group>"; };
@@ -418,6 +425,7 @@
 		E0B0B27C2AA0D56A62AF30F6 /* ConsolePanelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsolePanelLayout.swift; sourceTree = "<group>"; };
 		E2210A338B36B07A666E9792 /* PerformanceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceMonitor.swift; sourceTree = "<group>"; };
 		E284DBC656F72086C4AECDC8 /* MacHistoryTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHistoryTable.swift; sourceTree = "<group>"; };
+		E37F626BDF06DC1237EC8F94 /* P2PLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = P2PLinks.swift; sourceTree = "<group>"; };
 		E711A7D516A77C1120D25901 /* MacPlanTimelineEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanTimelineEditor.swift; sourceTree = "<group>"; };
 		E75A1EF99128B42B35AFA2BC /* SessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTimelineView.swift; sourceTree = "<group>"; };
 		E78C547737A2B8A55511BE9A /* ExitEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExitEditorView.swift; sourceTree = "<group>"; };
@@ -563,6 +571,7 @@
 		4B2F65486E57169FD47ED6F5 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				6CD658D1F46B34D06AAB8879 /* P2PViews.swift */,
 				33FBF8C4AC36235FAB18DEDF /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -738,6 +747,7 @@
 		C06B3CDE995AFBAFC795A4E1 /* Sync */ = {
 			isa = PBXGroup;
 			children = (
+				E37F626BDF06DC1237EC8F94 /* P2PLinks.swift */,
 				98694143DBF7C1033313F1E6 /* SyncChannel.swift */,
 				AC3612DF5625E044251C2ABF /* SyncClient.swift */,
 				CA209D43CA8963E3C71A7B14 /* SyncHost.swift */,
@@ -1068,6 +1078,8 @@
 				C5E579EAF0078CCE60F09112 /* MinimizedPanel.swift in Sources */,
 				12191F3C92C8990AC320BE32 /* NewTrainingPanel.swift in Sources */,
 				32C5BC7D4694B3220441C196 /* OnboardingFlow.swift in Sources */,
+				D582D16B14D243AC73A9F266 /* P2PLinks.swift in Sources */,
+				35D5BC6DDD412365A8CA7483 /* P2PViews.swift in Sources */,
 				0EC2986C7F1ABF5F2A6E6F18 /* PanTiltPad.swift in Sources */,
 				26A1C0AAB8EB7842077F5F44 /* PerformanceMonitor.swift in Sources */,
 				1B24CA21FA5D75C4CE29F903 /* PhotoLibrarySaver.swift in Sources */,
@@ -1161,6 +1173,8 @@
 				97D176622D7758B84743018A /* MinimizedPanel.swift in Sources */,
 				C81784B79F4A0E356A64854E /* NewTrainingPanel.swift in Sources */,
 				CB941919ED574548C05FD827 /* OnboardingFlow.swift in Sources */,
+				B23E3B2BBF4360DFB3B3A4F9 /* P2PLinks.swift in Sources */,
+				1B1114750A0385E16DF2AC8C /* P2PViews.swift in Sources */,
 				AEABB0D57A14163AADA3F63D /* PanTiltPad.swift in Sources */,
 				71DFF5F0D6C473711D49456B /* PerformanceMonitor.swift in Sources */,
 				1FE3FE4EBA9AB3F4FA1A312F /* PhotoLibrarySaver.swift in Sources */,
@@ -1265,6 +1279,8 @@
 				84F904EFE9492E462B8B9EFB /* MinimizedPanel.swift in Sources */,
 				8AEC529897F318743067E9D1 /* NewTrainingPanel.swift in Sources */,
 				580F4712E7221F688A06DB41 /* OnboardingFlow.swift in Sources */,
+				8D9205E397E610FF8BD81B70 /* P2PLinks.swift in Sources */,
+				379FEF78676F1C36374E7D91 /* P2PViews.swift in Sources */,
 				3DB175BC9BAF747705E71F92 /* PanTiltPad.swift in Sources */,
 				D47A9084A840646B26305955 /* PerformanceMonitor.swift in Sources */,
 				25DEE27E7DA565261F9B9A46 /* PhotoLibrarySaver.swift in Sources */,
