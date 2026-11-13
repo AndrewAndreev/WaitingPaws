@@ -262,7 +262,9 @@ final class SyncClient {
         switch route {
         case .lan:
             guard homeNetworkGone(device.id), let direct = directHost(), direct.host.id == device.id else { return }
-            lanBackoffUntil = Date().addingTimeInterval(60)
+            // Left because Wi-Fi went silent while still up (the edge of its range): not straight back to it. Wi-Fi
+            // turned off and on again is used as soon as the Mac shows up on it.
+            if hasWiFi() { lanBackoffUntil = Date().addingTimeInterval(60) }
             switchRoute(to: direct.host, route: .direct, ports: direct.ports, why: "the home network is gone")
         case .direct:
             guard hasWiFi(), Date() >= lanBackoffUntil, let host = hosts.first(where: { $0.id == device.id }) else { return }
