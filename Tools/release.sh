@@ -59,6 +59,7 @@ gomobile_on_disk() {
 }
 
 plist() { /usr/libexec/PlistBuddy -c "Print :$2" "$1" 2>/dev/null || echo "?"; }
+screen_locked() { ioreg -n Root -d1 -a | grep -A1 CGSSessionScreenIsLocked | grep -q '<true/>'; }
 
 cmd_tag() {
   local minor="${1:-}"
@@ -273,6 +274,10 @@ cmd_export() {
     [ "$got" = "$version $build $commit" ] ||
       die "$(basename "$archive") is \"$got\", not \"$version $build $commit\": $RUN build $tag $platform"
   done
+
+  # Xcode's account lives in the data protection keychain, which macOS hides while the screen is locked: the export
+  # then fails with "No Accounts", and after one such run (2026-11-12) Xcode's Apple ID list was empty — signed out.
+  screen_locked && die "the screen is locked: Xcode can't see its account now and may lose it; unlock, then run again"
 
   local exported="" dir file app appex leaf
   for platform in $platforms; do

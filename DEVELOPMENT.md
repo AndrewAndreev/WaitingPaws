@@ -171,6 +171,10 @@ Mac собирают схемой `WaitingPaws-macOS-Direct`: в ней те ж�
    устройств), `get-task-allow` false у приложения и виджета, у Mac — `Contents/embedded.provisionprofile`,
    `com.apple.application-identifier`, `com.apple.developer.team-identifier` и песочница; версия, сборка и коммит —
    тега. Хоть один FAIL — ошибка, такой файл не загружают.
+   Экспорт — только при разблокированном экране: учётка Xcode лежит в защищённой связке ключей, macOS прячет её на
+   время блокировки («No Accounts»), и после такого экспорта 2026-11-12 список Apple ID в Xcode оказался пуст (вход в
+   Xcode — заново). `release.sh export` на заблокированном экране сразу останавливается. Ключ API (роль App
+   Manager) экспорт для App Store не заменяет: «Cloud signing permission error».
 3. Проверка и загрузка — отдельно и руками. В Transporter: перетащить `.ipa` и `.pkg`, у каждого сначала «Verify»,
    затем «Deliver». Или altool: `xcrun altool --validate-app "<файл>" --api-key <KEY_ID> --api-issuer <ISSUER_ID>`,
    затем `xcrun altool --upload-package "<файл>" --api-key <KEY_ID> --api-issuer <ISSUER_ID>` (платформу altool берёт
