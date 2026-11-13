@@ -192,6 +192,10 @@ func NewLink(opts Options, events Events) (*Link, error) {
 	se.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeUDP4, webrtc.NetworkTypeUDP6})
 	se.SetICETimeouts(5*time.Second, time.Duration(opts.FailedTimeout*float64(time.Second)), 2*time.Second)
 	se.SetSTUNGatherTimeout(3 * time.Second)
+	// SCTP retries a lost packet ever later, up to a minute apart by default: a link that comes back after a long
+	// silence (a cellular blip, the iPhone asleep) would sit idle until the next retry. At most 5 s apart instead;
+	// one small packet per retry while the path is gone.
+	se.SetSCTPRTOMax(5 * time.Second)
 	// Hole punching: the peer starts its checks only once it has our description, so keep asking a while longer.
 	se.SetICEMaxBindingRequests(25)
 	se.SetInterfaceFilter(func(name string) bool { return hostInterface(name, opts.Interfaces) })

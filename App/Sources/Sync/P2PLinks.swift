@@ -354,7 +354,8 @@ final class P2PLinks {
     }
 
     /// Back in the foreground: after a few seconds, which links answered since the return. `syncLinked`: the sync
-    /// link to that peer is up, so a dead link can be set up anew; otherwise it waits for one (`needsServer`).
+    /// link to that peer is up over the home network, so a dead link can be set up anew; otherwise it waits for one
+    /// (`needsServer`). A sync link through the direct link doesn't count: it can't carry the offer of its own link.
     func didBecomeActive(peer: String?, syncLinked: @escaping () -> Bool) {
         guard let since = backgroundSince else { return }
         backgroundSince = nil
@@ -374,9 +375,16 @@ final class P2PLinks {
                 let pong = (self.statuses[key]?.lastPong ?? 0) / 1000
                 survived[kind] = pong > back.timeIntervalSince1970
                 print("[p2p] \(kind.rawValue): \(survived[kind] == true ? "survived" : "did not survive") \(Int(away)) s in the background")
-                if survived[kind] == false {
-                    if syncLinked() { self.start(key) } else { self.needsServer.insert(key) }
+                guard survived[kind] == false else { continue }
+                // Not answering yet is not dead: the link keeps checking for FailedTimeout and comes back by itself
+                // once the network does. One the sync link or the picture rides on stays: a new one's offer would
+                // have to travel over it, and away from home there is no other way (2026-11-13: a 5 s cellular blip,
+                // then this replaced the live link and the iPhone lost the Mac for good).
+                if let status = self.statuses[key], status.isAlive, status.carriesStreams {
+                    print("[p2p] \(kind.rawValue): kept, the sync link and the picture go over it")
+                    continue
                 }
+                if syncLinked() { self.start(key) } else { self.needsServer.insert(key) }
             }
             self.lastResume?.survived = survived
         }

@@ -1652,7 +1652,7 @@ final class AppModel {
     func didBecomeActive() async {
         endBackgroundTask()
         p2p.didBecomeActive(peer: p2p.lastPeer) { [weak self] in
-            guard let self, case .connected(let host) = syncClient.status else { return false }
+            guard let self, case .connected(let host) = syncClient.status, syncClient.route == .lan else { return false }
             return host.id == p2p.lastPeer
         }
         if await embedded.recoverIfNeeded() { playerGeneration += 1 }
