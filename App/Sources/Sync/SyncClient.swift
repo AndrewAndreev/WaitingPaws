@@ -356,6 +356,11 @@ final class SyncClient {
                                               features: [SyncFeature.p2p])))
             case .failed(let error):
                 self.lost(String(localized: "No connection to the \(kind): \(error.localizedDescription)"))
+            case .waiting(let error) where route == .direct:
+                // The direct link's local port can't be waited for like a network that may come back (that is what
+                // `.waiting` means): the link went, or the connection broke. Joined again, as after a failure.
+                print("[sync] over the direct link: \(error.localizedDescription)")
+                self.lost(String(localized: "No connection to the \(kind): \(error.localizedDescription)"))
             case .cancelled:
                 if self.isConnected || self.isBusy { self.lost(String(localized: "The \(kind) disconnected")) }
             default:
