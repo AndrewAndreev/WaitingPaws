@@ -92,6 +92,20 @@ enum P2PText {
     }
 
     /// The home router: could it give the Mac a stable address for an iPhone away from home (no server)?
+    /// Mac: its door's address from the internet, or why there is none.
+    static func door(_ status: P2PDoorStatus?) -> String {
+        guard let status else { return String(localized: "Closed|door") }
+        return status.external ?? String(localized: "Address not known yet")
+    }
+
+    /// Mac: what the door does now.
+    static func doorDetail(_ status: P2PDoorStatus?) -> String {
+        if let spraying = status?.spraying {
+            return String(localized: "Keeps the router open for \(spraying) while the iPhone is away.")
+        }
+        return String(localized: "An iPhone away from home with no link up knocks here with a new one.")
+    }
+
     static func router(_ router: P2PRouterResult?, checking: Bool, publicIP: String?) -> String {
         if checking { return String(localized: "Checking…") }
         guard let router else { return String(localized: "Not checked") }
@@ -149,6 +163,10 @@ struct P2PSettingsSection: View {
                 let homeNAT = links.status(peer, .lan)?.peerNat ?? links.status(peer, .out)?.peerNat
                 P2PNATRow(title: String(localized: "Home NAT"), nat: homeNAT)
                 P2PNATRow(title: String(localized: "Carrier NAT"), nat: links.status(peer, .out)?.nat, peer: homeNAT)
+                LabeledContent("Mac’s Door") {
+                    Text(links.knocking == peer ? String(localized: "Knocking…")
+                         : links.doorAddress(peer) ?? String(localized: "Not known yet"))
+                }
                 if let resume = P2PText.resume(links.lastResume) {
                     Text(resume).font(.footnote).foregroundStyle(.secondary)
                 }
@@ -162,7 +180,9 @@ struct P2PSettingsSection: View {
                     if links.status(peer, .out)?.isAlive == true {
                         Text("To try it, turn off Wi‑Fi: the picture should come back over cellular in a few seconds. It lasts while the app is open.")
                     }
-                    if P2PLinkKind.allCases.contains(where: { links.needsServer(peer, $0) }) {
+                    if links.doorAddress(peer) != nil {
+                        Text("With no link up away from home (the app was closed, the link died), a new one is offered through the Mac’s door. It gets in if the home router lets it: the Mac keeps it open for a while after this iPhone was last connected.")
+                    } else if P2PLinkKind.allCases.contains(where: { links.needsServer(peer, $0) }) {
                         Text("Away from the home network, the link can’t be set up again: that needs a server (planned). Connect at home and check again.")
                     }
                 }

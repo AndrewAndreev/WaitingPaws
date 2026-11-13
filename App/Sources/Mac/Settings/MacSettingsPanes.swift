@@ -844,6 +844,12 @@ private struct MacP2PSection: View {
                 Text("Router")
                 Text(P2PText.router(links.router, checking: links.isProbingRouter, publicIP: homeNAT?.publicIP))
             }
+            LabeledContent {
+                Text(P2PText.door(links.doorStatus)).textSelection(.enabled)
+            } label: {
+                Text("Door for iPhones")
+                Text(P2PText.doorDetail(links.doorStatus))
+            }
         } header: {
             Text("Direct Link (Test)")
         } footer: {

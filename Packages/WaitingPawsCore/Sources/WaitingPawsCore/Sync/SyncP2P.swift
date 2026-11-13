@@ -14,14 +14,18 @@ public enum SyncFeature {
 }
 
 /// One signal of a direct link, passed through untouched: the Go side writes and reads `payload`.
-public struct SyncP2PSignal: Codable, Equatable {
+public struct SyncP2PSignal: Codable, Equatable, Sendable {
     /// `P2PLinkKind` raw value.
     public var link: String
     public var payload: String
+    /// Mac: its door's address from the internet (`P2PDoorKnock`), "ip:port": where the iPhone knocks when no link
+    /// to the Mac is up. Left out by builds before the door, and while the Mac doesn't know it yet.
+    public var door: String?
 
-    public init(link: String, payload: String) {
+    public init(link: String, payload: String, door: String? = nil) {
         self.link = link
         self.payload = payload
+        self.door = door
     }
 }
 

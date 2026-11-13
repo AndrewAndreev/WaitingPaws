@@ -1985,6 +1985,12 @@ extension AppModel {
             }
             return services
         }
+        // The door (a fixed UDP port): an iPhone away from home with no link up knocks there with a new link's offer,
+        // sealed with its pairing secret; open while iPhones are let in.
+        p2p.pairingSecret = { [unowned self] peer in syncHost.pairedDevices.first { $0.deviceID == peer }?.token }
+        p2p.pairedPeers = { [unowned self] in syncHost.pairedDevices.map(\.deviceID) }
+        p2p.isPeerLinked = { [unowned self] peer in syncHost.connectedDevices.contains { $0.id == peer } }
+        p2p.doorWanted = { [unowned self] in syncHost.isRunning }
         if settings.shareWithIPhone { syncHost.start() }
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }
@@ -2003,6 +2009,12 @@ extension AppModel {
         syncClient.homeNetworkGone = { [unowned self] host in p2p.homeNetworkLooksGone(to: host) }
         syncClient.hasWiFi = { [unowned self] in p2p.network.lanInterface != nil }
         p2p.onRouteChange = { [unowned self] in syncClient.reconsiderRoute() }
+        // With no link to the Mac away from home (the app relaunched there, or its link died), the iPhone knocks at
+        // the Mac's door with a new link's offer, sealed with the pairing secret.
+        p2p.pairingSecret = { [unowned self] host in syncClient.pairingSecret(forHost: host) }
+        p2p.knockTarget = { [unowned self] in syncClient.rejoinHostID }
+        p2p.seesOnLAN = { [unowned self] host in syncClient.seesOnLAN(host) }
+        p2p.isLinkedOverLAN = { [unowned self] in syncClient.isLinkedOverLAN }
         syncClient.onRouteChanged = { [unowned self] route in
             linkNotice = route == .direct
                 ? LinkNotice(title: String(localized: "No home network: going direct"),

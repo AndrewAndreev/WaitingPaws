@@ -272,6 +272,25 @@ final class SyncClient {
         }
     }
 
+    // MARK: - For the direct link's door (`P2PLinks`)
+
+    /// The Mac this iPhone rejoins on its own (also after a relaunch).
+    var rejoinHostID: String? { autoReconnectID }
+
+    /// The pairing secret kept for the host with this id (the door's knocks are sealed with it).
+    func pairingSecret(forHost id: String) -> String? {
+        pairedHosts.first { $0.id == id }.flatMap { secret(for: $0.device) }
+    }
+
+    /// Bonjour sees the host on this network now.
+    func seesOnLAN(_ id: String) -> Bool { hosts.contains { $0.id == id } }
+
+    /// Joined over the home network now (not through the direct link).
+    var isLinkedOverLAN: Bool {
+        if case .connected = status, route == .lan { return true }
+        return false
+    }
+
     /// Without the direct link the home network is the only way; with it, only while it may work.
     private func lanWorthTrying(_ hostID: String) -> Bool {
         directRoute(hostID) == nil || (hasWiFi() && !homeNetworkGone(hostID) && Date() >= lanBackoffUntil)

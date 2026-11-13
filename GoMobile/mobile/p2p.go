@@ -3,6 +3,7 @@ package mobile
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/AlexxIT/go2rtc/pkg/p2p"
 )
@@ -74,3 +75,45 @@ func P2PProbeRouter() string {
 	data, _ := json.Marshal(p2p.ProbeRouter())
 	return string(data)
 }
+
+// P2PDoorEvents receives a door's events (the app implements it; called on Go's goroutines).
+type P2PDoorEvents interface {
+	// Datagram: a knock's payload (sealed by the peer's app), from ip:port.
+	Datagram(from string, payload []byte)
+	// State: the door's status as JSON (GoMobile/p2p DoorStatus).
+	State(status string)
+}
+
+// P2PDoor is one UDP socket for what reaches a side while no link to it is up (GoMobile/p2p door.go): the iPhone's
+// knock with its offer after a relaunch or a dead link away from home, the Mac's answer back; the Mac's door also
+// keeps the home router open for the carrier's ports of an iPhone that is gone (Spray).
+type P2PDoor struct {
+	door *p2p.Door
+}
+
+// NewP2PDoor opens a door from its options (JSON, GoMobile/p2p DoorOptions).
+func NewP2PDoor(options string, events P2PDoorEvents) (*P2PDoor, error) {
+	var opts p2p.DoorOptions
+	if err := json.Unmarshal([]byte(options), &opts); err != nil {
+		return nil, err
+	}
+	door, err := p2p.OpenDoor(opts, events)
+	if err != nil {
+		return nil, err
+	}
+	return &P2PDoor{door: door}, nil
+}
+
+// Send a payload to ip:port.
+func (d *P2PDoor) Send(address string, payload []byte) error { return d.door.Send(address, payload) }
+
+// Spray a tiny packet to ports from..to of ip every `every` seconds; an empty ip stops.
+func (d *P2PDoor) Spray(ip string, from, to int, every float64) error {
+	return d.door.Spray(ip, from, to, time.Duration(every*float64(time.Second)))
+}
+
+// Status is the door's status now (JSON).
+func (d *P2PDoor) Status() string { return d.door.StatusJSON() }
+
+// Close the door.
+func (d *P2PDoor) Close() { d.door.Close() }

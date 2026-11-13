@@ -14,6 +14,10 @@ import Go2RTC
 ///
 /// The iPhone's `out` link also forwards two local ports to the Mac's services (`directRoute`): when the home network is
 /// gone, `SyncClient` joins the Mac through it and the camera's picture comes the same way.
+///
+/// With no link up at all — the app relaunched away from home, or its link died there — the iPhone knocks at the Mac's
+/// door (`P2PDoorKnock`, `GoMobile/p2p` door.go): its new link's offer goes sealed to the Mac's fixed UDP port and the
+/// answer comes back the same way. The Mac keeps the home router open for the iPhone's carrier ports meanwhile.
 @MainActor
 @Observable
 final class P2PLinks {
@@ -47,6 +51,22 @@ final class P2PLinks {
     /// Mac: the services an iPhone may reach over its links' streams ("sync", "go2rtc") → "address:port".
     @ObservationIgnored var servicesProvider: (() -> [String: String])?
 
+    /// The door: the Mac's on `doorPort` while it lets iPhones in, the iPhone's (on cellular) while it knocks.
+    private(set) var doorStatus: P2PDoorStatus?
+    /// iPhone: the Mac it knocked at last, until a link to it is up.
+    private(set) var knocking: String?
+    /// The pairing secret kept for a peer (Mac: an iPhone's, iPhone: its Mac's): knocks are sealed with it.
+    @ObservationIgnored var pairingSecret: ((_ peer: String) -> String?)?
+    /// Mac: the paired iPhones (whose keys may open a knock); one is joined over sync now; the door is wanted
+    /// (iPhones are let in).
+    @ObservationIgnored var pairedPeers: (() -> [String])?
+    @ObservationIgnored var isPeerLinked: ((String) -> Bool)?
+    @ObservationIgnored var doorWanted: (() -> Bool)?
+    /// iPhone: the Mac it rejoins on its own, whether Bonjour sees that Mac, whether sync is up over the home network.
+    @ObservationIgnored var knockTarget: (() -> String?)?
+    @ObservationIgnored var seesOnLAN: ((String) -> Bool)?
+    @ObservationIgnored var isLinkedOverLAN: (() -> Bool)?
+
     /// iPhone: the local ports (on 127.0.0.1) that the `out` link forwards to the Mac's sync listener and go2rtc.
     struct DirectRoute: Equatable {
         let sync: Int
@@ -69,19 +89,56 @@ final class P2PLinks {
     @ObservationIgnored let network = P2PNetwork()
     @ObservationIgnored private var lastRoute: String?
 
+    @ObservationIgnored private var door: DoorHandle?
+    @ObservationIgnored private var doorGuard = P2PDoorGuard()
+    /// Mac: where an iPhone's knock came from: that link's answer goes back there.
+    @ObservationIgnored private var doorReturn: [String: (address: String, at: Date)] = [:]
+    /// Mac: the carrier's addresses each iPhone's `out` link came from, when each was last linked, what is sprayed.
+    @ObservationIgnored private var carriers: [String: P2PCarrierPorts] = P2PLinks.loadCarriers()
+    @ObservationIgnored private var lastLinked: [String: Date] = [:]
+    @ObservationIgnored private var sprayingFor: String?
+    /// iPhone: each Mac's door from the internet, the links whose signals go through the door, the next knock's time.
+    @ObservationIgnored private var doors: [String: String] = UserDefaults.standard.dictionary(forKey: P2PLinks.doorsKey) as? [String: String] ?? [:]
+    @ObservationIgnored private var viaDoor: Set<Key> = []
+    @ObservationIgnored private var nextKnock = Date.distantPast
+    @ObservationIgnored private var knockFailures = 0
+    @ObservationIgnored private let launchedAt = Date()
+
     static let homeSilence: TimeInterval = 10
+    /// The Mac's door: a fixed UDP port, so the router's mapping of it (its address from the internet) stays. A port
+    /// forward to it on the router would let every knock in.
+    static let doorPort = 41984
+    /// Mac: how long after an iPhone was last linked the router is kept open for it, and how often.
+    static let sprayFor: TimeInterval = 30 * 60
+    static let sprayEvery: Double = 8
+    /// iPhone: a link silent this long counts as dead for knocking (a shorter blip may still pass by itself).
+    static let knockAfterSilence: TimeInterval = 20
+    static let knockTries = 8
+    private static let doorsKey = "p2p.doors"
+    private static let carriersKey = "p2p.carriers"
 
     init() {
         network.onChange = { [weak self] in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.routeMayHaveChanged() } }
         }
         #if os(iOS)
-        // A link going silent sends no status: the way to the Mac is looked at again every 2 s.
+        // A link going silent sends no status: the way to the Mac is looked at again every 2 s, and whether to knock.
         Task { [weak self] in
             while true {
                 try? await Task.sleep(for: .seconds(2))
                 guard let self else { return }
                 self.routeMayHaveChanged()
+                self.considerKnock()
+            }
+        }
+        #else
+        // The door follows the sync host and the LAN interface; the router is kept open for an iPhone that is gone.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            while true {
+                guard let self else { return }
+                self.updateDoor()
+                try? await Task.sleep(for: .seconds(5))
             }
         }
         #endif
@@ -127,6 +184,9 @@ final class P2PLinks {
         return false
         #endif
     }
+
+    /// iPhone: the Mac's door from the internet, as its last signal said.
+    func doorAddress(_ peer: String) -> String? { doors[peer] }
 
     /// The iPhone's sync link and picture go over the `out` link to `peer` now.
     func carriesStreams(to peer: String) -> Bool {
@@ -187,10 +247,12 @@ final class P2PLinks {
         }
     }
 
-    private func start(_ key: Key) {
+    private func start(_ key: Key, viaDoor knock: Bool = false) {
         close(key, keepStatus: false)
         unavailable[key] = nil
         needsServer.remove(key)
+        viaDoor.remove(key)
+        if knock { viaDoor.insert(key) }
         guard isAvailable else { unavailable[key] = String(localized: "Not in this build"); return }
         var options = Options(role: "offer", label: key.kind.rawValue, stun: Self.stunServers)
         switch key.kind {
@@ -215,10 +277,20 @@ final class P2PLinks {
 
     // MARK: - Mac: answering side
 
-    /// An offer or answer from `peer` over the sync link.
-    func handle(_ signal: SyncP2PSignal, from peer: String) {
+    /// An offer or answer from `peer` over the sync link (or through the door: `throughDoor`).
+    func handle(_ signal: SyncP2PSignal, from peer: String, throughDoor: Bool = false) {
         guard let kind = P2PLinkKind(rawValue: signal.link) else { return }
         let key = Key(peer: peer, kind: kind)
+        #if os(iOS)
+        if let address = signal.door, doors[peer] != address {
+            doors[peer] = address
+            UserDefaults.standard.set(doors, forKey: Self.doorsKey)
+            print("[p2p] door: the Mac's is \(address)")
+        }
+        #else
+        // The answer goes back the way the offer came.
+        if !throughDoor { doorReturn[peer] = nil }
+        #endif
         #if os(macOS)
         // An offer over the sync link is a new link, unless it is a restart of the live one whose channel was down
         // (gen > 0): that one sets its new session up next to the current one.
@@ -301,6 +373,18 @@ final class P2PLinks {
         statuses[key] = status
         if status.isAlive { needsServer.remove(key) }
         log(key, status)
+        if key.kind == .out, status.outcome() == .direct(stale: false) {
+            #if os(macOS)
+            noteCarrier(key.peer, status.remote)
+            #else
+            if viaDoor.contains(key), knocking != nil {
+                print("[p2p] out: up again through the Mac's door")
+                knocking = nil
+                knockFailures = 0
+                nextKnock = .distantPast
+            }
+            #endif
+        }
         if status.carriesStreams != wasCarrying {
             print("[p2p] \(key.kind.rawValue): " + (status.carriesStreams
                 ? "carries the sync link and the picture"
@@ -321,7 +405,23 @@ final class P2PLinks {
 
     fileprivate func signal(_ payload: String, from handle: Handle) {
         guard links[handle.key] === handle else { return }
-        let sent = sendSignal?(handle.key.peer, SyncP2PSignal(link: handle.key.kind.rawValue, payload: payload)) ?? false
+        let key = handle.key
+        var signal = SyncP2PSignal(link: key.kind.rawValue, payload: payload)
+        #if os(macOS)
+        // Every signal tells the iPhone where the door is (it may knock there later, with no other way to the Mac).
+        signal.door = doorStatus?.external
+        if let back = doorReturn[key.peer], Date().timeIntervalSince(back.at) < 60 {
+            sendThroughDoor(signal, to: back.address, peer: key.peer, .macToPhone)
+            return
+        }
+        #else
+        if viaDoor.contains(key), let address = doors[key.peer] {
+            print("[p2p] \(key.kind.rawValue): knocking at the Mac's door \(address)")
+            sendThroughDoor(signal, to: address, peer: key.peer, .phoneToMac)
+            return
+        }
+        #endif
+        let sent = sendSignal?(handle.key.peer, signal) ?? false
         if !sent {
             print("[p2p] \(handle.key.kind.rawValue): no link to the peer for the signal")
             needsServer.insert(handle.key)
@@ -347,6 +447,158 @@ final class P2PLinks {
         print("[p2p] \(key.kind.rawValue): \(detail)")
     }
 
+    // MARK: - Door
+
+    /// Seals a signal for the peer and sends it from the door to `address`, three times (datagrams get lost; the
+    /// other side takes it once).
+    private func sendThroughDoor(_ signal: SyncP2PSignal, to address: String, peer: String,
+                                 _ direction: P2PDoorSeal.Direction) {
+        guard let door, let secret = pairingSecret?(peer), !secret.isEmpty,
+              let sealed = try? P2PDoorSeal.seal(P2PDoorKnock(from: SyncIdentity.deviceID, signal: signal),
+                                                 secret: secret, direction) else {
+            print("[p2p] door: nothing to send \(signal.link) to \(address) with")
+            return
+        }
+        door.send(sealed, to: address, after: [0, 0.7, 2])
+    }
+
+    /// A datagram at the door: a knock from a paired iPhone (Mac) or the Mac's answer (iPhone); anything that
+    /// doesn't open with a pairing key, or was seen before, is dropped.
+    fileprivate func doorReceived(_ payload: Data, from address: String) {
+        #if os(macOS)
+        for peer in pairedPeers?() ?? [] {
+            guard let secret = pairingSecret?(peer), !secret.isEmpty,
+                  let knock = try? P2PDoorSeal.open(payload, secret: secret, .phoneToMac) else { continue }
+            guard doorGuard.accept(knock) else { return }
+            print("[p2p] door: \(peer.prefix(8)) knocked from \(address) (\(knock.signal.link))")
+            doorReturn[peer] = (address, Date())
+            if let (ip, port) = Self.split(address) { noteCarrier(peer, P2PCandidate(type: "door", address: ip, port: port)) }
+            handle(knock.signal, from: peer, throughDoor: true)
+            return
+        }
+        #else
+        guard let peer = knockTarget?() ?? lastPeer, let secret = pairingSecret?(peer),
+              let knock = try? P2PDoorSeal.open(payload, secret: secret, .macToPhone), doorGuard.accept(knock) else { return }
+        print("[p2p] door: the Mac answered from \(address)")
+        handle(knock.signal, from: peer, throughDoor: true)
+        #endif
+    }
+
+    fileprivate func doorChanged(_ status: P2PDoorStatus, from handle: DoorHandle) {
+        guard door === handle else { return }
+        doorStatus = status
+    }
+
+    private func closeDoor() {
+        guard let door else { return }
+        door.close()
+        self.door = nil
+        doorStatus = nil
+        sprayingFor = nil
+    }
+
+    private static func split(_ address: String) -> (String, Int)? {
+        guard let colon = address.lastIndex(of: ":"), let port = Int(address[address.index(after: colon)...]) else { return nil }
+        return (String(address[..<colon]), port)
+    }
+
+    #if os(macOS)
+    /// Every few seconds: the door is open while iPhones are let in (again on another LAN interface), and keeps the
+    /// router open for the iPhone gone most recently, for `sprayFor` after it was last linked.
+    private func updateDoor() {
+        guard doorWanted?() == true, isAvailable else { closeDoor(); return }
+        let interface = network.lanInterface ?? ""
+        if door?.interface != interface {
+            closeDoor()
+            door = DoorHandle.open(port: Self.doorPort, interface: interface, stun: Self.stunServers, owner: self)
+        }
+        guard let door else { return }
+        let now = Date()
+        for peer in carriers.keys where isPeerLinked?(peer) == true || directRouteFresh(peer) { lastLinked[peer] = now }
+        let gone = carriers.compactMap { peer, carrier -> (peer: String, carrier: P2PCarrierPorts, at: Date)? in
+            let linked = max(lastLinked[peer] ?? .distantPast, carrier.seen)
+            guard now.timeIntervalSince(linked) < Self.sprayFor, isPeerLinked?(peer) != true, !directRouteFresh(peer),
+                  carrier.band != nil, !carrier.ip.contains(":") else { return nil }
+            return (peer, carrier, linked)
+        }.max { $0.at < $1.at }
+        let band = gone?.carrier.band
+        let wanted = gone.flatMap { target in band.map { "\(target.carrier.ip):\($0.lowerBound)-\($0.upperBound)" } }
+        guard wanted != sprayingFor else { return }
+        sprayingFor = wanted
+        if let gone, let band, let wanted {
+            print("[p2p] door: keeping the router open for \(wanted) while \(gone.peer.prefix(8)) is away")
+            door.spray(ip: gone.carrier.ip, ports: band, every: Self.sprayEvery)
+        } else {
+            print("[p2p] door: the router is not kept open now")
+            door.spray(ip: "", ports: 0...0, every: 0)
+        }
+    }
+
+    /// The `out` link to this iPhone answers now.
+    private func directRouteFresh(_ peer: String) -> Bool {
+        statuses[Key(peer: peer, kind: .out)]?.outcome() == .direct(stale: false)
+    }
+
+    /// The carrier's address an iPhone's link came from (public IPv4 only), kept for spraying.
+    private func noteCarrier(_ peer: String, _ remote: P2PCandidate?) {
+        guard let ip = remote?.address, let port = remote?.port, !ip.contains(":"), !P2PAddress.isPrivate(ip) else { return }
+        var carrier = carriers[peer] ?? P2PCarrierPorts(ip: ip, ports: [], seen: .distantPast)
+        let before = carrier
+        carrier.add(ip: ip, port: port)
+        carriers[peer] = carrier
+        lastLinked[peer] = Date()
+        if carrier.ip != before.ip || carrier.ports != before.ports {
+            if let data = try? JSONEncoder().encode(carriers) { UserDefaults.standard.set(data, forKey: Self.carriersKey) }
+        }
+    }
+    #endif
+
+    private static func loadCarriers() -> [String: P2PCarrierPorts] {
+        guard let data = UserDefaults.standard.data(forKey: carriersKey) else { return [:] }
+        return (try? JSONDecoder().decode([String: P2PCarrierPorts].self, from: data)) ?? [:]
+    }
+
+    #if os(iOS)
+    /// Every 2 s in the foreground: with no link to the Mac it rejoins on its own — not over the home network, not
+    /// seen there, its `out` link gone, failed or silent for `knockAfterSilence` — a new `out` link is offered
+    /// through the Mac's door (known from its last signals), at most every 15 s doubling to 2 min while it fails.
+    private func considerKnock() {
+        guard isAvailable, backgroundSince == nil, Date().timeIntervalSince(launchedAt) > 5 else { return }
+        if isLinkedOverLAN?() == true {
+            if door != nil { print("[p2p] door: home again, closed") }
+            closeDoor()
+            knocking = nil
+            knockFailures = 0
+            nextKnock = .distantPast
+            return
+        }
+        guard let peer = knockTarget?(), seesOnLAN?(peer) != true, let address = doors[peer],
+              pairingSecret?(peer)?.isEmpty == false, let cellular = network.cellularInterface else { return }
+        let key = Key(peer: peer, kind: .out)
+        if links[key] != nil, let status = statuses[key] {
+            switch status.outcome() {
+            case .checking, .direct(stale: false): return
+            case .direct(stale: true): if (status.silence() ?? 0) < Self.knockAfterSilence { return }
+            case .lost, .failed: break
+            }
+        }
+        // A Mac that is off or asleep never answers: after `knockTries` the iPhone waits until the app is opened again.
+        guard Date() >= nextKnock, knockFailures < Self.knockTries else { return }
+        if door?.interface != cellular {
+            closeDoor()
+            door = DoorHandle.open(port: 0, interface: cellular, stun: [], owner: self)
+        }
+        guard door != nil else { return }
+        lastPeer = peer
+        knocking = peer
+        print("[p2p] out: no link to the Mac and no home network: a new one through its door \(address)"
+              + (knockFailures > 0 ? " (try \(knockFailures + 1))" : ""))
+        start(key, viaDoor: true)
+        nextKnock = Date().addingTimeInterval(min(120, 15 * pow(2, Double(knockFailures))))
+        knockFailures += 1
+    }
+    #endif
+
     // MARK: - Background (iPhone)
 
     func didEnterBackground() {
@@ -359,6 +611,8 @@ final class P2PLinks {
     func didBecomeActive(peer: String?, syncLinked: @escaping () -> Bool) {
         guard let since = backgroundSince else { return }
         backgroundSince = nil
+        knockFailures = 0
+        nextKnock = .distantPast
         let back = Date()
         let away = back.timeIntervalSince(since)
         guard away > 2, let peer else { return }
@@ -557,6 +811,110 @@ private final class Bridge: NSObject, MobileP2PEventsProtocol {
     func signal(_ message: String?) {
         guard let message else { return }
         DispatchQueue.main.async { [weak handle] in MainActor.assumeIsolated { handle?.received(signal: message) } }
+    }
+
+    func state(_ status: String?) {
+        guard let status else { return }
+        DispatchQueue.main.async { [weak handle] in MainActor.assumeIsolated { handle?.received(state: status) } }
+    }
+}
+#endif
+
+/// The Go door (`GoMobile/p2p` door.go) with its events bridge.
+@MainActor
+private final class DoorHandle {
+    let interface: String
+    weak var owner: P2PLinks?
+    #if canImport(Go2RTC)
+    private var door: MobileP2PDoor?
+    private var bridge: DoorBridge?
+    #endif
+
+    private init(interface: String, owner: P2PLinks) {
+        self.interface = interface
+        self.owner = owner
+    }
+
+    /// Opens a door on `port` (0: any; taken if free, else any) bound to `interface`; nil when it can't.
+    static func open(port: Int, interface: String, stun: [String], owner: P2PLinks) -> DoorHandle? {
+        #if canImport(Go2RTC)
+        struct Options: Encodable {
+            var port: Int
+            var interface: String
+            var stun: [String]
+            var keepAlive: Double
+        }
+        let handle = DoorHandle(interface: interface, owner: owner)
+        let options = Options(port: port, interface: interface, stun: stun, keepAlive: stun.isEmpty ? -1 : 25)
+        guard let json = try? JSONEncoder().encode(options) else { return nil }
+        let bridge = DoorBridge(handle: handle)
+        var error: NSError?
+        guard let door = MobileNewP2PDoor(String(decoding: json, as: UTF8.self), bridge, &error) else {
+            print("[p2p] door: \(error?.localizedDescription ?? "not opened")")
+            return nil
+        }
+        handle.door = door
+        handle.bridge = bridge
+        if let status = P2PDoorStatus.decode(door.status()) {
+            print("[p2p] door open on \(status.local)" + (interface.isEmpty ? "" : " (\(interface))"))
+            owner.doorChanged(status, from: handle)
+        }
+        return handle
+        #else
+        return nil
+        #endif
+    }
+
+    func send(_ data: Data, to address: String, after delays: [Double]) {
+        #if canImport(Go2RTC)
+        let door = self.door
+        Task.detached {
+            var waited = 0.0
+            for delay in delays {
+                if delay > waited { try? await Task.sleep(for: .seconds(delay - waited)) }
+                waited = delay
+                do { try door?.send(address, payload: data) } catch { print("[p2p] door: \(error.localizedDescription)") }
+            }
+        }
+        #endif
+    }
+
+    func spray(ip: String, ports: ClosedRange<Int>, every: Double) {
+        #if canImport(Go2RTC)
+        do { try door?.spray(ip, from: ports.lowerBound, to: ports.upperBound, every: every) } catch {
+            print("[p2p] door: \(error.localizedDescription)")
+        }
+        #endif
+    }
+
+    func close() {
+        #if canImport(Go2RTC)
+        let door = self.door
+        self.door = nil
+        bridge = nil
+        Task.detached { door?.close() }
+        #endif
+    }
+
+    fileprivate func received(_ payload: Data, from address: String) { owner?.doorReceived(payload, from: address) }
+
+    fileprivate func received(state json: String) {
+        guard let status = P2PDoorStatus.decode(json) else { return }
+        owner?.doorChanged(status, from: self)
+    }
+}
+
+#if canImport(Go2RTC)
+private final class DoorBridge: NSObject, MobileP2PDoorEventsProtocol {
+    private weak var handle: DoorHandle?
+
+    init(handle: DoorHandle) {
+        self.handle = handle
+    }
+
+    func datagram(_ from: String?, payload: Data?) {
+        guard let from, let payload else { return }
+        DispatchQueue.main.async { [weak handle] in MainActor.assumeIsolated { handle?.received(payload, from: from) } }
     }
 
     func state(_ status: String?) {

@@ -866,6 +866,16 @@
         }
       }
     },
+    "Address not known yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адрес пока неизвестен"
+          }
+        }
+      }
+    },
     "after #%lld — %@" : {
       "localizations" : {
         "ru" : {
@@ -1062,6 +1072,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "и на %@"
+          }
+        }
+      }
+    },
+    "An iPhone away from home with no link up knocks here with a new one." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сюда стучится iPhone вне дома, когда связи нет: с предложением новой."
           }
         }
       }
@@ -2192,6 +2212,22 @@
         }
       }
     },
+    "Closed|door" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыта"
+          }
+        }
+      }
+    },
     "Collapse “%@”" : {
       "localizations" : {
         "ru" : {
@@ -3239,6 +3275,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готово · Esc"
+          }
+        }
+      }
+    },
+    "Door for iPhones" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дверь для iPhone"
           }
         }
       }
@@ -4495,12 +4541,32 @@
         }
       }
     },
+    "Keeps the router open for %@ while the iPhone is away." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Держит роутер открытым для %@, пока iPhone вне дома."
+          }
+        }
+      }
+    },
     "kept" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "уцелела"
+          }
+        }
+      }
+    },
+    "Knocking…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стучится…"
           }
         }
       }
@@ -4747,6 +4813,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Связь потеряна"
+          }
+        }
+      }
+    },
+    "Mac’s Door" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дверь Mac"
           }
         }
       }
@@ -5625,6 +5701,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет в этой сборке"
+          }
+        }
+      }
+    },
+    "Not known yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока неизвестна"
           }
         }
       }
@@ -10077,6 +10163,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Весь кадр"
+          }
+        }
+      }
+    },
+    "With no link up away from home (the app was closed, the link died), a new one is offered through the Mac’s door. It gets in if the home router lets it: the Mac keeps it open for a while after this iPhone was last connected." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если вне дома связи нет (приложение закрывали, связь оборвалась), новая предлагается через дверь Mac. Она пройдёт, если пропустит домашний роутер: Mac держит его открытым какое-то время после последнего подключения этого iPhone."
           }
         }
       }
