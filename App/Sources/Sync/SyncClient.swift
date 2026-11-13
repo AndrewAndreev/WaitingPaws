@@ -281,9 +281,11 @@ final class SyncClient {
     private func directHost() -> (host: DiscoveredHost, ports: P2PLinks.DirectRoute)? {
         guard let id = autoReconnectID, let ports = directRoute(id),
               let paired = pairedHosts.first(where: { $0.id == id }),
-              let port = NWEndpoint.Port(rawValue: UInt16(clamping: ports.sync)) else { return nil }
+              let url = URL(string: "ws://127.0.0.1:\(ports.sync)/") else { return nil }
         let info = SyncHostInfo(name: paired.name, id: paired.id, platform: paired.platform, model: paired.model)
-        return (DiscoveredHost(endpoint: .hostPort(host: "127.0.0.1", port: port), info: info), ports)
+        // A URL, not `.hostPort`: Network.framework's WebSocket client aborts a connection to an IP-address host:port
+        // before sending anything ("Software caused connection abort"); with a ws:// URL it goes.
+        return (DiscoveredHost(endpoint: .url(url), info: info), ports)
     }
 
     /// Joins the same host the other way; its state and picture stay on screen until the new link's welcome.

@@ -304,7 +304,7 @@ final class P2PLinks {
         if status.carriesStreams != wasCarrying {
             print("[p2p] \(key.kind.rawValue): " + (status.carriesStreams
                 ? "carries the sync link and the picture"
-                : String(format: "carries nothing now (%.1f MB came over it)", (status.bytesIn ?? 0) / 1_000_000)))
+                : "carries nothing now (\(Int((status.bytesIn ?? 0) / 1000)) KB in, \(Int((status.bytesOut ?? 0) / 1000)) KB out so far)"))
         }
         routeMayHaveChanged()
         if !reported.contains(key) {
