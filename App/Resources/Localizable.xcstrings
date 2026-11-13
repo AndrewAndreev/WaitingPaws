@@ -1066,12 +1066,12 @@
         }
       }
     },
-    "An iPhone checks whether it can reach this Mac directly, without any server: at home and over cellular, as away from home. Only test pings travel. The router is only asked for its address; nothing in it changes." : {
+    "An iPhone checks whether it can reach this Mac directly, without any server: at home and over cellular, as away from home. When its home network is gone, its syncing and the picture go over that link. The router is only asked for its address; nothing in it changes." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iPhone проверяет, может ли он связаться с этим Mac напрямую, без всякого сервера: дома и через сотовую сеть — как вне дома. Идут только проверочные пинги. У роутера только спрашиваем его адрес, в нём ничего не меняется."
+            "value" : "iPhone проверяет, может ли он связаться с этим Mac напрямую, без всякого сервера: дома и через сотовую сеть — как вне дома. Когда у него нет домашней сети, синхронизация и картинка идут по этой связи. У роутера только спрашиваем его адрес, в нём ничего не меняется."
           }
         }
       }
@@ -1282,6 +1282,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вернулись"
+          }
+        }
+      }
+    },
+    "Back on the home network" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снова в домашней сети"
           }
         }
       }
@@ -1938,6 +1948,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "меняет порт для каждого адреса — прямая связь вряд ли получится"
+          }
+        }
+      }
+    },
+    "changes the port for each address — fine while the other end keeps its port" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "меняет порт для каждого адреса — годится, пока другая сторона сохраняет порт"
           }
         }
       }
@@ -5287,6 +5307,26 @@
         }
       }
     },
+    "No home network: going direct" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет домашней сети — связь напрямую"
+          }
+        }
+      }
+    },
+    "No home network: the picture and syncing go over the cellular link" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет домашней сети: картинка и синхронизация идут через сотовую связь"
+          }
+        }
+      }
+    },
     "No iPhone has checked a direct link yet." : {
       "localizations" : {
         "ru" : {
@@ -8606,6 +8646,36 @@
         }
       }
     },
+    "the picture and sync go over it, %@ MB" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "по ней идут картинка и синхронизация, %@ МБ"
+          }
+        }
+      }
+    },
+    "The picture and syncing go over Wi‑Fi again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка и синхронизация снова идут по Wi‑Fi."
+          }
+        }
+      }
+    },
+    "The picture and syncing now go over cellular, straight to the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка и синхронизация теперь идут через сотовую сеть прямо к Mac."
+          }
+        }
+      }
+    },
     "the recording file is empty" : {
       "localizations" : {
         "ru" : {
@@ -9086,16 +9156,6 @@
         }
       }
     },
-    "To make sure, turn off Wi‑Fi for a minute: the cellular link should keep answering. It lasts while the app is open." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Для верности выключите Wi‑Fi на минуту: связь через сотовую сеть должна продолжать отвечать. Она держится, пока приложение открыто."
-          }
-        }
-      }
-    },
     "To sync again, you’ll need to allow it on the %@." : {
       "localizations" : {
         "ru" : {
@@ -9122,6 +9182,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "К двери"
+          }
+        }
+      }
+    },
+    "To try it, turn off Wi‑Fi: the picture should come back over cellular in a few seconds. It lasts while the app is open." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы проверить, выключите Wi‑Fi: через несколько секунд картинка должна вернуться через сотовую сеть. Связь держится, пока приложение открыто."
           }
         }
       }
@@ -9841,12 +9911,12 @@
         }
       }
     },
-    "Waiting Paws checks whether this iPhone can reach the Mac directly, without any server: at home over Wi‑Fi, and over cellular — the way it goes away from home. Only test pings travel; syncing works as before either way." : {
+    "Waiting Paws checks whether this iPhone can reach the Mac directly, without any server: at home over Wi‑Fi, and over cellular — the way it goes away from home. At home everything goes as before; when the home network is gone, syncing and the picture switch to the cellular link by themselves." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting Paws проверяет, может ли этот iPhone связаться с Mac напрямую, без всякого сервера: дома по Wi‑Fi и через сотовую сеть — так, как связь пойдёт вне дома. Идут только проверочные пинги, синхронизация в любом случае работает как раньше."
+            "value" : "Waiting Paws проверяет, может ли этот iPhone связаться с Mac напрямую, без всякого сервера: дома по Wi‑Fi и через сотовую сеть — так, как связь пойдёт вне дома. Дома всё идёт как раньше, а когда домашней сети нет, синхронизация и картинка сами переходят на сотовую связь."
           }
         }
       }

@@ -4,8 +4,8 @@
 // A restart is "make before break": a new PeerConnection is set up next to the current one, with its offer and answer
 // over the current data channel while that is open, and takes over once its own channel opens (pion's own ICE
 // restart drops the current pair before the new offer could leave over it).
-// It carries no video and no commands yet: pings with their round trip, to learn whether a direct path exists for a
-// household's NAT and carrier.
+// It carries pings with their round trip (whether a direct path exists for a household's NAT and carrier) and, once
+// the home network is gone, TCP streams to the Mac's services (tunnel.go): the sync link and the camera's picture.
 //
 // The iPhone makes two links to its Mac: "lan" over Wi-Fi as it is, and "out" with every socket bound to the
 // cellular interface (Options.Interface), so that its path is the one the phone has away from home (the carrier's
@@ -51,6 +51,8 @@ type Options struct {
 	// Seconds without any answer, once connected, before ICE gives the link up (600: an iPhone suspended in the
 	// background for a few minutes may still find it alive when it is back).
 	FailedTimeout float64 `json:"failedTimeout"`
+	// Answerer: the services the peer may reach over the link's streams, by name ("sync", "go2rtc") → "127.0.0.1:port".
+	Services map[string]string `json:"services,omitempty"`
 }
 
 // Events of a link for the app (called on Go's goroutines).
@@ -114,6 +116,11 @@ type Status struct {
 	Restarting bool   `json:"restarting,omitempty"`
 	SignalPath string `json:"signalPath,omitempty"`
 	Error      string `json:"error,omitempty"`
+	// TCP streams over the link (tunnel.go): open now, opened in all, bytes from and to the peer.
+	Streams       int   `json:"streams,omitempty"`
+	StreamsOpened int   `json:"streamsOpened,omitempty"`
+	BytesIn       int64 `json:"bytesIn,omitempty"`
+	BytesOut      int64 `json:"bytesOut,omitempty"`
 	// Grows with every status sent: two sent at once may reach the app in either order, and the older one is dropped.
 	Seq uint64 `json:"seq"`
 }
@@ -141,6 +148,9 @@ type Link struct {
 	seq       uint32
 	stop      chan struct{}
 	pinging   bool
+	// Forwarded ports (offerer) and the streams' counters (tunnel.go).
+	listeners []net.Listener
+	streams   streamCounters
 }
 
 // session is one PeerConnection with its data channel.
@@ -338,6 +348,7 @@ func (l *Link) Close() {
 	}
 	l.closed = true
 	close(l.stop)
+	l.closeListeners()
 	sessions := []*session{l.cur, l.next}
 	l.setState("closed")
 	l.mu.Unlock()
@@ -392,6 +403,10 @@ func (l *Link) newSession(gen int, makeChannel bool) (*session, error) {
 		l.attach(s, dc)
 	} else {
 		pc.OnDataChannel(func(dc *webrtc.DataChannel) {
+			if service, ok := strings.CutPrefix(dc.Label(), streamPrefix); ok {
+				l.acceptStream(dc, service)
+				return
+			}
 			l.mu.Lock()
 			l.attach(s, dc)
 			l.mu.Unlock()
@@ -853,6 +868,7 @@ func (l *Link) setState(state string) {
 }
 
 func (l *Link) statusJSONLocked() string {
+	l.fillStreams()
 	data, _ := json.Marshal(l.status)
 	return string(data)
 }

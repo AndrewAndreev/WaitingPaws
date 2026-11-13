@@ -2,6 +2,7 @@ package mobile
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/AlexxIT/go2rtc/pkg/p2p"
 )
@@ -14,7 +15,8 @@ type P2PEvents interface {
 	State(status string)
 }
 
-// P2PLink is one direct iPhone ↔ Mac link (GoMobile/p2p): a WebRTC data channel with pings, over public STUN.
+// P2PLink is one direct iPhone ↔ Mac link (GoMobile/p2p): a WebRTC data channel with pings, over public STUN, which
+// also carries TCP streams to the Mac's services once the home network is gone.
 type P2PLink struct {
 	link *p2p.Link
 }
@@ -41,6 +43,17 @@ func (l *P2PLink) HandleSignal(message string) error { return l.link.HandleSigna
 // Restart (the offering side): a new session next to the current one, its offer over the data channel while that is
 // open (no other link needed), taking over once it connects.
 func (l *P2PLink) Restart() error { return l.link.Restart() }
+
+// Forward (the offering side): listens on 127.0.0.1 for the peer's service ("sync", "go2rtc"); every connection made
+// to that port goes over the link to the service (GoMobile/p2p tunnel.go). Returns the port, 0 if it could not listen.
+func (l *P2PLink) Forward(service string) int {
+	port, err := l.link.Forward(service, 0)
+	if err != nil {
+		fmt.Printf("p2p: forward %s: %v\n", service, err)
+		return 0
+	}
+	return port
+}
 
 // Status is the link's status now (JSON).
 func (l *P2PLink) Status() string { return l.link.StatusJSON() }

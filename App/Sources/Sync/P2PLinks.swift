@@ -11,6 +11,9 @@ import Go2RTC
 /// on the Mac the answering side of each iPhone's. The Go side (`GoMobile/p2p`) does the WebRTC; this keeps the links,
 /// routes their signals over the sync link and keeps their status for the UI. Never in the sync link's way: a link that
 /// fails only says so.
+///
+/// The iPhone's `out` link also forwards two local ports to the Mac's services (`directRoute`): when the home network is
+/// gone, `SyncClient` joins the Mac through it and the camera's picture comes the same way.
 @MainActor
 @Observable
 final class P2PLinks {
@@ -38,6 +41,17 @@ final class P2PLinks {
     @ObservationIgnored var onFirstResult: ((Key, P2PLinkStatus) -> Void)?
     /// Sends a signal to the peer over the sync link; false when there is no link to that peer now.
     @ObservationIgnored var sendSignal: ((_ peer: String, SyncP2PSignal) -> Bool)?
+    /// iPhone: whether the Mac can be reached through the `out` link, or the home network looks gone, changed
+    /// (also Wi-Fi going or coming): `SyncClient` picks its way again.
+    @ObservationIgnored var onRouteChange: (() -> Void)?
+    /// Mac: the services an iPhone may reach over its links' streams ("sync", "go2rtc") → "address:port".
+    @ObservationIgnored var servicesProvider: (() -> [String: String])?
+
+    /// iPhone: the local ports (on 127.0.0.1) that the `out` link forwards to the Mac's sync listener and go2rtc.
+    struct DirectRoute: Equatable {
+        let sync: Int
+        let go2rtc: Int
+    }
 
     struct Resume: Equatable {
         let at: Date
@@ -53,6 +67,25 @@ final class P2PLinks {
     @ObservationIgnored private var lastLogged: [Key: String] = [:]
     @ObservationIgnored private var backgroundSince: Date?
     @ObservationIgnored let network = P2PNetwork()
+    @ObservationIgnored private var lastRoute: String?
+
+    static let homeSilence: TimeInterval = 10
+
+    init() {
+        network.onChange = { [weak self] in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.routeMayHaveChanged() } }
+        }
+        #if os(iOS)
+        // A link going silent sends no status: the way to the Mac is looked at again every 2 s.
+        Task { [weak self] in
+            while true {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self else { return }
+                self.routeMayHaveChanged()
+            }
+        }
+        #endif
+    }
 
     var isAvailable: Bool {
         #if canImport(Go2RTC)
@@ -70,6 +103,44 @@ final class P2PLinks {
 
     /// Some link that may still carry pings (the background grace is asked for it).
     var hasAliveLinks: Bool { statuses.values.contains(where: \.isAlive) }
+
+    /// iPhone: the ports to reach `peer` through the `out` link, while that link answers.
+    func directRoute(to peer: String) -> DirectRoute? {
+        let key = Key(peer: peer, kind: .out)
+        guard let handle = links[key], let ports = handle.ports, let status = statuses[key],
+              status.outcome() == .direct(stale: false) else { return nil }
+        return ports
+    }
+
+    /// iPhone: the home network can't reach `peer` now: no Wi-Fi, or the Wi-Fi link that worked has not answered for
+    /// `homeSilence` (leaving home with Wi-Fi still on but too weak). A shorter hiccup keeps everything at home.
+    func homeNetworkLooksGone(to peer: String) -> Bool {
+        #if os(iOS)
+        if network.lanInterface == nil { return true }
+        guard let lan = statuses[Key(peer: peer, kind: .lan)], lan.everConnected else { return false }
+        switch lan.outcome() {
+        case .lost: return true
+        case .direct(stale: true): return (lan.silence() ?? 0) > Self.homeSilence
+        case .direct(stale: false), .checking, .failed: return false
+        }
+        #else
+        return false
+        #endif
+    }
+
+    /// The iPhone's sync link and picture go over the `out` link to `peer` now.
+    func carriesStreams(to peer: String) -> Bool {
+        statuses[Key(peer: peer, kind: .out)]?.carriesStreams == true
+    }
+
+    /// Tells `onRouteChange` when what `SyncClient` decides by has changed.
+    private func routeMayHaveChanged() {
+        guard let peer = lastPeer else { return }
+        let route = "\(directRoute(to: peer) != nil) \(homeNetworkLooksGone(to: peer))"
+        guard route != lastRoute else { return }
+        lastRoute = route
+        onRouteChange?()
+    }
 
     /// The peers with any status, for the Mac's list.
     func hasAny(_ peer: String) -> Bool {
@@ -90,6 +161,8 @@ final class P2PLinks {
             let key = Key(peer: peer, kind: kind)
             if links[key] != nil, let status = statuses[key] {
                 if watching && status.everConnected { continue }
+                // The sync link this call came over may be riding it: a silent one comes back or fails by itself.
+                if status.carriesStreams && status.isAlive { continue }
                 switch status.outcome() {
                 case .checking, .direct(stale: false): continue
                 case .direct(stale: true), .failed, .lost: break
@@ -137,7 +210,7 @@ final class P2PLinks {
             return
             #endif
         }
-        open(key, options: options, offer: true)
+        open(key, options: options, offer: true, forward: key.kind == .out)
     }
 
     // MARK: - Mac: answering side
@@ -155,6 +228,7 @@ final class P2PLinks {
             options.interface = network.lanInterface ?? ""
             options.interfaces = ["en", "bridge"]
             options.noPrivateHost = kind == .out
+            options.services = servicesProvider?()
             open(key, options: options, offer: false)
             if router == nil { probeRouter() }
         }
@@ -197,15 +271,17 @@ final class P2PLinks {
             statuses[key] = nil
             needsServer.remove(key)
         }
+        routeMayHaveChanged()
     }
 
-    private func open(_ key: Key, options: Options, offer: Bool) {
+    private func open(_ key: Key, options: Options, offer: Bool, forward: Bool = false) {
         close(key, keepStatus: false)
         #if canImport(Go2RTC)
         let handle = Handle(key: key, owner: self)
         do {
             try handle.open(options)
             links[key] = handle
+            if forward { handle.forward() }
             if offer { try handle.start() }
             print("[p2p] \(key.kind.rawValue): \(offer ? "offering" : "answering")"
                   + (options.interface.isEmpty ? "" : " on \(options.interface)"))
@@ -221,9 +297,16 @@ final class P2PLinks {
     fileprivate func received(_ status: P2PLinkStatus, from handle: Handle) {
         guard links[handle.key] === handle else { return } // a link replaced meanwhile
         let key = handle.key
+        let wasCarrying = statuses[key]?.carriesStreams == true
         statuses[key] = status
         if status.isAlive { needsServer.remove(key) }
         log(key, status)
+        if status.carriesStreams != wasCarrying {
+            print("[p2p] \(key.kind.rawValue): " + (status.carriesStreams
+                ? "carries the sync link and the picture"
+                : String(format: "carries nothing now (%.1f MB came over it)", (status.bytesIn ?? 0) / 1_000_000)))
+        }
+        routeMayHaveChanged()
         if !reported.contains(key) {
             switch status.outcome() {
             // Works once a ping came back (its round trip goes into the bubble).
@@ -367,6 +450,7 @@ final class P2PLinks {
         var pingInterval: Double = 2
         var connectTimeout: Double = 25
         var failedTimeout: Double = 600
+        var services: [String: String]?
     }
 }
 
@@ -375,6 +459,8 @@ final class P2PLinks {
 private final class Handle {
     let key: P2PLinks.Key
     weak var owner: P2PLinks?
+    /// The ports forwarded to the peer's services (iPhone, `out` link).
+    private(set) var ports: P2PLinks.DirectRoute?
     #if canImport(Go2RTC)
     private var link: MobileP2PLink?
     private var bridge: Bridge?
@@ -398,6 +484,14 @@ private final class Handle {
     }
 
     func start() throws { try link?.start() }
+
+    /// Local ports for the Mac's sync listener and go2rtc, carried over this link (before `start`: they only answer
+    /// once it is up).
+    func forward() {
+        guard let link else { return }
+        let sync = link.forward("sync"), go2rtc = link.forward("go2rtc")
+        if sync > 0, go2rtc > 0 { ports = P2PLinks.DirectRoute(sync: sync, go2rtc: go2rtc) }
+    }
 
     func take(_ payload: String) {
         let link = self.link
@@ -474,6 +568,12 @@ final class P2PNetwork: @unchecked Sendable {
     private var _lan: String?
     private var _cellular: String?
     private var _cellularProblem: String?
+    private var _onChange: (() -> Void)?
+    /// Called (on its own queue) when an interface comes or goes.
+    var onChange: (() -> Void)? {
+        get { lock.withLock { _onChange } }
+        set { lock.withLock { _onChange = newValue } }
+    }
 
     var lanInterface: String? { lock.withLock { _lan } }
     var cellularInterface: String? { lock.withLock { _cellular } }
@@ -505,7 +605,11 @@ final class P2PNetwork: @unchecked Sendable {
     private func watch(_ monitor: NWPathMonitor, update: @escaping (NWPath, P2PNetwork) -> Void) {
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
-            self.lock.withLock { update(path, self) }
+            let onChange = self.lock.withLock {
+                update(path, self)
+                return self._onChange
+            }
+            onChange?()
         }
         monitor.start(queue: queue)
         monitors.append(monitor)

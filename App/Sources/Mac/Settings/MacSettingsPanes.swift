@@ -834,7 +834,7 @@ private struct MacP2PSection: View {
                 ForEach(P2PLinkKind.allCases, id: \.self) { kind in
                     P2PLinkRow(kind: kind, status: links.status(paired.deviceID, kind))
                 }
-                P2PNATRow(title: String(localized: "Carrier NAT"), nat: links.status(paired.deviceID, .out)?.peerNat)
+                P2PNATRow(title: String(localized: "Carrier NAT"), nat: links.status(paired.deviceID, .out)?.peerNat, peer: homeNAT)
             }
             P2PNATRow(title: String(localized: "Home NAT"), nat: homeNAT)
             LabeledContent {
@@ -847,7 +847,7 @@ private struct MacP2PSection: View {
         } header: {
             Text("Direct Link (Test)")
         } footer: {
-            Text("An iPhone checks whether it can reach this Mac directly, without any server: at home and over cellular, as away from home. Only test pings travel. The router is only asked for its address; nothing in it changes.")
+            Text("An iPhone checks whether it can reach this Mac directly, without any server: at home and over cellular, as away from home. When its home network is gone, its syncing and the picture go over that link. The router is only asked for its address; nothing in it changes.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

@@ -49,8 +49,34 @@ final class SyncClient {
     /// How far this iPhone's clock is from the host's (from the states' `sentAt`); new for every link (kept while
     /// `reconnecting` to the same host).
     @ObservationIgnored private(set) var clock = SyncClock()
-    /// The host's go2rtc (LAN address + Basic auth) once connected.
+    /// The host's go2rtc (LAN address + Basic auth) once connected; through the direct link a local port that the
+    /// link forwards to it.
     private(set) var server: Go2RTCServer?
+
+    /// How this iPhone reaches the host: over the home network, or through the direct link (`P2PLinks`) when the home
+    /// network is gone — the sync link and the camera's picture both go over it then.
+    enum Route: String {
+        case lan
+        case direct
+    }
+
+    private(set) var route: Route = .lan
+    /// The direct link's local ports to the host with this id, while that link answers (`P2PLinks.directRoute`).
+    @ObservationIgnored var directRoute: (String) -> P2PLinks.DirectRoute? = { _ in nil }
+    /// The home network can't reach the host with this id now: no Wi-Fi, or the Wi-Fi direct link went silent.
+    @ObservationIgnored var homeNetworkGone: (String) -> Bool = { _ in false }
+    /// Wi-Fi is up (the home network is worth trying again when the host shows up on it).
+    @ObservationIgnored var hasWiFi: () -> Bool = { true }
+    /// Joined the same host the other way than before (the bubble says so).
+    @ObservationIgnored var onRouteChanged: ((Route) -> Void)?
+    /// The way and the forwarded ports of the connection being made (`route` once it is joined).
+    @ObservationIgnored private var connectingRoute: Route = .lan
+    @ObservationIgnored private var connectingPorts: P2PLinks.DirectRoute?
+    /// The home network failed, or was left for the direct link: not tried again before this.
+    @ObservationIgnored private var lanBackoffUntil = Date.distantPast
+    /// While joined through the direct link: looks for the home network again now and then (Bonjour may not report a
+    /// host that never went from its list).
+    @ObservationIgnored private var routeCheck: Task<Void, Never>?
     /// The host whose link dropped mid-training (Wi-Fi blip, its app restarting) while this iPhone joins it again on
     /// its own: its last `state` and `server` stay meanwhile, so the training stays on screen (`onState` is not called).
     /// Given up after `reconnectGrace`, by «Отключить синхронизацию» or when the host turns this iPhone away.
@@ -203,12 +229,70 @@ final class SyncClient {
         }
     }
 
-    /// Joins the host this iPhone was linked to, if it is around and nothing here is in the way.
+    /// Joins the host this iPhone was linked to, if it is around and nothing here is in the way: over the home
+    /// network, or through the direct link when the home network can't reach it.
     func autoConnectIfPossible() {
-        guard channel == nil, autoReconnectID != nil || legacyAutoReconnectName != nil, canAutoConnect(),
-              let host = hosts.first(where: isAutoReconnectTarget) else { return }
-        print("[sync] reconnecting to \(host.device.name)")
-        connect(to: host, byUser: false)
+        guard channel == nil, autoReconnectID != nil || legacyAutoReconnectName != nil, canAutoConnect() else { return }
+        if let host = hosts.first(where: isAutoReconnectTarget), lanWorthTrying(host.id) {
+            print("[sync] reconnecting to \(host.device.name)")
+            connect(to: host, byUser: false)
+        } else if let direct = directHost() {
+            print("[sync] reconnecting to \(direct.host.device.name) over the direct link")
+            connect(to: direct.host, byUser: false, route: .direct, ports: direct.ports)
+        }
+    }
+
+    /// The direct link or the home network came or went: the joined host is reached the better way now (the training
+    /// stays on screen meanwhile), or joined if nothing links to it.
+    func reconsiderRoute() {
+        if channel == nil {
+            autoConnectIfPossible()
+            return
+        }
+        if case .connecting(let device) = status, connectingRoute == .lan, !startedByUser {
+            // A rejoin over the home network that hangs with no path to it: through the direct link instead.
+            guard homeNetworkGone(device.id), let direct = directHost(), direct.host.id == device.id else { return }
+            print("[sync] \(device.name): no home network, joining it over the direct link")
+            channel?.cancel()
+            channel = nil
+            connect(to: direct.host, byUser: false, route: .direct, ports: direct.ports)
+            return
+        }
+        guard case .connected(let device) = status else { return } // mid-handshake: it finishes or fails first
+        switch route {
+        case .lan:
+            guard homeNetworkGone(device.id), let direct = directHost(), direct.host.id == device.id else { return }
+            lanBackoffUntil = Date().addingTimeInterval(60)
+            switchRoute(to: direct.host, route: .direct, ports: direct.ports, why: "the home network is gone")
+        case .direct:
+            guard hasWiFi(), Date() >= lanBackoffUntil, let host = hosts.first(where: { $0.id == device.id }) else { return }
+            switchRoute(to: host, route: .lan, ports: nil, why: "back on the home network")
+        }
+    }
+
+    /// Without the direct link the home network is the only way; with it, only while it may work.
+    private func lanWorthTrying(_ hostID: String) -> Bool {
+        directRoute(hostID) == nil || (hasWiFi() && !homeNetworkGone(hostID) && Date() >= lanBackoffUntil)
+    }
+
+    /// The host to rejoin as reached through the direct link: its forwarded sync port on this iPhone.
+    private func directHost() -> (host: DiscoveredHost, ports: P2PLinks.DirectRoute)? {
+        guard let id = autoReconnectID, let ports = directRoute(id),
+              let paired = pairedHosts.first(where: { $0.id == id }),
+              let port = NWEndpoint.Port(rawValue: UInt16(clamping: ports.sync)) else { return nil }
+        let info = SyncHostInfo(name: paired.name, id: paired.id, platform: paired.platform, model: paired.model)
+        return (DiscoveredHost(endpoint: .hostPort(host: "127.0.0.1", port: port), info: info), ports)
+    }
+
+    /// Joins the same host the other way; its state and picture stay on screen until the new link's welcome.
+    private func switchRoute(to target: DiscoveredHost, route newRoute: Route, ports: P2PLinks.DirectRoute?, why: String) {
+        guard case .connected(let device) = status else { return }
+        print("[sync] \(device.name): \(why), joining it \(newRoute == .direct ? "over the direct link" : "over the home network")")
+        channel?.cancel()
+        channel = nil
+        startReconnecting(device, log: false)
+        status = .idle
+        connect(to: target, byUser: false, route: newRoute, ports: ports)
     }
 
     private func update(_ results: Set<NWBrowser.Result>) {
@@ -230,6 +314,7 @@ final class SyncClient {
             print("[sync] hosts nearby: \(names.isEmpty ? "none" : names.joined(separator: ", "))")
         }
         autoConnectIfPossible()
+        if route == .direct { reconsiderRoute() } // the host showed up on the home network again
         #if DEBUG
         // `--sync-auto-connect`: join the first host found (UI checks in the simulator without taps).
         if channel == nil, status == .idle, CommandLine.arguments.contains("--sync-auto-connect"), let host = preferredHost {
@@ -241,8 +326,11 @@ final class SyncClient {
     // MARK: - Connection
 
     /// `byUser`: the user picked this host (see `startedByUser`); false when this iPhone rejoins one on its own.
-    func connect(to host: DiscoveredHost, byUser: Bool = true) {
+    /// `route` `.direct`: `host` is the direct link's forwarded sync port, `ports` its forwarded ports.
+    func connect(to host: DiscoveredHost, byUser: Bool = true, route: Route = .lan, ports: P2PLinks.DirectRoute? = nil) {
         channel?.cancel()
+        connectingRoute = route
+        connectingPorts = route == .direct ? ports : nil
         // Switching from another host: its state and camera go away first (the new one greets like a fresh link).
         if isConnected || (reconnecting != nil && reconnecting?.id != host.id) { reset(to: .idle) }
         let channel = SyncChannel(connection: NWConnection(to: host.endpoint, using: SyncWebSocket.parameters()))
@@ -378,8 +466,26 @@ final class SyncClient {
                 print("[sync] pairing with \(device.name) moved to its id")
             }
             remember(device)
-            let address = channel.remoteIPv4 ?? welcome.addresses.first ?? "127.0.0.1"
-            server = URL(string: "http://\(address):\(welcome.go2rtcPort)/").map {
+            var address = channel.remoteIPv4 ?? welcome.addresses.first ?? "127.0.0.1", port = welcome.go2rtcPort
+            if connectingRoute == .direct, let ports = connectingPorts {
+                // The direct link forwards this port to the Mac's go2rtc (it reaches it as a LAN client would).
+                address = "127.0.0.1"
+                port = ports.go2rtc
+            }
+            let previous = route, wasJoined = isConnected || reconnecting?.id == id
+            route = connectingRoute
+            if wasJoined, previous != route { onRouteChanged?(route) }
+            routeCheck?.cancel()
+            if route == .direct {
+                routeCheck = Task { [weak self] in
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .seconds(15))
+                        guard let self, !Task.isCancelled, self.route == .direct else { return }
+                        self.reconsiderRoute()
+                    }
+                }
+            }
+            server = URL(string: "http://\(address):\(port)/").map {
                 Go2RTCServer(baseURL: $0, username: welcome.username, password: welcome.password)
             }
             autoReconnectID = id
@@ -390,7 +496,8 @@ final class SyncClient {
             reconnectTimeout?.cancel()
             status = .connected(device)
             hostFeatures = welcome.features ?? []
-            print("[sync] joined \(device.name) (\(device.modelTitle)), go2rtc at \(address):\(welcome.go2rtcPort)")
+            print("[sync] joined \(device.name) (\(device.modelTitle)), go2rtc at \(address):\(port)"
+                  + (route == .direct ? ", over the direct link" : ""))
             if hostFeatures.contains(SyncFeature.p2p) { onP2PHost?(id) }
         case .state(let state):
             if let sentAt = state.sentAt { clock.sample(hostTime: sentAt, receivedAt: Date()) }
@@ -407,7 +514,14 @@ final class SyncClient {
     private func lost(_ message: String) {
         channel?.cancel()
         channel = nil
-        if case .connected(let device) = status, device.id == autoReconnectID, state?.session != nil {
+        // The home network failed while the direct link works: that is the way for a while.
+        if connectingRoute == .lan, let id = host?.id ?? reconnecting?.id, directRoute(id) != nil {
+            lanBackoffUntil = Date().addingTimeInterval(30)
+        }
+        // Mid-training the training stays on screen while joining again; through the direct link the picture too
+        // (a new session of the link, a moment without the home network).
+        if case .connected(let device) = status, device.id == autoReconnectID,
+           state?.session != nil || directRoute(device.id) != nil {
             startReconnecting(device)
         }
         if reconnecting != nil {
@@ -427,8 +541,8 @@ final class SyncClient {
 
     /// The link dropped mid-training: the training stays on screen (the app disables its buttons) while this iPhone
     /// joins the host again; after `reconnectGrace` it goes, and the host is still joined whenever it shows up.
-    private func startReconnecting(_ device: SyncDevice) {
-        print("[sync] lost \(device.name) mid-training, reconnecting")
+    private func startReconnecting(_ device: SyncDevice, log: Bool = true) {
+        if log { print("[sync] lost \(device.name), reconnecting") }
         reconnecting = device
         reconnectTimeout?.cancel()
         reconnectTimeout = Task { [weak self] in
@@ -544,6 +658,7 @@ final class SyncClient {
 
     private func reset(to status: Status) {
         self.status = status
+        route = .lan
         reconnecting = nil
         reconnectTimeout?.cancel()
         state = nil

@@ -100,6 +100,8 @@ final class SyncHost {
     }
 
     @ObservationIgnored private var listener: NWListener?
+    /// The port the sync listener took (an iPhone's direct link forwards to it).
+    var port: UInt16? { listener?.port?.rawValue }
     @ObservationIgnored private var clients: [UUID: Client] = [:]
     @ObservationIgnored private var lastStateData: Data?
     @ObservationIgnored private var lastInfo: SyncHostInfo?

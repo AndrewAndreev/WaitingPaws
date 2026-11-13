@@ -44,7 +44,7 @@ final class SyncP2PTests: XCTestCase {
      "nat":{"mapping":"dependent","public":"185.1.2.3:40000","answers":["185.1.2.3:40000","185.1.2.3:40007",""],
             "servers":["stun.cloudflare.com:3478","stun.l.google.com:19302","stun1.l.google.com:19302"],"took":620},
      "peerNat":{"mapping":"independent","public":"87.116.135.237:15261","answers":[],"servers":[],"took":0},
-     "peerIface":"en0","restarts":0}
+     "peerIface":"en0","restarts":0,"streams":2,"streamsOpened":5,"bytesIn":7340032,"bytesOut":2048}
     """#
 
     func testStatusFromGo() throws {
@@ -56,6 +56,8 @@ final class SyncP2PTests: XCTestCase {
         XCTAssertEqual(status.peerNat?.kind, .independent)
         XCTAssertEqual(status.peerNat?.publicIP, "87.116.135.237")
         XCTAssertTrue(status.isAlive)
+        XCTAssertTrue(status.carriesStreams, "the sync link and the picture go over it")
+        XCTAssertEqual(status.bytesIn, 7_340_032)
 
         let fresh = Date(timeIntervalSince1970: 1_794_521_012)
         XCTAssertEqual(status.outcome(now: fresh), .direct(stale: false))
@@ -82,6 +84,7 @@ final class SyncP2PTests: XCTestCase {
         XCTAssertEqual(failed.outcome(), .failed, "never connected: not «lost»")
         XCTAssertFalse(failed.everConnected)
         XCTAssertNil(failed.silence())
+        XCTAssertFalse(failed.carriesStreams)
         XCTAssertEqual(failed.seq, 4)
         // …and one that has just connected, before its first pong: working, not «no answer for 56 years».
         let now = Date(timeIntervalSince1970: 1_794_521_003)

@@ -207,6 +207,12 @@ public struct P2PLinkStatus: Codable, Equatable, Sendable {
     public var restarting: Bool?
     public var signalPath: String?
     public var error: String?
+    /// TCP streams over the link (the sync link and the camera's picture when the home network is gone): open now,
+    /// opened in all, bytes from and to the peer.
+    public var streams: Int?
+    public var streamsOpened: Int?
+    public var bytesIn: Double?
+    public var bytesOut: Double?
     /// Grows with every status the Go side sends (an older one arriving late is dropped).
     public var seq: UInt64?
 
@@ -255,6 +261,9 @@ public struct P2PLinkStatus: Codable, Equatable, Sendable {
 
     /// Whether this link can still carry pings (connected, or ICE waiting for a path that may come back).
     public var isAlive: Bool { state == "connected" || state == "disconnected" }
+
+    /// Some TCP stream (the sync link, the picture) goes over this link now.
+    public var carriesStreams: Bool { (streams ?? 0) > 0 }
 
     public var everConnected: Bool { Self.set(connectedAt) != nil }
 

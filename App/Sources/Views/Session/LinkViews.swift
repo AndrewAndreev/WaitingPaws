@@ -69,6 +69,9 @@ struct LinkPill: View {
                 }
                 if model.p2p.lastPeer == host.id, let summary = P2PText.summary(model.p2p, peer: host.id) {
                     Section("Direct Link (Test)") {
+                        if client.route == .direct {
+                            Text("No home network: the picture and syncing go over the cellular link")
+                        }
                         Text(summary)
                     }
                 }
@@ -89,7 +92,9 @@ struct LinkPill: View {
                 }
             } label: {
                 // The top bar has no room for a name («MacBoo…»): the tooltip after joining and this menu name the host.
-                label(host.kindTitle, systemImage: host.symbolName, tint: Theme.info)
+                // Through the direct link (no home network) the icon says so.
+                label(host.kindTitle, systemImage: client.route == .direct ? "antenna.radiowaves.left.and.right" : host.symbolName,
+                      tint: Theme.info)
             }
             .menuStyle(.button)
             .buttonStyle(.plain)

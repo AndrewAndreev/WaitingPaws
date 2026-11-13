@@ -1974,6 +1974,17 @@ extension AppModel {
         syncHost.onP2PSignal = { [unowned self] signal, peer in p2p.handle(signal, from: peer) }
         syncHost.onForget = { [unowned self] peer in p2p.closeLinks(peer: peer) }
         p2p.sendSignal = { [unowned self] peer, signal in syncHost.sendP2P(signal, to: peer) }
+        // What an iPhone reaches through its direct link when its home network is gone: the sync listener, and go2rtc
+        // by this Mac's LAN address — go2rtc takes it for a LAN client then (password, watching only), not for this
+        // app itself as a request from 127.0.0.1 would be.
+        p2p.servicesProvider = { [unowned self] in
+            var services: [String: String] = [:]
+            if let port = syncHost.port { services["sync"] = "127.0.0.1:\(port)" }
+            if settings.connectionMode == .embedded, embedded.lanEnabled, let address = SyncHost.ipv4Addresses().first {
+                services["go2rtc"] = "\(address):\(EmbeddedGo2RTC.apiPort)"
+            }
+            return services
+        }
         if settings.shareWithIPhone { syncHost.start() }
         #else
         syncClient.onState = { [unowned self] state in applySyncState(state) }
@@ -1987,6 +1998,20 @@ extension AppModel {
         syncClient.onStopped = { [unowned self] host in p2p.closeLinks(peer: host) }
         p2p.sendSignal = { [unowned self] peer, signal in syncClient.sendP2P(signal, to: peer) }
         p2p.onFirstResult = { [unowned self] key, status in showP2PResult(key, status) }
+        // Without the home network the Mac is joined through the `out` link: the sync link and the picture go over it.
+        syncClient.directRoute = { [unowned self] host in p2p.directRoute(to: host) }
+        syncClient.homeNetworkGone = { [unowned self] host in p2p.homeNetworkLooksGone(to: host) }
+        syncClient.hasWiFi = { [unowned self] in p2p.network.lanInterface != nil }
+        p2p.onRouteChange = { [unowned self] in syncClient.reconsiderRoute() }
+        syncClient.onRouteChanged = { [unowned self] route in
+            linkNotice = route == .direct
+                ? LinkNotice(title: String(localized: "No home network: going direct"),
+                             detail: String(localized: "The picture and syncing now go over cellular, straight to the Mac."),
+                             systemImage: "antenna.radiowaves.left.and.right")
+                : LinkNotice(title: String(localized: "Back on the home network"),
+                             detail: String(localized: "The picture and syncing go over Wi‑Fi again."),
+                             systemImage: "wifi")
+        }
         syncClient.startBrowsing()
         #if DEBUG
         // `--demo-share-plan`: once linked, «paste» the sample schedule here (it should appear on the Mac).

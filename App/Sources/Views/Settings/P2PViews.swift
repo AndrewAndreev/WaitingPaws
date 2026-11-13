@@ -48,6 +48,10 @@ enum P2PText {
             parts.append(status.signalPath == "channel" ? String(localized: "rechecked over the link itself")
                                                         : String(localized: "rechecked"))
         }
+        if status.carriesStreams {
+            let megabytes = ((status.bytesIn ?? 0) + (status.bytesOut ?? 0)) / 1_000_000
+            parts.append(String(localized: "the picture and sync go over it, \(megabytes.formatted(.number.precision(.fractionLength(1)))) MB"))
+        }
         if case .failed = status.outcome(), let types = status.remoteTypes ?? status.localTypes {
             let srflx = (status.localTypes?["srflx"] ?? 0) + (types["srflx"] ?? 0)
             parts.append(srflx == 0 ? String(localized: "no public address from STUN")
@@ -60,11 +64,14 @@ enum P2PText {
         String(localized: "\(Int(value.rounded())) ms")
     }
 
-    /// How a NAT maps ports, and what that means for a direct link.
-    static func nat(_ nat: P2PNATResult?) -> String? {
+    /// How a NAT maps ports, and what that means for a direct link. `peer`: the other end's NAT — one that keeps its
+    /// port lets a direct link through a NAT that changes it.
+    static func nat(_ nat: P2PNATResult?, peer: P2PNATResult? = nil) -> String? {
         guard let nat else { return nil }
         switch nat.kind {
         case .independent: return String(localized: "keeps the port — good for a direct link")
+        case .dependent where peer.map(keepsPort) == true:
+            return String(localized: "changes the port for each address — fine while the other end keeps its port")
         case .dependent: return String(localized: "changes the port for each address — a direct link is unlikely")
         case .none: return String(localized: "no NAT, a public address")
         case .unknown: return String(localized: "couldn’t tell (one server answered)")
@@ -72,10 +79,13 @@ enum P2PText {
         }
     }
 
-    static func natTone(_ nat: P2PNATResult?) -> Tone {
+    private static func keepsPort(_ nat: P2PNATResult) -> Bool { nat.kind == .independent || nat.kind == .none }
+
+    static func natTone(_ nat: P2PNATResult?, peer: P2PNATResult? = nil) -> Tone {
         guard let kind = nat?.kind else { return .idle }
         switch kind {
         case .independent, .none: return .good
+        case .dependent where peer.map(keepsPort) == true: return .warning
         case .dependent, .blocked: return .bad
         case .unknown: return .idle
         }
@@ -136,9 +146,9 @@ struct P2PSettingsSection: View {
                     P2PLinkRow(kind: kind, status: links.status(peer, kind), unavailable: links.unavailableReason(peer, kind),
                                needsServer: links.needsServer(peer, kind))
                 }
-                P2PNATRow(title: String(localized: "Home NAT"),
-                          nat: links.status(peer, .lan)?.peerNat ?? links.status(peer, .out)?.peerNat)
-                P2PNATRow(title: String(localized: "Carrier NAT"), nat: links.status(peer, .out)?.nat)
+                let homeNAT = links.status(peer, .lan)?.peerNat ?? links.status(peer, .out)?.peerNat
+                P2PNATRow(title: String(localized: "Home NAT"), nat: homeNAT)
+                P2PNATRow(title: String(localized: "Carrier NAT"), nat: links.status(peer, .out)?.nat, peer: homeNAT)
                 if let resume = P2PText.resume(links.lastResume) {
                     Text(resume).font(.footnote).foregroundStyle(.secondary)
                 }
@@ -148,9 +158,9 @@ struct P2PSettingsSection: View {
                 Text("Direct Link (Test)")
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Waiting Paws checks whether this iPhone can reach the Mac directly, without any server: at home over Wi‑Fi, and over cellular — the way it goes away from home. Only test pings travel; syncing works as before either way.")
+                    Text("Waiting Paws checks whether this iPhone can reach the Mac directly, without any server: at home over Wi‑Fi, and over cellular — the way it goes away from home. At home everything goes as before; when the home network is gone, syncing and the picture switch to the cellular link by themselves.")
                     if links.status(peer, .out)?.isAlive == true {
-                        Text("To make sure, turn off Wi‑Fi for a minute: the cellular link should keep answering. It lasts while the app is open.")
+                        Text("To try it, turn off Wi‑Fi: the picture should come back over cellular in a few seconds. It lasts while the app is open.")
                     }
                     if P2PLinkKind.allCases.contains(where: { links.needsServer(peer, $0) }) {
                         Text("Away from the home network, the link can’t be set up again: that needs a server (planned). Connect at home and check again.")
@@ -213,14 +223,16 @@ struct P2PLinkRow: View {
 struct P2PNATRow: View {
     let title: String
     let nat: P2PNATResult?
+    /// The other end's NAT (see `P2PText.nat`).
+    var peer: P2PNATResult?
 
     var body: some View {
-        if let text = P2PText.nat(nat) {
+        if let text = P2PText.nat(nat, peer: peer) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                 Text(text)
                     .font(.subheadline)
-                    .foregroundStyle(P2PLinkRow.color(P2PText.natTone(nat)))
+                    .foregroundStyle(P2PLinkRow.color(P2PText.natTone(nat, peer: peer)))
             }
         }
     }
