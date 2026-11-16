@@ -1,3 +1,4 @@
+import CloudKit
 import Foundation
 import Network
 import Observation
@@ -91,6 +92,10 @@ final class P2PLinks {
 
     @ObservationIgnored private var door: DoorHandle?
     @ObservationIgnored private var doorGuard = P2PDoorGuard()
+    /// The knock's other way: the app's public CloudKit database (needs no address, port or open router).
+    @ObservationIgnored let mailbox = P2PMailbox()
+    /// Mac: the pair and knock an iPhone's knock through the mailbox came with: that link's answer goes back there.
+    @ObservationIgnored private var mailboxReturn: [String: (box: String, nonce: String, at: Date)] = [:]
     /// Mac: where an iPhone's knock came from: that link's answer goes back there.
     @ObservationIgnored private var doorReturn: [String: (address: String, at: Date)] = [:]
     /// Mac: the carrier's addresses each iPhone's `out` link came from, when each was last linked, what is sprayed.
@@ -132,6 +137,7 @@ final class P2PLinks {
             }
         }
         #else
+        mailbox.onKnock = { [weak self] payload, box in self?.mailboxKnock(payload, box: box) }
         // The door follows the sync host and the LAN interface; the router is kept open for an iPhone that is gone.
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))
@@ -414,10 +420,16 @@ final class P2PLinks {
             sendThroughDoor(signal, to: back.address, peer: key.peer, .macToPhone)
             return
         }
+        if let back = mailboxReturn[key.peer], Date().timeIntervalSince(back.at) < 60,
+           let secret = pairingSecret?(key.peer), !secret.isEmpty,
+           let sealed = try? P2PDoorSeal.seal(P2PDoorKnock(from: SyncIdentity.deviceID, signal: signal, nonce: back.nonce),
+                                              secret: secret, .macToPhone) {
+            mailbox.answer(sealed, box: back.box, nonce: back.nonce)
+            return
+        }
         #else
-        if viaDoor.contains(key), let address = doors[key.peer] {
-            print("[p2p] \(key.kind.rawValue): knocking at the Mac's door \(address)")
-            sendThroughDoor(signal, to: address, peer: key.peer, .phoneToMac)
+        if viaDoor.contains(key) {
+            knockAway(signal, peer: key.peer)
             return
         }
         #endif
@@ -472,6 +484,7 @@ final class P2PLinks {
             guard doorGuard.accept(knock) else { return }
             print("[p2p] door: \(peer.prefix(8)) knocked from \(address) (\(knock.signal.link))")
             doorReturn[peer] = (address, Date())
+            mailboxReturn[peer] = nil
             if let (ip, port) = Self.split(address) { noteCarrier(peer, P2PCandidate(type: "door", address: ip, port: port)) }
             handle(knock.signal, from: peer, throughDoor: true)
             return
@@ -497,6 +510,49 @@ final class P2PLinks {
         sprayingFor = nil
     }
 
+    #if os(iOS)
+    /// The new `out` link's offer to the Mac when nothing links to it: sealed once, through its door (if its address is
+    /// known) and through the mailbox; the answer comes back the way that got through first.
+    private func knockAway(_ signal: SyncP2PSignal, peer: String) {
+        guard let secret = pairingSecret?(peer), !secret.isEmpty else { return }
+        let knock = P2PDoorKnock(from: SyncIdentity.deviceID, signal: signal)
+        guard let sealed = try? P2PDoorSeal.seal(knock, secret: secret, .phoneToMac) else { return }
+        if let address = doors[peer], let door {
+            print("[p2p] out: knocking at the Mac's door \(address)")
+            door.send(sealed, to: address, after: [0, 0.7, 2])
+        }
+        guard mailbox.isUsable else { return }
+        let box = P2PDoorSeal.boxID(secret: secret)
+        Task { [weak self] in
+            guard let self, await self.mailbox.post(sealed, box: box) else { return }
+            print("[p2p] out: knocked through iCloud, waiting for the Mac's answer")
+            guard let payload = await self.mailbox.answer(box: box, nonce: knock.nonce, timeout: 45),
+                  let answer = try? P2PDoorSeal.open(payload, secret: secret, .macToPhone),
+                  self.doorGuard.accept(answer) else {
+                print("[p2p] out: no answer through iCloud")
+                return
+            }
+            print("[p2p] out: the Mac answered through iCloud")
+            self.handle(answer.signal, from: peer, throughDoor: true)
+        }
+    }
+    #endif
+
+    #if os(macOS)
+    /// A knock from the mailbox: opened with the key of the pair whose box it is in.
+    private func mailboxKnock(_ payload: Data, box: String) {
+        for peer in pairedPeers?() ?? [] {
+            guard let secret = pairingSecret?(peer), !secret.isEmpty, P2PDoorSeal.boxID(secret: secret) == box else { continue }
+            guard let knock = try? P2PDoorSeal.open(payload, secret: secret, .phoneToMac), doorGuard.accept(knock) else { return }
+            print("[p2p] mailbox: \(peer.prefix(8)) knocked through iCloud (\(knock.signal.link))")
+            mailboxReturn[peer] = (box, knock.nonce, Date())
+            doorReturn[peer] = nil
+            handle(knock.signal, from: peer, throughDoor: true)
+            return
+        }
+    }
+    #endif
+
     private static func split(_ address: String) -> (String, Int)? {
         guard let colon = address.lastIndex(of: ":"), let port = Int(address[address.index(after: colon)...]) else { return nil }
         return (String(address[..<colon]), port)
@@ -506,7 +562,12 @@ final class P2PLinks {
     /// Every few seconds: the door is open while iPhones are let in (again on another LAN interface), and keeps the
     /// router open for the iPhone gone most recently, for `sprayFor` after it was last linked.
     private func updateDoor() {
-        guard doorWanted?() == true, isAvailable else { closeDoor(); return }
+        guard doorWanted?() == true, isAvailable else { closeDoor(); mailbox.watch([]); return }
+        if mailbox.isUsable || mailbox.problem == nil {
+            mailbox.watch(Set((pairedPeers?() ?? []).compactMap { peer in
+                pairingSecret?(peer).flatMap { $0.isEmpty ? nil : P2PDoorSeal.boxID(secret: $0) }
+            }))
+        }
         let interface = network.lanInterface ?? ""
         if door?.interface != interface {
             closeDoor()
@@ -572,7 +633,7 @@ final class P2PLinks {
             nextKnock = .distantPast
             return
         }
-        guard let peer = knockTarget?(), seesOnLAN?(peer) != true, let address = doors[peer],
+        guard let peer = knockTarget?(), seesOnLAN?(peer) != true, doors[peer] != nil || mailbox.isUsable,
               pairingSecret?(peer)?.isEmpty == false, let cellular = network.cellularInterface else { return }
         let key = Key(peer: peer, kind: .out)
         if links[key] != nil, let status = statuses[key] {
@@ -584,14 +645,15 @@ final class P2PLinks {
         }
         // A Mac that is off or asleep never answers: after `knockTries` the iPhone waits until the app is opened again.
         guard Date() >= nextKnock, knockFailures < Self.knockTries else { return }
-        if door?.interface != cellular {
+        if doors[peer] != nil, door?.interface != cellular {
             closeDoor()
             door = DoorHandle.open(port: 0, interface: cellular, stun: [], owner: self)
         }
-        guard door != nil else { return }
+        guard door != nil || mailbox.isUsable else { return }
         lastPeer = peer
         knocking = peer
-        print("[p2p] out: no link to the Mac and no home network: a new one through its door \(address)"
+        print("[p2p] out: no link to the Mac and no home network: a new one through "
+              + [doors[peer].map { "its door \($0)" }, mailbox.isUsable ? "iCloud" : nil].compactMap { $0 }.joined(separator: " and ")
               + (knockFailures > 0 ? " (try \(knockFailures + 1))" : ""))
         start(key, viaDoor: true)
         nextKnock = Date().addingTimeInterval(min(120, 15 * pow(2, Double(knockFailures))))
@@ -979,5 +1041,212 @@ final class P2PNetwork: @unchecked Sendable {
         }
         monitor.start(queue: queue)
         monitors.append(monitor)
+    }
+}
+
+/// The direct link's mailbox in the app's public CloudKit database: the iPhone's knock (its new link's offer, sealed
+/// with the pairing key) reaches the Mac this way when nothing else can — away from home, the app relaunched — and the
+/// Mac's answer comes back the same way; then both sides punch through their NATs as at home (no port guessing).
+///
+/// Records: `P2PKnock` (iPhone → Mac) and `P2PAnswer` (Mac → iPhone), each with `box` (the pair's id from the pairing
+/// secret, `P2PDoorSeal.boxID`) and `payload` (sealed, `P2PDoorSeal`). An answer is named after the knock's nonce, so the
+/// iPhone fetches it by name; the Mac learns of a knock from a query subscription on `box` (a silent push) and also asks
+/// every `pollEvery` seconds. Anyone can read the public database, so nothing in it is readable without the key.
+@MainActor
+final class P2PMailbox {
+    static let containerID = "iCloud.su.comrade.waitingpaws"
+    static let knockType = "P2PKnock"
+    static let answerType = "P2PAnswer"
+    static let pollEvery: TimeInterval = 20
+
+    /// Mac: a knock's sealed payload for the pair `box`.
+    var onKnock: ((_ payload: Data, _ box: String) -> Void)?
+    /// Why the mailbox can't be used now ("no iCloud account"); nil while it can, or before it was checked.
+    private(set) var problem: String?
+
+    private var database: CKDatabase?
+    private var watched: Set<String> = []
+    private var subscribed: Set<String> = []
+    private var seen: Set<String> = []
+    private var pollTask: Task<Void, Never>?
+    private var lastAnswer: [String: CKRecord.ID] = [:]
+
+    /// Not in previews and UI checks (no real iCloud there).
+    var isUsable: Bool { !AppModel.isUIPreview && problem == nil }
+
+    private func db() -> CKDatabase {
+        if let database { return database }
+        let database = CKContainer(identifier: Self.containerID).publicCloudDatabase
+        self.database = database
+        return database
+    }
+
+    private func note(_ error: Error, _ what: String) {
+        if let ck = error as? CKError, ck.code == .notAuthenticated {
+            if problem == nil { print("[p2p] mailbox: no iCloud account on this device") }
+            problem = String(localized: "No iCloud account")
+        } else {
+            print("[p2p] mailbox: \(what): \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: iPhone
+
+    /// Leaves a knock for the Mac (the previous one of this iPhone is deleted).
+    func post(_ payload: Data, box: String) async -> Bool {
+        let record = CKRecord(recordType: Self.knockType)
+        record["box"] = box as NSString
+        record["payload"] = payload as NSData
+        do {
+            _ = try await db().save(record)
+            problem = nil
+            let key = "p2p.mailbox.lastKnock"
+            if let previous = UserDefaults.standard.string(forKey: key) {
+                Task { try? await self.db().deleteRecord(withID: CKRecord.ID(recordName: previous)) }
+            }
+            UserDefaults.standard.set(record.recordID.recordName, forKey: key)
+            return true
+        } catch {
+            note(error, "knock")
+            return false
+        }
+    }
+
+    /// The Mac's answer to the knock `nonce`, asked for every 1.5 s until `timeout`.
+    func answer(box: String, nonce: String, timeout: TimeInterval) async -> Data? {
+        let id = CKRecord.ID(recordName: Self.answerName(box: box, nonce: nonce))
+        let until = Date().addingTimeInterval(timeout)
+        while Date() < until, !Task.isCancelled {
+            do {
+                let record = try await db().record(for: id)
+                return record["payload"] as? Data
+            } catch let error as CKError where error.code == .unknownItem {
+                // Not there yet.
+            } catch {
+                note(error, "answer")
+                if (error as? CKError)?.code == .notAuthenticated { return nil }
+            }
+            try? await Task.sleep(for: .seconds(1.5))
+        }
+        return nil
+    }
+
+    static func answerName(box: String, nonce: String) -> String { "a-\(box)-\(nonce)" }
+
+    #if DEBUG
+    /// `--ck-init-schema` (see `WaitingPawsApp.init`): blocks, then quits.
+    nonisolated static func initDevelopmentSchema() -> Never {
+        let database = CKContainer(identifier: containerID).publicCloudDatabase
+        let done = DispatchSemaphore(value: 0)
+        let records = [knockType, answerType].map { type in
+            let record = CKRecord(recordType: type)
+            record["box"] = "00000000000000000000000000000000" as NSString
+            record["payload"] = Data([0]) as NSData
+            return record
+        }
+        let save = CKModifyRecordsOperation(recordsToSave: records)
+        save.modifyRecordsResultBlock = { result in
+            print("[ck] saved: \(result)")
+            let delete = CKModifyRecordsOperation(recordIDsToDelete: records.map(\.recordID))
+            delete.modifyRecordsResultBlock = { result in
+                print("[ck] deleted: \(result)")
+                done.signal()
+            }
+            database.add(delete)
+        }
+        database.add(save)
+        _ = done.wait(timeout: .now() + 60)
+        exit(0)
+    }
+    #endif
+
+    // MARK: Mac
+
+    /// The pairs to take knocks for: a subscription for each (silent push), and a poll as well.
+    func watch(_ boxes: Set<String>) {
+        guard boxes != watched else { return }
+        watched = boxes
+        for box in boxes.subtracting(subscribed) { subscribe(box) }
+        if boxes.isEmpty {
+            pollTask?.cancel()
+            pollTask = nil
+        } else if pollTask == nil {
+            pollTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    await self?.poll()
+                    try? await Task.sleep(for: .seconds(Self.pollEvery))
+                }
+            }
+        }
+    }
+
+    private func subscribe(_ box: String) {
+        let subscription = CKQuerySubscription(recordType: Self.knockType, predicate: NSPredicate(format: "box == %@", box),
+                                               subscriptionID: "p2p-knock-\(box)", options: [.firesOnRecordCreation])
+        let info = CKSubscription.NotificationInfo()
+        info.shouldSendContentAvailable = true
+        subscription.notificationInfo = info
+        Task {
+            do {
+                _ = try await db().save(subscription)
+                subscribed.insert(box)
+                print("[p2p] mailbox: subscribed for knocks (\(box.prefix(6)))")
+            } catch {
+                note(error, "subscription")
+            }
+        }
+    }
+
+    /// A silent push from the subscription: the knock it names is fetched at once.
+    func handlePush(_ userInfo: [AnyHashable: Any]) {
+        guard let notification = CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKQueryNotification,
+              let id = notification.recordID else { return }
+        Task {
+            do {
+                let record = try await db().record(for: id)
+                take(record)
+            } catch {
+                note(error, "pushed knock")
+            }
+        }
+    }
+
+    private func poll() async {
+        guard !watched.isEmpty else { return }
+        let query = CKQuery(recordType: Self.knockType, predicate: NSPredicate(format: "box IN %@", Array(watched)))
+        do {
+            let (results, _) = try await db().records(matching: query, resultsLimit: 20)
+            problem = nil
+            for case let (_, .success(record)) in results { take(record) }
+        } catch {
+            note(error, "poll")
+        }
+    }
+
+    private func take(_ record: CKRecord) {
+        let name = record.recordID.recordName
+        guard !seen.contains(name), let box = record["box"] as? String, watched.contains(box),
+              let payload = record["payload"] as? Data else { return }
+        seen.insert(name)
+        // Old knocks stay until their iPhone knocks again; the guard drops them by their time.
+        if let created = record.creationDate, Date().timeIntervalSince(created) > P2PDoorGuard.window { return }
+        onKnock?(payload, box)
+    }
+
+    /// Leaves the answer to the knock `nonce` (the previous answer for this pair is deleted).
+    func answer(_ payload: Data, box: String, nonce: String) {
+        let record = CKRecord(recordType: Self.answerType, recordID: CKRecord.ID(recordName: Self.answerName(box: box, nonce: nonce)))
+        record["box"] = box as NSString
+        record["payload"] = payload as NSData
+        Task {
+            do {
+                _ = try await db().save(record)
+                print("[p2p] mailbox: answered (\(box.prefix(6)))")
+                if let previous = lastAnswer[box] { try? await db().deleteRecord(withID: previous) }
+                lastAnswer[box] = record.recordID
+            } catch {
+                note(error, "answer")
+            }
+        }
     }
 }

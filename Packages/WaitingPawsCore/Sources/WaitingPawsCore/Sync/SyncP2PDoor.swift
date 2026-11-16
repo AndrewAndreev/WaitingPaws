@@ -39,6 +39,15 @@ public enum P2PDoorSeal {
                                outputByteCount: 32)
     }
 
+    /// The pair's mailbox in the app's public CloudKit database (`P2PMailbox`): 32 hex digits made from the pairing
+    /// secret, the same on both sides, telling nothing about the secret or the devices. Records there are found by it.
+    public static func boxID(secret: String) -> String {
+        let key = HKDF<SHA256>.deriveKey(inputKeyMaterial: SymmetricKey(data: Data(secret.utf8)),
+                                         salt: Data("waitingpaws-p2p-door".utf8), info: Data("mailbox".utf8),
+                                         outputByteCount: 16)
+        return key.withUnsafeBytes { Data($0) }.map { String(format: "%02x", $0) }.joined()
+    }
+
     public static func seal(_ knock: P2PDoorKnock, secret: String, _ direction: Direction) throws -> Data {
         let json = try JSONEncoder().encode(knock)
         let packed = try (json as NSData).compressed(using: .zlib) as Data

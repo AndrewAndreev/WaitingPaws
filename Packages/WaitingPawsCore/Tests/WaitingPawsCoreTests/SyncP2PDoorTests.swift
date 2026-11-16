@@ -27,6 +27,15 @@ final class SyncP2PDoorTests: XCTestCase {
         XCTAssertThrowsError(try P2PDoorSeal.open(Data("WPd junk".utf8), secret: secret, .phoneToMac))
     }
 
+    func testTheMailboxIsThePairsOwn() {
+        let box = P2PDoorSeal.boxID(secret: secret)
+        XCTAssertEqual(box.count, 32)
+        XCTAssertTrue(box.allSatisfy(\.isHexDigit))
+        XCTAssertEqual(box, P2PDoorSeal.boxID(secret: secret), "the same on both sides")
+        XCTAssertNotEqual(box, P2PDoorSeal.boxID(secret: "another pairing"))
+        XCTAssertFalse(box.contains(secret.prefix(8).lowercased()))
+    }
+
     func testAKnockIsTakenOnceAndOnlyWhileFresh() throws {
         var guardian = P2PDoorGuard()
         let now = Date()

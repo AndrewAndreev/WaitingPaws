@@ -10,6 +10,12 @@ struct WaitingPawsApp: App {
     #endif
 
     init() {
+        #if DEBUG
+        // `--ck-init-schema`: saves one record of each mailbox type to the Development CloudKit database (CloudKit makes
+        // the record types and fields from it), deletes them and quits, before anything else starts. The `box` index
+        // and the deploy to Production are done in the CloudKit Console.
+        if CommandLine.arguments.contains("--ck-init-schema") { P2PMailbox.initDevelopmentSchema() }
+        #endif
         let model = AppModel()
         _model = State(initialValue: model)
         #if os(macOS)
@@ -124,6 +130,20 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     /// The cameras are told their sessions are over, so the next launch connects at once.
     func applicationWillTerminate(_ notification: Notification) {
         EmbeddedGo2RTC.closeCameraSessions()
+    }
+
+    /// Silent pushes from the direct link's mailbox subscriptions (an iPhone away from home knocking, `P2PMailbox`).
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !AppModel.isUIPreview else { return }
+        NSApplication.shared.registerForRemoteNotifications()
+    }
+
+    func application(_ application: NSApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("[p2p] mailbox: no pushes: \(error.localizedDescription)")
+    }
+
+    func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {
+        Self.model?.p2p.mailbox.handlePush(userInfo)
     }
 }
 

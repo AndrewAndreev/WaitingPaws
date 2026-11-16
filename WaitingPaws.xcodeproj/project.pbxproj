@@ -1614,6 +1614,7 @@
 					"$(inherited)",
 					"\"Frameworks\"",
 				);
+				CODE_SIGN_ENTITLEMENTS = App/iOS/WaitingPaws.entitlements;
 				INFOPLIST_FILE = App/iOS/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1638,6 +1639,7 @@
 					"$(inherited)",
 					"\"Frameworks\"",
 				);
+				CODE_SIGN_ENTITLEMENTS = App/iOS/WaitingPaws.entitlements;
 				INFOPLIST_FILE = App/iOS/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (

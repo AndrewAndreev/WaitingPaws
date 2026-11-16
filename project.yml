@@ -53,6 +53,12 @@ targets:
         embed: false
       # The training's Live Activity and Dynamic Island (embedded in PlugIns).
       - target: WaitingPaws-Widgets
+    # The direct link's mailbox (a knock away from home goes through the app's public CloudKit database).
+    entitlements:
+      path: App/iOS/WaitingPaws.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers: [iCloud.su.comrade.waitingpaws]
+        com.apple.developer.icloud-services: [CloudKit]
     info:
       path: App/iOS/Info.plist
       properties:
@@ -189,6 +195,11 @@ targetTemplates:
         com.apple.security.network.client: true
         com.apple.security.network.server: true
         com.apple.security.personal-information.photos-library: true
+        # The direct link's mailbox: an iPhone away from home knocks through the app's public CloudKit database; a
+        # silent push from its subscription wakes the Mac to answer.
+        com.apple.developer.icloud-container-identifiers: [iCloud.su.comrade.waitingpaws]
+        com.apple.developer.icloud-services: [CloudKit]
+        com.apple.developer.aps-environment: development
     info:
       properties:
         CFBundleDisplayName: Waiting Paws
