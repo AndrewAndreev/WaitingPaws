@@ -116,8 +116,9 @@ final class P2PLinks {
     /// Mac: how long after an iPhone was last linked the router is kept open for it, and how often.
     static let sprayFor: TimeInterval = 30 * 60
     static let sprayEvery: Double = 8
-    /// iPhone: a link silent this long counts as dead for knocking (a shorter blip may still pass by itself).
-    static let knockAfterSilence: TimeInterval = 20
+    /// iPhone: a link silent this long counts as dead for knocking (a shorter blip may still pass by itself; a Mac
+    /// that quit for an update is back in a few seconds and needs the new link).
+    static let knockAfterSilence: TimeInterval = 12
     static let knockTries = 8
     private static let doorsKey = "p2p.doors"
     private static let carriersKey = "p2p.carriers"
@@ -264,7 +265,16 @@ final class P2PLinks {
         var options = Options(role: "offer", label: key.kind.rawValue, stun: Self.stunServers)
         switch key.kind {
         case .lan:
+            #if os(iOS)
+            // Without Wi‑Fi there is no home-network link to check (it would go over cellular like `out`).
+            guard let wifi = network.lanInterface else {
+                unavailable[key] = String(localized: "No Wi‑Fi")
+                return
+            }
+            options.interface = wifi
+            #else
             options.interface = network.lanInterface ?? ""
+            #endif
             options.interfaces = ["en"]
         case .out:
             #if os(iOS)
@@ -1158,7 +1168,19 @@ final class P2PMailbox {
             record["payload"] = Data([0]) as NSData
             return record
         }
+        // Production refuses a query subscription until one of the same shape was made in Development and the schema
+        // deployed again, even with nothing new in it (CKError 12 «attempting to create a subscription in a
+        // production container»; Apple FB22867235).
+        let subscription = CKQuerySubscription(recordType: knockType, predicate: NSPredicate(format: "box == %@", "00000000000000000000000000000000"),
+                                               subscriptionID: "p2p-knock-schema", options: [.firesOnRecordCreation])
+        let info = CKSubscription.NotificationInfo()
+        info.shouldSendContentAvailable = true
+        subscription.notificationInfo = info
+        let subscribe = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: nil)
+        subscribe.modifySubscriptionsResultBlock = { result in print("[ck] subscription: \(result)") }
+        database.add(subscribe)
         let save = CKModifyRecordsOperation(recordsToSave: records)
+        save.addDependency(subscribe)
         save.modifyRecordsResultBlock = { result in
             print("[ck] saved: \(result)")
             let delete = CKModifyRecordsOperation(recordIDsToDelete: records.map(\.recordID))

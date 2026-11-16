@@ -74,7 +74,7 @@ final class SyncChannel {
     }
 
     private func receive() {
-        connection.receiveMessage { [weak self] data, _, _, error in
+        connection.receiveMessage { [weak self] data, context, _, error in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if let data, !data.isEmpty {
@@ -86,7 +86,18 @@ final class SyncChannel {
                         return
                     }
                 }
-                if error == nil { self.receive() }
+                // The other end closed (or the read failed): the connection stays «ready» by itself, with nothing more
+                // ever coming — over the direct link that kept the iPhone «linked» to a Mac that had quit for a minute
+                // and more (2026-11-16). Cancelled, so its owner hears `.cancelled` and reconnects.
+                if let error {
+                    print("[sync] connection ended: \(error.localizedDescription)")
+                    self.connection.cancel()
+                } else if (data?.isEmpty ?? true), context?.isFinal == true {
+                    print("[sync] the other side closed the connection")
+                    self.connection.cancel()
+                } else {
+                    self.receive()
+                }
             }
         }
     }

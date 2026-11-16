@@ -5832,6 +5832,16 @@
         }
       }
     },
+    "No Wi‑Fi" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет Wi‑Fi"
+          }
+        }
+      }
+    },
     "No, Sign In to Xiaomi on iPhone" : {
       "localizations" : {
         "ru" : {
