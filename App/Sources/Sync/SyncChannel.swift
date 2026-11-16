@@ -14,16 +14,57 @@ final class SyncChannel {
     var onStateChange: ((NWConnection.State) -> Void)?
     var cipher: SyncCipher?
 
+    /// A WebSocket ping every `pingEvery`; with no pong (or message) for `deadAfter` the connection is closed, so a link
+    /// that died without a word (Wi‑Fi off, the Mac quit, the direct link gone) is noticed in seconds — TCP itself took
+    /// 30–45 s (2026-11-16). Both ends answer pings by themselves (`SyncWebSocket`: autoReplyPing), older builds too.
+    static let pingEvery: Duration = .seconds(3)
+    static let deadAfter: TimeInterval = 9
+    private var heardAt = Date()
+    private var pingedAt: Date?
+    private var pingTask: Task<Void, Never>?
+
     init(connection: NWConnection) {
         self.connection = connection
     }
 
     func start() {
         connection.stateUpdateHandler = { [weak self] state in
-            MainActor.assumeIsolated { self?.onStateChange?(state) }
+            MainActor.assumeIsolated {
+                if case .ready = state { self?.heardAt = Date() }
+                self?.onStateChange?(state)
+            }
         }
         connection.start(queue: .main)
         receive()
+        pingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.pingEvery)
+                guard let self, !Task.isCancelled else { return }
+                self.keepAlive()
+            }
+        }
+    }
+
+    private func keepAlive() {
+        guard case .ready = connection.state else { return }
+        let now = Date()
+        // Back from being suspended (an iPhone in the background): no ping went out meanwhile, so silence says nothing
+        // yet; the next round decides.
+        if let pingedAt, now.timeIntervalSince(pingedAt) > Self.deadAfter { heardAt = now }
+        if now.timeIntervalSince(heardAt) > Self.deadAfter {
+            print("[sync] no answer for \(Int(Self.deadAfter)) s, closing the connection")
+            pingTask?.cancel()
+            connection.cancel()
+            return
+        }
+        pingedAt = now
+        let metadata = NWProtocolWebSocket.Metadata(opcode: .ping)
+        metadata.setPongHandler(.main) { [weak self] error in
+            guard error == nil else { return }
+            MainActor.assumeIsolated { self?.heardAt = Date() }
+        }
+        let context = NWConnection.ContentContext(identifier: "ping", metadata: [metadata])
+        connection.send(content: Data(), contentContext: context, isComplete: true, completion: .idempotent)
     }
 
     func send(_ message: SyncMessage) {
@@ -45,6 +86,7 @@ final class SyncChannel {
     }
 
     func cancel() {
+        pingTask?.cancel()
         connection.stateUpdateHandler = nil
         connection.cancel()
     }
@@ -78,6 +120,7 @@ final class SyncChannel {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if let data, !data.isEmpty {
+                    self.heardAt = Date()
                     do {
                         try self.deliver(SyncMessage.decode(data))
                     } catch {

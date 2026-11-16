@@ -107,6 +107,11 @@ final class P2PLinks {
     @ObservationIgnored private var viaDoor: Set<Key> = []
     @ObservationIgnored private var nextKnock = Date.distantPast
     @ObservationIgnored private var knockFailures = 0
+    /// iPhone: waiting for the Mac's answer to the last knock through iCloud.
+    @ObservationIgnored private var knockWait: Task<Void, Never>?
+    /// iPhone: when Wi‑Fi came, and when the Mac was last seen on it (no knocking while it may still show up there).
+    @ObservationIgnored private var wifiSince: Date?
+    @ObservationIgnored private var macSeenOnWiFi: Date?
     @ObservationIgnored private let launchedAt = Date()
 
     static let homeSilence: TimeInterval = 10
@@ -289,6 +294,8 @@ final class P2PLinks {
             return
             #endif
         }
+        // A knock's answer may take a while (the Mac's mailbox check, iCloud): its link waits for it.
+        if knock { options.connectTimeout = 50 }
         open(key, options: options, offer: true, forward: key.kind == .out)
     }
 
@@ -396,6 +403,7 @@ final class P2PLinks {
             #else
             if viaDoor.contains(key), knocking != nil {
                 print("[p2p] out: up again through the Mac's door")
+                knockWait?.cancel()
                 knocking = nil
                 knockFailures = 0
                 nextKnock = .distantPast
@@ -492,7 +500,7 @@ final class P2PLinks {
         for peer in pairedPeers?() ?? [] {
             guard let secret = pairingSecret?(peer), !secret.isEmpty,
                   let knock = try? P2PDoorSeal.open(payload, secret: secret, .phoneToMac) else { continue }
-            guard doorGuard.accept(knock) else { return }
+            guard doorGuard.accept(knock), !predatesLiveLink(knock, peer: peer) else { return }
             print("[p2p] door: \(peer.prefix(8)) knocked from \(address) (\(knock.signal.link))")
             doorReturn[peer] = (address, Date())
             mailboxReturn[peer] = nil
@@ -534,13 +542,22 @@ final class P2PLinks {
         }
         guard mailbox.isUsable else { return }
         let box = P2PDoorSeal.boxID(secret: secret)
-        Task { [weak self] in
+        let key = Key(peer: peer, kind: .out)
+        let handle = links[key]
+        knockWait?.cancel()
+        knockWait = Task { [weak self] in
             guard let self, await self.mailbox.post(sealed, box: box) else { return }
             print("[p2p] out: knocked through iCloud, waiting for the Mac's answer")
-            guard let payload = await self.mailbox.answer(box: box, nonce: knock.nonce, timeout: 45),
-                  let answer = try? P2PDoorSeal.open(payload, secret: secret, .macToPhone),
+            let payload = await self.mailbox.answer(box: box, nonce: knock.nonce, timeout: 50)
+            guard !Task.isCancelled else { return } // the link came up another way, or another knock replaced it
+            guard let payload, let answer = try? P2PDoorSeal.open(payload, secret: secret, .macToPhone),
                   self.doorGuard.accept(answer) else {
                 print("[p2p] out: no answer through iCloud")
+                return
+            }
+            // Only for the link this knock offered: a later one (set up over sync, or another knock) has other keys.
+            guard self.links[key] === handle else {
+                print("[p2p] out: an answer to an older knock, dropped")
                 return
             }
             print("[p2p] out: the Mac answered through iCloud")
@@ -550,11 +567,21 @@ final class P2PLinks {
     #endif
 
     #if os(macOS)
+    /// A knock sent before the link that is up now (a late one from iCloud): answering it would replace that link
+    /// with one nobody waits for (2026-11-16 19:04: a good link was lost that way).
+    private func predatesLiveLink(_ knock: P2PDoorKnock, peer: String) -> Bool {
+        guard let status = statuses[Key(peer: peer, kind: .out)], status.isAlive,
+              let connected = status.connectedAt, connected > 0, knock.sent * 1000 < connected else { return false }
+        print("[p2p] \(peer.prefix(8)): a knock from before the link that is up now, ignored")
+        return true
+    }
+
     /// A knock from the mailbox: opened with the key of the pair whose box it is in.
     private func mailboxKnock(_ payload: Data, box: String) {
         for peer in pairedPeers?() ?? [] {
             guard let secret = pairingSecret?(peer), !secret.isEmpty, P2PDoorSeal.boxID(secret: secret) == box else { continue }
-            guard let knock = try? P2PDoorSeal.open(payload, secret: secret, .phoneToMac), doorGuard.accept(knock) else { return }
+            guard let knock = try? P2PDoorSeal.open(payload, secret: secret, .phoneToMac), doorGuard.accept(knock),
+                  !predatesLiveLink(knock, peer: peer) else { return }
             print("[p2p] mailbox: \(peer.prefix(8)) knocked through iCloud (\(knock.signal.link))")
             mailboxReturn[peer] = (box, knock.nonce, Date())
             doorReturn[peer] = nil
@@ -594,6 +621,7 @@ final class P2PLinks {
             return (peer, carrier, linked)
         }.max { $0.at < $1.at }
         let band = gone?.carrier.band
+        mailbox.urgent = gone != nil
         let wanted = gone.flatMap { target in band.map { "\(target.carrier.ip):\($0.lowerBound)-\($0.upperBound)" } }
         guard wanted != sprayingFor else { return }
         sprayingFor = wanted
@@ -644,12 +672,26 @@ final class P2PLinks {
             nextKnock = .distantPast
             return
         }
-        guard let peer = knockTarget?(), seesOnLAN?(peer) != true, doors[peer] != nil || mailbox.isUsable,
+        guard let peer = knockTarget?() else { return }
+        // Wi‑Fi up: the Mac may be on it (Bonjour takes a moment after Wi‑Fi comes, after the app is back): no knock
+        // until it has had 15 s to show up (2026-11-16 19:04: a knock at home brought a late answer that broke the link).
+        if network.lanInterface != nil {
+            if wifiSince == nil { wifiSince = Date() }
+            if seesOnLAN?(peer) == true { macSeenOnWiFi = Date() }
+            let since = max(wifiSince ?? .distantPast, macSeenOnWiFi ?? .distantPast)
+            if Date().timeIntervalSince(since) < 15 { return }
+        } else {
+            wifiSince = nil
+        }
+        guard seesOnLAN?(peer) != true, doors[peer] != nil || mailbox.isUsable,
               pairingSecret?(peer)?.isEmpty == false, let cellular = network.cellularInterface else { return }
         let key = Key(peer: peer, kind: .out)
         if links[key] != nil, let status = statuses[key] {
             switch status.outcome() {
-            case .checking, .direct(stale: false): return
+            // A knock's link waits for its answer. One whose offer went over the sync link over Wi‑Fi — gone now — never
+            // gets one (2026-11-16 19:04: it held the knock back for 30 s).
+            case .checking: if viaDoor.contains(key) { return }
+            case .direct(stale: false): return
             case .direct(stale: true): if (status.silence() ?? 0) < Self.knockAfterSilence { return }
             case .lost, .failed: break
             }
@@ -667,7 +709,8 @@ final class P2PLinks {
               + [doors[peer].map { "its door \($0)" }, mailbox.isUsable ? "iCloud" : nil].compactMap { $0 }.joined(separator: " and ")
               + (knockFailures > 0 ? " (try \(knockFailures + 1))" : ""))
         start(key, viaDoor: true)
-        nextKnock = Date().addingTimeInterval(min(120, 15 * pow(2, Double(knockFailures))))
+        // One knock at a time: its link waits 50 s for the answer.
+        nextKnock = Date().addingTimeInterval(min(120, max(52, 15 * pow(2, Double(knockFailures)))))
         knockFailures += 1
     }
     #endif
@@ -1069,6 +1112,11 @@ final class P2PMailbox {
     static let knockType = "P2PKnock"
     static let answerType = "P2PAnswer"
     static let pollEvery: TimeInterval = 20
+    /// While an iPhone that was just linked is away (`urgent`): a knock is found within a few seconds even when the
+    /// silent push is late (Apple delivers those when it likes; 2026-11-16 they never beat the 20 s poll).
+    static let urgentPollEvery: TimeInterval = 3
+    /// Mac: an iPhone is away right now (set by `P2PLinks.updateDoor`).
+    var urgent = false
 
     /// Mac: a knock's sealed payload for the pair `box`.
     var onKnock: ((_ payload: Data, _ box: String) -> Void)?
@@ -1208,9 +1256,15 @@ final class P2PMailbox {
             pollTask = nil
         } else if pollTask == nil {
             pollTask = Task { [weak self] in
+                var polledAt = Date.distantPast
                 while !Task.isCancelled {
-                    await self?.poll()
-                    try? await Task.sleep(for: .seconds(Self.pollEvery))
+                    guard let self else { return }
+                    let every = self.urgent ? Self.urgentPollEvery : Self.pollEvery
+                    if Date().timeIntervalSince(polledAt) >= every {
+                        polledAt = Date()
+                        await self.poll()
+                    }
+                    try? await Task.sleep(for: .seconds(1))
                 }
             }
         }

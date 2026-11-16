@@ -263,6 +263,13 @@ final class SyncClient {
         guard case .connected(let device) = status else { return } // mid-handshake: it finishes or fails first
         switch route {
         case .lan:
+            // Wi‑Fi went with no direct link to take over: the link over Wi‑Fi is gone too, though its connection may
+            // look «ready» for half a minute. Joined again at once (through the direct link once it is up).
+            if !hasWiFi(), directHost() == nil {
+                print("[sync] \(device.name): Wi‑Fi is gone, and the link over it")
+                lost(String(localized: "No connection to the \(device.kindTitle)"))
+                return
+            }
             guard homeNetworkGone(device.id), let direct = directHost(), direct.host.id == device.id else { return }
             // Left because Wi-Fi went silent while still up (the edge of its range): not straight back to it. Wi-Fi
             // turned off and on again is used as soon as the Mac shows up on it.
