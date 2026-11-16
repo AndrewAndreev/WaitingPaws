@@ -785,7 +785,6 @@ private struct SettingsIPhonePane: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
-        MacP2PSection()
         .alert(forgetDevice.map { String(localized: "Forget “\($0.name)”?") } ?? "",
                isPresented: Binding(get: { forgetDevice != nil }, set: { if !$0 { forgetDevice = nil } }),
                presenting: forgetDevice) { paired in
@@ -808,9 +807,7 @@ private struct SettingsIPhonePane: View {
         } else {
             parts.append(String(localized: "Connection allowed"))
         }
-        if let direct = P2PText.summary(model.p2p, peer: paired.deviceID) {
-            parts.append(String(localized: "direct: \(direct)"))
-        }
+        if let away = P2PText.awayShort(model.p2p.status(paired.deviceID, .out)) { parts.append(away) }
         return parts.joined(separator: " · ")
     }
 }
@@ -851,9 +848,9 @@ private struct MacP2PSection: View {
                 Text(P2PText.doorDetail(links.doorStatus))
             }
         } header: {
-            Text("Direct Link (Test)")
+            Text("iPhone Away from Home")
         } footer: {
-            Text("An iPhone checks whether it can reach this Mac directly, without any server: at home and over cellular, as away from home. When its home network is gone, its syncing and the picture go over that link. The router is only asked for its address; nothing in it changes.")
+            Text("Each iPhone checks at home whether it can reach this Mac over cellular, straight, with no servers. Away from home the picture and the buttons go that way.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -895,6 +892,8 @@ private struct SettingsDiagnosticsPane: View {
                 Text("Useful if the camera won’t connect or a recording stopped unexpectedly.")
             }
         }
+        // The iPhones' direct links in detail (the iPhone pane says only whether each works away from home).
+        MacP2PSection()
     }
 }
 

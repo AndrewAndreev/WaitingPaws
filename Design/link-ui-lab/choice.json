@@ -1,0 +1,17 @@
+{
+  "picks": {
+    "s1": "A",
+    "s2": "B",
+    "s4": "A",
+    "s3": "A"
+  },
+  "names": {
+    "s1": "Одна строка",
+    "s2": "Карточка",
+    "s3": "Точка на пилюле",
+    "s4": "Поповер в шапке"
+  },
+  "comment": "3A: when no Mac is online, no pill and no list (as before). 4A: popover only; no wheel and no «ведёт» — every iPhone the same grey phone icon, the ones that only watch get a «Только просмотр / View-only» chip (owner, 2026-11-16). 2B card merged with 3A's list of Macs (others under «Другие Mac»).",
+  "savedAt": "2026-11-16T17:05:36.800Z",
+  "from": "127.0.0.1"
+}

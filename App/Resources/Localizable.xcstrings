@@ -447,6 +447,16 @@
         }
       }
     },
+    "%lld Macs online" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac онлайн: %lld"
+          }
+        }
+      }
+    },
     "%lld MB" : {
       "localizations" : {
         "ru" : {
@@ -692,6 +702,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "О приложении"
+          }
+        }
+      }
+    },
+    "About 10 seconds." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Около 10 секунд."
           }
         }
       }
@@ -1086,16 +1106,6 @@
         }
       }
     },
-    "An iPhone checks whether it can reach this Mac directly, without any server: at home and over cellular, as away from home. When its home network is gone, its syncing and the picture go over that link. The router is only asked for its address; nothing in it changes." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iPhone проверяет, может ли он связаться с этим Mac напрямую, без всякого сервера: дома и через сотовую сеть — как вне дома. Когда у него нет домашней сети, синхронизация и картинка идут по этой связи. У роутера только спрашиваем его адрес, в нём ничего не меняется."
-          }
-        }
-      }
-    },
     "An iPhone on the same network shows this Mac’s camera and runs the training." : {
       "localizations" : {
         "ru" : {
@@ -1142,6 +1152,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ещё выход"
+          }
+        }
+      }
+    },
+    "Another iPhone runs this training. The Mac can make this one the main iPhone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тренировку ведёт другой iPhone. Сделать этот основным можно на Mac."
           }
         }
       }
@@ -1276,12 +1296,42 @@
         }
       }
     },
-    "Away from the home network, the link can’t be set up again: that needs a server (planned). Connect at home and check again." : {
+    "Away from Home" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вне домашней сети связь заново не настроить: для этого нужен сервер (он в планах). Подключитесь дома и проверьте ещё раз."
+            "value" : "Вне дома"
+          }
+        }
+      }
+    },
+    "away from home: checking…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вне дома: проверяем…"
+          }
+        }
+      }
+    },
+    "away from home: won’t work" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вне дома: не получится"
+          }
+        }
+      }
+    },
+    "away from home: works" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вне дома: работает"
           }
         }
       }
@@ -1786,16 +1836,6 @@
         }
       }
     },
-    "Camera, recording, and log are on the %@" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Камера, запись и лог — на %@"
-          }
-        }
-      }
-    },
     "Cameras from the Mi Home app" : {
       "localizations" : {
         "ru" : {
@@ -1922,6 +1962,16 @@
         }
       }
     },
+    "cellular, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "по сотовой, %@"
+          }
+        }
+      }
+    },
     "Change exits and breaks right during the training · ⌘E" : {
       "localizations" : {
         "ru" : {
@@ -2022,16 +2072,6 @@
         }
       }
     },
-    "Check Again" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Проверить ещё раз"
-          }
-        }
-      }
-    },
     "Check Connection" : {
       "localizations" : {
         "ru" : {
@@ -2068,6 +2108,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверить роутер"
+          }
+        }
+      }
+    },
+    "Checked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверено"
+          }
+        }
+      }
+    },
+    "Checked %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверено %@"
           }
         }
       }
@@ -2420,6 +2480,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключиться к %@"
+          }
+        }
+      }
+    },
+    "Connected · cellular" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На связи · по сотовой"
+          }
+        }
+      }
+    },
+    "Connected · cellular, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На связи · по сотовой, %@"
+          }
+        }
+      }
+    },
+    "Connected · Wi‑Fi" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На связи · по Wi‑Fi"
           }
         }
       }
@@ -3179,6 +3269,16 @@
         }
       }
     },
+    "Details" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подробности"
+          }
+        }
+      }
+    },
     "Diagnostics" : {
       "localizations" : {
         "ru" : {
@@ -3199,42 +3299,12 @@
         }
       }
     },
-    "Direct Link (Test)" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Прямая связь (тест)"
-          }
-        }
-      }
-    },
-    "Direct link (test): %@" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Прямая связь (тест): %@"
-          }
-        }
-      }
-    },
     "Direct link works outside home too" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прямая связь работает и вне дома"
-          }
-        }
-      }
-    },
-    "direct: %@" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "напрямую: %@"
           }
         }
       }
@@ -3365,6 +3435,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Дублировать · ⌘D"
+          }
+        }
+      }
+    },
+    "Each iPhone checks at home whether it can reach this Mac over cellular, straight, with no servers. Away from home the picture and the buttons go that way." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый iPhone дома проверяет, может ли он связаться с этим Mac по сотовой — напрямую, без серверов. Вне дома картинка и кнопки идут так."
           }
         }
       }
@@ -3535,6 +3615,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Все выходы — до конца плана, в среднем +%@"
+          }
+        }
+      }
+    },
+    "Every iPhone here can mark the exits (one of them is from an older Waiting Paws)." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отмечать выходы может любой iPhone (на одном из них старая версия Waiting Paws)."
           }
         }
       }
@@ -4345,6 +4435,9 @@
     "http://192.168.1.10:1984" : {
       "shouldTranslate" : false
     },
+    "iCloud" : {
+      "shouldTranslate" : false
+    },
     "ID %@" : {
       "shouldTranslate" : false
     },
@@ -4431,6 +4524,16 @@
     "iPhone" : {
       "shouldTranslate" : false
     },
+    "iPhone Away from Home" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone вне дома"
+          }
+        }
+      }
+    },
     "iPhone will show the camera and become a remote for this training." : {
       "localizations" : {
         "ru" : {
@@ -4461,6 +4564,26 @@
         }
       }
     },
+    "iPhones in this training" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone на тренировке"
+          }
+        }
+      }
+    },
+    "iPhones in This Training" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone на тренировке"
+          }
+        }
+      }
+    },
     "iPhones see this %@ under this name." : {
       "localizations" : {
         "ru" : {
@@ -4487,6 +4610,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На нём уже подключена камера «%@». iPhone покажет её и тренировку с %@, входить в Xiaomi не нужно."
+          }
+        }
+      }
+    },
+    "It’s checked by itself when this iPhone connects to the Mac at home." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверка идёт сама, когда iPhone подключается к Mac дома."
           }
         }
       }
@@ -4697,6 +4830,16 @@
         }
       }
     },
+    "Log and video" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Журнал и видео"
+          }
+        }
+      }
+    },
     "Log for the Trainer" : {
       "localizations" : {
         "ru" : {
@@ -4833,6 +4976,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "главный поток %lld %%"
+          }
+        }
+      }
+    },
+    "Make Main" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать основным"
           }
         }
       }
@@ -5036,6 +5189,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рядом"
+          }
+        }
+      }
+    },
+    "nearby — after the training" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "рядом — после тренировки"
+          }
+        }
+      }
+    },
+    "nearby — tap to switch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "рядом — нажмите, чтобы переключиться"
           }
         }
       }
@@ -5393,12 +5566,12 @@
         }
       }
     },
-    "No home network: the picture and syncing go over the cellular link" : {
+    "No iCloud account" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нет домашней сети: картинка и синхронизация идут через сотовую связь"
+            "value" : "Нет входа в iCloud"
           }
         }
       }
@@ -5695,6 +5868,16 @@
         }
       }
     },
+    "Not checked yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не проверено"
+          }
+        }
+      }
+    },
     "Not in this build" : {
       "localizations" : {
         "ru" : {
@@ -5711,6 +5894,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пока неизвестна"
+          }
+        }
+      }
+    },
+    "not on this network" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не в этой сети"
           }
         }
       }
@@ -5971,6 +6164,16 @@
         }
       }
     },
+    "One iPhone marks the exits; the others see the camera and the timer. A new iPhone joins view-only." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выходы отмечает один iPhone, остальные видят камеру и таймер. Новый iPhone подключается только для просмотра."
+          }
+        }
+      }
+    },
     "online" : {
       "localizations" : {
         "ru" : {
@@ -6091,6 +6294,16 @@
         }
       }
     },
+    "Other Macs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другие Mac"
+          }
+        }
+      }
+    },
     "Other Options" : {
       "localizations" : {
         "ru" : {
@@ -6159,6 +6372,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вышли"
+          }
+        }
+      }
+    },
+    "Over cellular" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По сотовой"
           }
         }
       }
@@ -6752,6 +6975,16 @@
         }
       }
     },
+    "Reconnecting… %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переподключаемся… %@"
+          }
+        }
+      }
+    },
     "Record" : {
       "localizations" : {
         "ru" : {
@@ -6998,6 +7231,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запись без тренировки"
+          }
+        }
+      }
+    },
+    "recording|in progress" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recording"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "запись идёт"
           }
         }
       }
@@ -7357,6 +7606,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранять видео в Фото"
+          }
+        }
+      }
+    },
+    "saved on the %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сохраняются на %@"
           }
         }
       }
@@ -7817,6 +8076,16 @@
         }
       }
     },
+    "Sign in to iCloud on this iPhone to find the Mac again after the app was closed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войдите в iCloud на этом iPhone, чтобы находить Mac и после закрытия приложения."
+          }
+        }
+      }
+    },
     "Sign In to Xiaomi" : {
       "localizations" : {
         "ru" : {
@@ -7949,6 +8218,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вход прошёл, но go2rtc не вернул аккаунт. Попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "Signed in|iCloud" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signed in"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход выполнен"
           }
         }
       }
@@ -8319,16 +8604,6 @@
         }
       }
     },
-    "Switch To" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Переключиться на"
-          }
-        }
-      }
-    },
     "Sync" : {
       "localizations" : {
         "ru" : {
@@ -8598,6 +8873,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Видео с камеры показывается только на %@"
+          }
+        }
+      }
+    },
+    "The carrier’s network and the home router don’t let a direct link through. At home everything works as usual." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сеть оператора и домашний роутер не пропускают прямую связь. Дома всё работает как обычно."
           }
         }
       }
@@ -9152,6 +9437,16 @@
         }
       }
     },
+    "This iPhone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот iPhone"
+          }
+        }
+      }
+    },
     "This iPhone was linked before but couldn’t confirm it. If it wasn’t forgotten on the iPhone, choose Decline." : {
       "localizations" : {
         "ru" : {
@@ -9312,16 +9607,6 @@
         }
       }
     },
-    "To try it, turn off Wi‑Fi: the picture should come back over cellular in a few seconds. It lasts while the app is open." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Чтобы проверить, выключите Wi‑Fi: через несколько секунд картинка должна вернуться через сотовую сеть. Связь держится, пока приложение открыто."
-          }
-        }
-      }
-    },
     "TODAY" : {
       "localizations" : {
         "ru" : {
@@ -9428,16 +9713,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Шаг тренировки"
-          }
-        }
-      }
-    },
-    "Training synced with “%@”" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тренировка синхронизирована с «%@»"
           }
         }
       }
@@ -9614,6 +9889,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включить звук камеры в приложении (запись всегда со звуком)"
+          }
+        }
+      }
+    },
+    "Turn on cellular data for Waiting Paws in Settings → Cellular." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включите сотовые данные для Waiting Paws: Настройки → Сотовая связь."
           }
         }
       }
@@ -9968,6 +10253,26 @@
         }
       }
     },
+    "View-only" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только просмотр"
+          }
+        }
+      }
+    },
+    "View-only: another iPhone marks the exits" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только просмотр: выходы отмечает другой iPhone"
+          }
+        }
+      }
+    },
     "wait for quiet" : {
       "localizations" : {
         "ru" : {
@@ -10033,16 +10338,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Waiting Paws %@: что нового и установка"
-          }
-        }
-      }
-    },
-    "Waiting Paws checks whether this iPhone can reach the Mac directly, without any server: at home over Wi‑Fi, and over cellular — the way it goes away from home. At home everything goes as before; when the home network is gone, syncing and the picture switch to the cellular link by themselves." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Waiting Paws проверяет, может ли этот iPhone связаться с Mac напрямую, без всякого сервера: дома по Wi‑Fi и через сотовую сеть — так, как связь пойдёт вне дома. Дома всё идёт как раньше, а когда домашней сети нет, синхронизация и картинка сами переходят на сотовую связь."
           }
         }
       }
@@ -10147,6 +10442,16 @@
         }
       }
     },
+    "When Wi‑Fi drops, the picture and the buttons switch to cellular by themselves — straight to the Mac, no servers." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда Wi‑Fi пропадает, картинка и кнопки сами переходят на сотовую связь — прямо на Mac, без серверов."
+          }
+        }
+      }
+    },
     "Where go2rtc runs — the server that pulls video from the camera." : {
       "localizations" : {
         "ru" : {
@@ -10207,16 +10512,6 @@
         }
       }
     },
-    "With no link up away from home (the app was closed, the link died), a new one is offered through the Mac’s door. It gets in if the home router lets it: the Mac keeps it open for a while after this iPhone was last connected." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Если вне дома связи нет (приложение закрывали, связь оборвалась), новая предлагается через дверь Mac. Она пройдёт, если пропустит домашний роутер: Mac держит его открытым какое-то время после последнего подключения этого iPhone."
-          }
-        }
-      }
-    },
     "With your own go2rtc server, the iPhone runs the training but doesn’t show the camera." : {
       "localizations" : {
         "ru" : {
@@ -10237,12 +10532,42 @@
         }
       }
     },
+    "Won’t work away from home" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вне дома не получится"
+          }
+        }
+      }
+    },
+    "Works away from home" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Можно смотреть вне дома"
+          }
+        }
+      }
+    },
     "Works directly" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Работает напрямую"
+          }
+        }
+      }
+    },
+    "Works while the app is open" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работает, пока приложение открыто"
           }
         }
       }

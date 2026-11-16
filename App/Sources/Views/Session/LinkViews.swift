@@ -7,34 +7,41 @@ struct LinkPill: View {
     @Environment(AppModel.self) private var model
     /// iPhone: folds to the computer's icon where the top bar has no room for «Mac» (small iPhones).
     var foldsToIcon = false
+    /// iPhone: the joined computer's card (`LinkedMacCard`) is open.
+    @State private var showsCard = false
 
     var body: some View {
         #if os(macOS)
         let devices = model.syncHost.connectedDevices
         if let first = devices.first {
-            let direct = devices.compactMap { P2PText.summary(model.p2p, peer: $0.id) }.first
-            Pill(text: devices.count == 1 ? first.name : "\(first.kindTitle) × \(devices.count)",
-                 systemImage: first.symbolName, tint: Theme.info)
-                .help((devices.count == 1 ? String(localized: "“\(first.name)” sees the camera and runs this training")
-                                          : String(localized: "Seeing the camera and running the training: \(devices.map(\.name).joined(separator: ", "))"))
-                      + (direct.map { "\n" + String(localized: "Direct link (test): \($0)") } ?? ""))
+            if devices.count == 1 {
+                Pill(text: first.name, systemImage: first.symbolName, tint: Theme.info)
+                    .help(String(localized: "“\(first.name)” sees the camera and runs this training"))
+            } else {
+                // Several iPhones: which one runs the training and which only watch (lab `Design/link-ui-lab`, 4A).
+                Button { showsCard = true } label: {
+                    Pill(text: "\(first.kindTitle) × \(devices.count)", systemImage: first.symbolName, tint: Theme.info)
+                }
+                .buttonStyle(.plain)
+                .help(String(localized: "iPhones in this training"))
+                .popover(isPresented: $showsCard, arrowEdge: .bottom) {
+                    MacLinkedPhones().environment(model)
+                }
+            }
         }
         #else
         let client = model.syncClient
         if let host = client.reconnecting {
-            // The link dropped mid-training: the bubble under the pill says so (`LinkNoticeOverlay`); give up here.
-            Menu {
-                Section {
-                    Text(Self.reconnectingTitle(host))
-                }
-                Button("Stop Syncing", systemImage: "xmark.circle", role: .destructive) {
-                    client.disconnect()
-                }
-            } label: {
+            // The link dropped mid-training: the bubble under the pill says so (`LinkNoticeOverlay`); the card shows
+            // how long, and gives up.
+            Button { showsCard = true } label: {
                 label("\(host.kindTitle)…", systemImage: "wifi.exclamationmark", tint: Theme.warning)
             }
-            .menuStyle(.button)
             .buttonStyle(.plain)
+            .popover(isPresented: $showsCard, arrowEdge: .top) {
+                LinkedMacCard(host: host, reconnecting: true) { showsCard = false }
+                    .presentationCompactAdaptation(.popover)
+            }
             .anchorPreference(key: LinkPillAnchorKey.self, value: .bounds) { $0 }
         } else {
             linkStatus(client)
@@ -43,14 +50,31 @@ struct LinkPill: View {
     }
 
     #if os(iOS)
-    /// «Mac», or only its icon when that is all that fits.
-    private func label(_ text: String, systemImage: String, tint: Color) -> some View {
+    /// «Mac», or only its icon when that is all that fits. `online`: Macs joined before that are on the network now
+    /// — a green dot for the joined one, their number when there are more (lab `Design/link-ui-lab`, 3A).
+    private func label(_ text: String, systemImage: String, tint: Color, online: Int = 0) -> some View {
         ViewThatFits(in: .horizontal) {
             Pill(text: text, systemImage: systemImage, tint: tint)
             if foldsToIcon {
                 Pill(text: text, systemImage: systemImage, tint: tint, iconOnly: true)
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if online > 1 {
+                Text(verbatim: "\(online)")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 4)
+                    .frame(minWidth: 15, minHeight: 15)
+                    .background(Theme.go, in: Capsule())
+                    .offset(x: 4, y: -4)
+            } else if online == 1 {
+                Circle().fill(Theme.go).frame(width: 8, height: 8)
+                    .overlay(Circle().stroke(.black, lineWidth: 1.5))
+                    .offset(x: 1, y: 1)
+            }
+        }
+        .accessibilityValue(online > 1 ? String(localized: "\(online) Macs online") : "")
     }
 
     static func reconnectingTitle(_ host: SyncDevice) -> String {
@@ -61,43 +85,36 @@ struct LinkPill: View {
     private func linkStatus(_ client: SyncClient) -> some View {
         switch client.status {
         case .connected(let host):
-            Menu {
-                Section {
-                    Text("Training synced with “\(host.name)”")
-                    if let hostModel = host.distinctModel { Text(hostModel) }
-                    Text("Camera, recording, and log are on the \(host.kindTitle)")
-                }
-                if model.p2p.lastPeer == host.id, let summary = P2PText.summary(model.p2p, peer: host.id) {
-                    Section("Direct Link (Test)") {
-                        if client.route == .direct {
-                            Text("No home network: the picture and syncing go over the cellular link")
-                        }
-                        Text(summary)
-                    }
-                }
-                let others = client.compatibleHosts.filter { $0.id != host.id }
-                if model.session == nil, !others.isEmpty {
-                    Section("Switch To") {
-                        ForEach(others) { other in
-                            Button { client.connect(to: other) } label: {
-                                Text(other.device.name)
-                                Text(HostText.detail(other, paired: client.isPaired(other.device)))
-                                Image(systemName: other.device.symbolName)
-                            }
+            // The joined computer and the others joined before that are on the network now (the pill counts them).
+            let online = 1 + client.compatibleHosts.filter { $0.id != host.id && client.isPaired($0.device) }.count
+            Button { showsCard = true } label: {
+                HStack(spacing: 6) {
+                    // The top bar has no room for a name («MacBoo…»): the card names the host. Through the direct link
+                    // (no home network) the icon says so.
+                    label(host.kindTitle, systemImage: client.route == .direct ? "antenna.radiowaves.left.and.right" : host.symbolName,
+                          tint: Theme.info, online: online)
+                    // Another iPhone runs the training: this one only watches.
+                    if client.isViewOnly {
+                        ViewThatFits(in: .horizontal) {
+                            Pill(text: String(localized: "View-only"), systemImage: "eye", tint: .white.opacity(0.7))
+                            Pill(text: String(localized: "View-only"), systemImage: "eye", tint: .white.opacity(0.7), iconOnly: true)
                         }
                     }
                 }
-                Button("Stop Syncing", systemImage: "xmark.circle", role: .destructive) {
-                    client.disconnect()
-                }
-            } label: {
-                // The top bar has no room for a name («MacBoo…»): the tooltip after joining and this menu name the host.
-                // Through the direct link (no home network) the icon says so.
-                label(host.kindTitle, systemImage: client.route == .direct ? "antenna.radiowaves.left.and.right" : host.symbolName,
-                      tint: Theme.info)
             }
-            .menuStyle(.button)
             .buttonStyle(.plain)
+            .popover(isPresented: $showsCard, arrowEdge: .top) {
+                LinkedMacCard(host: host, reconnecting: false) { showsCard = false }
+                    .presentationCompactAdaptation(.popover)
+            }
+            #if DEBUG
+            // `--demo-link-card`: the card open at launch (UI checks without a tap).
+            .task {
+                guard CommandLine.arguments.contains("--demo-link-card") else { return }
+                try? await Task.sleep(for: .seconds(2))
+                showsCard = true
+            }
+            #endif
             .anchorPreference(key: LinkPillAnchorKey.self, value: .bounds) { $0 }
         case .connecting(let host), .waitingApproval(let host):
             label("\(host.kindTitle)…", systemImage: "hourglass", tint: Theme.info)
@@ -108,7 +125,174 @@ struct LinkPill: View {
     #endif
 }
 
+#if os(macOS)
+/// The iPhones in this training, from the header's «iPhone × 2» (lab `Design/link-ui-lab`, 4A, with the owner's
+/// change): every iPhone the same grey phone; the ones that only watch carry «Только просмотр» and can be made main.
+struct MacLinkedPhones: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let host = model.syncHost
+        VStack(alignment: .leading, spacing: 10) {
+            Text("iPhones in This Training").font(.headline)
+            ForEach(host.connectedDevices) { device in
+                HStack(spacing: 10) {
+                    Image(systemName: device.symbolName)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(verbatim: device.name)
+                        if let model = device.distinctModel { Text(verbatim: model).font(.caption).foregroundStyle(.secondary) }
+                    }
+                    Spacer(minLength: 12)
+                    if host.isViewOnly(device.id) {
+                        Text("View-only")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(.quaternary, in: Capsule())
+                        Button("Make Main") { host.makeController(device.id) }
+                            .controlSize(.small)
+                    }
+                }
+            }
+            Text(host.controllerID == nil
+                 ? String(localized: "Every iPhone here can mark the exits (one of them is from an older Waiting Paws).")
+                 : String(localized: "One iPhone marks the exits; the others see the camera and the timer. A new iPhone joins view-only."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(width: 320)
+    }
+}
+#endif
+
 #if os(iOS)
+/// The joined computer, opened from the «Mac» pill (lab `Design/link-ui-lab`, 2B + 3A): its name and how this iPhone is
+/// linked to it, where the camera, the recording and the log are, the traffic over cellular, the other computers joined
+/// before (online ones to switch to, when no training runs) and «Отключиться».
+struct LinkedMacCard: View {
+    @Environment(AppModel.self) private var model
+    let host: SyncDevice
+    let reconnecting: Bool
+    var close: () -> Void
+
+    var body: some View {
+        let client = model.syncClient
+        let direct = client.route == .direct && !reconnecting
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: host.symbolName)
+                    .font(.title2)
+                    .foregroundStyle(reconnecting ? Theme.warning : Theme.info)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: host.name)
+                        .font(Theme.display(17, weight: .bold))
+                        .lineLimit(1)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        HStack(spacing: 6) {
+                            Circle().fill(reconnecting ? Theme.warning : Theme.go).frame(width: 8, height: 8)
+                            Text(verbatim: status(direct: direct, now: context.date))
+                        }
+                        .font(.system(.footnote, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.65))
+                    }
+                }
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 5) {
+                if let state = client.state, !state.cameraTitle.isEmpty {
+                    GridRow {
+                        Text("Camera").foregroundStyle(.white.opacity(0.55))
+                        Text(verbatim: state.recordingSince == nil ? state.cameraTitle
+                             : state.cameraTitle + " · " + String(localized: "recording|in progress"))
+                    }
+                }
+                GridRow {
+                    Text("Log and video").foregroundStyle(.white.opacity(0.55))
+                    Text("saved on the \(host.kindTitle)")
+                }
+                if client.isViewOnly {
+                    GridRow {
+                        Text("This iPhone").foregroundStyle(.white.opacity(0.55))
+                        Text("View-only: another iPhone marks the exits")
+                    }
+                }
+                if direct, let status = model.p2p.status(host.id, .out) {
+                    GridRow {
+                        Text("Over cellular").foregroundStyle(.white.opacity(0.55))
+                        Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64((status.bytesIn ?? 0) + (status.bytesOut ?? 0)),
+                                                                 countStyle: .file))
+                    }
+                }
+            }
+            .font(.system(.footnote, design: .rounded))
+
+            let others = client.pairedHosts.filter { $0.id != host.id }.sorted { $0.lastConnected > $1.lastConnected }
+            if !others.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Other Macs").font(.system(.caption, design: .rounded, weight: .semibold)).foregroundStyle(.white.opacity(0.5))
+                    ForEach(others) { paired in
+                        let nearby = client.compatibleHosts.first { $0.id == paired.id }
+                        Button {
+                            if let nearby { client.connect(to: nearby); close() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Circle().fill(nearby == nil ? Color.white.opacity(0.25) : Theme.go).frame(width: 8, height: 8)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(verbatim: paired.name).lineLimit(1)
+                                    Text(nearby == nil ? String(localized: "not on this network")
+                                         : model.session == nil ? String(localized: "nearby — tap to switch")
+                                         : String(localized: "nearby — after the training"))
+                                        .font(.caption)
+                                        .foregroundStyle(.white.opacity(0.5))
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(nearby == nil || model.session != nil)
+                    }
+                }
+                .font(.system(.subheadline, design: .rounded))
+            }
+
+            Button(role: .destructive) {
+                close()
+                client.disconnect()
+            } label: {
+                Text("Stop Syncing")
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundStyle(Theme.danger)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .frame(width: 300)
+        .preferredColorScheme(.dark)
+    }
+
+    /// «На связи · по Wi‑Fi», «На связи · по сотовой, 48 мс», «Переподключаемся… 0:12».
+    private func status(direct: Bool, now: Date) -> String {
+        if reconnecting {
+            let since = model.syncClient.reconnectingSince ?? now
+            return String(localized: "Reconnecting… \(DurationText.clock(max(0, now.timeIntervalSince(since))))")
+        }
+        guard direct else { return String(localized: "Connected · Wi‑Fi") }
+        if let rtt = model.p2p.status(host.id, .out)?.rtt, rtt > 0 {
+            return String(localized: "Connected · cellular, \(P2PText.ms(rtt))")
+        }
+        return String(localized: "Connected · cellular")
+    }
+}
+
 /// Detail lines about a host for the choice lists: model, camera or training, whether this iPhone joined it before.
 enum HostText {
     static func detail(_ host: SyncClient.DiscoveredHost, paired: Bool) -> String {

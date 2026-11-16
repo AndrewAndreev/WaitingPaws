@@ -123,6 +123,7 @@ final class P2PLinks {
     private static let carriersKey = "p2p.carriers"
 
     init() {
+        mailbox.checkAccount()
         network.onChange = { [weak self] in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.routeMayHaveChanged() } }
         }
@@ -1073,6 +1074,19 @@ final class P2PMailbox {
 
     /// Not in previews and UI checks (no real iCloud there).
     var isUsable: Bool { !AppModel.isUIPreview && problem == nil }
+
+    /// Whether this device is signed in to iCloud (writing to the public database needs it), for Settings.
+    func checkAccount() {
+        guard !AppModel.isUIPreview else { return }
+        Task {
+            do {
+                let status = try await CKContainer(identifier: Self.containerID).accountStatus()
+                problem = status == .available ? nil : String(localized: "No iCloud account")
+            } catch {
+                note(error, "account")
+            }
+        }
+    }
 
     private func db() -> CKDatabase {
         if let database { return database }

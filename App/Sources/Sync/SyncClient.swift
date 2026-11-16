@@ -81,6 +81,8 @@ final class SyncClient {
     /// its own: its last `state` and `server` stay meanwhile, so the training stays on screen (`onState` is not called).
     /// Given up after `reconnectGrace`, by «Отключить синхронизацию» or when the host turns this iPhone away.
     private(set) var reconnecting: SyncDevice?
+    /// When the link dropped (the card under the «Mac» pill counts from it).
+    private(set) var reconnectingSince: Date?
     /// Counts the links made (also one restored after a drop; not a welcome sent again on the same link): the next
     /// state is the first of a new link.
     @ObservationIgnored private(set) var links = 0
@@ -372,7 +374,7 @@ final class SyncClient {
                 channel.send(.hello(SyncHello(deviceID: SyncIdentity.deviceID, deviceName: self.nameProvider(),
                                               publicKey: self.privateKey.publicKey.rawRepresentation,
                                               platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model,
-                                              features: [SyncFeature.p2p])))
+                                              features: [SyncFeature.p2p, SyncFeature.roles])))
             case .failed(let error):
                 self.lost(String(localized: "No connection to the \(kind): \(error.localizedDescription)"))
             case .waiting(let error) where route == .direct:
@@ -419,8 +421,19 @@ final class SyncClient {
         #if DEBUG
         if demoMac != nil { return demoMacReceive(command) }
         #endif
+        // Another iPhone runs the training: the Mac would ignore it.
+        if isViewOnly { onViewOnlyPress?(); return }
         channel?.send(.command(command))
     }
+
+    /// Another iPhone linked to the same Mac runs the training: this one only watches (`SyncState.controllerID`).
+    var isViewOnly: Bool {
+        guard case .connected = status, let controller = state?.controllerID else { return false }
+        return controller != SyncIdentity.deviceID
+    }
+
+    /// A press while this iPhone only watches (the app says why nothing happened).
+    @ObservationIgnored var onViewOnlyPress: (() -> Void)?
 
     /// A direct link's signal to the host `hostID`, if it is the one joined now and understands it.
     func sendP2P(_ signal: SyncP2PSignal, to hostID: String) -> Bool {
@@ -571,6 +584,7 @@ final class SyncClient {
     /// joins the host again; after `reconnectGrace` it goes, and the host is still joined whenever it shows up.
     private func startReconnecting(_ device: SyncDevice, log: Bool = true) {
         if log { print("[sync] lost \(device.name), reconnecting") }
+        if reconnecting?.id != device.id { reconnectingSince = Date() }
         reconnecting = device
         reconnectTimeout?.cancel()
         reconnectTimeout = Task { [weak self] in

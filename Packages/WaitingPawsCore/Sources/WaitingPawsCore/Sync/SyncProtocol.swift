@@ -194,6 +194,10 @@ public struct SyncState: Codable, Equatable {
     public var secondCameraTitle: String?
     /// The second camera's `xiaomi://` source: its modes and turning on the iPhone, like `cameraSource`.
     public var secondCameraSource: String?
+    /// With several iPhones linked: the one that runs the training (its device id); the others only watch — their
+    /// commands are ignored and they show «Только просмотр». Nil with one iPhone, or when one of them is from a build
+    /// before roles (`SyncFeature.roles`): then every iPhone may run it, as before.
+    public var controllerID: String?
     /// The camera on the Mac's screen, the one it records: the iPhone shows the same one. Nil from Macs before the
     /// cameras were in step — those don't know `SyncCommand.showCamera` either (an unknown command closes the link).
     public var showsSecondCamera: Bool?

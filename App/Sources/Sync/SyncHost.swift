@@ -42,6 +42,11 @@ final class SyncHost {
     /// The iPhones connected right now (one entry per device), sorted by name.
     private(set) var connectedDevices: [SyncDevice] = []
     private(set) var pairedDevices: [PairedDevice] = []
+    /// With several iPhones linked (all knowing `SyncFeature.roles`): the one that runs the training; the others only
+    /// watch, and their commands are ignored. Nil with one iPhone (or an older one among them): every iPhone may.
+    private(set) var controllerID: String?
+    /// The iPhone chosen to run the training («Сделать основным»), or the earliest one; it stays while it is linked.
+    @ObservationIgnored private var preferredControllerID: String?
     private(set) var isRunning = false
     private(set) var lastError: String?
 
@@ -97,6 +102,8 @@ final class SyncHost {
         var handshake: SyncCrypto.Handshake?
         /// Set when the iPhone proved an earlier pairing; nil for a new one (its secret comes on approval).
         var pairingSecret: String?
+        /// When it was let in: with several iPhones, the earliest one runs the training unless another was chosen.
+        var approvedAt: Date?
     }
 
     @ObservationIgnored private var listener: NWListener?
@@ -352,6 +359,17 @@ final class SyncHost {
             }
         case .command(let command):
             guard client.approved else { return }
+            if let controllerID, let deviceID = client.hello?.deviceID, deviceID != controllerID {
+                // An iPhone that only watches: its buttons are off; this catches the rest. Its mirror gets the state
+                // again, so a press it showed as done goes away.
+                print("[sync] \(client.hello?.deviceName ?? "?") only watches: \(command) ignored")
+                if var state = stateProvider?() {
+                    state.controllerID = controllerID
+                    state.sentAt = Date()
+                    client.channel.send(.state(state))
+                }
+                return
+            }
             print("[sync] command \(command)")
             commandHandler?(command)
             broadcastIfChanged()
@@ -366,6 +384,7 @@ final class SyncHost {
     private func approve(_ id: UUID) {
         guard var client = clients[id], let hello = client.hello, let handshake = client.handshake else { return }
         client.approved = true
+        client.approvedAt = Date()
         clients[id] = client
 
         // A new iPhone: both sides derive the same secret from this handshake; it never crosses the network.
@@ -382,12 +401,15 @@ final class SyncHost {
         for (other, old) in clients where other != id && old.hello?.deviceID == hello.deviceID { drop(other) }
 
         client.channel.send(.welcome(welcome()))
+        updateConnected()
         if var state = stateProvider?() {
+            state.controllerID = controllerID
             state.sentAt = Date()
             client.channel.send(.state(state))
         }
-        updateConnected()
-        print("[sync] \(hello.deviceName) (\(hello.device.modelTitle)) joined")
+        print("[sync] \(hello.deviceName) (\(hello.device.modelTitle)) joined"
+              + (controllerID.map { $0 == hello.deviceID ? "" : ", only to watch" } ?? ""))
+        broadcastIfChanged()
     }
 
     private func drop(_ id: UUID) {
@@ -405,13 +427,36 @@ final class SyncHost {
         connectedDevices = clients.values.filter(\.approved).compactMap { $0.hello?.device }
             .filter { seen.insert($0.id).inserted }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        // Who runs the training: the chosen iPhone while it is linked, else the one linked longest.
+        let linked = clients.values.filter(\.approved).sorted { ($0.approvedAt ?? .distantPast) < ($1.approvedAt ?? .distantPast) }
+        let ids = linked.compactMap { $0.hello?.deviceID }
+        if preferredControllerID.map({ !ids.contains($0) }) ?? true { preferredControllerID = ids.first }
+        let everyoneKnows = linked.allSatisfy { $0.hello?.features?.contains(SyncFeature.roles) == true }
+        let controller = Set(ids).count > 1 && everyoneKnows ? preferredControllerID : nil
+        if controller != controllerID {
+            controllerID = controller
+            if let controller, let name = linked.first(where: { $0.hello?.deviceID == controller })?.hello?.deviceName {
+                print("[sync] \(name) runs the training; the other iPhones only watch")
+            }
+        }
     }
+
+    /// «Сделать основным»: this iPhone runs the training from now on; the others only watch.
+    func makeController(_ deviceID: String) {
+        preferredControllerID = deviceID
+        updateConnected()
+        broadcastIfChanged()
+    }
+
+    /// The iPhone only watches the training (another one runs it).
+    func isViewOnly(_ deviceID: String) -> Bool { controllerID.map { $0 != deviceID } ?? false }
 
     // MARK: - Broadcast
 
     /// Sends the state to every approved iPhone when it changed, and refreshes the Bonjour TXT record.
     func broadcastIfChanged() {
-        guard let state = stateProvider?() else { return }
+        guard var state = stateProvider?() else { return }
+        state.controllerID = controllerID
         settleName()
         let info = currentInfo(state)
         if info != lastInfo {
@@ -465,7 +510,7 @@ final class SyncHost {
         return SyncWelcome(hostName: hostName, go2rtcPort: access.port, username: access.username,
                            password: access.password, addresses: Self.ipv4Addresses(), hostID: SyncIdentity.deviceID,
                            platform: SyncIdentity.platform.rawValue, model: SyncIdentity.model,
-                           features: [SyncFeature.p2p])
+                           features: [SyncFeature.p2p, SyncFeature.roles])
     }
 
     /// LAN IPv4 addresses of this Mac (Wi-Fi / Ethernet), for the iPhone's go2rtc URL.

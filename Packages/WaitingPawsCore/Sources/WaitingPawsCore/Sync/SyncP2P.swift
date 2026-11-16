@@ -11,6 +11,10 @@ public enum SyncFeature {
     /// `SyncHello.features` / `SyncWelcome.features`: the side understands `SyncMessage.p2p` (older ones would close
     /// the link on an unknown message).
     public static let p2p = "p2p"
+    /// The side knows `SyncState.controllerID`: with several iPhones linked, one marks the exits and the others only
+    /// watch. A Mac names a main iPhone only while every linked iPhone lists this (an older one would not know it
+    /// only watches, and its presses would vanish).
+    public static let roles = "roles"
 }
 
 /// One signal of a direct link, passed through untouched: the Go side writes and reads `payload`.

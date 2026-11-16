@@ -1762,6 +1762,16 @@ extension AppModel {
         #endif
     }
 
+    /// Another iPhone linked to the same Mac runs the training: this one only watches, its buttons are off
+    /// (`SyncState.controllerID`).
+    var isViewOnly: Bool {
+        #if os(iOS)
+        return syncClient.isViewOnly
+        #else
+        return false
+        #endif
+    }
+
     /// What the linked host is called in the texts: "Mac", "ПК" («Запись на ПК»).
     var linkedHostKind: String {
         #if os(iOS)
@@ -2033,6 +2043,11 @@ extension AppModel {
         syncClient.homeNetworkGone = { [unowned self] host in p2p.homeNetworkLooksGone(to: host) }
         syncClient.hasWiFi = { [unowned self] in p2p.network.lanInterface != nil }
         p2p.onRouteChange = { [unowned self] in syncClient.reconsiderRoute() }
+        syncClient.onViewOnlyPress = { [unowned self] in
+            linkNotice = LinkNotice(title: String(localized: "View-only"),
+                                    detail: String(localized: "Another iPhone runs this training. The Mac can make this one the main iPhone."),
+                                    systemImage: "eye")
+        }
         // With no link to the Mac away from home (the app relaunched there, or its link died), the iPhone knocks at
         // the Mac's door with a new link's offer, sealed with the pairing secret.
         p2p.pairingSecret = { [unowned self] host in syncClient.pairingSecret(forHost: host) }
@@ -2169,10 +2184,11 @@ extension AppModel {
                 })
                 mirror.commandHandler = { [weak self, weak mirror] command, time in
                     guard let self else { return }
-                    guard syncClient.isConnected else {
-                        // The link is being restored: the press can't reach the Mac, so it doesn't show as done
-                        // either (its buttons are off meanwhile; this catches the rest).
+                    guard syncClient.isConnected, !syncClient.isViewOnly else {
+                        // The link is being restored, or another iPhone runs the training: the press can't count,
+                        // so it doesn't show as done either (its buttons are off meanwhile; this catches the rest).
                         Task { mirror?.tick(at: .distantFuture) }
+                        if syncClient.isViewOnly { syncClient.onViewOnlyPress?() }
                         return
                     }
                     syncClient.send(.session(command, at: time))

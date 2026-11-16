@@ -34,6 +34,64 @@ enum P2PText {
         }
     }
 
+    /// iPhone: can it watch and run a training away from home (Settings «Вне дома»): from its `out` link (cellular,
+    /// checked at home) and whether it can find the Mac again after the app was closed (iCloud, or the Mac's door).
+    enum Away: Equatable {
+        case ready(rtt: Double?)
+        case whileOpen
+        case unavailable
+        case checking
+        case noCellular(String)
+        case notChecked
+    }
+
+    static func away(_ links: P2PLinks, peer: String) -> Away {
+        let out = links.status(peer, .out)
+        if out == nil, let reason = links.unavailableReason(peer, .out) { return .noCellular(reason) }
+        guard let out else { return .notChecked }
+        switch out.outcome() {
+        case .checking: return .checking
+        case .failed where !out.everConnected: return .unavailable
+        case .direct, .lost, .failed:
+            let comesBack = links.mailbox.isUsable || links.doorAddress(peer) != nil
+            return comesBack ? .ready(rtt: out.rttMin ?? out.rtt) : .whileOpen
+        }
+    }
+
+    /// The icon, tone and two lines of `away`.
+    static func awayText(_ away: Away, checkedAt: Date?) -> (icon: String, tone: Tone, title: String, detail: String) {
+        switch away {
+        case .ready(let rtt):
+            var detail = checkedAt.map { String(localized: "Checked \($0.formatted(.relative(presentation: .named)))") }
+                ?? String(localized: "Checked")
+            if let rtt, rtt > 0 { detail += " · " + String(localized: "cellular, \(ms(rtt))") }
+            return ("checkmark.circle.fill", .good, String(localized: "Works away from home"), detail)
+        case .whileOpen:
+            return ("exclamationmark.triangle.fill", .warning, String(localized: "Works while the app is open"),
+                    String(localized: "Sign in to iCloud on this iPhone to find the Mac again after the app was closed."))
+        case .unavailable:
+            return ("xmark.circle.fill", .bad, String(localized: "Won’t work away from home"),
+                    String(localized: "The carrier’s network and the home router don’t let a direct link through. At home everything works as usual."))
+        case .checking:
+            return ("hourglass", .progress, String(localized: "Checking…"), String(localized: "About 10 seconds."))
+        case .noCellular(let reason):
+            return ("minus.circle.fill", .idle, reason, String(localized: "Turn on cellular data for Waiting Paws in Settings → Cellular."))
+        case .notChecked:
+            return ("questionmark.circle", .idle, String(localized: "Not checked yet"),
+                    String(localized: "It’s checked by itself when this iPhone connects to the Mac at home."))
+        }
+    }
+
+    /// Mac: one phrase for an iPhone's row, from its `out` link as this Mac answers it; nil before any check.
+    static func awayShort(_ status: P2PLinkStatus?) -> String? {
+        guard let status else { return nil }
+        switch status.outcome() {
+        case .checking: return String(localized: "away from home: checking…")
+        case .failed where !status.everConnected: return String(localized: "away from home: won’t work")
+        case .direct, .lost, .failed: return String(localized: "away from home: works")
+        }
+    }
+
     /// "srflx ↔ prflx · 48 ms", or why it failed.
     static func detail(_ status: P2PLinkStatus?) -> String? {
         guard let status else { return nil }
@@ -152,40 +210,53 @@ enum P2PText {
 struct P2PSettingsSection: View {
     @Environment(AppModel.self) private var model
 
+    @State private var showsDetails = false
+
     var body: some View {
         let links = model.p2p
         if let peer = links.lastPeer {
             Section {
-                ForEach(P2PLinkKind.allCases, id: \.self) { kind in
-                    P2PLinkRow(kind: kind, status: links.status(peer, kind), unavailable: links.unavailableReason(peer, kind),
-                               needsServer: links.needsServer(peer, kind))
+                TimelineView(.periodic(from: .now, by: 30)) { _ in
+                    let out = links.status(peer, .out)
+                    let checkedAt = (out?.connectedAt ?? out?.since).map { Date(timeIntervalSince1970: $0 / 1000) }
+                    let text = P2PText.awayText(P2PText.away(links, peer: peer), checkedAt: checkedAt)
+                    Label {
+                        Text(text.title)
+                        Text(text.detail)
+                    } icon: {
+                        if text.tone == .progress {
+                            ProgressView()
+                        } else {
+                            Image(systemName: text.icon).foregroundStyle(P2PLinkRow.color(text.tone)).font(.title2)
+                        }
+                    }
                 }
-                let homeNAT = links.status(peer, .lan)?.peerNat ?? links.status(peer, .out)?.peerNat
-                P2PNATRow(title: String(localized: "Home NAT"), nat: homeNAT)
-                P2PNATRow(title: String(localized: "Carrier NAT"), nat: links.status(peer, .out)?.nat, peer: homeNAT)
-                LabeledContent("Mac’s Door") {
-                    Text(links.knocking == peer ? String(localized: "Knocking…")
-                         : links.doorAddress(peer) ?? String(localized: "Not known yet"))
+                if P2PText.away(links, peer: peer) != .checking {
+                    Button("Check Now") { links.recheck(peer, syncLinked: syncLinked(peer)) }
                 }
-                if let resume = P2PText.resume(links.lastResume) {
-                    Text(resume).font(.footnote).foregroundStyle(.secondary)
+                DisclosureGroup("Details", isExpanded: $showsDetails) {
+                    ForEach(P2PLinkKind.allCases, id: \.self) { kind in
+                        P2PLinkRow(kind: kind, status: links.status(peer, kind), unavailable: links.unavailableReason(peer, kind),
+                                   needsServer: links.needsServer(peer, kind))
+                    }
+                    let homeNAT = links.status(peer, .lan)?.peerNat ?? links.status(peer, .out)?.peerNat
+                    P2PNATRow(title: String(localized: "Home NAT"), nat: homeNAT)
+                    P2PNATRow(title: String(localized: "Carrier NAT"), nat: links.status(peer, .out)?.nat, peer: homeNAT)
+                    LabeledContent("Mac’s Door") {
+                        Text(links.knocking == peer ? String(localized: "Knocking…")
+                             : links.doorAddress(peer) ?? String(localized: "Not known yet"))
+                    }
+                    LabeledContent("iCloud") {
+                        Text(links.mailbox.problem ?? String(localized: "Signed in|iCloud"))
+                    }
+                    if let resume = P2PText.resume(links.lastResume) {
+                        Text(resume).font(.footnote).foregroundStyle(.secondary)
+                    }
                 }
-                Button("Check Again") { links.recheck(peer, syncLinked: syncLinked(peer)) }
-                    .disabled(P2PLinkKind.allCases.contains { links.status(peer, $0)?.outcome() == .checking })
             } header: {
-                Text("Direct Link (Test)")
+                Text("Away from Home")
             } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Waiting Paws checks whether this iPhone can reach the Mac directly, without any server: at home over Wi‑Fi, and over cellular — the way it goes away from home. At home everything goes as before; when the home network is gone, syncing and the picture switch to the cellular link by themselves.")
-                    if links.status(peer, .out)?.isAlive == true {
-                        Text("To try it, turn off Wi‑Fi: the picture should come back over cellular in a few seconds. It lasts while the app is open.")
-                    }
-                    if links.doorAddress(peer) != nil {
-                        Text("With no link up away from home (the app was closed, the link died), a new one is offered through the Mac’s door. It gets in if the home router lets it: the Mac keeps it open for a while after this iPhone was last connected.")
-                    } else if P2PLinkKind.allCases.contains(where: { links.needsServer(peer, $0) }) {
-                        Text("Away from the home network, the link can’t be set up again: that needs a server (planned). Connect at home and check again.")
-                    }
-                }
+                Text("When Wi‑Fi drops, the picture and the buttons switch to cellular by themselves — straight to the Mac, no servers.")
             }
         }
     }

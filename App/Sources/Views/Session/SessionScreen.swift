@@ -630,7 +630,7 @@ struct SessionScreen: View {
                 }
                 if showsRecordingPill {
                     RecordingPill(onStop: { confirmStopRecording = true })
-                        .disabled(model.isReconnecting)
+                        .disabled(model.isReconnecting || model.isViewOnly)
                         // Folds last: the cameras' names and «Mac» go first.
                         .layoutPriority(1)
                         .transition(.opacity)
@@ -660,7 +660,7 @@ struct SessionScreen: View {
                             },
                             onFinish: { confirmFinish = true },
                             onAbandon: { confirmAbandon = true })
-                .disabled(model.isReconnecting)
+                .disabled(model.isReconnecting || model.isViewOnly)
             } else {
                 IconButton(systemImage: "clock.arrow.circlepath", label: String(localized: "History")) { showHistory = true }
                     .accessibilityShowsLargeContentViewer {
@@ -707,7 +707,7 @@ struct SessionScreen: View {
         if let session = model.session {
             SessionHUD(session: session, compact: compact, onFinish: { confirmFinish = true })
                 // A Mac's training while its link is being restored: presses could not reach it.
-                .disabled(model.isReconnecting)
+                .disabled(model.isReconnecting || model.isViewOnly)
                 .frame(maxWidth: 560)
         } else if let record = model.lastRecord {
             SummaryCard(record: record, onClose: { model.lastRecord = nil }, onHistory: { showHistory = true })
@@ -936,7 +936,7 @@ private struct CameraSwitcher: View {
             .buttonStyle(.plain)
             // The Mac's link is being restored: the switch could not reach it, and the Mac would go on recording the
             // other camera.
-            .disabled(model.isReconnecting)
+            .disabled(model.isReconnecting || model.isViewOnly)
             .accessibilityLabel(String(localized: "Show camera “\(title)”"))
             .accessibilityShowsLargeContentViewer {
                 Label(title, systemImage: "arrow.triangle.2.circlepath.camera")
