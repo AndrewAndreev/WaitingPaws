@@ -180,6 +180,7 @@ h2 { font-size: 22px; margin: 0 0 6px; }
     <a href="#s2">2 · Меню Mac на iPhone<b id="tab-s2"></b></a>
     <a href="#s3">3 · Какие Mac онлайн<b id="tab-s3"></b></a>
     <a href="#s4">4 · Несколько iPhone у Mac<b id="tab-s4"></b></a>
+    <a href="#s4w">4a · Значки и слова<b id="tab-s4w"></b></a>
   </nav>
 </header>
 <main id="main"></main>
@@ -206,6 +207,10 @@ const I = {
   doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2.5h8l4 4v15H6z"/><path d="M9 11h6M9 15h6"/></svg>',
   dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
   cam: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="6" width="14" height="12" rx="2.5"/><path d="M17 10l5-3v10l-5-3z"/></svg>',
+  remote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="1.8" width="10" height="20.4" rx="5"/><circle cx="12" cy="7.3" r="2.2" fill="currentColor"/><path d="M12 13v.01M12 17v.01" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.1 5.9 20.6l1.5-6.8L2.2 9.2l6.9-.7z"/></svg>',
+  hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V4.5a1.8 1.8 0 013.6 0V10m0-.5a1.8 1.8 0 013.6 0V11m0-.5a1.8 1.8 0 013.4.8V15c0 4-2.6 7-6.8 7-3 0-4.6-1.4-6.2-3.8L3.3 14a1.7 1.7 0 012.7-2L8 14"/><path d="M5.2 3.6a5 5 0 017.4-1.2" stroke-width="1.6"/></svg>',
+  door: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 21.5V3.5l9-1.8v21.6z"/><path d="M14 4h5v17.5H3"/><circle cx="11" cy="12.5" r="1.1" fill="currentColor" stroke="none"/></svg>',
   icloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 19h10.5a4.5 4.5 0 00.6-8.96A6 6 0 006.4 9.1 5 5 0 007 19z"/></svg>',
 };
 const ic = (name, cls = '', size = '') => `<span class="ic ${size} ${cls}">${I[name]}</span>`;
@@ -394,8 +399,9 @@ const S3 = {
     if (v === 'A') {
       const dot = linked ? `<span class="dot" style="background:var(--green)"></span>` : '';
       const badge = online > 1 ? `<span class="badge">${online}</span>` : '';
-      const pill = linked ? `<span class="pill link">${ic(st === 'mixed' ? 'antenna' : 'laptop', '', 's16')} Mac ${badge}${dot}</span>` : `<span class="pill" style="color:var(--ios-t2)">${ic('laptop', '', 's16')} не в сети</span>`;
-      const menu = `<div class="menu" style="top:46px;right:8px"><div class="msec">${macs.map((m, i) => `<div class="mi"><span class="sdot ${m[1]}"></span><div class="grow">${m[0]}<small>${m[2]}</small></div>${i === 0 && linked ? '<span class="check">✓</span>' : ''}</div>`).join('')}</div><div class="msec"><div class="mi red">Отключиться</div></div></div>`;
+      // Nothing online: no pill and no list, as now (the owner, 2026-11-16).
+      const pill = linked ? `<span class="pill link">${ic(st === 'mixed' ? 'antenna' : 'laptop', '', 's16')} Mac ${badge}${dot}</span>` : '';
+      const menu = linked ? `<div class="menu" style="top:46px;right:8px"><div class="msec">${macs.map((m, i) => `<div class="mi"><span class="sdot ${m[1]}"></span><div class="grow">${m[0]}<small>${m[2]}</small></div>${i === 0 ? '<span class="check">✓</span>' : ''}</div>`).join('')}</div><div class="msec"><div class="mi red">Отключиться</div></div></div>` : '';
       inner = `<div class="screen">${appbar(pill)}${home('')}${menu}</div>`;
     }
     if (v === 'B') {
@@ -467,8 +473,38 @@ const S4 = {
   },
 };
 
+// =====================================================================================
+// 4w. Words and icons for the popover (4A chosen; «руль» and «ведёт» out)
+// =====================================================================================
+const W = {
+  W1: { name: 'Пульт', on: ['remote', 'Пульт у него', 'Отмечает «Вышла / Вернулась»'], off: ['eye', 'Смотрит', 'Камера и таймер'], give: 'Отдать пульт', head: 'iPhone на тренировке', banner: 'Пульт у iPhone Марка', ask: 'Попросить пульт', macPill: 'Пульт: iPhone Марка', foot: 'Пульт — у одного iPhone. Новые iPhone подключаются смотреть.' },
+  W2: { name: 'Отмечает выходы', on: ['door', 'Отмечает выходы', 'Нажимает «Вышла / Вернулась»'], off: ['eye', 'Только смотрит', 'Камера и таймер'], give: 'Пусть отмечает', head: 'iPhone на тренировке', banner: 'Выходы отмечает iPhone Марка', ask: 'Отмечать самой', macPill: 'Отмечает iPhone Марка', foot: 'Выходы отмечает один iPhone. Новые iPhone подключаются смотреть.' },
+  W3: { name: 'Главный и зрители', on: ['star', 'Главный', 'Отмечает «Вышла / Вернулась»'], off: ['eye', 'Зритель', 'Камера и таймер'], give: 'Сделать главным', head: 'iPhone на тренировке', banner: 'Вы зритель · главный — iPhone Марка', ask: 'Стать главным', macPill: 'Главный: iPhone Марка', foot: 'Главный iPhone — один. Новые iPhone подключаются зрителями.' },
+  W4: { name: 'Управляет', on: ['hand', 'Управляет', 'Отмечает «Вышла / Вернулась»'], off: ['eye', 'Смотрит', 'Камера и таймер'], give: 'Дать управление', head: 'iPhone на тренировке', banner: 'Управляет iPhone Марка', ask: 'Попросить управление', macPill: 'Управляет iPhone Марка', foot: 'Управляет один iPhone. Новые iPhone подключаются смотреть.' },
+};
+const S4W = {
+  id: 's4w', title: '4a · Значки и слова для поповера (вариант A)',
+  lead: 'Руль и «ведёт» убираем. Четыре пары «кто нажимает кнопки / кто смотрит» — в шапке мака, в поповере и на экране зрителя. Глаз у зрителя одинаковый, меняется значок и слово того, кто отмечает выходы.',
+  states: [['two', 'Mac: два iPhone'], ['viewer', 'Экран зрителя']],
+  variants: Object.fromEntries(Object.entries(W).map(([k, w]) => [k, { name: w.name, idea: `«${w.on[1]}» / «${w.off[1]}», кнопка «${w.give}», у зрителя «${w.ask}».` }])),
+  render(v, st) {
+    const w = W[v];
+    if (st === 'two') {
+      const pop = `<div class="mpop" style="top:46px;left:150px"><h6>${w.head}</h6>
+        <div class="mrow">${ic(w.on[0], 'info', 's16')}<div class="grow"><b>iPhone Марка</b><span class="s">${w.on[1]} · ${w.on[2]}</span></div></div>
+        <div class="mrow">${ic(w.off[0], 'mute', 's16')}<div class="grow"><b>iPhone Ани</b><span class="s">${w.off[1]} · ${w.off[2]}</span></div><span class="mbtn blue">${w.give}</span></div>
+        <div class="mfoot">${w.foot}</div></div>`;
+      const toolbar = `<div class="tb"><span class="lights"><i></i><i></i><i></i></span><span class="mpill">${ic('cam', '', 's14')} C302</span><span class="mpill info">${ic(w.on[0], '', 's14')} 2</span><span style="flex:1"></span><span class="mpill">Выход 5 · 7:21</span></div>`;
+      return `<div class="mocks"><div><div class="mlabel">Mac · нажали на «📱 2»</div><div style="position:relative"><div class="mac">${toolbar}<div class="body"><div class="camarea" style="height:200px">картинка камеры</div></div>${pop}</div></div></div></div>`;
+    }
+    const banner = `<div class="banner">${ic('eye', 'info', 's16')}<div class="grow">${w.banner}</div><span class="chipbtn">${w.ask}</span></div>`;
+    return `<div class="mocks"><div><div class="mlabel">iPhone Ани (смотрит)</div>${phone(`<div class="screen">${appbar(`<span class="pill link">${ic('laptop', '', 's16')} Mac</span>`)}${session(true, banner).replace('Ведёт iPhone Марка', w.banner.replace('Вы зритель · ', ''))}</div>`)}</div></div>`;
+  },
+};
+S4W.variants = Object.assign({}, S4W.variants);
+
 // ---------- page ----------
-const PARTS = [S1, S2, S3, S4];
+const PARTS = [S1, S2, S3, S4, S4W];
 const state = {}, pick = JSON.parse(localStorage.getItem('link-ui-picks') || '{}');
 const main = document.getElementById('main');
 
