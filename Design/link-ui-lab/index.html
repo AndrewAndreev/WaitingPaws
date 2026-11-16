@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waiting Paws — связь iPhone ↔ Mac: макеты</title>
+<style>
+:root {
+  color-scheme: dark;
+  --pink: #FFB8CC; --blue: #8CBFFF; --yellow: #FFB84D; --red: #FF6B6B; --green: #6EE7A0; --grey: #8E8E93;
+  --ios-bg: #000; --ios-cell: #1C1C1E; --ios-sep: rgba(84,84,88,.55); --ios-t2: rgba(235,235,245,.6); --ios-t3: rgba(235,235,245,.3);
+  --ios-blue: #0A84FF; --mac-bg: #1E1E1E; --mac-cell: #2A2A2C;
+  --sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 var(--sf); background: #131315; color: #ececef; padding-bottom: 160px; }
+header.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+  padding: 10px 24px; background: rgba(19,19,21,.93); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); }
+header.top h1 { font-size: 16px; margin: 0; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tabs a { color: var(--ios-t2); text-decoration: none; padding: 4px 10px; border-radius: 8px; font-size: 13px; background: #232326; }
+.tabs a b { color: var(--green); margin-left: 4px; }
+main { padding: 0 24px; max-width: 1600px; }
+section.part { padding-top: 28px; scroll-margin-top: 60px; }
+h2 { font-size: 22px; margin: 0 0 6px; }
+.lead { margin: 0 0 12px; color: #cfcfd4; max-width: 1000px; }
+.states { display: flex; gap: 8px; align-items: center; margin: 4px 0 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ios-t2); }
+.seg { display: inline-flex; background: #232326; border-radius: 9px; padding: 2px; gap: 2px; flex-wrap: wrap; }
+.seg button { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 7px; font-size: 12.5px; color: var(--ios-t2); white-space: nowrap; }
+.seg button.on { background: #3a3a3e; color: #fff; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+.card { background: rgba(255,255,255,.035); border: 1.5px solid rgba(255,255,255,.07); border-radius: 20px; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; }
+.card:hover { border-color: rgba(255,255,255,.2); }
+.card.sel { border-color: var(--green); background: rgba(110,231,160,.05); }
+.card.now { cursor: default; border-style: dashed; opacity: .92; }
+.chead { display: flex; gap: 10px; align-items: flex-start; }
+.cid { font: 800 12px/1 var(--rounded); background: #ececef; color: #111; padding: 4px 6px; border-radius: 6px; flex: none; margin-top: 2px; }
+.card.now .cid { background: #6b6b70; color: #fff; }
+.cmeta b { font-size: 16px; display: block; }
+.cmeta span { font-size: 13px; color: #c9c9cf; display: block; line-height: 1.4; }
+.pick { margin-left: auto; flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); display: grid; place-items: center; }
+.card.sel .pick { border-color: var(--green); background: var(--green); }
+.card.sel .pick::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #000; }
+.card.now .pick { display: none; }
+.mocks { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+.mlabel { font-size: 11px; color: var(--ios-t3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* ---------- iPhone ---------- */
+.phone { width: 375px; background: var(--ios-bg); border-radius: 34px; border: 6px solid #2a2a2e; padding: 0 0 14px; overflow: hidden; position: relative; font-family: var(--sf); }
+.phone.short { min-height: 0; }
+.sbar { height: 34px; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font: 600 14px var(--sf); }
+.navt { font: 700 30px/1.1 var(--sf); padding: 2px 16px 8px; }
+.ios-h { font-size: 12.5px; color: var(--ios-t2); text-transform: uppercase; padding: 14px 32px 6px; letter-spacing: .02em; }
+.ios-g { background: var(--ios-cell); border-radius: 10px; margin: 0 16px; overflow: hidden; }
+.ios-r { display: flex; align-items: center; gap: 12px; padding: 10px 16px; min-height: 44px; position: relative; font-size: 16px; }
+.ios-r + .ios-r::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: .5px; background: var(--ios-sep); }
+.ios-r.ind + .ios-r::before, .ios-r + .ios-r.ind::before { left: 56px; }
+.ios-r .grow { flex: 1; min-width: 0; }
+.ios-r .t { display: block; }
+.ios-r .s { display: block; font-size: 13px; color: var(--ios-t2); line-height: 1.3; }
+.ios-r .v { color: var(--ios-t2); font-size: 15px; white-space: nowrap; }
+.ios-r .chev { color: var(--ios-t3); font-size: 18px; }
+.ios-r.btn { color: var(--ios-blue); }
+.ios-f { font-size: 13px; color: var(--ios-t2); padding: 7px 32px 0; line-height: 1.35; }
+.ok { color: var(--green); } .warn { color: var(--yellow); } .bad { color: var(--red); } .info { color: var(--blue); } .mute { color: var(--grey); }
+.ic { width: 22px; height: 22px; flex: none; display: inline-grid; place-items: center; }
+.ic svg { width: 100%; height: 100%; }
+.ic.s16 { width: 16px; height: 16px; } .ic.s14 { width: 14px; height: 14px; } .ic.s28 { width: 28px; height: 28px; } .ic.s36 { width: 36px; height: 36px; }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.2); border-top-color: #fff; animation: sp 1s linear infinite; flex: none; }
+@keyframes sp { to { transform: rotate(360deg); } }
+.hero { margin: 0 16px; border-radius: 14px; padding: 16px; display: flex; gap: 12px; align-items: flex-start; }
+.hero.g { background: rgba(110,231,160,.13); } .hero.y { background: rgba(255,184,77,.14); } .hero.r { background: rgba(255,107,107,.14); } .hero.n { background: rgba(255,255,255,.08); }
+.hero b { font: 700 18px/1.2 var(--rounded); display: block; }
+.hero p { margin: 4px 0 8px; font-size: 14px; color: #dcdce0; line-height: 1.35; }
+.chipbtn { display: inline-block; font: 600 14px var(--rounded); padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.14); }
+.details { margin: 8px 16px 0; padding: 10px 14px; background: #121214; border-radius: 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: var(--ios-t2); }
+
+/* app screen (dark, pink) */
+.appbar { display: flex; gap: 6px; padding: 6px 12px; align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 18px; background: #1f1f22; font: 600 15px var(--rounded); color: #fff; white-space: nowrap; position: relative; }
+.pill.cam { background: #2a2a2e; }
+.pill.rec { color: #FF6B6B; }
+.pill.round { width: 36px; padding: 0; justify-content: center; }
+.pill.link { color: var(--blue); }
+.pill.link.warnc { color: var(--yellow); }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; position: absolute; right: 4px; top: 4px; border: 2px solid #000; }
+.pill .badge { font: 700 11px var(--rounded); background: var(--blue); color: #000; border-radius: 999px; padding: 0 5px; line-height: 16px; }
+.screen { position: relative; padding-bottom: 6px; min-height: 540px; }
+.camshade { height: 150px; margin: 6px 12px 0; border-radius: 16px; background: linear-gradient(135deg, #2b2a30, #1a1a1e); display: grid; place-items: center; color: var(--ios-t3); font-size: 13px; }
+.sessioncard { margin: 10px 12px 0; background: #1c1c1f; border-radius: 22px; padding: 14px; }
+.sessioncard .big { font: 700 44px/1 var(--rounded); }
+.mainbtn { margin-top: 10px; height: 52px; border-radius: 16px; background: var(--blue); color: #000; display: grid; place-items: center; font: 700 18px var(--rounded); }
+.mainbtn.off { background: #2a2a2e; color: var(--ios-t3); }
+.banner { margin: 8px 12px 0; padding: 10px 12px; border-radius: 14px; background: rgba(140,191,255,.13); display: flex; gap: 10px; align-items: center; font-size: 14px; }
+.banner .grow { flex: 1; }
+.banner .chipbtn { font-size: 13px; }
+
+/* iOS menu */
+.menu { position: absolute; z-index: 5; width: 262px; border-radius: 14px; background: rgba(44,44,47,.97); box-shadow: 0 18px 50px rgba(0,0,0,.6); overflow: hidden; font-size: 16px; }
+.menu .msec + .msec { border-top: 7px solid rgba(0,0,0,.35); }
+.menu .mh { font-size: 12.5px; color: var(--ios-t2); padding: 8px 16px 2px; text-transform: none; }
+.menu .mt { padding: 9px 16px; font-size: 13px; color: var(--ios-t2); line-height: 1.3; }
+.menu .mt b { color: #fff; font-size: 15px; display: block; margin-bottom: 1px; }
+.menu .mi { padding: 10px 16px; display: flex; align-items: center; gap: 10px; position: relative; }
+.menu .mi + .mi::before, .menu .mt + .mi::before, .menu .mt + .mt::before, .menu .mi + .mt::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: .5px; background: var(--ios-sep); }
+.menu .mt { position: relative; }
+.menu .mi .grow { flex: 1; min-width: 0; }
+.menu .mi small { display: block; font-size: 12.5px; color: var(--ios-t2); line-height: 1.25; }
+.menu .mi.red { color: #FF453A; }
+.menu .check { width: 16px; color: #fff; flex: none; }
+.pop { position: absolute; z-index: 5; width: 300px; border-radius: 18px; background: #2a2a2e; box-shadow: 0 18px 50px rgba(0,0,0,.6); padding: 14px; }
+.pop .row { display: flex; gap: 10px; align-items: center; }
+.pop .name { font: 700 16px var(--rounded); }
+.pop .sub { font-size: 13px; color: var(--ios-t2); }
+.pop .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; margin: 12px 0; color: var(--ios-t2); }
+.pop .kv b { color: #fff; font-weight: 500; }
+.pop .btns { display: flex; gap: 8px; }
+.pop .btns div { flex: 1; text-align: center; padding: 9px; border-radius: 12px; background: rgba(255,255,255,.1); font: 600 14px var(--rounded); }
+.pop .btns div.red { color: #FF6B6B; }
+.sdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.sdot.g { background: var(--green); } .sdot.b { background: var(--blue); } .sdot.y { background: var(--yellow); } .sdot.n { background: #5a5a5e; } .sdot.o { background: transparent; border: 1.5px solid #8e8e93; }
+.devchips { display: flex; gap: 8px; padding: 2px 12px 4px; }
+.devchip { width: 38px; height: 38px; border-radius: 50%; background: #232326; display: grid; place-items: center; position: relative; font: 700 13px var(--rounded); }
+.devchip.g { box-shadow: 0 0 0 2px var(--green); } .devchip.b { box-shadow: 0 0 0 2px var(--blue); } .devchip.n { opacity: .45; }
+.devchip small { position: absolute; bottom: -15px; font: 500 10px var(--sf); color: var(--ios-t2); white-space: nowrap; }
+.glass { margin: 10px 12px 0; background: #1c1c1f; border-radius: 20px; padding: 14px; }
+.glass h4 { margin: 0 0 8px; font: 700 18px var(--rounded); }
+.hostrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.hostrow + .hostrow { border-top: .5px solid var(--ios-sep); }
+.hostrow .grow { flex: 1; min-width: 0; }
+.hostrow .n { font: 600 15px var(--rounded); }
+.hostrow .d { font-size: 12.5px; color: var(--ios-t2); }
+.tag { font: 600 12px var(--rounded); padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.tag.g { background: rgba(110,231,160,.16); color: var(--green); } .tag.b { background: rgba(140,191,255,.16); color: var(--blue); }
+.tag.y { background: rgba(255,184,77,.16); color: var(--yellow); } .tag.n { background: rgba(255,255,255,.08); color: var(--ios-t2); }
+.smallbtn { font: 600 13px var(--rounded); padding: 6px 12px; border-radius: 999px; background: var(--blue); color: #000; }
+
+/* ---------- Mac ---------- */
+.mac { width: 560px; max-width: 100%; background: var(--mac-bg); border-radius: 12px; border: 1px solid #3a3a3c; overflow: hidden; font: 13px/1.4 var(--sf); position: relative; }
+.mac .tb { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #252527; border-bottom: 1px solid #333; }
+.lights { display: flex; gap: 7px; margin-right: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #FF5F57; display: block; }
+.lights i:nth-child(2) { background: #FEBC2E; } .lights i:nth-child(3) { background: #28C840; }
+.mpill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px; background: #333336; font: 600 13px var(--rounded); white-space: nowrap; }
+.mpill.info { color: var(--blue); }
+.mac .body { padding: 14px 16px 16px; }
+.mac .camarea { height: 110px; border-radius: 10px; background: linear-gradient(135deg, #2b2a30, #18181b); display: grid; place-items: center; color: var(--ios-t3); }
+.mform h5 { margin: 12px 0 6px; font-size: 13px; }
+.mgroup { background: var(--mac-cell); border-radius: 8px; overflow: hidden; }
+.mrow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; position: relative; }
+.mrow + .mrow::before { content: ""; position: absolute; top: 0; left: 12px; right: 12px; height: 1px; background: rgba(255,255,255,.07); }
+.mrow .grow { flex: 1; min-width: 0; }
+.mrow .s { display: block; color: #9c9ca1; font-size: 12px; }
+.mbtn { padding: 3px 10px; border-radius: 6px; background: #3d3d40; font-size: 13px; white-space: nowrap; }
+.mbtn.blue { background: #0A84FF; color: #fff; }
+.mseg { display: inline-flex; background: #1b1b1d; border-radius: 7px; padding: 2px; }
+.mseg span { padding: 2px 10px; border-radius: 5px; font-size: 12px; color: #aaa; }
+.mseg span.on { background: #4a4a4e; color: #fff; }
+.mfoot { color: #9c9ca1; font-size: 12px; margin-top: 6px; }
+.mpop { position: absolute; z-index: 5; width: 320px; max-width: calc(100% - 20px); background: #2c2c2e; border: 1px solid #444; border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.55); padding: 12px; }
+.mpop h6 { margin: 0 0 8px; font-size: 13px; }
+.mpop .mrow { padding: 8px 4px; }
+.mpop .mrow + .mrow::before { left: 4px; right: 4px; }
+
+/* ---------- footer ---------- */
+.save { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: rgba(24,24,27,.96); border-top: 1px solid rgba(255,255,255,.1); padding: 10px 24px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.save .picks { font-size: 13px; color: var(--ios-t2); }
+.save .picks b { color: #fff; }
+.save textarea { flex: 1; min-width: 260px; height: 44px; background: #232326; color: #fff; border: 1px solid #3a3a3e; border-radius: 10px; padding: 8px 10px; font: 13px var(--sf); resize: vertical; }
+.save button { all: unset; cursor: pointer; background: var(--green); color: #000; font-weight: 700; padding: 10px 16px; border-radius: 10px; }
+.save .st { font-size: 12.5px; color: var(--green); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Связь iPhone ↔ Mac — макеты</h1>
+  <nav class="tabs">
+    <a href="#s1">1 · Настройки «Вне дома»<b id="tab-s1"></b></a>
+    <a href="#s2">2 · Меню Mac на iPhone<b id="tab-s2"></b></a>
+    <a href="#s3">3 · Какие Mac онлайн<b id="tab-s3"></b></a>
+    <a href="#s4">4 · Несколько iPhone у Mac<b id="tab-s4"></b></a>
+  </nav>
+</header>
+<main id="main"></main>
+<div class="save">
+  <div class="picks" id="picks"></div>
+  <textarea id="comment" placeholder="Комментарий: что поменять в выбранных вариантах"></textarea>
+  <button id="saveBtn">Сохранить выбор</button>
+  <span class="st" id="saveSt"></span>
+</div>
+
+<script>
+// ---------- icons ----------
+const I = {
+  check: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M7 12.5l3.2 3.2L17 9" stroke="#000" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 24 24"><path d="M12 2.5L23 21H1z" fill="currentColor"/><path d="M12 9v5.5" stroke="#000" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.4" fill="#000"/></svg>',
+  x: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M8 8l8 8M16 8l-8 8" stroke="#000" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  minus: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M7.5 12h9" stroke="#000" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2.5 9a14 14 0 0119 0M5.8 12.4a9.3 9.3 0 0112.4 0M9.1 15.7a4.6 4.6 0 015.8 0"/><circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none"/></svg>',
+  antenna: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="10" r="2" fill="currentColor"/><path d="M12 12v9M7.5 5.5a6.4 6.4 0 000 9M16.5 5.5a6.4 6.4 0 010 9M4.6 2.8a10.4 10.4 0 000 14.4M19.4 2.8a10.4 10.4 0 010 14.4"/></svg>',
+  laptop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4.5" width="16" height="11" rx="1.6"/><path d="M1.5 19h21" stroke-linecap="round"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6.5" y="2" width="11" height="20" rx="2.6"/><path d="M10.5 18.5h3" stroke-linecap="round"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  wheel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="2.4"/><path d="M12 14.4V21.5M9.8 11.2L3 9.4M14.2 11.2L21 9.4"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2.5h8l4 4v15H6z"/><path d="M9 11h6M9 15h6"/></svg>',
+  dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  cam: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="6" width="14" height="12" rx="2.5"/><path d="M17 10l5-3v10l-5-3z"/></svg>',
+  icloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 19h10.5a4.5 4.5 0 00.6-8.96A6 6 0 006.4 9.1 5 5 0 007 19z"/></svg>',
+};
+const ic = (name, cls = '', size = '') => `<span class="ic ${size} ${cls}">${I[name]}</span>`;
+
+// ---------- shared iPhone chrome ----------
+const sbar = (net = 'wifi') => `<div class="sbar"><span>11:09</span><span style="display:flex;gap:6px;align-items:center">${net === 'cell' ? '<span style="font-size:13px">5G</span>' : ic('wifi', '', 's16')}<span style="font-size:12px;background:#fff;color:#000;border-radius:4px;padding:0 4px">69</span></span></div>`;
+const phone = (inner, net) => `<div class="phone">${sbar(net)}${inner}</div>`;
+const appbar = (linkPill) => `<div class="appbar"><span class="pill cam">${ic('cam', '', 's16')} C302</span><span class="pill rec">● REC</span>${linkPill}<span class="pill round">${ic('doc', '', 's16')}</span><span class="pill round">${ic('dots', '', 's16')}</span></div>`;
+const session = (off = false, banner = '') => `<div class="camshade">картинка камеры</div>${banner}<div class="sessioncard"><div style="color:var(--ios-t2);font-size:13px">Выход 5 · план 10 мин</div><div class="big">7:21</div><div class="mainbtn ${off ? 'off' : ''}">${off ? 'Ведёт iPhone Марка' : '↩ Вернулась'}</div></div>`;
+const macPane = (title, inner) => `<div class="mac"><div class="tb"><span class="lights"><i></i><i></i><i></i></span><b style="font-size:13px">${title}</b></div><div class="body mform">${inner}</div></div>`;
+
+// =====================================================================================
+// 1. Settings «Вне дома»
+// =====================================================================================
+const S1 = {
+  id: 's1', title: '1 · Настройки: можно ли смотреть вне дома',
+  lead: 'Сейчас в настройках айфона и мака — техническая секция «Прямая связь (тест)»: NAT, кандидаты, адрес двери, «пережила N с в фоне». Варианты ниже говорят одно: получится ли смотреть камеру и вести тренировку, когда Wi‑Fi нет, и что сделать, если нет. Технические строки уходят под «Подробности».',
+  states: [['ok', 'Всё работает'], ['open', 'Только пока приложение открыто'], ['fail', 'Вне дома не получится'], ['check', 'Проверяем'], ['nocell', 'Сотовые данные выключены']],
+  variants: {
+    now: { name: 'Сейчас', idea: 'Как в сборке 1659: две связи, два NAT, дверь, фон, длинная подпись.' },
+    A: { name: 'Одна строка', idea: 'Одна строка-итог с понятной иконкой и одной подписью «что это значит». Проверка — кнопкой. Технические строки свёрнуты в «Подробности».' },
+    B: { name: 'Три пункта', idea: 'Три вопроса, на которые человек хочет ответ: дома, вне дома, после закрытия приложения. У каждого галочка или что мешает.' },
+    C: { name: 'Светофор', idea: 'Цветная карточка-итог сверху (как статус батареи): зелёная/жёлтая/красная, одно предложение и кнопка. Остальное — в «Как это работает» и «Подробности».' },
+  },
+  render(v, st) {
+    const tech = `<div class="details">Wi‑Fi: host ↔ host · 4 мс<br>Сотовая: srflx ↔ prflx · 48 мс · 4,1 МБ<br>NAT дома: независимый · оператора: зависимый<br>Дверь Mac: 203.0.113.10:14894 · iCloud: есть</div>`;
+    const sum = {
+      ok: ['check', 'ok', 'Можно смотреть вне дома', 'Проверено 2 мин назад · по сотовой 48 мс'],
+      open: ['warn', 'warn', 'Работает, пока приложение открыто', 'Чтобы находить Mac после закрытия, войдите в iCloud на iPhone'],
+      fail: ['x', 'bad', 'Вне дома не получится', 'Сеть оператора и домашний роутер не пропускают прямую связь. Дома всё работает как обычно'],
+      check: [null, '', 'Проверяем…', 'Около 10 секунд'],
+      nocell: ['minus', 'mute', 'Сотовые данные выключены', 'Для Waiting Paws: Настройки → Сотовая связь'],
+    }[st];
+    const lead = (s) => s[0] ? ic(s[0], s[1], 's28') : '<span class="spin"></span>';
+    let iphone = '', mac = '';
+    if (v === 'now') {
+      const out = { ok: ['ok', 'Работает'], open: ['ok', 'Работает'], fail: ['bad', 'Нет прямого пути'], check: ['', 'Проверяем…'], nocell: ['mute', 'Нет сотовых данных'] }[st];
+      iphone = `<div class="navt">Настройки</div><div class="ios-h">Прямая связь (тест)</div><div class="ios-g">
+        <div class="ios-r"><div class="grow"><span class="t">По Wi‑Fi</span><span class="s">host ↔ host · 4 мс</span></div><span class="v ok">Работает</span></div>
+        <div class="ios-r"><div class="grow"><span class="t">По сотовой</span><span class="s">srflx ↔ prflx · 48 мс · картинка и синхронизация идут по ней, 4 МБ</span></div><span class="v ${out[0]}">${out[1]}</span></div>
+        <div class="ios-r"><div class="grow"><span class="t">NAT дома</span><span class="s ok">Один порт для всех серверов — прямая связь обычно проходит</span></div></div>
+        <div class="ios-r"><div class="grow"><span class="t">NAT оператора</span><span class="s warn">Новый порт для каждого сервера — работает, пока другой конец держит порт</span></div></div>
+        <div class="ios-r"><div class="grow"><span class="t">Дверь Mac</span></div><span class="v">203.0.113.10:14894</span></div>
+        <div class="ios-r"><span class="s">После 95 с в фоне: по Wi‑Fi — не ответила, по сотовой — ответила</span></div>
+        <div class="ios-r btn">Проверить ещё раз</div></div>
+        <div class="ios-f">Waiting Paws проверяет, может ли этот iPhone связаться с Mac напрямую, без сервера: дома по Wi‑Fi и по сотовой — как вне дома. Дома всё идёт как раньше; когда домашней сети нет, синхронизация и картинка сами переходят на сотовую связь.</div>
+        <div class="ios-f">Чтобы проверить, выключите Wi‑Fi: картинка должна вернуться по сотовой за несколько секунд. Работает, пока приложение открыто.</div>`;
+      mac = macPane('Настройки — iPhone', `<h5>Прямая связь (тест)</h5><div class="mgroup">
+        <div class="mrow"><b>iPhone Марка</b></div>
+        <div class="mrow"><div class="grow">По Wi‑Fi<span class="s">host ↔ host · 4 мс</span></div><span class="ok">Работает</span></div>
+        <div class="mrow"><div class="grow">По сотовой<span class="s">srflx ↔ prflx · 48 мс</span></div><span class="${out[0]}">${out[1]}</span></div>
+        <div class="mrow"><div class="grow">NAT оператора<span class="s warn">Новый порт для каждого сервера</span></div></div>
+        <div class="mrow"><div class="grow">NAT дома<span class="s ok">Один порт для всех серверов</span></div></div>
+        <div class="mrow"><div class="grow">Роутер<span class="s">Не отвечает на NAT-PMP и UPnP · 203.0.113.10</span></div><span class="mbtn">Проверить роутер</span></div>
+        <div class="mrow"><div class="grow">Дверь для iPhone<span class="s">Сюда стучится iPhone вне дома…</span></div><span>203.0.113.10:14894</span></div></div>`);
+    }
+    if (v === 'A') {
+      iphone = `<div class="navt">Настройки</div><div class="ios-h">Вне дома</div><div class="ios-g">
+        <div class="ios-r">${lead(sum)}<div class="grow"><span class="t">${sum[2]}</span><span class="s">${sum[3]}</span></div></div>
+        ${st === 'check' ? '' : '<div class="ios-r btn">Проверить сейчас</div>'}
+        <div class="ios-r"><div class="grow">Подробности</div><span class="chev">›</span></div></div>
+        <div class="ios-f">Когда Wi‑Fi пропадает, картинка и кнопки сами переходят на сотовую связь — прямо на Mac, без серверов.</div>`;
+      const macSum = { ok: 'Можно смотреть вне дома', open: 'Пока приложение на iPhone открыто', fail: 'Вне дома не получится', check: 'Проверяем…', nocell: 'Нет сотовых данных на iPhone' }[st];
+      mac = macPane('Настройки — iPhone', `<h5>Разрешённые iPhone</h5><div class="mgroup">
+        <div class="mrow">${ic('phone', 'ok', 's16')}<div class="grow"><b>iPhone Марка</b><span class="s">Подключён сейчас · вне дома: ${macSum.toLowerCase()}</span></div><span class="mbtn">Забыть…</span></div>
+        <div class="mrow">${ic('phone', 'mute', 's16')}<div class="grow"><b>iPhone Ани</b><span class="s">Был вчера · вне дома: можно смотреть</span></div><span class="mbtn">Забыть…</span></div></div>
+        <div class="mfoot">Подробности о связи — в «Диагностике».</div>`);
+    }
+    if (v === 'B') {
+      const rows = {
+        ok: [['check', 'ok', 'Дома по Wi‑Fi', 'Картинка и кнопки'], ['check', 'ok', 'Вне дома по сотовой', 'Прямо на Mac, 48 мс'], ['check', 'ok', 'После закрытия приложения', 'Находит Mac через iCloud']],
+        open: [['check', 'ok', 'Дома по Wi‑Fi', 'Картинка и кнопки'], ['check', 'ok', 'Вне дома по сотовой', 'Прямо на Mac, 48 мс'], ['warn', 'warn', 'После закрытия приложения', 'Нужен вход в iCloud на этом iPhone']],
+        fail: [['check', 'ok', 'Дома по Wi‑Fi', 'Картинка и кнопки'], ['x', 'bad', 'Вне дома по сотовой', 'Сеть оператора не пропускает'], ['minus', 'mute', 'После закрытия приложения', 'Без связи вне дома — не нужно']],
+        check: [['check', 'ok', 'Дома по Wi‑Fi', 'Картинка и кнопки'], [null, '', 'Вне дома по сотовой', 'Проверяем…'], [null, '', 'После закрытия приложения', 'Проверяем…']],
+        nocell: [['check', 'ok', 'Дома по Wi‑Fi', 'Картинка и кнопки'], ['minus', 'mute', 'Вне дома по сотовой', 'Сотовые данные выключены для Waiting Paws'], ['minus', 'mute', 'После закрытия приложения', '—']],
+      }[st];
+      iphone = `<div class="navt">Настройки</div><div class="ios-h">Связь с Mac</div><div class="ios-g">
+        ${rows.map(r => `<div class="ios-r ind">${lead(r)}<div class="grow"><span class="t">${r[2]}</span><span class="s">${r[3]}</span></div></div>`).join('')}
+        ${st === 'check' ? '' : '<div class="ios-r btn">Проверить ещё раз <span class="v" style="margin-left:auto;font-size:13px">2 мин назад</span></div>'}</div>
+        <div class="ios-f">Проверка идёт сама, когда iPhone подключается дома. Видео идёт прямо с Mac, без серверов.</div>`;
+      const ticks = rows.map(r => r[0] ? ic(r[0], r[1], 's16') : '<span class="spin" style="width:14px;height:14px"></span>').join('');
+      mac = macPane('Настройки — iPhone', `<h5>Разрешённые iPhone</h5><div class="mgroup">
+        <div class="mrow">${ic('phone', 'ok', 's16')}<div class="grow"><b>iPhone Марка</b><span class="s">Подключён сейчас</span></div><span style="display:flex;gap:4px;align-items:center" title="дома · вне дома · после закрытия">${ticks}</span><span class="mbtn">Забыть…</span></div>
+        <div class="mrow">${ic('phone', 'mute', 's16')}<div class="grow"><b>iPhone Ани</b><span class="s">Был вчера</span></div><span style="display:flex;gap:4px">${ic('check', 'ok', 's16')}${ic('check', 'ok', 's16')}${ic('check', 'ok', 's16')}</span><span class="mbtn">Забыть…</span></div></div>
+        <div class="mfoot">Галочки: дома · вне дома · после закрытия приложения.</div>`);
+    }
+    if (v === 'C') {
+      const hero = {
+        ok: ['g', 'check', 'ok', 'Вне дома работает', 'Камера и кнопки работают по сотовой, прямо с Mac. Даже если закрыть приложение.'],
+        open: ['y', 'warn', 'warn', 'Вне дома — пока приложение открыто', 'Войдите в iCloud на iPhone, чтобы возвращаться к Mac и после закрытия.'],
+        fail: ['r', 'x', 'bad', 'Вне дома не получится', 'Сеть оператора и роутер не пропускают прямую связь. Дома всё как обычно.'],
+        check: ['n', null, '', 'Проверяем связь вне дома…', 'Около 10 секунд. Можно не ждать.'],
+        nocell: ['n', 'minus', 'mute', 'Сотовые данные выключены', 'Включите их для Waiting Paws в Настройках → Сотовая связь.'],
+      }[st];
+      iphone = `<div class="navt">Настройки</div><div class="ios-h">Вне дома</div>
+        <div class="hero ${hero[0]}">${hero[1] ? ic(hero[1], hero[2], 's36') : '<span class="spin" style="width:30px;height:30px"></span>'}<div><b>${hero[3]}</b><p>${hero[4]}</p>${st === 'check' ? '' : '<span class="chipbtn">Проверить</span>'}</div></div>
+        <div class="ios-g" style="margin-top:10px"><div class="ios-r"><div class="grow">Как это работает</div><span class="chev">›</span></div><div class="ios-r"><div class="grow">Подробности</div><span class="chev">›</span></div></div>`;
+      mac = macPane('Настройки — iPhone', `<h5>iPhone вне дома</h5>
+        <div class="hero ${hero[0]}" style="margin:0">${hero[1] ? ic(hero[1], hero[2], 's28') : '<span class="spin"></span>'}<div><b style="font-size:15px">iPhone Марка: ${hero[3].toLowerCase()}</b><p style="font-size:12.5px;margin-bottom:0">${hero[4]}</p></div></div>
+        <div class="mfoot">Для каждого iPhone — своя карточка. Подробности — в «Диагностике».</div>`);
+    }
+    return `<div class="mocks"><div><div class="mlabel">iPhone · Настройки</div>${phone(iphone)}</div><div><div class="mlabel">Mac · Настройки → iPhone</div>${mac}</div></div>`;
+  },
+};
+
+// =====================================================================================
+// 2. Menu of the linked Mac
+// =====================================================================================
+const S2 = {
+  id: 's2', title: '2 · Меню по нажатию на подключённый Mac',
+  lead: 'Сейчас меню под пилюлей «Mac» — это три строки текста о синхронизации, секция «Прямая связь (тест)» и список «Переключиться на». Варианты: короче, с понятным статусом, с одним-двумя действиями.',
+  states: [['home', 'Дома, по Wi‑Fi'], ['away', 'Вне дома, по сотовой'], ['lost', 'Связь пропала']],
+  variants: {
+    now: { name: 'Сейчас', idea: 'Системное меню: три строки описания, прямая связь, переключение, «Отключить синхронизацию».' },
+    A: { name: 'Заголовок и действия', idea: 'В меню одна строка-заголовок (имя Mac и как связаны) и только действия: переключить, отключиться.' },
+    B: { name: 'Карточка', idea: 'Вместо меню — маленькая карточка: имя, статус с цветной точкой, связь и камера, две кнопки.' },
+    C: { name: 'Минимум', idea: 'Меню — только выбор Mac (галочка на текущем) и «Отключиться». Как связаны, говорит значок на пилюле: Wi‑Fi, антенна, оранжевый при обрыве.' },
+  },
+  render(v, st) {
+    const away = st === 'away', lost = st === 'lost';
+    const pillIcon = lost ? 'wifi' : (away ? 'antenna' : 'laptop');
+    const pill = `<span class="pill link ${lost ? 'warnc' : ''}">${ic(pillIcon, '', 's16')} Mac${lost ? '…' : ''}</span>`;
+    let menu = '';
+    if (v === 'now') {
+      menu = lost ? `<div class="menu" style="top:46px;right:8px"><div class="msec"><div class="mt">Нет связи с Mac — переподключаемся…</div></div><div class="msec"><div class="mi red">Отключить синхронизацию</div></div></div>`
+        : `<div class="menu" style="top:46px;right:8px"><div class="msec"><div class="mt">Тренировка синхронизирована с «MacBook Pro — Аня»</div><div class="mt">MacBook Pro</div><div class="mt">Камера, запись и журнал — на Mac</div></div>
+        <div class="msec"><div class="mh">Прямая связь (тест)</div>${away ? '<div class="mt">Нет домашней сети: картинка и синхронизация идут по сотовой связи</div>' : ''}<div class="mt">${away ? 'по сотовой, 48 мс' : 'по Wi‑Fi 4 мс · по сотовой 48 мс'}</div></div>
+        <div class="msec"><div class="mh">Переключиться на</div><div class="mi"><div class="grow">MacBook Air — Марк<small>MacBook Air · камера «C200» · подключались раньше</small></div></div></div>
+        <div class="msec"><div class="mi red">Отключить синхронизацию</div></div></div>`;
+    }
+    if (v === 'A') {
+      const line = lost ? 'Нет связи — переподключаемся. Тренировка идёт на Mac' : (away ? 'По сотовой, 48 мс · запись идёт на Mac' : 'По Wi‑Fi · запись идёт на Mac');
+      menu = `<div class="menu" style="top:46px;right:8px"><div class="msec"><div class="mt"><b>MacBook Pro — Аня</b>${line}</div></div>
+        <div class="msec">${lost ? '' : '<div class="mi"><div class="grow">Переключить на «MacBook Air»</div>' + ic('laptop', '', 's16') + '</div>'}<div class="mi red"><div class="grow">Отключиться</div></div></div></div>`;
+    }
+    if (v === 'B') {
+      const status = lost ? ['y', 'Переподключаемся… 0:12'] : (away ? ['g', 'На связи · по сотовой, 48 мс'] : ['g', 'На связи · по Wi‑Fi']);
+      menu = `<div class="pop" style="top:46px;right:8px"><div class="row">${ic('laptop', 'info', 's28')}<div><div class="name">MacBook Pro — Аня</div><div class="sub"><span class="sdot ${status[0]}"></span> ${status[1]}</div></div></div>
+        <div class="kv"><span>Камера</span><b>C302 · запись идёт</b><span>Журнал и видео</span><b>сохраняются на Mac</b>${away ? '<span>Трафик</span><b>≈ 650 МБ в час</b>' : ''}</div>
+        <div class="btns"><div>Сменить Mac</div><div class="red">Отключиться</div></div></div>`;
+    }
+    if (v === 'C') {
+      menu = `<div class="menu" style="top:46px;right:8px"><div class="msec">${lost ? '<div class="mt">Переподключаемся к «MacBook Pro — Аня»…</div>' : ''}
+        <div class="mi"><span class="check">✓</span><div class="grow">MacBook Pro — Аня<small>${lost ? 'нет связи' : (away ? 'по сотовой' : 'по Wi‑Fi')}</small></div></div>
+        <div class="mi" style="${away || lost ? 'color:var(--ios-t3)' : ''}"><span class="check"></span><div class="grow">MacBook Air — Марк<small>${away || lost ? 'не рядом' : 'рядом'}</small></div></div></div>
+        <div class="msec"><div class="mi red">Отключиться</div></div></div>`;
+    }
+    const legend = v === 'C' ? `<div class="mlabel" style="margin-top:8px">значок на пилюле: ${ic('laptop', 'info', 's14')} Wi‑Fi · ${ic('antenna', 'info', 's14')} сотовая · ${ic('wifi', 'warn', 's14')} обрыв</div>` : '';
+    return `<div class="mocks"><div><div class="mlabel">iPhone · тренировка, нажали на «Mac»</div>${phone(`<div class="screen">${appbar(pill)}${session()}${menu}</div>`, away ? 'cell' : 'wifi')}${legend}</div></div>`;
+  },
+};
+
+// =====================================================================================
+// 3. Which Macs are online
+// =====================================================================================
+const S3 = {
+  id: 's3', title: '3 · Какие Mac онлайн (и когда их несколько)',
+  lead: 'Сейчас iPhone показывает только подключённый Mac — пилюлей «Mac». Другие Mac видны лишь в меню «Переключиться на» и в настройках. Варианты показывают, какие Mac из тех, к которым уже подключались, сейчас онлайн: рядом, вне дома (через прямую связь) или не в сети.',
+  states: [['one', 'Один Mac, подключён'], ['two', 'Два Mac онлайн'], ['mixed', 'Вне дома + второй не в сети'], ['none', 'Ни одного онлайн']],
+  variants: {
+    now: { name: 'Сейчас', idea: 'Пилюля «Mac» только у подключённого; «Mac рядом» — карточка на главном, если не подключены.' },
+    A: { name: 'Точка на пилюле', idea: 'На пилюле — цветная точка (зелёная: на связи) и число, если онлайн несколько. В меню — все Mac со статусом.' },
+    B: { name: 'Карточка «Ваши Mac»', idea: 'На главном экране (без тренировки) — карточка со всеми Mac, к которым подключались: статус и кнопка. В тренировке пилюля как сейчас.' },
+    C: { name: 'Значки устройств', idea: 'Под верхней панелью — круглые значки Mac (как в AirDrop): кольцо зелёное — онлайн, синее — подключён, бледный — не в сети.' },
+  },
+  macs(st) {
+    return {
+      one: [['MacBook Pro — Аня', 'b', 'Подключён · по Wi‑Fi', 'b']],
+      two: [['MacBook Pro — Аня', 'b', 'Подключён · по Wi‑Fi', 'b'], ['MacBook Air — Марк', 'g', 'Онлайн рядом', 'g']],
+      mixed: [['MacBook Pro — Аня', 'b', 'Подключён · вне дома, по сотовой', 'b'], ['MacBook Air — Марк', 'n', 'Не в сети · был вчера в 21:40', 'n']],
+      none: [['MacBook Pro — Аня', 'n', 'Не в сети · был 2 ч назад', 'n'], ['MacBook Air — Марк', 'n', 'Не в сети · был вчера', 'n']],
+    }[st];
+  },
+  render(v, st) {
+    const macs = this.macs(st);
+    const linked = st !== 'none';
+    const online = macs.filter(m => m[1] !== 'n').length;
+    const net = st === 'mixed' ? 'cell' : 'wifi';
+    let inner = '';
+    const home = (cards) => `<div class="camshade" style="height:120px">картинка камеры Mac</div>${cards}`;
+    if (v === 'now') {
+      const pill = linked ? `<span class="pill link">${ic(st === 'mixed' ? 'antenna' : 'laptop', '', 's16')} Mac</span>` : '';
+      const card = (!linked) ? `<div class="glass"><h4>Mac рядом</h4><div style="color:var(--ios-t2);font-size:14px">Нет Mac с Waiting Paws в этой сети</div></div>` : '';
+      inner = appbar(pill) + home(card);
+    }
+    if (v === 'A') {
+      const dot = linked ? `<span class="dot" style="background:var(--green)"></span>` : '';
+      const badge = online > 1 ? `<span class="badge">${online}</span>` : '';
+      const pill = linked ? `<span class="pill link">${ic(st === 'mixed' ? 'antenna' : 'laptop', '', 's16')} Mac ${badge}${dot}</span>` : `<span class="pill" style="color:var(--ios-t2)">${ic('laptop', '', 's16')} не в сети</span>`;
+      const menu = `<div class="menu" style="top:46px;right:8px"><div class="msec">${macs.map((m, i) => `<div class="mi"><span class="sdot ${m[1]}"></span><div class="grow">${m[0]}<small>${m[2]}</small></div>${i === 0 && linked ? '<span class="check">✓</span>' : ''}</div>`).join('')}</div><div class="msec"><div class="mi red">Отключиться</div></div></div>`;
+      inner = `<div class="screen">${appbar(pill)}${home('')}${menu}</div>`;
+    }
+    if (v === 'B') {
+      const pill = linked ? `<span class="pill link">${ic(st === 'mixed' ? 'antenna' : 'laptop', '', 's16')} Mac</span>` : '';
+      const tag = (m) => ({ b: '<span class="tag b">подключён</span>', g: '<span class="smallbtn">Подключить</span>', n: '<span class="tag n">не в сети</span>' })[m[1]];
+      const card = `<div class="glass"><h4>Ваши Mac</h4>${macs.map(m => `<div class="hostrow">${ic('laptop', m[1] === 'n' ? 'mute' : 'info', 's28')}<div class="grow"><div class="n">${m[0]}</div><div class="d">${m[2]}</div></div>${tag(m)}</div>`).join('')}${st === 'none' ? '<div style="color:var(--ios-t2);font-size:13px;margin-top:6px">Откройте Waiting Paws на Mac — он появится здесь сам.</div>' : ''}</div>`;
+      inner = appbar(pill) + home(card);
+    }
+    if (v === 'C') {
+      const pill = linked ? `<span class="pill link">${ic(st === 'mixed' ? 'antenna' : 'laptop', '', 's16')} Mac</span>` : '';
+      const chips = `<div class="devchips">${macs.map(m => `<div class="devchip ${m[1]}">${m[0].split('—')[1].trim()[0]}<small>${m[0].split(' — ')[0].replace('MacBook ', '')}</small></div>`).join('')}</div><div style="height:12px"></div>`;
+      inner = appbar(pill) + chips + home('');
+    }
+    return `<div class="mocks"><div><div class="mlabel">iPhone · главный экран, без тренировки</div>${phone(`<div class="screen">${inner}</div>`, net)}</div></div>`;
+  },
+};
+
+// =====================================================================================
+// 4. Several iPhones on the Mac: who leads
+// =====================================================================================
+const S4 = {
+  id: 's4', title: '4 · Несколько iPhone у одного Mac: кто ведёт тренировку',
+  lead: 'Сейчас мак показывает «iPhone × 2» в шапке, и кнопки работают на всех айфонах сразу. Варианты: мак видит каждый айфон, один из них ведущий (нажимает «Вышла/Вернулась»), остальные только смотрят камеру и таймер.',
+  states: [['one', 'Один iPhone'], ['two', 'Два iPhone · Mac'], ['viewer', 'Два iPhone · экран зрителя']],
+  variants: {
+    now: { name: 'Сейчас', idea: 'Шапка «iPhone × 2», подсказка с именами. Ролей нет: команды принимаются от всех.' },
+    A: { name: 'Поповер в шапке', idea: 'В шапке мака — «📱 2». По нажатию — список айфонов: кто ведёт, кто смотрит, кнопка «Сделать ведущим». Новые айфоны подключаются зрителями.' },
+    B: { name: 'Роли в настройках', idea: 'Роли задаются в Настройках → iPhone переключателем «Ведёт / Смотрит». В шапке — имя ведущего.' },
+    C: { name: 'Кто нажал — тот ведёт', idea: 'Ролей не настраивают: ведёт тот, кто начал тренировку. Зритель может «Взять управление» (ведущий видит уведомление); мак может «Передать управление».' },
+  },
+  render(v, st) {
+    const two = st !== 'one';
+    const toolbar = (pill) => `<div class="tb"><span class="lights"><i></i><i></i><i></i></span><span class="mpill">${ic('cam', '', 's14')} C302</span><span class="mpill" style="color:#FF6B6B">● REC</span>${pill}<span style="flex:1"></span><span class="mpill">Выход 5 · 7:21</span></div>`;
+    const macWin = (pill, extra = '') => `<div class="mac">${toolbar(pill)}<div class="body"><div class="camarea" style="height:200px">картинка камеры</div></div>${extra}</div>`;
+    const viewerPhone = (banner, off = true) => phone(`<div class="screen">${appbar(`<span class="pill link">${ic('laptop', '', 's16')} Mac</span>`)}${session(off, banner)}</div>`);
+    let macPart = '', phonePart = '';
+    if (v === 'now') {
+      macPart = macWin(`<span class="mpill info">${ic('phone', '', 's14')} ${two ? 'iPhone × 2' : 'iPhone Марка'}</span>`);
+      phonePart = viewerPhone('', false);
+    }
+    if (v === 'A') {
+      const pop = two ? `<div class="mpop" style="top:46px;left:150px"><h6>Подключены к тренировке</h6>
+        <div class="mrow">${ic('wheel', 'info', 's16')}<div class="grow"><b>iPhone Марка</b><span class="s">Ведёт: нажимает «Вышла / Вернулась»</span></div></div>
+        <div class="mrow">${ic('eye', 'mute', 's16')}<div class="grow"><b>iPhone Ани</b><span class="s">Смотрит камеру и таймер</span></div><span class="mbtn blue">Сделать ведущим</span></div>
+        <div class="mfoot">Новые iPhone подключаются зрителями.</div></div>` : '';
+      macPart = macWin(`<span class="mpill info">${ic('phone', '', 's14')} ${two ? '2' : 'iPhone Марка'}</span>`, st === 'two' ? pop : '');
+      if (st === 'two') macPart = `<div style="position:relative">${macPart}</div>`;
+      phonePart = st === 'viewer' ? viewerPhone(`<div class="banner">${ic('eye', 'info', 's16')}<div class="grow">Только просмотр · ведёт iPhone Марка</div><span class="chipbtn">Попросить</span></div>`) : viewerPhone('', false);
+    }
+    if (v === 'B') {
+      macPart = st === 'two' || st === 'one' ? macPane('Настройки — iPhone', `<h5>Разрешённые iPhone</h5><div class="mgroup">
+        <div class="mrow">${ic('phone', 'ok', 's16')}<div class="grow"><b>iPhone Марка</b><span class="s">Подключён сейчас</span></div><span class="mseg"><span class="on">Ведёт</span><span>Смотрит</span></span></div>
+        ${two ? `<div class="mrow">${ic('phone', 'ok', 's16')}<div class="grow"><b>iPhone Ани</b><span class="s">Подключён сейчас</span></div><span class="mseg"><span>Ведёт</span><span class="on">Смотрит</span></span></div>` : ''}</div>
+        <div class="mfoot">Ведущий может быть один. Новые iPhone подключаются зрителями; ведущего можно поменять и во время тренировки.</div>`)
+        : macWin(`<span class="mpill info">${ic('wheel', '', 's14')} Ведёт iPhone Марка</span>`);
+      if (st === 'two') macPart = `<div style="display:flex;flex-direction:column;gap:10px">${macWin(`<span class="mpill info">${ic('wheel', '', 's14')} Ведёт iPhone Марка · +1</span>`)}${macPart}</div>`;
+      phonePart = st === 'viewer' ? viewerPhone(`<div class="banner">${ic('eye', 'info', 's16')}<div class="grow">Вы смотрите. Ведёт iPhone Марка</div></div>`) : viewerPhone('', false);
+    }
+    if (v === 'C') {
+      const pop = `<div class="mpop" style="top:46px;left:150px"><h6>Ведёт тренировку</h6>
+        <div class="mrow">${ic('wheel', 'info', 's16')}<div class="grow"><b>iPhone Марка</b><span class="s">начал тренировку в 9:09</span></div></div>
+        <div class="mrow">${ic('eye', 'mute', 's16')}<div class="grow"><b>iPhone Ани</b><span class="s">смотрит</span></div><span class="mbtn">Передать управление</span></div></div>`;
+      macPart = macWin(`<span class="mpill info">${ic('wheel', '', 's14')} ${two ? 'Ведёт iPhone Марка' : 'iPhone Марка'}</span>`, st === 'two' ? pop : '');
+      if (st === 'two') macPart = `<div style="position:relative">${macPart}</div>`;
+      phonePart = st === 'viewer' ? phone(`<div class="screen">${appbar(`<span class="pill link">${ic('eye', '', 's16')} Смотрю</span>`)}<div class="camshade">картинка камеры</div><div class="sessioncard"><div style="color:var(--ios-t2);font-size:13px">Выход 5 · ведёт iPhone Марка</div><div class="big">7:21</div><div class="mainbtn" style="background:#2a2a2e;color:#fff">Взять управление</div></div></div>`) : viewerPhone('', false);
+    }
+    const phoneLabel = st === 'viewer' ? 'iPhone Ани (зритель)' : 'iPhone Марка';
+    return `<div class="mocks"><div><div class="mlabel">Mac</div>${macPart}</div><div><div class="mlabel">${phoneLabel}</div>${phonePart}</div></div>`;
+  },
+};
+
+// ---------- page ----------
+const PARTS = [S1, S2, S3, S4];
+const state = {}, pick = JSON.parse(localStorage.getItem('link-ui-picks') || '{}');
+const main = document.getElementById('main');
+
+function renderPart(p) {
+  const st = state[p.id] || p.states[0][0];
+  const el = document.getElementById(p.id);
+  el.innerHTML = `<h2>${p.title}</h2><p class="lead">${p.lead}</p>
+    <div class="states">Состояние: <span class="seg">${p.states.map(([k, t]) => `<button data-st="${k}" class="${k === st ? 'on' : ''}">${t}</button>`).join('')}</span></div>
+    <div class="grid">${Object.entries(p.variants).map(([k, info]) => `
+      <div class="card ${k === 'now' ? 'now' : ''} ${pick[p.id] === k ? 'sel' : ''}" data-v="${k}">
+        <div class="chead"><span class="cid">${k === 'now' ? 'Сейчас' : k}</span><div class="cmeta"><b>${info.name}</b><span>${info.idea}</span></div><span class="pick"></span></div>
+        ${p.render(k, st)}
+      </div>`).join('')}</div>`;
+  el.querySelectorAll('.seg button').forEach(b => b.onclick = () => { state[p.id] = b.dataset.st; renderPart(p); });
+  el.querySelectorAll('.card:not(.now)').forEach(c => c.onclick = () => { pick[p.id] = c.dataset.v; localStorage.setItem('link-ui-picks', JSON.stringify(pick)); renderPart(p); summary(); });
+}
+function summary() {
+  document.getElementById('picks').innerHTML = PARTS.map(p => `${p.id.slice(1)}: <b>${pick[p.id] || '—'}</b>`).join(' · ');
+  PARTS.forEach(p => { document.getElementById('tab-' + p.id).textContent = pick[p.id] ? '· ' + pick[p.id] : ''; });
+}
+PARTS.forEach(p => { const s = document.createElement('section'); s.className = 'part'; s.id = p.id; main.appendChild(s); renderPart(p); });
+summary();
+document.getElementById('saveBtn').onclick = async () => {
+  const body = { picks: pick, names: Object.fromEntries(PARTS.map(p => [p.id, pick[p.id] ? p.variants[pick[p.id]].name : null])), comment: document.getElementById('comment').value };
+  const st = document.getElementById('saveSt');
+  try { const r = await fetch('/choice', { method: 'POST', body: JSON.stringify(body) }); st.textContent = r.ok ? 'Сохранено' : 'Ошибка ' + r.status; }
+  catch (e) { st.textContent = 'Не сохранилось: ' + e.message; }
+};
+</script>
+</body>
+</html>
