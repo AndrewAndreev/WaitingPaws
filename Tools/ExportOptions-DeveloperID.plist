@@ -3,7 +3,9 @@
 <plist version="1.0">
 <dict>
 	<!-- Tools/release.sh direct: the Mac app for GitHub, signed with the team's Developer ID Application certificate
-	     from the login keychain (no provisioning profile: none of its entitlements needs one). -->
+	     from the login keychain and the «Waiting Paws Developer ID» profile (iCloud for the direct link's mailbox and
+	     push for its subscription need one; made 2026-11-16 through the App Store Connect API, expires with the
+	     certificate 2027-12-11; it must be in ~/Library/Developer/Xcode/UserData/Provisioning Profiles). -->
 	<key>method</key>
 	<string>developer-id</string>
 	<key>teamID</key>
@@ -14,5 +16,10 @@
 	<string>Developer ID Application</string>
 	<key>destination</key>
 	<string>export</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>su.comrade.waitingpaws</key>
+		<string>Waiting Paws Developer ID</string>
+	</dict>
 </dict>
 </plist>
