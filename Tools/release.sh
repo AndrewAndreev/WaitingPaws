@@ -576,7 +576,9 @@ cmd_nightly() {
   mkdir -p "$NIGHTLY_UPDATES"
   ditto -c -k --keepParent "$DIRECT_APP" "$NIGHTLY_UPDATES/$zip"
   {
-    local changes; changes="$(git log --format='- %s' --no-merges "$last..$ref" | head -4)"
+    # git log's own limit, not «| head -4»: head may close the pipe while git still writes, and with pipefail that
+    # SIGPIPE (141) ended a nightly after its notarization (2026-11-16).
+    local changes; changes="$(git log -4 --format='- %s' --no-merges "$last..$ref")"
     if [ -n "$changes" ]; then echo "$changes"; else echo "- A test build of ${last#v} itself: the same code"; fi
   } > "$NIGHTLY_UPDATES/${zip%.zip}.md"
   appcast "$NIGHTLY_UPDATES" "$REPO_URL/releases/download/$NIGHTLY/" --maximum-versions 2 --maximum-deltas 1
