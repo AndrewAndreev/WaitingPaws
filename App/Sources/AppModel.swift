@@ -90,6 +90,8 @@ final class AppModel {
     @ObservationIgnored private var recordingStartGeneration = 0
     /// What follows a stop (joining the parts, remuxing, Photos), per recording file name; quitting waits for it.
     @ObservationIgnored private var recordingFinishTasks: [String: Task<Void, Never>] = [:]
+    /// The recordings `recordingFinishTasks` is finishing (joined, prepared, copied to Photos), for the views.
+    private(set) var finishingFileNames: Set<String> = []
     /// Recordings deleted while that work runs (`removeLeftovers`): it skips the copy to Photos.
     @ObservationIgnored private var deletedWhileFinishing: Set<String> = []
     private var tickTask: Task<Void, Never>?
@@ -838,6 +840,7 @@ final class AppModel {
             // time asked for, the join runs while iOS suspends it.
             let background = beginFinishingInBackground()
             #endif
+            finishingFileNames.insert(name)
             recordingFinishTasks[name] = Task {
                 if needsJoin { await joinRecording(url, segments: filled, startedAt: startedAt) }
                 if deletedWhileFinishing.contains(name) {
@@ -848,6 +851,7 @@ final class AppModel {
                     await finalizeInPlace(url)
                 }
                 recordingFinishTasks[name] = nil
+                finishingFileNames.remove(name)
                 #if os(iOS)
                 endFinishingInBackground(background)
                 #endif
@@ -1231,6 +1235,26 @@ final class AppModel {
             photosSaveErrors[name] = error.localizedDescription
             print("[photos] failed \(name): \(error.localizedDescription)")
         }
+    }
+
+    /// A training's video for sending to the trainer: on this device and ready, still being finished (written,
+    /// joined, prepared — with how far, while that is known), or not here (no recording, or it is on the linked Mac).
+    enum VideoForSharing: Equatable {
+        case none
+        case preparing(VideoPreparation?)
+        case ready(URL)
+    }
+
+    func videoForSharing(_ record: TrainingRecord) -> VideoForSharing {
+        guard let url = store.recordingURL(for: record) else { return .none }
+        let name = url.lastPathComponent
+        if name == currentRecordingURL?.lastPathComponent && isRecordingLocally { return .preparing(nil) }
+        if finalizingFileNames.contains(name) || finishingFileNames.contains(name) {
+            return .preparing(videoPreparations[name])
+        }
+        // Raw, waiting its turn to be prepared; one whose preparing failed goes as it is (the history plays it so).
+        if unfinishedFileNames.contains(name), preparationErrors[name] == nil { return .preparing(nil) }
+        return .ready(url)
     }
 
     func photosStatus(for fileName: String) -> (saved: Bool, error: String?) {

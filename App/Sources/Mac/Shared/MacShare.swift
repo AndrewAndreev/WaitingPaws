@@ -12,21 +12,28 @@ enum MacShareItem {
     /// Text, with a title for the picker's header («Тренировка 5 нояб.») and a subject for Mail.
     case text(String, title: String, subject: String? = nil)
     case file(URL)
+    /// A video with its caption (Telegram, Messages and Mail take the text with the file).
+    case video(URL, caption: String)
 
     /// What AppKit gets: a title goes with the text in `NSPreviewRepresentingActivityItem`, which AppKit unwraps
     /// before it builds the extension's input. The text reaches extensions as `attributedContentText`.
-    var pickerItem: Any {
+    var pickerItems: [Any] {
         switch self {
         case let .text(text, title, _):
-            NSPreviewRepresentingActivityItem(item: text as NSString, title: title, image: nil, icon: nil)
+            [NSPreviewRepresentingActivityItem(item: text as NSString, title: title, image: nil, icon: nil)]
         case let .file(url):
-            url as NSURL
+            [url as NSURL]
+        case let .video(url, caption):
+            [url as NSURL, caption as NSString]
         }
     }
 
     var subject: String? {
-        if case let .text(_, _, subject) = self { return subject }
-        return nil
+        switch self {
+        case let .text(_, _, subject): subject
+        case let .video(_, caption): caption
+        case .file: nil
+        }
     }
 }
 
@@ -48,7 +55,7 @@ final class MacShareAnchor: NSObject, NSSharingServicePickerDelegate {
             // A rect of no size counts as none: the picker would open from the whole view.
             if view.bounds.contains(point) { rect = NSRect(x: point.x - 1, y: point.y - 1, width: 2, height: 2) }
         }
-        let picker = NSSharingServicePicker(items: [item.pickerItem])
+        let picker = NSSharingServicePicker(items: item.pickerItems)
         picker.delegate = self
         self.picker = picker
         subject = item.subject

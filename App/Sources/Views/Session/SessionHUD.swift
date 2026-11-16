@@ -1226,17 +1226,70 @@ struct SummaryCard: View {
                         .foregroundStyle(Theme.warning)
                 }
 
-                ShareLink(item: log, preview: SharePreview(record.plan.displayTitle)) {
-                    Label("Send to Trainer", systemImage: "square.and.arrow.up")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(PressableButtonStyle())
+                sendButton(log: log)
             }
         }
+    }
+
+    /// The video with the schedule's first line as its caption when the video is on this iPhone (until it is ready:
+    /// how far its preparing is, the button waits); otherwise the log as text (no recording, or it is on the Mac).
+    @ViewBuilder
+    private func sendButton(log: String) -> some View {
+        switch model.videoForSharing(record) {
+        case .ready(let url):
+            #if os(iOS)
+            Button {
+                ActivitySheet.present([record.plan.shareTitle, url])
+            } label: {
+                sendLabel(String(localized: "Send Video to Trainer"), systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(PressableButtonStyle())
+            #else
+            ShareLink(item: url, message: Text(verbatim: record.plan.shareTitle)) {
+                sendLabel(String(localized: "Send Video to Trainer"), systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(PressableButtonStyle())
+            #endif
+        case .preparing(let preparation):
+            VStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    ProgressView().tint(.black)
+                    Text(verbatim: PreparationText.title(preparation))
+                }
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .foregroundStyle(.black.opacity(0.7))
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(Theme.accent.opacity(0.55), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(alignment: .bottom) {
+                    if let fraction = preparation?.fraction, fraction > 0 {
+                        ProgressView(value: min(1, fraction))
+                            .tint(.black.opacity(0.6))
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 6)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                Text(verbatim: PreparationText.remaining(preparation)
+                     ?? String(localized: "The video can be sent once it is ready."))
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+        case .none:
+            ShareLink(item: log, preview: SharePreview(record.plan.displayTitle)) {
+                sendLabel(String(localized: "Send to Trainer"), systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(PressableButtonStyle())
+        }
+    }
+
+    private func sendLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.system(size: 17, weight: .semibold, design: .rounded))
+            .foregroundStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(Theme.accent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     /// What goes to the trainer, as a table: plan and fact of each attempt in the same columns, a repeat named as one
@@ -1426,3 +1479,23 @@ struct SummaryCard: View {
         }
     }
 }
+
+#if os(iOS)
+/// The system's share sheet over whatever is on screen, for items SwiftUI's `ShareLink` can't carry together: a video
+/// with its caption (Telegram, Messages and Mail take the text as the caption).
+enum ActivitySheet {
+    @MainActor
+    static func present(_ items: [Any]) {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first,
+              var top = scene.keyWindow?.rootViewController ?? scene.windows.first?.rootViewController else { return }
+        while let presented = top.presentedViewController, !presented.isBeingDismissed { top = presented }
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let popover = controller.popoverPresentationController { // iPad
+            popover.sourceView = top.view
+            popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.maxY - 80, width: 1, height: 1)
+        }
+        top.present(controller, animated: true)
+    }
+}
+#endif

@@ -83,20 +83,7 @@ struct MacSummarySheet: View {
                 Spacer()
                 Button("Done", action: onClose)
                     .keyboardShortcut(.cancelAction)
-                // The prominent look is the label's own (a plain-styled button). AppKit's picker, not ShareLink: see
-                // `MacShareItem` (Telegram never sent ShareLink's log and its sheet stuck).
-                MacShareButton(.text(log, title: record.plan.displayTitle)) {
-                    Label("Send to Trainer…", systemImage: "square.and.arrow.up")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .frame(height: 30)
-                        .background(MacPalette.pinkDeep, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.defaultAction)
-                .help("Send the log to the trainer · ↩")
+                sendButton(log: log)
             }
         }
         .padding(20)
@@ -196,6 +183,57 @@ struct MacSummarySheet: View {
             }
             .padding(.top, 4)
         }
+    }
+
+    /// The prominent look is the label's own (a plain-styled button). AppKit's picker, not ShareLink: see
+    /// `MacShareItem` (Telegram never sent ShareLink's log and its sheet stuck). The video with the schedule's first
+    /// line as its caption once it is ready (until then how far its preparing is, and the button waits); the log as
+    /// text without a video.
+    @ViewBuilder
+    private func sendButton(log: String) -> some View {
+        switch model.videoForSharing(record) {
+        case .ready(let url):
+            MacShareButton(.video(url, caption: record.plan.shareTitle)) {
+                sendLabel(String(localized: "Send Video to Trainer…"))
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.defaultAction)
+            .help(String(localized: "Send the video to the trainer, with the schedule’s title · ↩"))
+        case .preparing(let preparation):
+            HStack(spacing: 8) {
+                if let fraction = preparation?.fraction, fraction > 0 {
+                    PreparationRing(fraction: fraction).frame(width: 14, height: 14)
+                } else {
+                    ProgressView().controlSize(.small)
+                }
+                Text(verbatim: [PreparationText.title(preparation), PreparationText.remaining(preparation)]
+                    .compactMap { $0 }.joined(separator: " · "))
+                    .monospacedDigit()
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 14)
+            .frame(height: 30)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .help(String(localized: "The video can be sent once it is ready."))
+        case .none:
+            MacShareButton(.text(log, title: record.plan.displayTitle)) {
+                sendLabel(String(localized: "Send to Trainer…"))
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.defaultAction)
+            .help("Send the log to the trainer · ↩")
+        }
+    }
+
+    private func sendLabel(_ title: String) -> some View {
+        Label(title, systemImage: "square.and.arrow.up")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .frame(height: 30)
+            .background(MacPalette.pinkDeep, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func fileInfo(_ url: URL) -> String {

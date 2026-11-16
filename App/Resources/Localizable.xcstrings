@@ -7511,6 +7511,16 @@
         }
       }
     },
+    "Send the video to the trainer, with the schedule’s title · ↩" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить тренеру видео с заголовком расписания · ↩"
+          }
+        }
+      }
+    },
     "Send to Trainer" : {
       "localizations" : {
         "ru" : {
@@ -7527,6 +7537,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправить тренеру…"
+          }
+        }
+      }
+    },
+    "Send Video to Trainer" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить видео тренеру"
+          }
+        }
+      }
+    },
+    "Send Video to Trainer…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить видео тренеру…"
           }
         }
       }
@@ -8888,6 +8918,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Общие условия тренировки"
+          }
+        }
+      }
+    },
+    "The video can be sent once it is ready." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видео можно будет отправить, когда оно будет готово."
           }
         }
       }

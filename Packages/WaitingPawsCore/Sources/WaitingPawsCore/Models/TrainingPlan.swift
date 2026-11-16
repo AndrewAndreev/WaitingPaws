@@ -486,6 +486,23 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         return trimmed
     }
 
+    /// What a training's video is sent with: the schedule's first line as the trainer wrote it ("🐹 Тренировка на
+    /// понедельник - Андрей - 16.11.2026"), so the trainer sees which schedule it was. A schedule without such a
+    /// line (no title of its own) gets one made of its parts: "Тренировка - Андрей - 16.11.2026".
+    public var shareTitle: String {
+        let name = title.trimmingCharacters(in: .whitespaces)
+        if name != Self.defaultTitle,
+           let first = rawText.split(whereSeparator: \.isNewline).lazy
+            .map({ $0.trimmingCharacters(in: .whitespaces) }).first(where: { !$0.isEmpty }),
+           first.contains(name) {
+            return first
+        }
+        let trainerNames = trainers.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: " · ", with: "/")
+        return ([name.isEmpty ? Self.defaultTitle : name, trainerNames] + [date.map { Self.dateFormatter.string(from: $0) } ?? ""])
+            .filter { !$0.isEmpty }
+            .joined(separator: " - ")
+    }
+
     /// The schedule's date: "05.10.2026" / "10/5/2026".
     public static var dateFormatter: DateFormatter {
         CoreLanguage.current == .ru ? ruDateFormatter : enDateFormatter

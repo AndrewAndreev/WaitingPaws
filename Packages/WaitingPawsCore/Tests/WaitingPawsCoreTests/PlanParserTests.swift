@@ -53,6 +53,19 @@ final class PlanParserTests: XCTestCase {
     9 выход - 20 секунд ИЛИ до вставания
     """
 
+    /// A training's video goes to the trainer with the schedule's own first line; without one, a line of its parts.
+    func testShareTitleIsTheSchedulesFirstLine() {
+        let plan = PlanParser.parse("\n🐹 Тренировка на понедельник - Андрей - 16.11.2026\n\n1 выход - 5 секунд\n2 выход - 15 секунд")
+        XCTAssertEqual(plan.title, "Тренировка на понедельник")
+        XCTAssertEqual(plan.shareTitle, "🐹 Тренировка на понедельник - Андрей - 16.11.2026")
+
+        var bare = PlanParser.parse("1 выход - 5 секунд\n2 выход - 15 секунд")
+        bare.trainers = "Аня · Марк"
+        bare.date = plan.date
+        XCTAssertFalse(bare.shareTitle.contains("выход"), "an exit line is not a title: \(bare.shareTitle)")
+        XCTAssertEqual(bare.shareTitle, "\(TrainingPlan.defaultTitle) - Аня/Марк - 16.11.2026")
+    }
+
     func testDefaultBreaksSample() {
         let plan = PlanParser.parse(sampleWithDefaultBreaks)
 
