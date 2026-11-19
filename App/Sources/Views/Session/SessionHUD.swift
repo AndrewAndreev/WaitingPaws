@@ -1239,7 +1239,8 @@ struct SummaryCard: View {
         case .ready(let url):
             #if os(iOS)
             Button {
-                ActivitySheet.present([record.plan.shareTitle, url])
+                // The file under the schedule's title, and the title as the caption (Telegram and Messages take it).
+                ActivitySheet.present([model.titledVideoForSharing(url, title: record.plan.shareTitle), record.plan.shareTitle])
             } label: {
                 sendLabel(String(localized: "Send Video to Trainer"), systemImage: "square.and.arrow.up")
             }

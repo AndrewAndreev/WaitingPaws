@@ -24,7 +24,9 @@ enum MacShareItem {
         case let .file(url):
             [url as NSURL]
         case let .video(url, caption):
-            [url as NSURL, caption as NSString]
+            // The file alone: with a text item beside it Telegram for Mac sent only the text (2026-11-19). The title is
+            // in the file's name, the picker's header and Mail's subject, and on the clipboard for the caption.
+            [NSPreviewRepresentingActivityItem(item: url as NSURL, title: caption, image: nil, icon: nil)]
         }
     }
 

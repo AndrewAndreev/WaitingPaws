@@ -1257,6 +1257,26 @@ final class AppModel {
         return .ready(url)
     }
 
+    /// The training's video under the schedule's title for sending («🐹 Тренировка на четверг - Андрей - 19.11.2026.mp4»):
+    /// a clone in the temporary folder (APFS: no copy of the data), so a messenger that sends it as a file shows which
+    /// training it is. The original when the clone can't be made.
+    func titledVideoForSharing(_ url: URL, title: String) -> URL {
+        let name = title.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return url }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Share", isDirectory: true)
+        let titled = folder.appendingPathComponent(name).appendingPathExtension(url.pathExtension)
+        do {
+            try? FileManager.default.removeItem(at: folder)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: url, to: titled)
+            return titled
+        } catch {
+            print("[share] titled copy: \(error.localizedDescription)")
+            return url
+        }
+    }
+
     func photosStatus(for fileName: String) -> (saved: Bool, error: String?) {
         (photosSavedFileNames.contains(fileName), photosSaveErrors[fileName])
     }

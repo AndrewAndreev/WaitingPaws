@@ -533,6 +533,15 @@ struct CameraWebView {
                   delay = delay < 0 ? now : delay + (now - delay) * 0.3;
                 }
                 if (++ticks % 4 === 0 && delay >= 0) report('delay ' + delay.toFixed(2) + ' ' + network.lateness.toFixed(2));
+                // No data at all for a while on a shown page: the stream is dead though its socket is open (2026-11-19:
+                // the second camera through the direct link got nothing for half an hour after the iPhone's background).
+                // A new connection, as for a broken stream.
+                if (!document.hidden && stats.lastData && performance.now() - stats.lastData > 12000 && this.ws) {
+                  report('no data for 12 s, reconnecting');
+                  stats.lastData = 0;
+                  this.retrySoon = true;
+                  this.ws.close();
+                }
                 if (video.currentTime === lastTime) {
                   still++;
                   if (still === 2 && !stats.stallStart) { stats.stalls++; stats.stallStart = performance.now(); }
@@ -547,6 +556,8 @@ struct CameraWebView {
               // Back from the background: WebKit may have paused the picture; the data catches up on its own (the jump to
               // live in 'updateend' below) as long as the connection lived through it.
               document.addEventListener('visibilitychange', () => {
+                // The data had no way to come while hidden: the no-data check counts from now.
+                if (!document.hidden && stats.lastData) stats.lastData = performance.now();
                 if (!document.hidden && !first && this.video.paused) this.video.play().catch(() => {});
               });
               this.video.addEventListener('resize', () => {

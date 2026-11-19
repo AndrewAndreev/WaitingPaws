@@ -9577,6 +9577,16 @@
         }
       }
     },
+    "Title copied — paste it as the caption" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заголовок скопирован — вставьте его как подпись"
+          }
+        }
+      }
+    },
     "To connect again, the iPhone will ask for permission on this Mac." : {
       "localizations" : {
         "ru" : {

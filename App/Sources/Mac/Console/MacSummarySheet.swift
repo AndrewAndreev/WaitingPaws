@@ -9,6 +9,8 @@ import WaitingPawsCore
 struct MacSummarySheet: View {
     @Environment(AppModel.self) private var model
     private let record: TrainingRecord
+    /// The title went to the clipboard with the video (for its caption in Telegram).
+    @State private var captionCopied = false
     var onClose: () -> Void
 
     init(record: TrainingRecord, onClose: @escaping () -> Void) {
@@ -193,12 +195,25 @@ struct MacSummarySheet: View {
     private func sendButton(log: String) -> some View {
         switch model.videoForSharing(record) {
         case .ready(let url):
-            MacShareButton(.video(url, caption: record.plan.shareTitle)) {
-                sendLabel(String(localized: "Send Video to Trainer…"))
+            HStack(spacing: 10) {
+                if captionCopied {
+                    Text("Title copied — paste it as the caption")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                MacShareButton({
+                    // The caption on the clipboard: Telegram takes the file alone (`MacShareItem.video`).
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(record.plan.shareTitle, forType: .string)
+                    captionCopied = true
+                    return .video(model.titledVideoForSharing(url, title: record.plan.shareTitle), caption: record.plan.shareTitle)
+                }()) {
+                    sendLabel(String(localized: "Send Video to Trainer…"))
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.defaultAction)
+                .help(String(localized: "Send the video to the trainer, with the schedule’s title · ↩"))
             }
-            .buttonStyle(.plain)
-            .keyboardShortcut(.defaultAction)
-            .help(String(localized: "Send the video to the trainer, with the schedule’s title · ↩"))
         case .preparing(let preparation):
             HStack(spacing: 8) {
                 if let fraction = preparation?.fraction, fraction > 0 {
