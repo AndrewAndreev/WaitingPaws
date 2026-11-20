@@ -292,6 +292,16 @@ struct ReadoutContent {
         return (falseStartLeft(at: now) ?? 1) > 0
     }
 
+    /// A long exit — planned for 5 minutes or more, or an extra one without a planned time: its «Вернулись» is slid,
+    /// not tapped (`SlideButton`). Behind the door that long the owner leaves the app now and then, and a tap as the
+    /// app went away ended an hour's exit after six minutes (the owner, 2026-11-20).
+    var slidesBackInside: Bool {
+        guard case .away = session.phase, let exit = session.currentExit else { return false }
+        return exit.isOpen || exit.duration >= Self.longExit
+    }
+
+    static let longExit: TimeInterval = 5 * 60
+
     /// The break after the schedule's last exit: «Ещё выход» is offered next to «Завершить».
     var canStartOpenExit: Bool {
         if case .breakTime(_, _, _, nil) = session.phase { return true }
@@ -929,7 +939,7 @@ enum TypeScale {
 /// then folds away, the step taking the whole row. After the schedule's last exit: «Завершить» in the step's place and
 /// «Ещё выход» (an extra one without a planned time) beside it — a training ends only with that. At the accessibility
 /// sizes one under the other, their words growing on; there a folded «Фальстарт» keeps its place, so the card doesn't
-/// change its height.
+/// change its height. Outside on a long exit «Вернулись» is slid, not tapped (`SlideButton`).
 struct ReadoutActions: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -948,12 +958,21 @@ struct ReadoutActions: View {
             let showsFalseStart = content.showsFalseStart(at: context.date) && !beforeFirst
             layout {
                 if let step = content.step {
-                    BigButton(title: step.title, icon: step.icon, style: step == .backInside ? .rest : .primary,
-                              height: height, growsWithText: stacked) {
-                        switch step {
-                        case .outside: session.markBehindDoor()
-                        case .backInside: session.endExit()
-                        case .finish: onFinish()
+                    if step == .backInside, content.slidesBackInside {
+                        SlideButton(title: step.title, icon: step.icon, style: .rest, height: height,
+                                    growsWithText: stacked) {
+                            Self.notePress("Back Inside, slid")
+                            session.endExit()
+                        }
+                    } else {
+                        BigButton(title: step.title, icon: step.icon, style: step == .backInside ? .rest : .primary,
+                                  height: height, growsWithText: stacked) {
+                            Self.notePress("\(step)")
+                            switch step {
+                            case .outside: session.markBehindDoor()
+                            case .backInside: session.endExit()
+                            case .finish: onFinish()
+                            }
                         }
                     }
                 }
@@ -981,6 +1000,7 @@ struct ReadoutActions: View {
                 if content.canStartOpenExit {
                     BigButton(title: String(localized: "Another Exit"), icon: .outside, style: .secondary, height: height,
                               growsWithText: stacked) {
+                        Self.notePress("Another Exit")
                         session.startOpenExit()
                     }
                 }
@@ -989,14 +1009,139 @@ struct ReadoutActions: View {
         }
     }
 
+    /// A press that came while the app was not in front — in the log: one such ended the owner's hour-long exit
+    /// (2026-11-20, the app inactive from 40 s before it until 2 s after), and what state lets a tap through then is
+    /// still to be found.
+    static func notePress(_ what: String) {
+        #if os(iOS)
+        let state = UIApplication.shared.applicationState
+        guard state != .active else { return }
+        print("[session] «\(what)» pressed while the app was \(state == .inactive ? "inactive" : "in the background")")
+        #endif
+    }
+
     /// «Фальстарт» — the exit it is about is the one the card shows (the pink chip); VoiceOver hears its number.
     private func falseStartButton(_ content: ReadoutContent, stacked: Bool) -> some View {
         BigButton(title: String(localized: "False Start"), systemImage: "arrow.uturn.backward", style: .caution,
                   height: height, growsWithText: stacked) {
+            Self.notePress("False Start")
             model.falseStart()
         }
         .accessibilityLabel(content.falseStartAccessibilityLabel)
         .accessibilityHint(content.falseStartHint ?? "")
+    }
+}
+
+/// A step slid, not tapped — «Вернулись» of a long exit (`ReadoutContent.slidesBackInside`): the knob with the
+/// step's door on the left of a track in the step's colour, its words in the rest of it. Slid most of the way it does
+/// the step; let go sooner it springs back, and a tap only nudges it to show which way it goes. The same height and
+/// colour as the button it replaces, so the card doesn't change. VoiceOver: a button (a double-tap does it).
+struct SlideButton: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    var title: String
+    var icon: StepIcon.Kind
+    var style: BigButtonStyle = .rest
+    var height: CGFloat = 52
+    var growsWithText = false
+    var action: () -> Void
+
+    @State private var offset: CGFloat = 0
+    @State private var done = false
+
+    /// How far it has to go: most of the way, so a swipe across the card on the way home doesn't count.
+    static let threshold: CGFloat = 0.8
+    private let inset: CGFloat = 4
+
+    var body: some View {
+        let size = 17 * scale
+        let rowHeight = growsWithText ? max(height, size * 2.0) : height
+        let knob = rowHeight - inset * 2
+        GeometryReader { geometry in
+            let travel = max(1, geometry.size.width - knob - inset * 2)
+            let progress = min(1, max(0, offset / travel))
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(style.background.opacity(0.2))
+                // The way slid so far, filled behind the knob.
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(style.background.opacity(0.3))
+                    .frame(width: knob + offset)
+                    .padding(inset)
+                words(size: size)
+                    .padding(.leading, knob + inset * 2)
+                    .padding(.trailing, 10)
+                    .frame(maxWidth: .infinity)
+                    .opacity(1 - min(1, progress * 1.6))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(style.background)
+                    .frame(width: knob, height: knob)
+                    .overlay { StepIcon(kind: icon, size: size).foregroundStyle(style.foreground) }
+                    .offset(x: inset + offset)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard !done else { return }
+                        offset = min(travel, max(0, value.translation.width))
+                    }
+                    .onEnded { value in
+                        guard !done else { return }
+                        if offset >= travel * Self.threshold {
+                            finish(travel: travel)
+                        } else if abs(value.translation.width) < 6 && abs(value.translation.height) < 6 {
+                            nudge()
+                        } else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { offset = 0 }
+                        }
+                    }
+            )
+        }
+        .frame(height: rowHeight)
+        .sensoryFeedback(.impact(weight: .medium), trigger: done) { _, now in now }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { action() }
+    }
+
+    /// The step's words and »» toward where the knob goes; the words alone where both don't fit (half a row, beside
+    /// «Фальстарт»).
+    private func words(size: CGFloat) -> some View {
+        let text = Text(title).font(.system(size: size, weight: .semibold, design: .rounded))
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                text
+                Image(systemName: "chevron.right.2")
+                    .font(.system(size: size * 0.8, weight: .bold))
+                    .opacity(0.7)
+            }
+            text.lineLimit(1).minimumScaleFactor(0.75)
+        }
+        .foregroundStyle(style.background)
+    }
+
+    private var scale: CGFloat {
+        growsWithText && typeSize.isAccessibilitySize ? TypeScale.factor(typeSize) : TypeScale.capped(typeSize)
+    }
+
+    private func finish(travel: CGFloat) {
+        done = true
+        withAnimation(.smooth(duration: 0.15)) { offset = travel }
+        action()
+        // The step moves the card on and this goes; if it doesn't (no answer from the Mac yet), back to the start.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            done = false
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { offset = 0 }
+        }
+    }
+
+    /// A tap: the knob jumps a little the way it goes and comes back.
+    private func nudge() {
+        withAnimation(.spring(response: 0.18, dampingFraction: 0.6)) { offset = 26 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) { offset = 0 }
+        }
     }
 }
 

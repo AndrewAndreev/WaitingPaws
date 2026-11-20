@@ -121,8 +121,13 @@ struct SessionScreen: View {
                     }
                 }
             }
+            // Upright on an iPhone with the home indicator, the card stands a little higher over it: the swipe home
+            // starts at the bottom edge, and a press on «Вернулись» as the app went away ended an hour's exit after
+            // six minutes (the owner, 2026-11-20).
             .padding(wide ? EdgeInsets(top: edge, leading: edge, bottom: edge, trailing: edge)
-                          : EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
+                          : EdgeInsets(top: 0, leading: 0,
+                                       bottom: !clipMode && geometry.safeAreaInsets.bottom > 0 ? Self.overHomeIndicator : 4,
+                                       trailing: 0))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // The clock and the battery over a zoomed picture run up behind them: a frosted band from the screen's
             // edge to just above the bar's buttons (the owner, 2026-11-06, from the variants in Design/shade-lab).
@@ -527,6 +532,10 @@ struct SessionScreen: View {
     /// The frosted band under the clock ends this far above the safe area's edge: between the status bar and the bar's
     /// buttons, which start right at that edge.
     static let frostGap: CGFloat = 6
+
+    /// The card's gap over the home indicator's area (4 pt without it, on an iPhone with the Home button): its buttons
+    /// some 70 pt over the screen's edge instead of 55.
+    static let overHomeIndicator: CGFloat = 20
 
     /// The shown camera's zoomed picture reaches above `y` (screen points from the top).
     private func pictureRunsUp(to y: CGFloat) -> Bool {

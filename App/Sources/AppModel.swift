@@ -342,6 +342,8 @@ final class AppModel {
             guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else { return nil }
             return Double(arguments[index + 1])
         }
+        // `--demo-away-ago <s>`: outside that long, without marks (past the trainer's false-start window, say).
+        if let ago = number("--demo-away-ago") { return ago }
         var earliest: [TimeInterval] = []
         if arguments.contains("--demo-mark") { earliest.append(number("--demo-mark-ago") ?? 5) }
         if arguments.contains("--demo-barking") { earliest.append(3) }

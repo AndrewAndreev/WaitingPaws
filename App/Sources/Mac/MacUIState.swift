@@ -96,7 +96,8 @@ final class MacUIState {
         }
     }
 
-    /// Space: the one obvious next step of the running session — «Вышли», «Вернулись» (or «Завершить» in the last break).
+    /// Space: the one obvious next step of the running session — «Вышли», «Вернулись» (or «Завершить…» in the last
+    /// break, which asks first).
     func primaryStep(_ model: AppModel) {
         guard let session = model.session else {
             startPending(model)
@@ -104,7 +105,8 @@ final class MacUIState {
         }
         switch session.phase {
         case .away: session.endExit()
-        case .breakTime(_, _, _, nil): model.finishSession()
+        // The training and its recording end only after «Завершить тренировку?», as on the iPhone.
+        case .breakTime(_, _, _, nil): confirmFinish = true
         case .ready, .leaving, .breakTime: session.markBehindDoor()
         case .finished: break
         }

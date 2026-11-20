@@ -9,6 +9,7 @@ import WaitingPawsCore
 /// live in the timeline's header, «Завершить» in the toolbar.
 struct ConsoleReadout: View {
     @Environment(AppModel.self) private var model
+    @Environment(MacUIState.self) private var ui
     let session: TrainingSession
     /// The trainer's text under the buttons: the owner's own words, open unless folded (here and before the start).
     @AppStorage(MacTrainerTextFold.key) private var trainerTextOpen = true
@@ -177,7 +178,8 @@ struct ConsoleReadout: View {
                         switch step {
                         case .outside: session.markBehindDoor()
                         case .backInside: session.endExit()
-                        case .finish: model.finishSession()
+                        // As everywhere else the training and its recording end: asked first.
+                        case .finish: ui.confirmFinish = true
                         }
                     }
                 }
