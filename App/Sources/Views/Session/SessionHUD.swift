@@ -280,13 +280,14 @@ struct ReadoutContent {
     /// A label that only says what the number is («Тихо — входите через»): neither «нельзя» nor «можно».
     static let neutralLabel = Color.white.opacity(0.72)
 
-    /// Outside: how long «Фальстарт» still counts, by the trainer's rule («в первые 20 секунд…»); nil without one.
+    /// Outside: how long «Фальстарт» still counts, by the trainer's rule («в первые 20 секунд…»), else 20 seconds
+    /// (`TrainingPlan.falseStartButtonWindow`); nil elsewhere.
     func falseStartLeft(at now: Date) -> TimeInterval? {
-        guard case .away = session.phase, let window = session.plan.falseStartWindow else { return nil }
-        return window - session.elapsed(at: now)
+        guard case .away = session.phase else { return nil }
+        return session.plan.falseStartButtonWindow - session.elapsed(at: now)
     }
 
-    /// «Фальстарт» is there: always in a break; outside until the trainer's window has passed.
+    /// «Фальстарт» is there: always in a break; outside until its window has passed.
     func showsFalseStart(at now: Date) -> Bool {
         guard canFalseStart else { return false }
         return (falseStartLeft(at: now) ?? 1) > 0
@@ -935,11 +936,11 @@ enum TypeScale {
 
 /// The two buttons: the next step — «Вышли» (pink, toward an exit), «Вернулись» outside (blue, toward the break) —
 /// and «Фальстарт», orange as a false start is everywhere (not before the first exit: nothing to repeat yet). Outside,
-/// «Фальстарт» counts down the trainer's window («в первые 20 секунд…») with a line running out under its word, and
-/// then folds away, the step taking the whole row. After the schedule's last exit: «Завершить» in the step's place and
-/// «Ещё выход» (an extra one without a planned time) beside it — a training ends only with that. At the accessibility
-/// sizes one under the other, their words growing on; there a folded «Фальстарт» keeps its place, so the card doesn't
-/// change its height. Outside on a long exit «Вернулись» is slid, not tapped (`SlideButton`).
+/// «Фальстарт» counts down the trainer's window («в первые 20 секунд…», else 20 seconds) with a line running out under
+/// its word, and then folds away, the step taking the whole row. After the schedule's last exit: «Завершить» in the
+/// step's place and «Ещё выход» (an extra one without a planned time) beside it — a training ends only with that. At
+/// the accessibility sizes one under the other, their words growing on; there a folded «Фальстарт» keeps its place, so
+/// the card doesn't change its height. Outside on a long exit «Вернулись» is slid, not tapped (`SlideButton`).
 struct ReadoutActions: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -979,12 +980,13 @@ struct ReadoutActions: View {
                 if showsFalseStart {
                     falseStartButton(content, stacked: stacked)
                         .overlay(alignment: .bottom) {
-                            if let falseStartLeft, let window = session.plan.falseStartWindow {
+                            if let falseStartLeft {
                                 // How long it still counts: a line running out under the word.
                                 Capsule()
                                     .fill(Theme.warning.opacity(0.7))
                                     .frame(height: 3)
-                                    .scaleEffect(x: max(0, falseStartLeft / window), anchor: .leading)
+                                    .scaleEffect(x: max(0, falseStartLeft / session.plan.falseStartButtonWindow),
+                                                 anchor: .leading)
                                     .padding(.horizontal, 18)
                                     .padding(.bottom, 7)
                                     .animation(.linear(duration: 0.5), value: falseStartLeft)

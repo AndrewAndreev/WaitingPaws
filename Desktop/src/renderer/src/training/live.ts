@@ -66,15 +66,15 @@ export class LiveSession {
     return isOpenExit(this.session)
   }
 
-  /// Outside, with a false-start window in the schedule: seconds of it still left (0 once it has passed). Null in a
-  /// break, before the door, or with no window (the button stays the whole exit).
+  /// Outside: seconds of the false-start window still left (0 once it has passed) — the schedule's, else 20 seconds.
+  /// Null in a break or before the door.
   get falseStartLeft(): number | null {
     return falseStartLeft(this.session, this.now)
   }
 
-  /// The schedule's false-start window, seconds.
-  get falseStartWindow(): number | null {
-    return TrainingPlan.falseStartWindow(this.plan)
+  /// The false-start window outside, seconds (`TrainingPlan.falseStartButtonWindow`).
+  get falseStartWindow(): number {
+    return TrainingPlan.falseStartButtonWindow(this.plan)
   }
 
   /// «Фальстарт» means something now (and is on screen): not outside past the schedule's window.
@@ -248,12 +248,11 @@ function isOpenExit(session: TrainingSessionSnapshot): boolean {
 /// See `LiveSession.falseStartLeft`.
 export function falseStartLeft(session: TrainingSessionSnapshot, now: number): number | null {
   if (session.phase.kind !== 'away') return null
-  const window = TrainingPlan.falseStartWindow(session.plan)
-  return window === null ? null : Math.max(0, window - TrainingSession.elapsed(session, now))
+  return Math.max(0, TrainingPlan.falseStartButtonWindow(session.plan) - TrainingSession.elapsed(session, now))
 }
 
-/// Backspace and the button: a false start outside only within the schedule's window («в первые 20 секунд»); in a
-/// break it is the dog at the door before «Вышли», as always.
+/// Backspace and the button: a false start outside only within its window (the schedule's «в первые 20 секунд», else
+/// 20 seconds); in a break it is the dog at the door before «Вышли», as always.
 export function canFalseStartNow(session: TrainingSessionSnapshot, now: number): boolean {
   return SessionPhase.canFalseStart(session.phase) && falseStartLeft(session, now) !== 0
 }

@@ -279,9 +279,9 @@ function Info({ live }: { live: LiveSession }) {
   )
 }
 
-/// The next step (Space) and the false start (Backspace, ⌫ on the button). Outside, when the schedule says how long a
-/// return still counts as a false start («в первые 20 секунд»), the false start counts that time down and then folds
-/// away, leaving the row to «Вернулись». In the break after the last exit: «Завершить» and «Ещё выход».
+/// The next step (Space) and the false start (Backspace, ⌫ on the button). Outside, the false start counts down how
+/// long a return still counts as one (the schedule's «в первые 20 секунд», else 20 seconds) and then folds away,
+/// leaving the row to «Вернулись». In the break after the last exit: «Завершить» and «Ещё выход».
 function Transport({ live }: { live: LiveSession }) {
   const phase = live.phase
   const lastBreak = phase.kind === 'breakTime' && phase.nextExitIndex === null
@@ -308,7 +308,7 @@ function Transport({ live }: { live: LiveSession }) {
             hint="Backspace"
             tone="warn"
             gone={left === 0}
-            countdown={left !== null && left > 0 && window ? { left, window } : null}
+            countdown={left !== null && left > 0 ? { left, window } : null}
             onClick={() => void call('session.command', 'resetExit')}
           />
         )

@@ -403,6 +403,8 @@ describe('TrainingSession', () => {
   it('reads the false start window from the rule', () => {
     const plan = TrainingPlan.make({ exits: [PlannedExit.make({ number: 1, duration: 300 })] })
     expect(TrainingPlan.falseStartWindow(plan)).toBeNull()
+    expect(TrainingPlan.falseStartButtonWindow(plan)).toBe(20) // without the rule the button still folds away
+    expect(TrainingPlan.falseStartButtonWindow({ ...plan, notes: ['Фальстарт: в первые 30 секунд — возвращаемся'] })).toBe(30)
     const window = (note: string) => TrainingPlan.falseStartWindow({ ...plan, notes: [note] })
     expect(window('Фальстарт: если пошла к двери в первые 20 секунд длинного выхода - сразу возвращаемся')).toBe(20)
     expect(window('Фальстарт: если в течение первых 1,5 минут пошла к двери — возвращаемся')).toBe(90)

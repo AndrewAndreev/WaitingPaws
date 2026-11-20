@@ -30,7 +30,7 @@ final class MacUIState {
     /// Before the start: what the pointer is over, a block on the plan's timeline or a line of the trainer's text on
     /// the panel; the other one lights.
     var planPointer: MacPlanPointer?
-    /// Bumped when the trainer's window for «Фальстарт» outside closes (`watchFalseStartWindow`): nothing observable
+    /// Bumped when the window for «Фальстарт» outside closes (`watchFalseStartWindow`): nothing observable
     /// changes at that moment, and the menu item has to grey out.
     private var falseStartWindowsClosed = 0
 
@@ -112,7 +112,7 @@ final class MacUIState {
         }
     }
 
-    /// ⌫: false start — outside while the trainer's window lasts, or in a break when the dog went to the door before
+    /// ⌫: false start — outside while its window lasts, or in a break when the dog went to the door before
     /// «Вышли».
     func falseStart(_ model: AppModel) {
         guard canFalseStart(model), model.session != nil else { return }
@@ -126,7 +126,7 @@ final class MacUIState {
         return ReadoutContent(session: session).showsFalseStart(at: Date())
     }
 
-    /// Waits out the trainer's window of the exit in progress, then wakes whatever reads `canFalseStart` (the menu).
+    /// Waits out the false-start window of the exit in progress, then wakes whatever reads `canFalseStart` (the menu).
     func watchFalseStartWindow(_ model: AppModel) async {
         guard let session = model.session, let left = ReadoutContent(session: session).falseStartLeft(at: Date()),
               left > 0 else { return }

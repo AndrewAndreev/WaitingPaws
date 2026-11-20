@@ -469,7 +469,7 @@ export const TrainingPlan = {
 
   /**
    * «🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода…»: how long into an exit a return still
-   * counts as a false start, in seconds. `null` when the schedule doesn't say (the button stays the whole exit).
+   * counts as a false start, in seconds. `null` when the schedule doesn't say (`falseStartButtonWindow` then).
    */
   falseStartWindow(plan: TrainingPlan): number | null {
     for (const note of plan.notes) {
@@ -482,6 +482,18 @@ export const TrainingPlan = {
     }
     return null
   },
+
+  /** How long into an exit «Фальстарт» stays on screen, seconds: the trainer's window, else `defaultFalseStartWindow`. */
+  falseStartButtonWindow(plan: TrainingPlan): number {
+    return TrainingPlan.falseStartWindow(plan) ?? TrainingPlan.defaultFalseStartWindow
+  },
+
+  /**
+   * Without the trainer's rule: 20 seconds, the trainer's own number where the rule is written. A button that stood
+   * the whole exit in the schedules without it looked broken beside the one that folded away in those with it
+   * (2026-11-20).
+   */
+  defaultFalseStartWindow: 20,
 
   /**
    * The note that says when not to come in: the trainer's 🚩 (the parser keeps it on the note), else the first note

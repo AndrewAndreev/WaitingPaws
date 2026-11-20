@@ -164,7 +164,7 @@ struct ConsoleReadout: View {
 
     /// The next step (Space) and the false start (⌫), as on the iPhone: blue toward a break, pink toward an exit.
     /// Before the first exit «Вышли» alone. Outside, «Фальстарт» runs out with the trainer's window («в первые 20
-    /// секунд…»), its line shrinking, and folds away; in the last break «Завершить» leads and «Ещё выход» after it
+    /// секунд…», else 20 seconds), its line shrinking, and folds away; in the last break «Завершить» leads and «Ещё выход» after it
     /// starts an extra exit without a planned time.
     private func buttons(_ content: ReadoutContent) -> some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
@@ -199,11 +199,12 @@ struct ConsoleReadout: View {
                     .accessibilityLabel(content.falseStartAccessibilityLabel)
                     .accessibilityHint(content.falseStartHint ?? "")
                     .overlay(alignment: .bottom) {
-                        if let falseStartLeft, let window = session.plan.falseStartWindow {
+                        if let falseStartLeft {
                             Capsule()
                                 .fill(MacPalette.orange.opacity(0.7))
                                 .frame(height: 3)
-                                .scaleEffect(x: max(0, falseStartLeft / window), anchor: .leading)
+                                .scaleEffect(x: max(0, falseStartLeft / session.plan.falseStartButtonWindow),
+                                             anchor: .leading)
                                 .padding(.horizontal, 14)
                                 .padding(.bottom, 4)
                                 .animation(.linear(duration: 0.5), value: falseStartLeft)

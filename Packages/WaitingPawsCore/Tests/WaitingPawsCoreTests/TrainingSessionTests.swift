@@ -326,10 +326,12 @@ final class TrainingSessionTests: XCTestCase {
     func testFalseStartWindowFromTheRule() {
         var plan = TrainingPlan(exits: [PlannedExit(number: 1, duration: 300)])
         XCTAssertNil(plan.falseStartWindow)
+        XCTAssertEqual(plan.falseStartButtonWindow, 20, "without the rule the button still folds away")
         plan.notes = ["Фальстарт: если пошла к двери в первые 20 секунд длинного выхода - сразу возвращаемся"]
         XCTAssertEqual(plan.falseStartWindow, 20)
         plan.notes = ["Фальстарт: если в течение первых 1,5 минут пошла к двери — возвращаемся"]
         XCTAssertEqual(plan.falseStartWindow, 90)
+        XCTAssertEqual(plan.falseStartButtonWindow, 90)
         plan.notes = ["False start: if she goes to the door in the first 30 seconds, come back"]
         XCTAssertEqual(plan.falseStartWindow, 30)
         plan.notes = ["Фальстарт: если пошла к двери — сразу возвращаемся"]

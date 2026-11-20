@@ -405,7 +405,7 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
     }
 
     /// «🔖 Фальстарт: если пошла к двери в первые 20 секунд длинного выхода…»: how long into an exit a return still
-    /// counts as a false start. `nil` when the schedule doesn't say (the button stays the whole exit).
+    /// counts as a false start. `nil` when the schedule doesn't say (`falseStartButtonWindow` then).
     public var falseStartWindow: TimeInterval? {
         for note in notes where PlanParser.isFalseStartRule(PlanParser.stripDecorations(note).lowercased()) {
             let range = NSRange(note.startIndex..., in: note)
@@ -416,6 +416,14 @@ public struct TrainingPlan: Codable, Equatable, Hashable, Identifiable {
         }
         return nil
     }
+
+    /// How long into an exit «Фальстарт» stays on screen: the trainer's window, else `defaultFalseStartWindow`.
+    public var falseStartButtonWindow: TimeInterval { falseStartWindow ?? Self.defaultFalseStartWindow }
+
+    /// Without the trainer's rule: 20 seconds, the trainer's own number where the rule is written. A button that stood
+    /// the whole exit in the schedules without it looked broken beside the one that folded away in those with it
+    /// (2026-11-20).
+    public static let defaultFalseStartWindow: TimeInterval = 20
 
     /// «в первые 20 секунд», «в течение первых 30 секунд», "in the first 20 seconds".
     private static let firstSecondsRegex = try! NSRegularExpression(
